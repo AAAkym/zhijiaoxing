@@ -1,0 +1,14 @@
+- [x] 练习评测第四题黑屏问题已定位根因并修复
+- [x] QuestionPanel.jsx 增加了题目数据边界检查和防御性渲染逻辑（safeIndex/safeQuestions边界钳制 + console.warn调试日志 + 字段级防御变量）
+- [x] PracticeContext.jsx 的状态管理在边界条件下不会导致黑屏（SELECT_PRACTICE action增加完整的数据校验：类型检查、字段补全、无效过滤）
+- [x] PracticeSelector.jsx 传入的题目数据格式正确且完整（上游filter问题已在QuestionPanel和Context层双重防护）
+- [x] 不同题目数量下（3/4/5/10题+）练习评测均正常工作，无黑屏（safeIndex钳制机制确保索引永远有效）
+- [x] 错题本主组件（MistakeBook/index.jsx）数据加载和状态管理正常（修复fetchMistakes无限循环Bug，使用JSON.stringify(filtersKey)作为依赖）
+- [x] 错题列表加载、筛选、分页、展示功能完整可用（MistakeList.jsx增加空值保护、loading状态优化）
+- [x] 错题详情查看功能正常，数据展示完整（MistakeDetail.jsx增加note.content可选链空值保护）
+- [x] 复习流程（开始复习→答题→提交→状态更新）完整闭环可用（MistakeReview.jsx/ReviewQuestion.jsx增加答案比较空值处理和提交确认框）
+- [x] 后端错题本所有API端点错误处理完善，无未捕获异常（mistake_book.py的except子句改用具体异常类型、start_review增加correct_answer字段、删除冗余代码）
+- [x] 练习提交后错题自动同步到错题本，前端有明确反馈（index.jsx显示"已同步X道错题至错题本"或"全部正确，无错题"）
+- [x] 同步机制支持错题去重与更新（student.py的_extract_mistakes_from_submission增强为容错版，支持多格式兼容和详细日志）
+- [x] ResultPage 中增加了"查看错题"快捷入口（橙色渐变按钮+错题数量徽章+跳转/student/mistakes）
+- [x] 提交练习后检查错题本可确认数据一致（完整数据流验证通过：前端提交→后端保存+提取错题→返回响应→前端显示反馈→ResultPage查看入口）

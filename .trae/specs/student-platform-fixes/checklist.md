@@ -1,0 +1,9 @@
+- [x] 练习评测-错题本重复数据问题已修复（student.py + mistake_book.py 双路径去重，智能状态回退：mastered→reviewing→unmastered）
+- [x] 学生概览页面能实时反映最新的错题统计数据（completePractice后自动刷新 + currentView切换时触发刷新）
+- [x] AI错因分析使用真实spark_service API，传入完整的题目/答案/解析数据（新增explanation参数和【题目解析】prompt section）
+- [x] AI错因分析结果能正确流式/非流式展示在错题详情页（analyze_mistake + analyze_mistake_stream 双函数同步增强）
+- [x] 学习笔记列表加载不再出现 Authentication required 错误（api.js增加401特殊处理+isAuthError标记，StudyNotes智能区分认证错误）
+- [x] 学习笔记内容（标题、正文、标签、时间）完整正确显示
+- [x] 新建笔记填写完整信息后点击保存能成功创建（返回201）
+- [x] 新建笔记保存后自动出现在笔记列表中
+- [x] 笔记保存失败时有明确的错误提示信息（NoteEditor按401/400/404状态码映射中文友好提示：登录过期/标题为空/内容为空/课程无效等）
