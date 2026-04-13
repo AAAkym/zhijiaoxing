@@ -1,0 +1,384 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 1,
+    "analysis": {
+      "analyzer": {
+        "ik_smart_custom": {
+          "type": "custom",
+          "tokenizer": "ik_smart",
+          "filter": [
+            "lowercase",
+            "asciifolding"
+          ]
+        },
+        "ik_max_word_custom": {
+          "type": "custom",
+          "tokenizer": "ik_max_word",
+          "filter": [
+            "lowercase",
+            "asciifolding"
+          ]
+        },
+        "code_analyzer": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": [
+            "lowercase"
+          ]
+        },
+        "html_analyzer": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "char_filter": [
+            "html_strip"
+          ],
+          "filter": [
+            "lowercase",
+            "asciifolding"
+          ]
+        }
+      },
+      "filter": {
+        "asciifolding": {
+          "type": "asciifolding",
+          "preserve_original": true
+        }
+      },
+      "char_filter": {
+        "html_strip": {
+          "type": "html_strip"
+        }
+      }
+    },
+    "index": {
+      "max_result_window": 10000,
+      "refresh_interval": "5s",
+      "highlight.max_analyzed_offset": 1000000
+    }
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "id": {
+        "type": "keyword",
+        "index": true,
+        "store": true
+      },
+      "title": {
+        "type": "text",
+        "analyzer": "ik_max_word_custom",
+        "search_analyzer": "ik_smart_custom",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        },
+        "boost": 3.0
+      },
+      "subtitle": {
+        "type": "text",
+        "analyzer": "ik_max_word_custom",
+        "search_analyzer": "ik_smart_custom",
+        "boost": 2.0
+      },
+      "content": {
+        "type": "text",
+        "analyzer": "ik_max_word_custom",
+        "search_analyzer": "ik_smart_custom",
+        "store": false,
+        "term_vector": "with_positions_offsets"
+      },
+      "content_plain": {
+        "type": "text",
+        "analyzer": "ik_max_word_custom",
+        "search_analyzer": "ik_smart_custom",
+        "store": false
+      },
+      "content_type": {
+        "type": "keyword",
+        "index": true
+      },
+      "content_format": {
+        "type": "keyword",
+        "index": true
+      },
+      "summary": {
+        "type": "text",
+        "analyzer": "ik_smart_custom",
+        "boost": 1.5
+      },
+      "abstract": {
+        "type": "text",
+        "analyzer": "ik_smart_custom"
+      },
+      "keywords": {
+        "type": "keyword",
+        "index": true,
+        "boost": 2.0
+      },
+      "tags": {
+        "type": "keyword",
+        "index": true,
+        "boost": 1.5
+      },
+      "category": {
+        "type": "keyword",
+        "index": true,
+        "fields": {
+          "text": {
+            "type": "text",
+            "analyzer": "ik_smart_custom"
+          }
+        }
+      },
+      "sub_category": {
+        "type": "keyword",
+        "index": true
+      },
+      "course": {
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "title": {
+            "type": "text",
+            "analyzer": "ik_smart_custom"
+          },
+          "chapter_id": {
+            "type": "keyword"
+          },
+          "chapter_title": {
+            "type": "text",
+            "analyzer": "ik_smart_custom"
+          },
+          "lesson_id": {
+            "type": "keyword"
+          },
+          "lesson_title": {
+            "type": "text",
+            "analyzer": "ik_smart_custom"
+          },
+          "order": {
+            "type": "integer"
+          }
+        }
+      },
+      "author": {
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "text",
+            "analyzer": "ik_smart_custom",
+            "fields": {
+              "keyword": {
+                "type": "keyword"
+              }
+            }
+          },
+          "avatar": {
+            "type": "keyword",
+            "index": false
+          },
+          "title": {
+            "type": "keyword"
+          }
+        }
+      },
+      "cover_image": {
+        "type": "keyword",
+        "index": false
+      },
+      "attachments": {
+        "type": "nested",
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "text",
+            "analyzer": "ik_smart_custom"
+          },
+          "url": {
+            "type": "keyword",
+            "index": false
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "size": {
+            "type": "long"
+          }
+        }
+      },
+      "media": {
+        "type": "nested",
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "url": {
+            "type": "keyword",
+            "index": false
+          },
+          "thumbnail": {
+            "type": "keyword",
+            "index": false
+          },
+          "duration": {
+            "type": "integer"
+          },
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          }
+        }
+      },
+      "code_snippets": {
+        "type": "nested",
+        "properties": {
+          "language": {
+            "type": "keyword"
+          },
+          "code": {
+            "type": "text",
+            "analyzer": "code_analyzer"
+          },
+          "description": {
+            "type": "text",
+            "analyzer": "ik_smart_custom"
+          }
+        }
+      },
+      "difficulty": {
+        "type": "keyword",
+        "index": true
+      },
+      "difficulty_level": {
+        "type": "integer",
+        "index": true
+      },
+      "estimated_read_time": {
+        "type": "integer",
+        "index": true
+      },
+      "word_count": {
+        "type": "integer",
+        "index": true
+      },
+      "is_published": {
+        "type": "boolean",
+        "index": true
+      },
+      "status": {
+        "type": "keyword",
+        "index": true
+      },
+      "visibility": {
+        "type": "keyword",
+        "index": true
+      },
+      "language": {
+        "type": "keyword",
+        "index": true
+      },
+      "version": {
+        "type": "keyword"
+      },
+      "parent_id": {
+        "type": "keyword"
+      },
+      "related_contents": {
+        "type": "keyword"
+      },
+      "prerequisites": {
+        "type": "text",
+        "analyzer": "ik_smart_custom"
+      },
+      "learning_outcomes": {
+        "type": "text",
+        "analyzer": "ik_smart_custom"
+      },
+      "view_count": {
+        "type": "integer",
+        "index": true
+      },
+      "read_count": {
+        "type": "integer"
+      },
+      "like_count": {
+        "type": "integer"
+      },
+      "dislike_count": {
+        "type": "integer"
+      },
+      "favorite_count": {
+        "type": "integer"
+      },
+      "share_count": {
+        "type": "integer"
+      },
+      "comment_count": {
+        "type": "integer"
+      },
+      "download_count": {
+        "type": "integer"
+      },
+      "rating": {
+        "type": "float"
+      },
+      "rating_count": {
+        "type": "integer"
+      },
+      "created_at": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis",
+        "index": true
+      },
+      "updated_at": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      },
+      "published_at": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis",
+        "index": true
+      },
+      "last_modified_at": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      },
+      "valid_from": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      },
+      "valid_until": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      },
+      "organization": {
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "text",
+            "analyzer": "ik_smart_custom"
+          }
+        }
+      },
+      "metadata": {
+        "type": "object",
+        "enabled": false
+      }
+    }
+  }
+}

@@ -1,0 +1,141 @@
+# Filebeat 配置文件
+# 用于收集和转发日志文件
+
+filebeat.inputs:
+  # 应用日志
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/eduai/*.log
+    fields:
+      service: eduai-backend
+      log_type: application
+    fields_under_root: true
+    multiline.pattern: '^\d{4}-\d{2}-\d{2}'
+    multiline.negate: true
+    multiline.match: after
+
+  # 错误日志
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/eduai/error*.log
+    fields:
+      service: eduai-backend
+      log_type: error
+    fields_under_root: true
+    multiline.pattern: '^\d{4}-\d{2}-\d{2}'
+    multiline.negate: true
+    multiline.match: after
+
+  # 系统日志
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/syslog
+      - /var/log/messages
+    fields:
+      service: system
+      log_type: system
+    fields_under_root: true
+
+  # Nginx 访问日志
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/nginx/access.log
+    fields:
+      service: nginx
+      log_type: access
+    fields_under_root: true
+
+  # Nginx 错误日志
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/nginx/error.log
+    fields:
+      service: nginx
+      log_type: error
+    fields_under_root: true
+
+# Filebeat 模块
+filebeat.modules:
+  - module: system
+    syslog:
+      enabled: true
+    auth:
+      enabled: true
+
+  - module: nginx
+    access:
+      enabled: true
+      var.paths: ["/var/log/nginx/access.log*"]
+    error:
+      enabled: true
+      var.paths: ["/var/log/nginx/error.log*"]
+
+  - module: postgresql
+    log:
+      enabled: true
+      var.paths: ["/var/log/postgresql/*.log*"]
+
+  - module: redis
+    log:
+      enabled: true
+      var.paths: ["/var/log/redis/*.log*"]
+
+# 输出到 Logstash
+output.logstash:
+  hosts: ["${LOGSTASH_HOST:logstash:5044}"]
+  loadbalance: true
+  worker: 2
+  compression_level: 3
+  bulk_max_size: 2048
+  slow_start: true
+
+# 输出到 Elasticsearch（直接输出，不经过 Logstash）
+# output.elasticsearch:
+#   hosts: ["${ELASTICSEARCH_HOST:elasticsearch:9200}"]
+#   username: "${ELASTICSEARCH_USER:elastic}"
+#   password: "${ELASTICSEARCH_PASSWORD:changeme}"
+#   index: "filebeat-%{[agent.version]}-%{+yyyy.MM.dd}"
+
+# 处理器
+processors:
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+  - add_cloud_metadata: ~
+  - add_docker_metadata: ~
+  - add_kubernetes_metadata: ~
+  - add_fields:
+      target: environment
+      fields:
+        name: "${ENVIRONMENT:production}"
+
+# 日志配置
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 7
+  permissions: 0644
+
+# 监控
+monitoring.enabled: true
+monitoring.elasticsearch:
+  hosts: ["${ELASTICSEARCH_HOST:elasticsearch:9200}"]
+  username: "${ELASTICSEARCH_USER:elastic}"
+  password: "${ELASTICSEARCH_PASSWORD:changeme}"
+
+# 队列配置
+queue.mem:
+  events: 4096
+  flush.min_events: 512
+  flush.timeout: 5s
+
+# 注册表配置
+filebeat.registry.path: /var/lib/filebeat/registry
+filebeat.registry.file_permissions: 0600
+filebeat.registry.flush: 5s
