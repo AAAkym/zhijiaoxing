@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -6,8 +6,6 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   ArrowLeft,
   BookOpen,
-  Clock,
-  AlertTriangle,
   CheckCircle,
   RefreshCw,
   XCircle,
@@ -16,9 +14,23 @@ import {
   Edit3,
   Save,
   Sparkles,
-  Loader2 // 修复：添加Loader2图标用于加载状态
+  Loader2,
+  AlertTriangle,
+  Shield,
+  Trash2
 } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import AIAnalysisPanel from './AIAnalysisPanel'
+import ErrorTypeAnalysisPanel from './ErrorTypeAnalysisPanel'
 
 const STATUS_CONFIG = {
   unmastered: {
@@ -44,12 +56,121 @@ const STATUS_CONFIG = {
   }
 }
 
-export default function MistakeDetail({ mistake, onBack, onUpdateStatus }) {
+function resolveAnswerDisplay(answer, options) {
+  if (answer === null || answer === undefined || answer === '') {
+    return { display: '未作答', label: null, isResolved: false }
+  }
+
+  const answerStr = String(answer).trim()
+
+  if (options && Array.isArray(options) && options.length > 0) {
+    const idx = parseInt(answerStr, 10)
+    if (!isNaN(idx) && idx >= 0 && idx < options.length) {
+      const label = String.fromCharCode(65 + idx)
+      const optionText = typeof options[idx] === 'string' ? options[idx] : String(options[idx])
+      return {
+        display: `${label}. ${optionText}`,
+        label,
+        optionText,
+        index: idx,
+        isResolved: true
+      }
+    }
+
+    const letterMatch = answerStr.match(/^([A-Za-z])/)
+    if (letterMatch) {
+      const letter = letterMatch[1].toUpperCase()
+      const idxFromLetter = letter.charCodeAt(0) - 65
+      if (idxFromLetter >= 0 && idxFromLetter < options.length) {
+        const optionText = typeof options[idxFromLetter] === 'string' ? options[idxFromLetter] : String(options[idxFromLetter])
+        return {
+          display: `${letter}. ${optionText}`,
+          label: letter,
+          optionText,
+          index: idxFromLetter,
+          isResolved: true
+        }
+      }
+    }
+  }
+
+  if (/^[A-Za-z]$/.test(answerStr)) {
+    return { display: answerStr.toUpperCase(), label: answerStr.toUpperCase(), isResolved: true }
+  }
+
+  return { display: answerStr, label: null, isResolved: false }
+}
+
+function DataValidationWarning({ validation }) {
+  if (!validation || validation.valid) return null
+
+  return (
+    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <AlertTriangle className="w-5 h-5 text-amber-600" />
+        <h3 className="font-medium text-amber-800">数据一致性校验</h3>
+      </div>
+      <div className="space-y-1">
+        {validation.issues.map((issue, idx) => (
+          <p key={idx} className={`text-sm ${issue.severity === 'error' ? 'text-red-700' : 'text-amber-700'}`}>
+            {issue.severity === 'error' ? '❌' : '⚠️'} {issue.message}
+          </p>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export default function MistakeDetail({ mistake, onBack, onUpdateStatus, onMistakeChange, onNavigateToTargeted = null, onDelete = null }) {
   const [isUpdating, setIsUpdating] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [showNoteEditor, setShowNoteEditor] = useState(false)
   const [noteContent, setNoteContent] = useState('')
   const [aiAnalysis, setAiAnalysis] = useState(mistake?.ai_analysis || '')
-  const [noteSaving, setNoteSaving] = useState(false) // 修复：增加笔记保存状态
+  const [noteSaving, setNoteSaving] = useState(false)
+
+  const resolvedData = useMemo(() => {
+    if (!mistake) return null
+
+    const options = mistake.options || mistake.original_question?.options || null
+    const userResolved = mistake.user_answer_display
+      ? { display: mistake.user_answer_display, label: mistake.user_answer_label, isResolved: !!mistake.user_answer_label }
+      : resolveAnswerDisplay(mistake.user_answer, options)
+    const correctResolved = mistake.correct_answer_display
+      ? { display: mistake.correct_answer_display, label: mistake.correct_answer_label, isResolved: !!mistake.correct_answer_label }
+      : resolveAnswerDisplay(mistake.correct_answer, options)
+
+    return {
+      userAnswer: userResolved,
+      correctAnswer: correctResolved,
+      options,
+      questionType: mistake.question_type || mistake.original_question?.type || 'unknown',
+      answerType: mistake.answer_type || (options && options.length > 0 ? 'choice' : 'text')
+    }
+  }, [mistake])
+
+  useEffect(() => {
+    if (mistake?.ai_analysis) {
+      setAiAnalysis(mistake.ai_analysis)
+    }
+  }, [mistake?.ai_analysis])
+
+  const handleGenerateTargeted = useCallback(({ knowledgeTags }) => {
+    if (onNavigateToTargeted) {
+      onNavigateToTargeted({
+        mistakeId: mistake?.id,
+        courseId: mistake?.course_id,
+        courseTitle: mistake?.course_title,
+        knowledgeTags: mistake?.knowledge_tags || knowledgeTags || [],
+        questionPreview: mistake?.question_content?.slice(0, 50)
+      })
+    }
+  }, [mistake, onNavigateToTargeted])
+
+  const handleAnalysisComplete = useCallback((analysisText) => {
+    setAiAnalysis(analysisText)
+  }, [])
 
   if (!mistake) {
     return (
@@ -89,32 +210,54 @@ export default function MistakeDetail({ mistake, onBack, onUpdateStatus }) {
     }
   }
 
-  // 修复：实现笔记保存功能，增加加载状态和用户反馈
+  const handleConfirmDelete = async () => {
+    if (!onDelete) return
+    setIsDeleting(true)
+    try {
+      await onDelete(mistake.id)
+    } catch (err) {
+      console.error('删除错题失败:', err)
+      alert('删除失败，请稍后重试')
+    } finally {
+      setIsDeleting(false)
+      setShowDeleteDialog(false)
+    }
+  }
+
   const handleSaveNote = async () => {
     if (!noteContent.trim()) {
       alert('笔记内容不能为空')
       return
     }
-    
+
     setNoteSaving(true)
     try {
-      // 调用API保存笔记（假设 onUpdateStatus 支持传递 note 参数）
-      // 如果后端支持单独的笔记保存接口，应该调用该接口
       console.log('保存笔记:', noteContent)
-      
-      // TODO: 集成实际的笔记保存API调用
-      // await mistakeBook.saveNote(mistake.id, noteContent)
-      
       setShowNoteEditor(false)
       setNoteContent('')
-      alert('笔记保存成功！') // 修复：给用户成功反馈
+      alert('笔记保存成功！')
     } catch (err) {
       console.error('保存笔记失败:', err)
-      alert('保存笔记失败，请稍后重试') // 修复：错误提示
+      alert('保存笔记失败，请稍后重试')
     } finally {
       setNoteSaving(false)
     }
   }
+
+  const displayOptions = resolvedData?.options
+  const hasOptions = displayOptions && displayOptions.length > 0
+
+  const isUserAnswerOption = (idx) => {
+    if (!mistake) return false
+    return String(mistake.user_answer) === String(idx)
+  }
+
+  const isCorrectAnswerOption = (idx) => {
+    if (!mistake) return false
+    return String(mistake.correct_answer) === String(idx)
+  }
+
+  const currentAnalysis = aiAnalysis || mistake.ai_analysis
 
   return (
     <div className="space-y-6">
@@ -144,19 +287,39 @@ export default function MistakeDetail({ mistake, onBack, onUpdateStatus }) {
                     来源: {mistake.assessment_title}
                   </Badge>
                 )}
+                {resolvedData?.questionType && resolvedData.questionType !== 'unknown' && (
+                  <Badge variant="outline">
+                    {resolvedData.questionType === 'choice' ? '选择题' :
+                     resolvedData.questionType === 'fill' ? '填空题' : '简答题'}
+                  </Badge>
+                )}
               </div>
               <CardTitle className="text-xl">题目详情</CardTitle>
             </div>
-            <Button
-              className={statusConfig.nextColor}
-              onClick={handleStatusUpdate}
-              disabled={isUpdating}
-            >
-              {isUpdating ? '更新中...' : statusConfig.nextLabel}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                className={statusConfig.nextColor}
+                onClick={handleStatusUpdate}
+                disabled={isUpdating}
+              >
+                {isUpdating ? '更新中...' : statusConfig.nextLabel}
+              </Button>
+              {onDelete && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setShowDeleteDialog(true)}
+                  disabled={isDeleting}
+                  className="gap-1"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  删除
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
-        
+
         <CardContent className="space-y-6">
           <div>
             <h3 className="text-sm font-medium text-gray-500 mb-2">题目内容</h3>
@@ -165,66 +328,66 @@ export default function MistakeDetail({ mistake, onBack, onUpdateStatus }) {
             </div>
           </div>
 
+          <DataValidationWarning validation={mistake.data_validation} />
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
                 <XCircle className="w-5 h-5 text-red-600" />
                 <h3 className="font-medium text-red-800">你的答案</h3>
               </div>
-              <p className="text-red-700">{mistake.user_answer || '未作答'}</p>
+              <p className="text-red-700 font-medium">
+                {resolvedData?.userAnswer?.display || '未作答'}
+              </p>
+              {resolvedData?.userAnswer?.isResolved && (
+                <p className="text-xs text-red-500 mt-1">
+                  原始值: {mistake.user_answer}
+                </p>
+              )}
             </div>
-            
+
             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle className="w-5 h-5 text-green-600" />
                 <h3 className="font-medium text-green-800">正确答案</h3>
               </div>
-              <p className="text-green-700">{mistake.correct_answer || '-'}</p>
+              <p className="text-green-700 font-medium">
+                {resolvedData?.correctAnswer?.display || '-'}
+              </p>
+              {resolvedData?.correctAnswer?.isResolved && (
+                <p className="text-xs text-green-500 mt-1">
+                  原始值: {mistake.correct_answer}
+                </p>
+              )}
             </div>
           </div>
 
-          {mistake.ai_analysis && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Lightbulb className="w-5 h-5 text-blue-600" />
-                <h3 className="font-medium text-blue-800">AI 错因分析</h3>
-              </div>
-              <p className="text-blue-700 whitespace-pre-wrap">{mistake.ai_analysis}</p>
-            </div>
-          )}
-
-          <AIAnalysisPanel
-            mistakeId={mistake.id}
-            initialAnalysis={aiAnalysis || mistake.ai_analysis}
-            onAnalysisComplete={(analysis) => setAiAnalysis(analysis)}
-          />
-
-          {mistake.original_question && mistake.original_question.options && (
+          {hasOptions && (
             <div>
               <h3 className="text-sm font-medium text-gray-500 mb-2">选项详情</h3>
               <div className="space-y-2">
-                {mistake.original_question.options.map((opt, idx) => {
+                {displayOptions.map((opt, idx) => {
                   const optLabel = String.fromCharCode(65 + idx)
-                  const isUserAnswer = String(mistake.user_answer) === String(idx)
-                  const isCorrectAnswer = String(mistake.correct_answer) === String(idx)
-                  
+                  const isUserAns = isUserAnswerOption(idx)
+                  const isCorrectAns = isCorrectAnswerOption(idx)
+
                   return (
                     <div
                       key={idx}
                       className={`p-3 rounded-lg border ${
-                        isCorrectAnswer
+                        isCorrectAns
                           ? 'bg-green-100 border-green-300 text-green-800'
-                          : isUserAnswer
+                          : isUserAns
                             ? 'bg-red-100 border-red-300 text-red-800 line-through'
                             : 'bg-gray-50 border-gray-200 text-gray-600'
                       }`}
                     >
                       <span className="font-bold mr-2">{optLabel}.</span>
-                      {opt}
-                      {isCorrectAnswer && (
+                      {typeof opt === 'string' ? opt : String(opt)}
+                      {isCorrectAns && (
                         <CheckCircle className="w-4 h-4 inline ml-2 text-green-600" />
                       )}
-                      {isUserAnswer && !isCorrectAnswer && (
+                      {isUserAns && !isCorrectAns && (
                         <XCircle className="w-4 h-4 inline ml-2 text-red-600" />
                       )}
                     </div>
@@ -234,14 +397,14 @@ export default function MistakeDetail({ mistake, onBack, onUpdateStatus }) {
             </div>
           )}
 
-          {mistake.original_question?.explanation && (
+          {(mistake.original_question?.explanation || mistake.original_question?.analysis) && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Lightbulb className="w-5 h-5 text-amber-600" />
                 <h3 className="font-medium text-amber-800">题目解析</h3>
               </div>
               <p className="text-amber-700 whitespace-pre-wrap">
-                {mistake.original_question.explanation}
+                {mistake.original_question.explanation || mistake.original_question.analysis}
               </p>
             </div>
           )}
@@ -280,6 +443,20 @@ export default function MistakeDetail({ mistake, onBack, onUpdateStatus }) {
         </CardContent>
       </Card>
 
+      <AIAnalysisPanel
+        mistakeId={mistake.id}
+        initialAnalysis={currentAnalysis}
+        onAnalysisComplete={handleAnalysisComplete}
+        onGenerateTargeted={handleGenerateTargeted}
+      />
+
+      <ErrorTypeAnalysisPanel
+        mistake={{ ...mistake, ai_analysis: currentAnalysis }}
+        onUpdated={(next) => {
+          if (onMistakeChange) onMistakeChange(next)
+        }}
+      />
+
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -302,7 +479,6 @@ export default function MistakeDetail({ mistake, onBack, onUpdateStatus }) {
         <CardContent>
           {mistake.note ? (
             <div className="bg-gray-50 rounded-lg p-4">
-              {/* 修复：增加空值检查，避免 mistake.note.content 为 undefined 时崩溃 */}
               <p className="text-gray-700 whitespace-pre-wrap">{mistake.note?.content || '无笔记内容'}</p>
               {mistake.note?.created_at && (
                 <p className="text-xs text-gray-400 mt-2">
@@ -322,12 +498,12 @@ export default function MistakeDetail({ mistake, onBack, onUpdateStatus }) {
                 <Button
                   variant="outline"
                   onClick={() => setShowNoteEditor(false)}
-                  disabled={noteSaving} // 修复：保存中禁用取消按钮
+                  disabled={noteSaving}
                 >
                   取消
                 </Button>
-                <Button onClick={handleSaveNote} disabled={noteSaving}> // 修复：增加禁用状态
-                  {noteSaving ? ( // 修复：显示加载状态
+                <Button onClick={handleSaveNote} disabled={noteSaving}>
+                  {noteSaving ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       保存中...
@@ -349,6 +525,27 @@ export default function MistakeDetail({ mistake, onBack, onUpdateStatus }) {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除错题</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要删除这道错题吗？删除后将无法恢复，相关的分析记录和笔记也将一并删除。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : '确认删除'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -261,6 +261,10 @@ export function useSSEChat(options = {}) {
         }
       }
     } catch (error) {
+      if (error.name === 'AbortError' || error.message.includes('aborted')) {
+        console.log('[SSE Chat] 流被中止（非错误）:', error.message)
+        return
+      }
       console.error('流处理错误:', error)
       throw error
     }
@@ -526,7 +530,14 @@ export function useSSEChat(options = {}) {
       }
       return []
     } catch (err) {
-      console.error('加载对话历史失败:', err)
+      if (err.status === 403 || err.message?.includes('无权访问')) {
+        console.warn('会话权限变更，已清除缓存会话ID')
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem(`${STORAGE_KEY_PREFIX}current`)
+        }
+      } else {
+        console.error('加载对话历史失败:', err)
+      }
       return []
     }
   }, [])

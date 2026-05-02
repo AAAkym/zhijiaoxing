@@ -1,8 +1,9 @@
 from flask import Blueprint, request, jsonify, session, Response
 from src.models.user import db, User
-from src.models.course import PracticeEvaluation, Assessment
+from src.models.course import PracticeEvaluation, Assessment, VideoLesson, TeachingContent, Course
 from src.services.spark_service import spark_service
 from src.services.knowledge_base import knowledge_base_service
+from src.models.student_profile import StudentProfile
 import json
 
 ai_bp = Blueprint('ai', __name__)
@@ -258,6 +259,151 @@ def search_knowledge():
             'results': results
         }), 200
         
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@ai_bp.route('/video_assistant', methods=['POST'])
+@require_auth
+def video_assistant_chat():
+    try:
+        data = request.get_json()
+        if not data.get('question'):
+            return jsonify({'error': 'Question is required'}), 400
+
+        user_id = session['user_id']
+        user = User.query.get(user_id)
+        ai_style = user.ai_style if user else 'academic'
+
+        video_id = data.get('video_id')
+        course_id = data.get('course_id')
+        video_timestamp = data.get('video_timestamp')
+
+        context_parts = []
+
+        if course_id:
+            course = Course.query.get(course_id)
+            if course:
+                context_parts.append(f"当前课程：{course.title}")
+                if course.description:
+                    context_parts.append(f"课程描述：{course.description}")
+
+        if video_id:
+            video = VideoLesson.query.get(video_id)
+            if video:
+                context_parts.append(f"当前视频：{video.title}")
+                if video.description:
+                    context_parts.append(f"视频描述：{video.description}")
+                if video_timestamp is not None:
+                    minutes = int(video_timestamp) // 60
+                    seconds = int(video_timestamp) % 60
+                    context_parts.append(f"视频播放位置：{minutes}分{seconds}秒")
+
+            contents = TeachingContent.query.filter_by(video_id=video_id).all()
+            if contents:
+                for tc in contents[:3]:
+                    content_text = tc.content[:500] if tc.content else ""
+                    context_parts.append(f"视频讲义《{tc.title}》：{content_text}")
+
+        profile = StudentProfile.query.filter_by(user_id=user_id).first()
+        if profile:
+            profile_info = []
+            if profile.cognitive_style and profile.cognitive_style != 'mixed':
+                profile_info.append(f"认知风格：{profile.cognitive_style}")
+            if profile.learning_pace and profile.learning_pace != 'moderate':
+                profile_info.append(f"学习节奏：{profile.learning_pace}")
+            if profile.goal_orientation and profile.goal_orientation != 'exam':
+                profile_info.append(f"学习目标：{profile.goal_orientation}")
+            if profile_info:
+                context_parts.append(f"学生画像：{', '.join(profile_info)}")
+
+        topic = data.get('topic', '')
+        knowledge_base = knowledge_base_service.get_knowledge_by_topic(topic) if topic else ""
+        context = "\n".join(context_parts)
+
+        answer = spark_service.ai_tutor_chat(
+            question=data['question'],
+            context=context,
+            knowledge_base=knowledge_base,
+            ai_style=ai_style,
+        )
+
+        return jsonify({'answer': answer}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@ai_bp.route('/video_assistant_stream', methods=['POST'])
+@require_auth
+def video_assistant_stream():
+    try:
+        data = request.get_json()
+        if not data.get('question'):
+            return jsonify({'error': 'Question is required'}), 400
+
+        user_id = session['user_id']
+        user = User.query.get(user_id)
+        ai_style = user.ai_style if user else 'academic'
+
+        video_id = data.get('video_id')
+        course_id = data.get('course_id')
+        video_timestamp = data.get('video_timestamp')
+
+        context_parts = []
+
+        if course_id:
+            course = Course.query.get(course_id)
+            if course:
+                context_parts.append(f"当前课程：{course.title}")
+
+        if video_id:
+            video = VideoLesson.query.get(video_id)
+            if video:
+                context_parts.append(f"当前视频：{video.title}")
+                if video_timestamp is not None:
+                    minutes = int(video_timestamp) // 60
+                    seconds = int(video_timestamp) % 60
+                    context_parts.append(f"视频播放位置：{minutes}分{seconds}秒")
+
+            contents = TeachingContent.query.filter_by(video_id=video_id).all()
+            if contents:
+                for tc in contents[:3]:
+                    content_text = tc.content[:500] if tc.content else ""
+                    context_parts.append(f"视频讲义《{tc.title}》：{content_text}")
+
+        profile = StudentProfile.query.filter_by(user_id=user_id).first()
+        if profile:
+            profile_info = []
+            if profile.cognitive_style and profile.cognitive_style != 'mixed':
+                profile_info.append(f"认知风格：{profile.cognitive_style}")
+            if profile.learning_pace and profile.learning_pace != 'moderate':
+                profile_info.append(f"学习节奏：{profile.learning_pace}")
+            if profile_info:
+                context_parts.append(f"学生画像：{', '.join(profile_info)}")
+
+        topic = data.get('topic', '')
+        knowledge_base = knowledge_base_service.get_knowledge_by_topic(topic) if topic else ""
+        context = "\n".join(context_parts)
+
+        system_prompt = get_ai_style_prompt(ai_style)
+        user_prompt = f"""学生问题：{data['question']}
+
+{f"上下文：{context}" if context else ""}
+{f"参考资料：{knowledge_base}" if knowledge_base else ""}
+
+请回答学生的问题。如果问题与当前视频内容相关，请结合视频内容进行解答。"""
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+
+        def generate():
+            for chunk in spark_service.chat_stream(messages):
+                yield f"data: {json.dumps({'content': chunk}, ensure_ascii=False)}\n\n"
+            yield f"data: {json.dumps({'done': True}, ensure_ascii=False)}\n\n"
+
+        return Response(generate(), mimetype='text/plain')
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

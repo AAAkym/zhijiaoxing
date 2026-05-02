@@ -108,11 +108,14 @@ class WebSocketService {
    */
   joinCourse(courseId) {
     if (!this.socket || !this.connected) {
-      console.error('WebSocket not connected')
+      if (this.socket) {
+        this.socket.once('connect', () => {
+          this.socket.emit('join_course', { course_id: courseId })
+        })
+      }
       return
     }
 
-    console.log('Joining course room:', courseId)
     this.socket.emit('join_course', { course_id: courseId })
   }
 

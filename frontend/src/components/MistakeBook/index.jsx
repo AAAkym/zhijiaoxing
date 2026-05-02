@@ -10,18 +10,26 @@ import {
   RefreshCw,
   AlertCircle,
   Play,
-  GraduationCap
+  GraduationCap,
+  Target,
+  Download,
+  Trash2,
+  AlertTriangle,
+  CheckCircle
 } from 'lucide-react'
 import { mistakeBook } from '@/services/api'
 import MistakeList from './MistakeList'
 import MistakeDetail from './MistakeDetail'
 import MistakeStats from './MistakeStats'
 import MistakeReview from './MistakeReview'
+import MistakeExport from './MistakeExport'
+import TargetedTherapy from './TargetedTherapy'
 
 export default function MistakeBook({ myCourses = [] }) {
   const [currentView, setCurrentView] = useState('list')
   const [mistakes, setMistakes] = useState([])
   const [selectedMistake, setSelectedMistake] = useState(null)
+  const [selectedIds, setSelectedIds] = useState([])
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -86,7 +94,6 @@ export default function MistakeBook({ myCourses = [] }) {
     fetchStats()
   }, [fetchMistakes, fetchStats])
 
-  // 修复：增加错误状态提示，让用户知道详情加载失败
   const [detailError, setDetailError] = useState(null)
 
   const handleSelectMistake = async (mistake) => {
@@ -109,15 +116,62 @@ export default function MistakeBook({ myCourses = [] }) {
       fetchMistakes()
       fetchStats()
       if (selectedMistake && selectedMistake.id === mistakeId) {
-        setSelectedMistake(prev => ({
-          ...prev,
-          mastery_status: newStatus
-        }))
+        try {
+          const response = await mistakeBook.getMistake(mistakeId)
+          setSelectedMistake(response.mistake)
+        } catch (refreshErr) {
+          console.error('刷新错题详情失败:', refreshErr)
+          setSelectedMistake(prev => ({
+            ...prev,
+            mastery_status: newStatus
+          }))
+        }
       }
     } catch (err) {
       console.error('更新状态失败:', err)
       throw err
     }
+  }
+
+  const [activeStatusTab, setActiveStatusTab] = useState('all')
+
+  const handleDeleteMistake = async (mistakeId) => {
+    try {
+      await mistakeBook.deleteMistake(mistakeId)
+      fetchMistakes()
+      fetchStats()
+      if (selectedMistake && selectedMistake.id === mistakeId) {
+        setSelectedMistake(null)
+        setCurrentView('list')
+      }
+      setSelectedIds(prev => prev.filter(id => id !== mistakeId))
+    } catch (err) {
+      console.error('删除错题失败:', err)
+      throw err
+    }
+  }
+
+  const handleBatchDelete = async (ids) => {
+    try {
+      const response = await mistakeBook.batchDelete(ids)
+      fetchMistakes()
+      fetchStats()
+      setSelectedIds([])
+      return response
+    } catch (err) {
+      console.error('批量删除错题失败:', err)
+      throw err
+    }
+  }
+
+  const handleStatusTabChange = (status) => {
+    setActiveStatusTab(status)
+    setFilters(prev => ({
+      ...prev,
+      mastery_status: status === 'all' ? '' : status,
+      page: 1
+    }))
+    setSelectedIds([])
   }
 
   const handleBackToList = () => {
@@ -147,13 +201,34 @@ export default function MistakeBook({ myCourses = [] }) {
     )
   }
 
+  if (currentView === 'export') {
+    return (
+      <MistakeExport
+        myCourses={myCourses}
+        selectedIds={selectedIds}
+        filters={filters}
+        onBack={() => setCurrentView('list')}
+      />
+    )
+  }
+
   if (currentView === 'detail' && selectedMistake) {
     return (
-      <MistakeDetail
-        mistake={selectedMistake}
-        onBack={handleBackToList}
-        onUpdateStatus={handleUpdateStatus}
-      />
+      <div className="space-y-4">
+        {detailError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2 text-red-700">
+            <AlertCircle className="w-4 h-4" />
+            {detailError}
+          </div>
+        )}
+        <MistakeDetail
+          mistake={selectedMistake}
+          onBack={handleBackToList}
+          onUpdateStatus={handleUpdateStatus}
+          onMistakeChange={setSelectedMistake}
+          onDelete={handleDeleteMistake}
+        />
+      </div>
     )
   }
 
@@ -165,6 +240,13 @@ export default function MistakeBook({ myCourses = [] }) {
           <p className="text-gray-600">管理你的错题，针对性复习</p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setCurrentView('export')}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            导出
+          </Button>
           <Button
             className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
             onClick={() => setCurrentView('review')}
@@ -237,9 +319,13 @@ export default function MistakeBook({ myCourses = [] }) {
       )}
 
       <Tabs defaultValue="list" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
+        <TabsList className="grid w-full grid-cols-3 max-w-lg">
           <TabsTrigger value="list">错题列表</TabsTrigger>
           <TabsTrigger value="stats">统计分析</TabsTrigger>
+          <TabsTrigger value="targeted">
+            <Target className="w-4 h-4 mr-1" />
+            靶向治疗
+          </TabsTrigger>
         </TabsList>
         
         <TabsContent value="list" className="mt-4">
@@ -251,6 +337,57 @@ export default function MistakeBook({ myCourses = [] }) {
               </CardContent>
             </Card>
           )}
+
+          <div className="flex gap-2 mb-4">
+            <Button
+              variant={activeStatusTab === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => handleStatusTabChange('all')}
+              className="gap-1"
+            >
+              <BookOpen className="w-4 h-4" />
+              全部
+              <Badge variant="secondary" className="ml-1 text-xs">
+                {stats?.stats?.total_mistakes || 0}
+              </Badge>
+            </Button>
+            <Button
+              variant={activeStatusTab === 'unmastered' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => handleStatusTabChange('unmastered')}
+              className={`gap-1 ${activeStatusTab === 'unmastered' ? 'bg-red-500 hover:bg-red-600' : 'text-red-600 border-red-200 hover:bg-red-50'}`}
+            >
+              <AlertTriangle className="w-4 h-4" />
+              未掌握
+              <Badge variant="secondary" className="ml-1 text-xs">
+                {stats?.stats?.by_status?.unmastered || 0}
+              </Badge>
+            </Button>
+            <Button
+              variant={activeStatusTab === 'reviewing' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => handleStatusTabChange('reviewing')}
+              className={`gap-1 ${activeStatusTab === 'reviewing' ? 'bg-blue-500 hover:bg-blue-600' : 'text-blue-600 border-blue-200 hover:bg-blue-50'}`}
+            >
+              <RefreshCw className="w-4 h-4" />
+              复习中
+              <Badge variant="secondary" className="ml-1 text-xs">
+                {stats?.stats?.by_status?.reviewing || 0}
+              </Badge>
+            </Button>
+            <Button
+              variant={activeStatusTab === 'mastered' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => handleStatusTabChange('mastered')}
+              className={`gap-1 ${activeStatusTab === 'mastered' ? 'bg-green-500 hover:bg-green-600' : 'text-green-600 border-green-200 hover:bg-green-50'}`}
+            >
+              <CheckCircle className="w-4 h-4" />
+              已掌握
+              <Badge variant="secondary" className="ml-1 text-xs">
+                {stats?.stats?.by_status?.mastered || 0}
+              </Badge>
+            </Button>
+          </div>
           
           <MistakeList
             mistakes={mistakes}
@@ -258,14 +395,23 @@ export default function MistakeBook({ myCourses = [] }) {
             myCourses={myCourses}
             filters={filters}
             pagination={pagination}
+            selectedIds={selectedIds}
+            activeStatusTab={activeStatusTab}
             onSelectMistake={handleSelectMistake}
             onFilterChange={handleFilterChange}
             onUpdateStatus={handleUpdateStatus}
+            onSelectedIdsChange={setSelectedIds}
+            onDeleteMistake={handleDeleteMistake}
+            onBatchDelete={handleBatchDelete}
           />
         </TabsContent>
         
         <TabsContent value="stats" className="mt-4">
           <MistakeStats stats={stats} />
+        </TabsContent>
+
+        <TabsContent value="targeted" className="mt-4">
+          <TargetedTherapy myCourses={myCourses} />
         </TabsContent>
       </Tabs>
     </div>

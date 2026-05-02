@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -14,15 +14,84 @@ import {
   EyeOff
 } from 'lucide-react'
 
+function resolveAnswerDisplay(answer, options) {
+  if (answer === null || answer === undefined || answer === '') {
+    return { display: '未作答', label: null, isResolved: false }
+  }
+
+  const answerStr = String(answer).trim()
+
+  if (options && Array.isArray(options) && options.length > 0) {
+    const idx = parseInt(answerStr, 10)
+    if (!isNaN(idx) && idx >= 0 && idx < options.length) {
+      const label = String.fromCharCode(65 + idx)
+      const optionText = typeof options[idx] === 'string' ? options[idx] : String(options[idx])
+      return {
+        display: `${label}. ${optionText}`,
+        label,
+        optionText,
+        index: idx,
+        isResolved: true
+      }
+    }
+
+    const letterMatch = answerStr.match(/^([A-Za-z])/)
+    if (letterMatch) {
+      const letter = letterMatch[1].toUpperCase()
+      const idxFromLetter = letter.charCodeAt(0) - 65
+      if (idxFromLetter >= 0 && idxFromLetter < options.length) {
+        const optionText = typeof options[idxFromLetter] === 'string' ? options[idxFromLetter] : String(options[idxFromLetter])
+        return {
+          display: `${letter}. ${optionText}`,
+          label: letter,
+          optionText,
+          index: idxFromLetter,
+          isResolved: true
+        }
+      }
+    }
+  }
+
+  if (/^[A-Za-z]$/.test(answerStr)) {
+    return { display: answerStr.toUpperCase(), label: answerStr.toUpperCase(), isResolved: true }
+  }
+
+  return { display: answerStr, label: null, isResolved: false }
+}
+
+function safeAnswerCompare(answer, correctAnswer, options) {
+  if (answer === null || answer === undefined || answer === '') return false
+  if (correctAnswer === null || correctAnswer === undefined) return false
+
+  if (options && Array.isArray(options) && options.length > 0) {
+    const userNum = Number(answer)
+    const correctNum = Number(correctAnswer)
+    if (!isNaN(userNum) && !isNaN(correctNum)) {
+      return userNum === correctNum
+    }
+  }
+
+  return String(answer).trim().toLowerCase() === String(correctAnswer).trim().toLowerCase()
+}
+
 export default function ReviewQuestion({ question, answer, onAnswer, showResult = false }) {
   const [showHint, setShowHint] = useState(false)
-  
+
+  const hasOptions = question?.options && question.options.length > 0
+  const correctAnswer = question?.correct_answer
+
+  const resolvedUserAnswer = useMemo(() => {
+    return resolveAnswerDisplay(answer, question?.options)
+  }, [answer, question?.options])
+
+  const resolvedCorrectAnswer = useMemo(() => {
+    return resolveAnswerDisplay(correctAnswer, question?.options)
+  }, [correctAnswer, question?.options])
+
   if (!question) {
     return null
   }
 
-  const hasOptions = question.options && question.options.length > 0
-  
   const handleOptionClick = (index) => {
     if (!showResult) {
       onAnswer(index)
@@ -46,6 +115,15 @@ export default function ReviewQuestion({ question, answer, onAnswer, showResult 
       default:
         return null
     }
+  }
+
+  const isCorrectOption = (idx) => {
+    return safeAnswerCompare(idx, correctAnswer, question.options)
+  }
+
+  const isUserSelectedOption = (idx) => {
+    if (answer === null || answer === undefined) return false
+    return Number(answer) === idx || String(answer) === String(idx)
   }
 
   return (
@@ -78,7 +156,7 @@ export default function ReviewQuestion({ question, answer, onAnswer, showResult 
           )}
         </div>
       </CardHeader>
-      
+
       <CardContent className="space-y-6">
         <div className="bg-gray-50 rounded-lg p-4">
           <p className="text-gray-800 whitespace-pre-wrap">{question.question_content}</p>
@@ -105,9 +183,10 @@ export default function ReviewQuestion({ question, answer, onAnswer, showResult 
             <p className="text-sm font-medium text-gray-700">选择答案：</p>
             <div className="space-y-2">
               {question.options.map((option, idx) => {
-                const isSelected = answer === idx
+                const isSelected = isUserSelectedOption(idx)
+                const isCorrect = isCorrectOption(idx)
                 const optionLabel = String.fromCharCode(65 + idx)
-                
+
                 return (
                   <button
                     key={idx}
@@ -115,7 +194,7 @@ export default function ReviewQuestion({ question, answer, onAnswer, showResult 
                     disabled={showResult}
                     className={`w-full p-4 text-left rounded-lg border transition-all ${
                       showResult
-                        ? idx === question.correct_answer
+                        ? isCorrect
                           ? 'bg-green-100 border-green-300 text-green-800'
                           : isSelected
                             ? 'bg-red-100 border-red-300 text-red-800'
@@ -127,10 +206,10 @@ export default function ReviewQuestion({ question, answer, onAnswer, showResult 
                   >
                     <span className="font-bold mr-3">{optionLabel}.</span>
                     <span>{option}</span>
-                    {showResult && idx === question.correct_answer && (
+                    {showResult && isCorrect && (
                       <CheckCircle className="w-5 h-5 inline ml-2 text-green-600" />
                     )}
-                    {showResult && isSelected && idx !== question.correct_answer && (
+                    {showResult && isSelected && !isCorrect && (
                       <XCircle className="w-5 h-5 inline ml-2 text-red-600" />
                     )}
                   </button>
@@ -154,16 +233,12 @@ export default function ReviewQuestion({ question, answer, onAnswer, showResult 
 
         {showResult && (
           <div className={`rounded-lg p-4 ${
-            // 修复：增加更严格的答案比较，处理 undefined/null/不同类型的情况
-            (answer !== undefined && answer !== null && answer !== '') && 
-            String(answer) === String(question.correct_answer)
+            safeAnswerCompare(answer, correctAnswer, question.options)
               ? 'bg-green-50 border border-green-200'
               : 'bg-red-50 border border-red-200'
           }`}>
             <div className="flex items-center gap-2 mb-3">
-              {/* 修复：安全的答案比较 */}
-              {(answer !== undefined && answer !== null && answer !== '') && 
-               String(answer) === String(question.correct_answer) ? (
+              {safeAnswerCompare(answer, correctAnswer, question.options) ? (
                 <>
                   <CheckCircle className="w-5 h-5 text-green-600" />
                   <span className="font-medium text-green-800">正确！</span>
@@ -177,32 +252,22 @@ export default function ReviewQuestion({ question, answer, onAnswer, showResult 
                 </>
               )}
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-white rounded p-3">
                 <p className="text-xs text-gray-500 mb-1">你的答案</p>
                 <p className={`font-medium ${
-                  // 修复：安全的答案比较
-                  (answer !== undefined && answer !== null && answer !== '') && 
-                  String(answer) === String(question.correct_answer) 
-                    ? 'text-green-700' 
+                  safeAnswerCompare(answer, correctAnswer, question.options)
+                    ? 'text-green-700'
                     : 'text-red-700'
                 }`}>
-                  {hasOptions && typeof answer === 'number'
-                    ? `${String.fromCharCode(65 + answer)}. ${question.options[answer] || '未知选项'}`
-                    : (answer !== undefined && answer !== null && answer !== '' 
-                        ? answer 
-                        : '未作答')
-                  }
+                  {resolvedUserAnswer.display}
                 </p>
               </div>
               <div className="bg-white rounded p-3">
                 <p className="text-xs text-gray-500 mb-1">正确答案</p>
                 <p className="font-medium text-green-700">
-                  {hasOptions && typeof question.correct_answer === 'number'
-                    ? `${String.fromCharCode(65 + question.correct_answer)}. ${question.options[question.correct_answer]}`
-                    : question.correct_answer || '-'
-                  }
+                  {resolvedCorrectAnswer.display}
                 </p>
               </div>
             </div>

@@ -50,3 +50,83 @@ class User(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
+
+
+class ClassGroup(db.Model):
+    __tablename__ = 'class_groups'
+    __table_args__ = {'extend_existing': True}
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    description = db.Column(db.Text, default='')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    teacher = db.relationship('User', backref='class_groups')
+    students = db.relationship('ClassGroupStudent', backref='class_group', lazy='dynamic')
+    courses = db.relationship('ClassGroupCourse', backref='class_group', lazy='dynamic')
+
+    def to_dict(self):
+        student_count = self.students.count()
+        course_count = self.courses.count()
+        return {
+            'id': self.id,
+            'name': self.name,
+            'teacher_id': self.teacher_id,
+            'description': self.description,
+            'student_count': student_count,
+            'course_count': course_count,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class ClassGroupStudent(db.Model):
+    __tablename__ = 'class_group_students'
+    __table_args__ = {'extend_existing': True}
+
+    id = db.Column(db.Integer, primary_key=True)
+    class_group_id = db.Column(db.Integer, db.ForeignKey('class_groups.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    student_name = db.Column(db.String(100), default='')
+    student_number = db.Column(db.String(50), default='')
+    contact = db.Column(db.String(100), default='')
+    joined_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref='class_group_memberships')
+
+    def to_dict(self):
+        user_dict = self.user.to_dict() if self.user else {}
+        return {
+            'id': self.id,
+            'class_group_id': self.class_group_id,
+            'user_id': self.user_id,
+            'student_name': self.student_name or user_dict.get('real_name', ''),
+            'student_number': self.student_number,
+            'contact': self.contact,
+            'username': user_dict.get('username', ''),
+            'email': user_dict.get('email', ''),
+            'joined_at': self.joined_at.isoformat() if self.joined_at else None,
+        }
+
+
+class ClassGroupCourse(db.Model):
+    __tablename__ = 'class_group_courses'
+    __table_args__ = {'extend_existing': True}
+
+    id = db.Column(db.Integer, primary_key=True)
+    class_group_id = db.Column(db.Integer, db.ForeignKey('class_groups.id'), nullable=False)
+    course_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=False)
+    assigned_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    course = db.relationship('Course', backref='class_group_assignments')
+
+    def to_dict(self):
+        course_dict = self.course.to_dict() if self.course else {}
+        return {
+            'id': self.id,
+            'class_group_id': self.class_group_id,
+            'course_id': self.course_id,
+            'course_title': course_dict.get('title', ''),
+            'assigned_at': self.assigned_at.isoformat() if self.assigned_at else None,
+        }

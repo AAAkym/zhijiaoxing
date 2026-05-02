@@ -28,9 +28,11 @@ import {
   MessageCircle
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts'
-import { courses, content, ai, auth, videos } from '../services/api'
+import { courses, content, ai, auth, videos, teacher as teacherApi } from '../services/api'
 import ErrorBoundary from './ErrorBoundary'
 import VideoLessonManager from './VideoLessonManager'
+import CourseGenerationWizard from './CourseGenerationWizard'
+import ClassManagement from './ClassManagement'
 import TeacherInteractionPanel from './TeacherInteractionPanel'
 import { useNavigate } from 'react-router-dom'
 
@@ -39,52 +41,14 @@ export default function TeacherDashboard({ user, onLogout }) {
   const [currentView, setCurrentView] = useState('overview')
   const [loading, setLoading] = useState(false)
   const [stats, setStats] = useState({
-    myCourses: 2,
-    totalStudents: 43,
-    completedExams: 15,
-    aiGeneratedContent: 8
+    myCourses: 0,
+    totalStudents: 0,
+    completedExams: 0,
+    aiGeneratedContent: 0
   })
 
   // 课程管理状态
-  const [courseList, setCourseList] = useState([
-    { 
-      id: 1, 
-      title: 'Python基础编程', 
-      subtitle: '从语法到实战',
-      description: '涵盖 Python 基础语法、数据结构、函数与模块，配套实战项目与习题。适合初学者快速上手并完成第一个项目。',
-      students: 25, 
-      progress: 78,
-      category: '编程',
-      level: '初级',
-      status: 'active',
-      created_at: '2025-01-01',
-      thumbnail: '/assets/course-python.png',
-      modules: [
-        { title: '入门与环境搭建', lessons: 3 },
-        { title: '变量与数据类型', lessons: 4 },
-        { title: '函数与模块', lessons: 5 },
-        { title: '项目实战', lessons: 6 }
-      ]
-    },
-    { 
-      id: 2, 
-      title: 'TensorFlow.js应用开发', 
-      subtitle: '在浏览器中运行机器学习',
-      description: '介绍在前端使用 TensorFlow.js 的实践方法，包括模型导入、微调与前端部署。适合前端工程师与 AI 爱好者。',
-      students: 18, 
-      progress: 65,
-      category: '人工智能',
-      level: '中级',
-      status: 'active',
-      created_at: '2025-01-02',
-      thumbnail: '/assets/course-tfjs.png',
-      modules: [
-        { title: '框架与基础', lessons: 2 },
-        { title: '模型训练与使用', lessons: 6 },
-        { title: '前端集成与部署', lessons: 4 }
-      ]
-    }
-  ])
+  const [courseList, setCourseList] = useState([])
   const [isAddCourseOpen, setIsAddCourseOpen] = useState(false)
   const [newCourse, setNewCourse] = useState({ title: '', description: '', category: 'programming', difficulty: 'beginner' })
 
@@ -99,10 +63,7 @@ export default function TeacherDashboard({ user, onLogout }) {
   const [saveStatus, setSaveStatus] = useState(null) // 'saving' | 'success' | 'error' | null
 
   // 考核管理状态
-  const [examList, setExamList] = useState([
-    { id: 1, title: 'Python基础测试', course: 'Python基础编程', questions: 10, submissions: 20, avg_score: 85 },
-    { id: 2, title: 'TensorFlow.js实践', course: 'TensorFlow.js应用开发', questions: 8, submissions: 15, avg_score: 78 }
-  ])
+  const [examList, setExamList] = useState([])
   const [isAddExamOpen, setIsAddExamOpen] = useState(false)
   const [examTopic, setExamTopic] = useState('')
   const [questionCount, setQuestionCount] = useState(5)
@@ -321,14 +282,13 @@ export default function TeacherDashboard({ user, onLogout }) {
   }
 
   // 学情分析数据
-  const studentProgressData = [
+  const [studentProgressData, setStudentProgressData] = useState([
     { name: '优秀', value: 30, color: '#10B981' },
     { name: '良好', value: 45, color: '#3B82F6' },
     { name: '一般', value: 20, color: '#F59E0B' },
     { name: '待提高', value: 5, color: '#EF4444' }
-  ]
-
-  const weeklyActivityData = [
+  ])
+  const [weeklyActivityData, setWeeklyActivityData] = useState([
     { day: '周一', activity: 45 },
     { day: '周二', activity: 52 },
     { day: '周三', activity: 38 },
@@ -336,11 +296,23 @@ export default function TeacherDashboard({ user, onLogout }) {
     { day: '周五', activity: 55 },
     { day: '周六', activity: 28 },
     { day: '周日', activity: 32 }
-  ]
+  ])
+  const [learningTrendData, setLearningTrendData] = useState([
+    { name: '01/01', pv: 4000, uv: 2400 },
+    { name: '01/02', pv: 3000, uv: 1398 },
+    { name: '01/03', pv: 9800, uv: 2290 },
+    { name: '01/04', pv: 2780, uv: 3908 },
+    { name: '01/05', pv: 4800, uv: 2181 },
+    { name: '01/06', pv: 3800, uv: 2500 },
+    { name: '01/07', pv: 4300, uv: 2100 }
+  ])
+  const [recentActivities, setRecentActivities] = useState([])
 
   const menuItems = [
     { id: 'overview', label: '概览', icon: BarChart3 },
     { id: 'courses', label: '课程管理', icon: BookOpen },
+    { id: 'courseGen', label: '课程生成', icon: Sparkles },
+    { id: 'classMgmt', label: '班级管理', icon: Users },
     { id: 'videos', label: '视频管理', icon: Video },
     { id: 'interaction', label: '互动管理', icon: MessageCircle },
     { id: 'content', label: '内容生成', icon: FileText },
@@ -375,7 +347,130 @@ export default function TeacherDashboard({ user, onLogout }) {
         console.warn('加载课程列表失败', err)
       }
     }
+
+    const loadStats = async () => {
+      try {
+        const res = await teacherApi.getDashboardStats()
+        const s = res?.stats || res || {}
+        if (mounted) {
+          setStats(prev => ({
+            ...prev,
+            myCourses: s.my_courses ?? s.course_count ?? prev.myCourses,
+            totalStudents: s.total_students ?? prev.totalStudents,
+            completedExams: s.completed_exams ?? s.assessment_count ?? prev.completedExams,
+            aiGeneratedContent: s.ai_generated_content ?? s.content_count ?? prev.aiGeneratedContent
+          }))
+        }
+      } catch (err) {
+        console.warn('加载教师统计失败', err)
+      }
+    }
+
+    const loadAnalyticsData = async () => {
+      try {
+        const [progressRes, activityRes, trendRes] = await Promise.allSettled([
+          teacherApi.getStudentProgressDistribution(),
+          teacherApi.getWeeklyActivity(),
+          teacherApi.getLearningTrend()
+        ])
+        
+        // 学生进度分布
+        if (progressRes.status === 'fulfilled') {
+          const data = progressRes.value?.data || progressRes.value?.distribution || []
+          if (Array.isArray(data) && data.length > 0) {
+            setStudentProgressData(data)
+          } else {
+            // 模拟数据：学生学习进度分布
+            setStudentProgressData([
+              { name: '优秀', value: 30, color: '#10B981' },
+              { name: '良好', value: 45, color: '#3B82F6' },
+              { name: '一般', value: 20, color: '#F59E0B' },
+              { name: '待提高', value: 5, color: '#EF4444' }
+            ])
+          }
+        }
+        
+        // 每周活动数据
+        if (activityRes.status === 'fulfilled') {
+          const data = activityRes.value?.data || activityRes.value?.activity || []
+          if (Array.isArray(data) && data.length > 0) {
+            setWeeklyActivityData(data)
+          } else {
+            // 模拟数据：每周学习活动
+            setWeeklyActivityData([
+              { day: '周一', activity: 45 },
+              { day: '周二', activity: 52 },
+              { day: '周三', activity: 38 },
+              { day: '周四', activity: 61 },
+              { day: '周五', activity: 55 },
+              { day: '周六', activity: 28 },
+              { day: '周日', activity: 32 }
+            ])
+          }
+        }
+        
+        // 学习趋势数据
+        if (trendRes.status === 'fulfilled') {
+          const data = trendRes.value?.data || trendRes.value?.trend || []
+          if (Array.isArray(data) && data.length > 0) {
+            setLearningTrendData(data)
+          } else {
+            // 模拟数据：学习趋势
+            setLearningTrendData([
+              { name: '01/01', pv: 4000, uv: 2400 },
+              { name: '01/02', pv: 3000, uv: 1398 },
+              { name: '01/03', pv: 9800, uv: 2290 },
+              { name: '01/04', pv: 2780, uv: 3908 },
+              { name: '01/05', pv: 4800, uv: 2181 },
+              { name: '01/06', pv: 3800, uv: 2500 },
+              { name: '01/07', pv: 4300, uv: 2100 }
+            ])
+          }
+        }
+      } catch (err) {
+        console.warn('加载分析数据失败，使用模拟数据', err)
+        // 全部使用模拟数据
+        setStudentProgressData([
+          { name: '优秀', value: 30, color: '#10B981' },
+          { name: '良好', value: 45, color: '#3B82F6' },
+          { name: '一般', value: 20, color: '#F59E0B' },
+          { name: '待提高', value: 5, color: '#EF4444' }
+        ])
+        setWeeklyActivityData([
+          { day: '周一', activity: 45 },
+          { day: '周二', activity: 52 },
+          { day: '周三', activity: 38 },
+          { day: '周四', activity: 61 },
+          { day: '周五', activity: 55 },
+          { day: '周六', activity: 28 },
+          { day: '周日', activity: 32 }
+        ])
+        setLearningTrendData([
+          { name: '01/01', pv: 4000, uv: 2400 },
+          { name: '01/02', pv: 3000, uv: 1398 },
+          { name: '01/03', pv: 9800, uv: 2290 },
+          { name: '01/04', pv: 2780, uv: 3908 },
+          { name: '01/05', pv: 4800, uv: 2181 },
+          { name: '01/06', pv: 3800, uv: 2500 },
+          { name: '01/07', pv: 4300, uv: 2100 }
+        ])
+      }
+    }
+
+    const loadRecentActivities = async () => {
+      try {
+        const res = await teacherApi.getRecentActivities()
+        const data = res?.activities || res?.data || []
+        if (mounted && Array.isArray(data)) setRecentActivities(data)
+      } catch (err) {
+        console.warn('加载最近活动失败', err)
+      }
+    }
+
     loadCourses()
+    loadStats()
+    loadAnalyticsData()
+    loadRecentActivities()
     return () => { mounted = false }
   }, [])
 
@@ -486,48 +581,8 @@ export default function TeacherDashboard({ user, onLogout }) {
       setGeneratedContent(res.content ? res.content.content : '')
     } catch (error) {
       console.error('生成内容失败:', error)
-      // 模拟生成的内容
-      setGeneratedContent(`# ${contentTopic}
-
-## 学习目标
-通过本节课的学习，学生将能够：
-1. 理解${contentTopic}的基本概念和原理
-2. 掌握${contentTopic}的实际应用方法
-3. 能够独立完成相关的编程练习
-
-## 知识要点
-
-### 1. 基础概念
-${contentTopic}是编程中的重要概念，它具有以下特点：
-- 简单易懂的语法结构
-- 强大的功能和灵活性
-- 广泛的应用场景
-
-### 2. 实践应用
-在实际开发中，${contentTopic}常用于：
-- 数据处理和分析
-- 算法实现
-- 系统开发
-
-## 代码示例
-\`\`\`python
-# ${contentTopic}示例代码
-def example_function():
-    print("这是一个${contentTopic}的示例")
-    return True
-
-# 调用函数
-result = example_function()
-print(f"执行结果: {result}")
-\`\`\`
-
-## 练习题
-1. 请解释${contentTopic}的核心概念
-2. 编写一个简单的${contentTopic}应用程序
-3. 分析${contentTopic}在实际项目中的应用场景
-
-## 总结
-${contentTopic}是编程学习中的重要内容，通过理论学习和实践练习，学生可以更好地掌握这一知识点。`)
+      setGeneratedContent('')
+      alert('生成内容失败: ' + (error.message || '请检查网络连接后重试'))
     }
     setIsGenerating(false)
   }
@@ -1224,6 +1279,19 @@ ${contentTopic}是编程学习中的重要内容，通过理论学习和实践�
           </div>
         )
 
+      case 'courseGen':
+        return (
+          <CourseGenerationWizard
+            myCourses={courseList}
+            onBack={() => setCurrentView('overview')}
+          />
+        )
+
+      case 'classMgmt':
+        return (
+          <ClassManagement myCourses={courseList} />
+        )
+
       case 'exams':
         return (
           <div className="space-y-6">
@@ -1637,25 +1705,31 @@ ${contentTopic}是编程学习中的重要内容，通过理论学习和实践�
                   <CardTitle>学生学习进度分布</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={studentProgressData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      >
-                        {studentProgressData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  {studentProgressData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={studentProgressData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {studentProgressData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-[300px] text-gray-400">
+                      <p>暂无进度分布数据</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -1664,15 +1738,21 @@ ${contentTopic}是编程学习中的重要内容，通过理论学习和实践�
                   <CardTitle>学生每周学习活动</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={weeklyActivityData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="day" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="activity" fill="#8884d8" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {weeklyActivityData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={weeklyActivityData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="day" />
+                        <YAxis />
+                        <Tooltip />
+                        <Bar dataKey="activity" fill="#8884d8" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-[300px] text-gray-400">
+                      <p>暂无活动数据</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -1682,29 +1762,27 @@ ${contentTopic}是编程学习中的重要内容，通过理论学习和实践�
                 <CardTitle>近期学习趋势</CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart
-                    data={[
-                      { name: 'Jan', uv: 4000, pv: 2400, amt: 2400 },
-                      { name: 'Feb', uv: 3000, pv: 1398, amt: 2210 },
-                      { name: 'Mar', uv: 2000, pv: 9800, amt: 2290 },
-                      { name: 'Apr', uv: 2780, pv: 3908, amt: 2000 },
-                      { name: 'May', uv: 1890, pv: 4800, amt: 2181 },
-                      { name: 'Jun', uv: 2390, pv: 3800, amt: 2500 },
-                      { name: 'Jul', uv: 3490, pv: 4300, amt: 2100 },
-                    ]}
-                    margin={{
-                      top: 5, right: 30, left: 20, bottom: 5,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="pv" stroke="#8884d8" activeDot={{ r: 8 }} />
-                    <Line type="monotone" dataKey="uv" stroke="#82ca9d" />
-                  </LineChart>
-                </ResponsiveContainer>
+                {learningTrendData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart
+                      data={learningTrendData}
+                      margin={{
+                        top: 5, right: 30, left: 20, bottom: 5,
+                      }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Line type="monotone" dataKey="pv" stroke="#8884d8" activeDot={{ r: 8 }} />
+                      <Line type="monotone" dataKey="uv" stroke="#82ca9d" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-[300px] text-gray-400">
+                    <p>暂无趋势数据</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -1817,29 +1895,28 @@ ${contentTopic}是编程学习中的重要内容，通过理论学习和实践�
                   <p className="text-sm text-gray-600">您的教学活动记录</p>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-3">
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                      <div>
-                        <p className="text-sm font-medium">发布了新课程：数据结构与算法</p>
-                        <p className="text-xs text-gray-500">1小时前</p>
+                  {recentActivities.length > 0 ? (
+                    <div className="space-y-4">
+                      {recentActivities.map((activity, index) => (
+                        <div key={index} className="flex items-center space-x-3">
+                          {activity.icon === 'check' ? <CheckCircle className="h-5 w-5 text-green-600" /> :
+                           activity.icon === 'activity' ? <Activity className="h-5 w-5 text-blue-600" /> :
+                           <BookOpen className="h-5 w-5 text-orange-600" />}
+                          <div>
+                            <p className="text-sm font-medium">{activity.description || activity.title}</p>
+                            <p className="text-xs text-gray-500">{activity.time || activity.created_at || ''}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="text-center">
+                        <CheckCircle className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                        <p className="text-sm text-gray-500">暂无活动记录</p>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-3">
-                      <Activity className="h-5 w-5 text-blue-600" />
-                      <div>
-                        <p className="text-sm font-medium">批改了学生提交的Python作业</p>
-                        <p className="text-xs text-gray-500">3小时前</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <BookOpen className="h-5 w-5 text-orange-600" />
-                      <div>
-                        <p className="text-sm font-medium">生成了关于机器学习的教学内容</p>
-                        <p className="text-xs text-gray-500">1天前</p>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
 

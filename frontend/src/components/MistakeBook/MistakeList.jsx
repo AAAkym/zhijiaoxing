@@ -18,6 +18,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
   ChevronLeft,
   ChevronRight,
   BookOpen,
@@ -28,7 +38,8 @@ import {
   FileQuestion,
   RefreshCw,
   Sparkles,
-  X
+  X,
+  Trash2
 } from 'lucide-react'
 import { mistakeBook } from '@/services/api'
 
@@ -56,15 +67,25 @@ export default function MistakeList({
   myCourses = [],
   filters = {},
   pagination = {},
+  selectedIds: externalSelectedIds,
+  activeStatusTab = 'all',
   onSelectMistake,
   onFilterChange,
-  onUpdateStatus
+  onUpdateStatus,
+  onSelectedIdsChange,
+  onDeleteMistake,
+  onBatchDelete
 }) {
-  const [selectedIds, setSelectedIds] = useState([])
+  const [internalSelectedIds, setInternalSelectedIds] = useState([])
+  const selectedIds = externalSelectedIds !== undefined ? externalSelectedIds : internalSelectedIds
+  const setSelectedIds = onSelectedIdsChange || setInternalSelectedIds
   const [isBatchAnalyzing, setIsBatchAnalyzing] = useState(false)
   const [batchAnalysis, setBatchAnalysis] = useState('')
   const [showBatchDialog, setShowBatchDialog] = useState(false)
-  const [statusUpdating, setStatusUpdating] = useState(null) // 修复：记录正在更新状态的错题ID
+  const [statusUpdating, setStatusUpdating] = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [showBatchDeleteDialog, setShowBatchDeleteDialog] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const abortControllerRef = useRef(null)
 
   const formatDate = (dateString) => {
@@ -86,10 +107,6 @@ export default function MistakeList({
 
   const handleCourseFilter = (value) => {
     onFilterChange({ course_id: value === 'all' ? '' : value })
-  }
-
-  const handleStatusFilter = (value) => {
-    onFilterChange({ mastery_status: value === 'all' ? '' : value })
   }
 
   const handlePageChange = (newPage) => {
@@ -192,6 +209,41 @@ export default function MistakeList({
     setBatchAnalysis('')
   }
 
+  const handleDeleteSingle = (e, mistake) => {
+    e.stopPropagation()
+    setDeleteTarget(mistake)
+  }
+
+  const confirmDeleteSingle = async () => {
+    if (!deleteTarget) return
+    setIsDeleting(true)
+    try {
+      await onDeleteMistake(deleteTarget.id)
+      setDeleteTarget(null)
+    } catch (err) {
+      alert('删除失败，请稍后重试')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const handleBatchDeleteClick = () => {
+    if (selectedIds.length === 0) return
+    setShowBatchDeleteDialog(true)
+  }
+
+  const confirmBatchDelete = async () => {
+    setIsDeleting(true)
+    try {
+      await onBatchDelete(selectedIds)
+      setShowBatchDeleteDialog(false)
+    } catch (err) {
+      alert('批量删除失败，请稍后重试')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   const renderBatchAnalysisContent = (content) => {
     if (!content) return null
 
@@ -271,43 +323,36 @@ export default function MistakeList({
           </Select>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600">状态筛选:</span>
-          <Select
-            value={filters.mastery_status || 'all'}
-            onValueChange={handleStatusFilter}
-          >
-            <SelectTrigger className="w-36">
-              <SelectValue placeholder="全部状态" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">全部状态</SelectItem>
-              <SelectItem value="unmastered">未掌握</SelectItem>
-              <SelectItem value="reviewing">复习中</SelectItem>
-              <SelectItem value="mastered">已掌握</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
         <div className="flex items-center gap-2 ml-auto">
           {selectedIds.length > 0 && (
-            <Button
-              onClick={handleBatchAnalyze}
-              disabled={isBatchAnalyzing}
-              className="gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-            >
-              {isBatchAnalyzing ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  分析中...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  批量分析 ({selectedIds.length})
-                </>
-              )}
-            </Button>
+            <>
+              <Button
+                onClick={handleBatchAnalyze}
+                disabled={isBatchAnalyzing}
+                className="gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+              >
+                {isBatchAnalyzing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    分析中...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    批量分析 ({selectedIds.length})
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={handleBatchDeleteClick}
+                disabled={isDeleting}
+                variant="destructive"
+                className="gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                批量删除 ({selectedIds.length})
+              </Button>
+            </>
           )}
           <span className="text-sm text-gray-500">
             共 {pagination.total || 0} 道错题
@@ -356,9 +401,31 @@ export default function MistakeList({
       {mistakes.length === 0 ? (
         <Card>
           <CardContent className="py-12 flex flex-col items-center justify-center">
-            <FileQuestion className="w-16 h-16 text-gray-300 mb-4" />
-            <p className="text-gray-500 text-lg mb-2">暂无错题记录</p>
-            <p className="text-gray-400 text-sm">完成练习后，错题会自动添加到这里</p>
+            {activeStatusTab === 'unmastered' ? (
+              <>
+                <CheckCircle className="w-16 h-16 text-green-300 mb-4" />
+                <p className="text-gray-500 text-lg mb-2">没有未掌握的错题</p>
+                <p className="text-gray-400 text-sm">所有错题都在复习中或已掌握，继续保持！</p>
+              </>
+            ) : activeStatusTab === 'reviewing' ? (
+              <>
+                <BookOpen className="w-16 h-16 text-blue-300 mb-4" />
+                <p className="text-gray-500 text-lg mb-2">没有复习中的错题</p>
+                <p className="text-gray-400 text-sm">将未掌握的错题标记为"开始复习"后，会显示在这里</p>
+              </>
+            ) : activeStatusTab === 'mastered' ? (
+              <>
+                <AlertTriangle className="w-16 h-16 text-orange-300 mb-4" />
+                <p className="text-gray-500 text-lg mb-2">还没有已掌握的错题</p>
+                <p className="text-gray-400 text-sm">复习并掌握错题后，会显示在这里</p>
+              </>
+            ) : (
+              <>
+                <FileQuestion className="w-16 h-16 text-gray-300 mb-4" />
+                <p className="text-gray-500 text-lg mb-2">暂无错题记录</p>
+                <p className="text-gray-400 text-sm">完成练习后，错题会自动添加到这里</p>
+              </>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -382,10 +449,12 @@ export default function MistakeList({
               return (
                 <Card
                   key={mistake.id}
-                  className={`cursor-pointer transition-all hover:shadow-md ${
+                  className={`cursor-pointer transition-all hover:shadow-md border-l-4 ${
                     mistake.mastery_status === 'mastered'
-                      ? 'border-l-4 border-l-green-500'
-                      : 'border-l-4 border-l-red-500'
+                      ? 'border-l-green-500'
+                      : mistake.mastery_status === 'reviewing'
+                      ? 'border-l-blue-500'
+                      : 'border-l-red-500'
                   } ${selectedIds.includes(mistake.id) ? 'ring-2 ring-purple-300 bg-purple-50/30' : ''}`}
                   onClick={() => onSelectMistake(mistake)}
                 >
@@ -450,9 +519,9 @@ export default function MistakeList({
                             variant="outline"
                             className="text-blue-600 border-blue-200 hover:bg-blue-50"
                             onClick={(e) => handleQuickStatusUpdate(e, mistake.id, 'reviewing')}
-                            disabled={statusUpdating === mistake.id} // 修复：禁用正在更新的按钮
+                            disabled={statusUpdating === mistake.id}
                           >
-                            {statusUpdating === mistake.id ? ( // 修复：显示加载状态
+                            {statusUpdating === mistake.id ? (
                               <Loader2 className="w-4 h-4 animate-spin" />
                             ) : (
                               '开始复习'
@@ -489,6 +558,15 @@ export default function MistakeList({
                             )}
                           </Button>
                         )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-red-400 hover:text-red-600 hover:bg-red-50"
+                          onClick={(e) => handleDeleteSingle(e, mistake)}
+                          disabled={isDeleting}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -528,6 +606,55 @@ export default function MistakeList({
           )}
         </>
       )}
+
+      <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除错题</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要删除这道错题吗？删除后将无法恢复。
+              {deleteTarget && (
+                <div className="mt-3 p-3 bg-gray-50 rounded-lg border">
+                  <span className="text-sm text-gray-700 line-clamp-3 block">
+                    {truncateText(deleteTarget.question_content, 150)}
+                  </span>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteSingle}
+              disabled={isDeleting}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : '确认删除'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showBatchDeleteDialog} onOpenChange={setShowBatchDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认批量删除</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要删除选中的 <span className="font-bold text-red-600">{selectedIds.length}</span> 道错题吗？删除后将无法恢复。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmBatchDelete}
+              disabled={isDeleting}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : '确认删除'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

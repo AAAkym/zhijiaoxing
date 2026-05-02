@@ -29,16 +29,23 @@ import {
   BookX,
   FileText,
   StickyNote,
-  AlertTriangle
+  AlertTriangle,
+  Crosshair,
+  Radar,
+  Map
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area } from 'recharts'
-import { courses, ai, auth, student, studentSettings as studentSettingsApi, notes, mistakeBook } from '../services/api'
+import { courses, ai, auth, student, studentSettings as studentSettingsApi, notes, mistakeBook, achievements as achievementApi } from '../services/api'
 import { useNavigate } from 'react-router-dom'
 import PracticeModule from './Practice'
+import LearningPlanSystem from './LearningPlanSystem'
 import StudentSettings from './StudentSettings'
 import { AIChatPanel } from './AIChatPanel'
 import MistakeBook from './MistakeBook'
+import TargetedTherapy from './MistakeBook/TargetedTherapy'
 import StudyNotes from './StudyNotes'
+import AchievementPanel from './AchievementPanel'
+import ProfileBuilder from './ProfileBuilder'
 
 const AI_REQUEST_TIMEOUT = 30000
 const ASSESSMENT_POLL_INTERVAL = 2000
@@ -77,22 +84,7 @@ export default function StudentDashboard({ user, onLogout }) {
   const [newMessage, setNewMessage] = useState('')
   const [isSending, setIsSending] = useState(false)
 
-  const [practiceQuestions, setPracticeQuestions] = useState([
-    {
-      question: '以下关于 Python 变量的说法，正确的是？',
-      options: ['变量需要声明类型', '变量名区分大小写', '变量必须以数字开头'],
-      correctAnswer: 1,
-      userAnswer: null,
-      explanation: 'Python 中变量名是区分大小写的。'
-    },
-    {
-      question: '函数用于：',
-      options: ['封装可复用逻辑', '定义变量类型', '提升样式性能'],
-      correctAnswer: 0,
-      userAnswer: null,
-      explanation: '函数用于封装可复用逻辑段。'
-    }
-  ])
+  const [practiceQuestions, setPracticeQuestions] = useState([])
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [practiceScore, setPracticeScore] = useState(null)
   const [practiceStats, setPracticeStats] = useState(null) // {overall: number, questions: [{correct:bool, optionCounts:[]}]}
@@ -111,7 +103,7 @@ export default function StudentDashboard({ user, onLogout }) {
   const abortControllerRef = useRef(null)
   const pollIntervalRef = useRef(null)
 
-  const weeklyProgressData = [
+  const [weeklyProgressData, setWeeklyProgressData] = useState([
     { day: '周一', hours: 2.5, completed: 3 },
     { day: '周二', hours: 3.2, completed: 4 },
     { day: '周三', hours: 1.8, completed: 2 },
@@ -119,21 +111,24 @@ export default function StudentDashboard({ user, onLogout }) {
     { day: '周五', hours: 3.5, completed: 4 },
     { day: '周六', hours: 2.0, completed: 2 },
     { day: '周日', hours: 2.8, completed: 3 }
-  ]
-
-  const courseProgressData = [
-    { name: 'Python基础', progress: 78, color: '#3B82F6' },
+  ])
+  const [courseProgressData, setCourseProgressData] = useState([
+    { name: 'Python 基础', progress: 78, color: '#3B82F6' },
     { name: 'TensorFlow.js', progress: 65, color: '#10B981' },
     { name: '深度学习', progress: 45, color: '#F59E0B' }
-  ]
+  ])
+  const [recentActivities, setRecentActivities] = useState([])
 
   const menuItems = [
     { id: 'overview', label: '学习概览', icon: BarChart3 },
     { id: 'courses', label: '我的课程', icon: BookOpen },
+    { id: 'learningPlan', label: '学习规划', icon: Map },
     { id: 'assistant', label: 'AI学习助手', icon: MessageCircle },
     { id: 'practice', label: '练习评测', icon: Target },
     { id: 'mistakeBook', label: '错题本', icon: BookX },
+    { id: 'profile', label: '学习画像', icon: Radar },
     { id: 'notes', label: '学习笔记', icon: StickyNote },
+    { id: 'achievements', label: '学习成就', icon: Award },
     { id: 'progress', label: '学习进度', icon: TrendingUp },
     { id: 'settings', label: '学生设置', icon: Settings }
   ]
@@ -216,7 +211,6 @@ export default function StudentDashboard({ user, onLogout }) {
     try {
       const response = await mistakeBook.getStats()
       if (response) {
-        // 修复：适配后端返回的数据结构，stats 字段包含详细的统计数据
         const stats = response.stats || response
         setMistakeStats({
           total: stats.total_mistakes || stats.total || 0,
@@ -228,6 +222,14 @@ export default function StudentDashboard({ user, onLogout }) {
       }
     } catch (error) {
       console.warn('获取错题统计失败:', error)
+    }
+  }, [])
+
+  const checkAchievements = useCallback(async () => {
+    try {
+      await achievementApi.check()
+    } catch (error) {
+      console.warn('成就检查失败:', error)
     }
   }, [])
 
@@ -247,11 +249,71 @@ export default function StudentDashboard({ user, onLogout }) {
     }
   }, [])
 
+  const fetchProgressChartData = useCallback(async () => {
+    try {
+      const res = await student.getLearningProgressChart()
+      const data = res?.data || res || {}
+      if (data.weekly_progress && Array.isArray(data.weekly_progress) && data.weekly_progress.length > 0) {
+        setWeeklyProgressData(data.weekly_progress)
+      } else {
+        // 模拟数据：每周学习时长
+        setWeeklyProgressData([
+          { day: '周一', hours: 2.5, completed: 3 },
+          { day: '周二', hours: 3.2, completed: 4 },
+          { day: '周三', hours: 1.8, completed: 2 },
+          { day: '周四', hours: 4.1, completed: 5 },
+          { day: '周五', hours: 3.5, completed: 4 },
+          { day: '周六', hours: 2.0, completed: 2 },
+          { day: '周日', hours: 2.8, completed: 3 }
+        ])
+      }
+      if (data.course_progress && Array.isArray(data.course_progress) && data.course_progress.length > 0) {
+        setCourseProgressData(data.course_progress)
+      } else {
+        // 模拟数据：课程完成度
+        setCourseProgressData([
+          { name: 'Python 基础', progress: 78, color: '#3B82F6' },
+          { name: 'TensorFlow.js', progress: 65, color: '#10B981' },
+          { name: '深度学习', progress: 45, color: '#F59E0B' }
+        ])
+      }
+    } catch (error) {
+      console.warn('获取学习进度图表数据失败，使用模拟数据', error)
+      // 全部使用模拟数据
+      setWeeklyProgressData([
+        { day: '周一', hours: 2.5, completed: 3 },
+        { day: '周二', hours: 3.2, completed: 4 },
+        { day: '周三', hours: 1.8, completed: 2 },
+        { day: '周四', hours: 4.1, completed: 5 },
+        { day: '周五', hours: 3.5, completed: 4 },
+        { day: '周六', hours: 2.0, completed: 2 },
+        { day: '周日', hours: 2.8, completed: 3 }
+      ])
+      setCourseProgressData([
+        { name: 'Python 基础', progress: 78, color: '#3B82F6' },
+        { name: 'TensorFlow.js', progress: 65, color: '#10B981' },
+        { name: '深度学习', progress: 45, color: '#F59E0B' }
+      ])
+    }
+  }, [])
+
+  const fetchRecentActivities = useCallback(async () => {
+    try {
+      const res = await student.getDashboardSummary()
+      const activities = res?.recent_activities || res?.activities || []
+      if (Array.isArray(activities)) setRecentActivities(activities)
+    } catch (error) {
+      console.warn('获取最近活动失败:', error)
+    }
+  }, [])
+
   useEffect(() => {
     fetchMyCourses()
     fetchLearningStats()
     fetchMistakeStats()
     fetchNoteStats()
+    fetchProgressChartData()
+    fetchRecentActivities()
   }, [fetchMyCourses, fetchLearningStats, fetchMistakeStats, fetchNoteStats])
 
   // 修复：监听视图切换，当从练习页切回概览时自动刷新错题和学习统计
@@ -261,8 +323,9 @@ export default function StudentDashboard({ user, onLogout }) {
       fetchMistakeStats()
       fetchLearningStats()
       fetchNoteStats()
+      checkAchievements()
     }
-  }, [currentView, fetchMistakeStats, fetchLearningStats, fetchNoteStats])
+  }, [currentView, fetchMistakeStats, fetchLearningStats, fetchNoteStats, checkAchievements])
 
   useEffect(() => {
     const handleOnline = () => {
@@ -695,7 +758,7 @@ export default function StudentDashboard({ user, onLogout }) {
         const assistantMessage = {
           id: Date.now() + 1,
           type: 'assistant',
-          content: `关于"${userMessage.content}"这个问题，我来为你详细解答：\n\n这是一个很好的问题！让我从几个方面来解释：\n\n**基本概念：**\n${userMessage.content}涉及到编程的核心概念，理解它对你的学习很重要。\n\n**实际应用：**\n在实际编程中，这个概念经常被用到，特别是在数据处理和算法实现方面。\n\n**学习建议：**\n1. 多做练习题来加深理解\n2. 查看相关的代码示例\n3. 尝试自己编写相关的程序\n\n有其他问题随时问我！`
+          content: '抱歉，回复生成失败，请稍后重试。'
         }
         setChatMessages(prev => [...prev, assistantMessage])
       }
@@ -932,6 +995,8 @@ export default function StudentDashboard({ user, onLogout }) {
 
   const renderContent = () => {
     switch (currentView) {
+      case 'learningPlan':
+        return <LearningPlanSystem user={user} />
       case 'courses':
         return (
           <div className="space-y-6">
@@ -1094,9 +1159,30 @@ export default function StudentDashboard({ user, onLogout }) {
           <MistakeBook myCourses={myCourses} />
         )
 
+      case 'profile':
+        return (
+          <ProfileBuilder />
+        )
+
+      case 'targetedTherapy':
+        return (
+          <TargetedTherapy myCourses={myCourses} />
+        )
+
       case 'notes':
         return (
           <StudyNotes myCourses={myCourses} />
+        )
+
+      case 'achievements':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">学习成就</h2>
+              <p className="text-gray-600">追踪你的学习里程碑，解锁更多成就</p>
+            </div>
+            <AchievementPanel />
+          </div>
         )
 
       case 'progress':
@@ -1160,20 +1246,26 @@ export default function StudentDashboard({ user, onLogout }) {
                   <CardTitle>每周学习时长</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <AreaChart
-                      data={weeklyProgressData}
-                      margin={{
-                        top: 10, right: 30, left: 0, bottom: 0,
-                      }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="day" />
-                      <YAxis />
-                      <Tooltip />
-                      <Area type="monotone" dataKey="hours" stroke="#8884d8" fill="#8884d8" />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                  {weeklyProgressData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <AreaChart
+                        data={weeklyProgressData}
+                        margin={{
+                          top: 10, right: 30, left: 0, bottom: 0,
+                        }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="day" />
+                        <YAxis />
+                        <Tooltip />
+                        <Area type="monotone" dataKey="hours" stroke="#8884d8" fill="#8884d8" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-[300px] text-gray-400">
+                      <p>暂无学习时长数据</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -1182,15 +1274,21 @@ export default function StudentDashboard({ user, onLogout }) {
                   <CardTitle>课程完成度</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={courseProgressData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="progress" fill="#82ca9d" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {courseProgressData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={courseProgressData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip />
+                        <Bar dataKey="progress" fill="#82ca9d" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-[300px] text-gray-400">
+                      <p>暂无课程进度数据</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -1285,31 +1383,15 @@ export default function StudentDashboard({ user, onLogout }) {
 
             <Card>
               <CardHeader>
-                <CardTitle>学习成就</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>学习成就</CardTitle>
+                  <Button variant="outline" size="sm" onClick={() => setCurrentView('achievements')}>
+                    查看全部
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div className="flex items-center space-x-3">
-                    <Award className="h-8 w-8 text-yellow-500" />
-                    <div>
-                      <p className="font-medium">初级Python开发者</p>
-                      <p className="text-sm text-gray-600">完成Python基础课程</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <Star className="h-8 w-8 text-blue-500" />
-                    <div>
-                      <p className="font-medium">AI学习之星</p>
-                      <p className="text-sm text-gray-600">AI助手互动超过100次</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <Calendar className="h-8 w-8 text-green-500" />
-                    <div>
-                      <p className="font-medium">连续学习者</p>
-                      <p className="text-sm text-gray-600">连续学习7天</p>
-                    </div>
-                  </div>
                   {mistakeStats.mastered >= 10 && (
                     <div className="flex items-center space-x-3">
                       <BookX className="h-8 w-8 text-red-500" />
@@ -1325,6 +1407,32 @@ export default function StudentDashboard({ user, onLogout }) {
                       <div>
                         <p className="font-medium">笔记达人</p>
                         <p className="text-sm text-gray-600">创建10篇以上笔记</p>
+                      </div>
+                    </div>
+                  )}
+                  {stats.completedExams >= 5 && (
+                    <div className="flex items-center space-x-3">
+                      <Award className="h-8 w-8 text-yellow-500" />
+                      <div>
+                        <p className="font-medium">考核达人</p>
+                        <p className="text-sm text-gray-600">完成5次以上考核</p>
+                      </div>
+                    </div>
+                  )}
+                  {stats.practiceCount >= 20 && (
+                    <div className="flex items-center space-x-3">
+                      <Star className="h-8 w-8 text-blue-500" />
+                      <div>
+                        <p className="font-medium">练习之星</p>
+                        <p className="text-sm text-gray-600">累计练习20次以上</p>
+                      </div>
+                    </div>
+                  )}
+                  {mistakeStats.mastered < 10 && noteStats.total < 10 && stats.completedExams < 5 && stats.practiceCount < 20 && (
+                    <div className="col-span-full flex items-center justify-center py-8 text-gray-400">
+                      <div className="text-center">
+                        <Award className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                        <p className="text-sm">继续学习，解锁更多成就</p>
                       </div>
                     </div>
                   )}
@@ -1492,6 +1600,13 @@ export default function StudentDashboard({ user, onLogout }) {
                   </CardContent>
                 </Card>
 
+                <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setCurrentView('targetedTherapy')}>
+                  <CardContent className="p-6 text-center">
+                    <Crosshair className="h-12 w-12 text-purple-600 mx-auto mb-4" />
+                    <h4 className="font-semibold text-gray-900">靶向治疗</h4>
+                  </CardContent>
+                </Card>
+
                 <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setCurrentView('notes')}>
                   <CardContent className="p-6 text-center">
                     <StickyNote className="h-12 w-12 text-purple-600 mx-auto mb-4" />
@@ -1509,29 +1624,28 @@ export default function StudentDashboard({ user, onLogout }) {
                   <p className="text-sm text-gray-600">你的学习活动记录</p>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-3">
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                      <div>
-                        <p className="text-sm font-medium">完成了Python基础练习</p>
-                        <p className="text-xs text-gray-500">1小时前</p>
+                  {recentActivities.length > 0 ? (
+                    <div className="space-y-4">
+                      {recentActivities.map((activity, index) => (
+                        <div key={index} className="flex items-center space-x-3">
+                          {activity.icon === 'check' ? <CheckCircle className="h-5 w-5 text-green-600" /> :
+                           activity.icon === 'message' ? <MessageCircle className="h-5 w-5 text-blue-600" /> :
+                           <BookOpen className="h-5 w-5 text-orange-600" />}
+                          <div>
+                            <p className="text-sm font-medium">{activity.description || activity.title}</p>
+                            <p className="text-xs text-gray-500">{activity.time || activity.created_at || ''}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="text-center">
+                        <CheckCircle className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                        <p className="text-sm text-gray-500">暂无活动记录</p>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-3">
-                      <MessageCircle className="h-5 w-5 text-blue-600" />
-                      <div>
-                        <p className="text-sm font-medium">向AI助手提问了关于函数的问题</p>
-                        <p className="text-xs text-gray-500">3小时前</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <BookOpen className="h-5 w-5 text-orange-600" />
-                      <div>
-                        <p className="text-sm font-medium">提交了《数据结构》测验</p>
-                        <p className="text-xs text-gray-500">1天前</p>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
 

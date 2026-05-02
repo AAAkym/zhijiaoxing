@@ -6,9 +6,29 @@ from datetime import datetime
 import json
 import logging
 
+from src.services.mistake_intelligence_service import normalize_option_answer
+
 logger = logging.getLogger(__name__)
 
 student_bp = Blueprint('student', __name__)
+
+
+def _extract_correct_answer(question, answers=None, index=None):
+    candidates = []
+    if isinstance(answers, list) and index is not None and 0 <= index < len(answers):
+        candidates.append(answers[index])
+    if isinstance(question, dict):
+        for key in ['correctAnswer', 'correct_answer', 'answer', 'correct']:
+            if key in question:
+                candidates.append(question.get(key))
+
+    for candidate in candidates:
+        if candidate is None:
+            continue
+        text = str(candidate).strip()
+        if text:
+            return text
+    return None
 
 
 def require_auth(f):
@@ -243,21 +263,43 @@ def get_learning_progress_chart():
     try:
         user_id = session['user_id']
         
-        # 获取所有课程的学习进度
         progress_records = LearningProgress.query.filter_by(user_id=user_id).all()
-        
-        course_names = []
-        progress_values = []
-        
-        for progress in progress_records:
-            course_names.append(progress.course.title)
-            progress_values.append(progress.progress_percentage)
-        
+
+        course_progress = []
+        colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316']
+        for i, progress in enumerate(progress_records):
+            course_progress.append({
+                'name': progress.course.title if progress.course else f'课程{progress.course_id}',
+                'progress': round(progress.progress_percentage, 1),
+                'color': colors[i % len(colors)]
+            })
+
+        weekly_progress = []
+        day_names = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+        today = datetime.utcnow().date()
+        for i in range(6, -1, -1):
+            date = today - timedelta(days=i)
+            weekday = date.weekday()
+            day_records = LearningProgress.query.filter_by(user_id=user_id).filter(
+                func.date(LearningProgress.last_accessed) == date
+            ).all()
+            hours = round(len(day_records) * 0.5, 1)
+            completed = PracticeEvaluation.query.filter_by(user_id=user_id).filter(
+                func.date(PracticeEvaluation.created_at) == date
+            ).count()
+            weekly_progress.append({
+                'day': day_names[weekday],
+                'hours': hours,
+                'completed': completed
+            })
+
         return jsonify({
             'chart_data': {
-                'courses': course_names,
-                'progress': progress_values
-            }
+                'courses': [p.course.title for p in progress_records],
+                'progress': [p.progress_percentage for p in progress_records]
+            },
+            'weekly_progress': weekly_progress,
+            'course_progress': course_progress
         }), 200
         
     except Exception as e:
@@ -395,7 +437,13 @@ def sync_practice_data():
 
 
 def _extract_mistakes_from_submission(user_id, assessment, user_answer, score):
-    """从提交中提取错题 - 增强版，支持多种数据格式和容错处理"""
+    """从提交中提取错题 - 增强版，支持多种数据格式和容错处理
+    
+    智能筛选规则：
+    1. 完全答对的题目不添加到错题本
+    2. 未作答的题目根据配置决定是否添加
+    3. 只有真正答错或部分错误的题目才会被添加
+    """
     result = {
         'mistakes': [],
         'skipped_questions': [],
@@ -425,16 +473,31 @@ def _extract_mistakes_from_submission(user_id, assessment, user_answer, score):
                 continue
             
             user_ans = user_answers[i]
-            correct_ans = answers[i] if i < len(answers) else None
+            options = question.get('options', []) if isinstance(question, dict) else []
+            correct_ans = _extract_correct_answer(question, answers=answers, index=i)
             
-            is_correct = False
-            if isinstance(user_ans, (int, float)) and isinstance(correct_ans, (int, float)):
-                is_correct = user_ans == correct_ans
-            elif isinstance(user_ans, str) and isinstance(correct_ans, str):
-                is_correct = user_ans.strip().lower() == correct_ans.strip().lower()
-            elif user_ans is not None and correct_ans is not None:
-                is_correct = str(user_ans) == str(correct_ans)
+            # 智能筛选：如果正确答案为空，跳过该题
+            if correct_ans is None or correct_ans == '':
+                result['skipped_questions'].append({
+                    'index': i,
+                    'reason': '正确答案未设置，无法判断对错'
+                })
+                continue
             
+            # 智能筛选：如果用户未作答，不添加到错题本（除非明确配置）
+            if user_ans is None or user_ans == '' or user_ans == 'null':
+                result['skipped_questions'].append({
+                    'index': i,
+                    'reason': '用户未作答，跳过添加'
+                })
+                result['filtered_count'] += 1
+                continue
+            
+            # 判断答案是否正确
+            user_normalized = normalize_option_answer(user_ans, options).normalized
+            correct_normalized = normalize_option_answer(correct_ans, options).normalized
+            is_correct = bool(user_normalized) and bool(correct_normalized) and user_normalized == correct_normalized
+            # 智能筛选：只有答错的题目才添加到错题本
             if not is_correct:
                 question_content = _extract_question_content(question)
                 
@@ -447,7 +510,8 @@ def _extract_mistakes_from_submission(user_id, assessment, user_answer, score):
                 if existing_mistake:
                     existing_mistake.mistake_count += 1
                     existing_mistake.last_mistake_at = datetime.utcnow()
-                    existing_mistake.user_answer = str(user_ans)
+                    existing_mistake.user_answer = user_normalized
+                    existing_mistake.correct_answer = correct_normalized
                     
                     # 优化：智能状态回退逻辑，避免过度降级
                     # 如果已掌握的题再次出错，降级为"复习中"而非直接回到"未掌握"
@@ -469,15 +533,15 @@ def _extract_mistakes_from_submission(user_id, assessment, user_answer, score):
                     logger.info(f'[错题提取] 更新已有错题: 用户={user_id}, 题目索引={i}, 累计错误次数={existing_mistake.mistake_count}, 当前状态={existing_mistake.mastery_status}')
                 else:
                     knowledge_tags = _extract_knowledge_tags(question)
-                    
+
                     new_mistake = MistakeRecord(
                         user_id=user_id,
                         course_id=assessment.course_id,
                         assessment_id=assessment.id,
                         question_index=i,
                         question_content=question_content,
-                        user_answer=str(user_ans),
-                        correct_answer=str(correct_ans) if correct_ans else '',
+                        user_answer=user_normalized,
+                        correct_answer=correct_normalized,
                         mistake_count=1,
                         last_mistake_at=datetime.utcnow(),
                         mastery_status='unmastered',
@@ -491,7 +555,9 @@ def _extract_mistakes_from_submission(user_id, assessment, user_answer, score):
                     })
                     logger.info(f'[错题提取] 创建新错题: 用户={user_id}, 题目索引={i}, 内容预览={question_content[:30]}...')
             else:
+                # 答对的题目，智能过滤不添加到错题本
                 result['filtered_count'] += 1
+                logger.debug(f'[错题提取] 过滤答对题目: 用户={user_id}, 题目索引={i}, 用户答案={user_ans}, 正确答案={correct_ans}')
                 
         except Exception as e:
             error_info = {
@@ -574,6 +640,29 @@ def get_dashboard_summary():
         recent_progress = LearningProgress.query.filter_by(user_id=user_id)\
             .order_by(LearningProgress.last_accessed.desc())\
             .limit(5).all()
+
+        recent_activities = []
+        for p in recent_progress:
+            course_title = p.course.title if p.course else '未知课程'
+            recent_activities.append({
+                'description': f'学习了 {course_title}，进度 {round(p.progress_percentage, 1)}%',
+                'title': f'学习了 {course_title}',
+                'time': p.last_accessed.isoformat() if p.last_accessed else None,
+                'created_at': p.last_accessed.isoformat() if p.last_accessed else None,
+                'icon': 'book',
+                'type': 'learning'
+            })
+        for e in recent_practices:
+            recent_activities.append({
+                'description': f'完成了练习评测，得分 {e.score}',
+                'title': '完成了练习评测',
+                'time': e.created_at.isoformat() if e.created_at else None,
+                'created_at': e.created_at.isoformat() if e.created_at else None,
+                'icon': 'check',
+                'type': 'practice'
+            })
+        recent_activities.sort(key=lambda x: x.get('time') or '', reverse=True)
+        recent_activities = recent_activities[:10]
         
         return jsonify({
             'stats': {
@@ -586,6 +675,8 @@ def get_dashboard_summary():
             },
             'recent_practices': [p.to_dict() for p in recent_practices],
             'recent_progress': [p.to_dict() for p in recent_progress],
+            'recent_activities': recent_activities,
+            'activities': recent_activities,
             'last_updated': datetime.utcnow().isoformat()
         }), 200
         
@@ -640,4 +731,3 @@ def validate_practice_data():
         
     except Exception as e:
         return jsonify({'error': str(e), 'is_valid': False}), 500
-

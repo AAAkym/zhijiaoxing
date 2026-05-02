@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, session
 from src.models.user import User, db
-from src.models.course import Course, LearningProgress, PracticeEvaluation, Assessment
+from src.models.course import Course, LearningProgress, PracticeEvaluation, Assessment, TeachingContent
 from sqlalchemy import func
 from datetime import datetime, timedelta
 
@@ -217,6 +217,8 @@ def get_dashboard_stats():
         avg_score = db.session.query(
             func.avg(PracticeEvaluation.score)
         ).scalar() or 0
+
+        pending_review_count = TeachingContent.query.filter_by(generated_by_llm=True).count()
         
         return jsonify({
             'stats': {
@@ -229,7 +231,8 @@ def get_dashboard_stats():
                 'week_active_users': week_active,
                 'avg_learning_progress': round(avg_progress, 2),
                 'total_practices': total_practices,
-                'avg_practice_score': round(avg_score, 2)
+                'avg_practice_score': round(avg_score, 2),
+                'pending_review_count': pending_review_count
             }
         }), 200
         

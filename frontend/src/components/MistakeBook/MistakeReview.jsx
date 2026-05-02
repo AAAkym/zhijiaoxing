@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -142,30 +142,24 @@ export default function MistakeReview({ myCourses = [], onBack }) {
     }
   }
 
-  // 修复：增强答案校验逻辑，处理更多边界情况
   const checkAnswer = (userAnswer, question) => {
-    // 修复：空答案直接返回 false
     if (userAnswer === null || userAnswer === undefined || userAnswer === '') {
       return false
     }
     
-    // 修复：确保正确答案存在
     if (question.correct_answer === null || question.correct_answer === undefined) {
       return false
     }
     
-    // 选择题：比较索引
-    if (question.question_type === 'choice' && question.options) {
+    const options = question.options
+    if (options && Array.isArray(options) && options.length > 0) {
       const userNum = Number(userAnswer)
       const correctNum = Number(question.correct_answer)
-      
-      // 修复：如果转换失败，尝试字符串比较
       if (!isNaN(userNum) && !isNaN(correctNum)) {
         return userNum === correctNum
       }
     }
     
-    // 通用情况：字符串比较（去除首尾空格，忽略大小写）
     const userStr = String(userAnswer).trim().toLowerCase()
     const correctStr = String(question.correct_answer).trim().toLowerCase()
     

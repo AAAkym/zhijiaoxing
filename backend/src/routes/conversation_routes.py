@@ -22,7 +22,7 @@ def login_required(f):
                 'success': False,
                 'error': 'Authentication required'
             }), 401
-        g.user_id = user_id
+        g.user_id = int(user_id) if user_id else None
         return f(*args, **kwargs)
     return decorated_function
 

@@ -65,12 +65,7 @@ export default function UserManagement() {
       setUserList(response.users || [])
     } catch (error) {
       console.error('加载用户列表失败:', error)
-      // 使用模拟数据
-      setUserList([
-        { id: 1, username: 'admin', email: 'admin@example.com', real_name: '系统管理员', role: 'admin', created_at: '2025-01-01' },
-        { id: 2, username: 'teacher', email: 'teacher@example.com', real_name: '示例教师', role: 'teacher', created_at: '2025-01-02' },
-        { id: 3, username: 'student', email: 'student@example.com', real_name: '示例学生', role: 'student', created_at: '2025-01-03' }
-      ])
+      setUserList([])
     }
     setLoading(false)
   }

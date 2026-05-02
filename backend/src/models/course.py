@@ -533,6 +533,11 @@ class MistakeRecord(db.Model):
     mastery_status = db.Column(db.String(20), default='unmastered')
     knowledge_tags = db.Column(db.Text, nullable=True)
     ai_analysis = db.Column(db.Text, nullable=True)
+    error_type_auto = db.Column(db.String(50), nullable=True)
+    error_type_manual = db.Column(db.String(50), nullable=True)
+    error_type_confidence = db.Column(db.Float, nullable=True)
+    error_reason_detail = db.Column(db.Text, nullable=True)
+    error_type_confirmed = db.Column(db.Boolean, default=False)
     note_id = db.Column(db.Integer, db.ForeignKey('study_notes.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -542,7 +547,42 @@ class MistakeRecord(db.Model):
     assessment = db.relationship('Assessment', backref='mistake_records')
     note = db.relationship('StudyNote', backref='linked_mistakes')
     
-    def to_dict(self):
+    def _resolve_answer_display(self, answer_str, options=None):
+        import json
+        if not answer_str or answer_str.strip() == '':
+            return {'raw': answer_str, 'display': '未作答', 'label': None}
+        
+        if options and isinstance(options, list) and len(options) > 0:
+            try:
+                idx = int(answer_str)
+                if 0 <= idx < len(options):
+                    label = chr(65 + idx)
+                    option_text = options[idx] if isinstance(options[idx], str) else str(options[idx])
+                    return {
+                        'raw': answer_str,
+                        'display': f'{label}. {option_text}',
+                        'label': label,
+                        'option_text': option_text,
+                        'index': idx
+                    }
+            except (ValueError, TypeError):
+                pass
+        
+        return {'raw': answer_str, 'display': answer_str, 'label': None}
+
+    def _get_original_question_data(self):
+        import json
+        if not self.assessment or self.question_index is None:
+            return None
+        try:
+            questions = json.loads(self.assessment.questions) if self.assessment.questions else []
+            if isinstance(questions, list) and 0 <= self.question_index < len(questions):
+                return questions[self.question_index]
+        except (json.JSONDecodeError, TypeError, IndexError):
+            pass
+        return None
+
+    def to_dict(self, include_resolved_answers=False):
         import json
         knowledge_tags = []
         if self.knowledge_tags:
@@ -551,7 +591,7 @@ class MistakeRecord(db.Model):
             except:
                 knowledge_tags = []
         
-        return {
+        result = {
             'id': self.id,
             'user_id': self.user_id,
             'course_id': self.course_id,
@@ -567,8 +607,224 @@ class MistakeRecord(db.Model):
             'mastery_status': self.mastery_status,
             'knowledge_tags': knowledge_tags,
             'ai_analysis': self.ai_analysis,
+            'error_type_auto': self.error_type_auto,
+            'error_type_manual': self.error_type_manual,
+            'error_type_confirmed': bool(self.error_type_confirmed),
+            'error_type': self.error_type_manual or self.error_type_auto,
+            'error_type_confidence': self.error_type_confidence,
+            'error_reason_detail': self.error_reason_detail,
             'note_id': self.note_id,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
+        
+        if include_resolved_answers:
+            original_q = self._get_original_question_data()
+            options = None
+            question_type = 'unknown'
+            
+            if original_q and isinstance(original_q, dict):
+                options = original_q.get('options', [])
+                question_type = original_q.get('type', 'unknown')
+                result['original_question'] = original_q
+            
+            result['question_type'] = question_type
+            result['options'] = options
+            
+            user_resolved = self._resolve_answer_display(self.user_answer, options)
+            correct_resolved = self._resolve_answer_display(self.correct_answer, options)
+            
+            result['user_answer_display'] = user_resolved['display']
+            result['user_answer_label'] = user_resolved.get('label')
+            result['correct_answer_display'] = correct_resolved['display']
+            result['correct_answer_label'] = correct_resolved.get('label')
+            result['answer_type'] = 'choice' if (options and len(options) > 0) else 'text'
+        
+        return result
 
+
+class Achievement(db.Model):
+    __tablename__ = 'achievements'
+    __table_args__ = {'extend_existing': True}
+
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(50), unique=True, nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    category = db.Column(db.String(50), nullable=False)
+    icon = db.Column(db.String(50), nullable=False)
+    level = db.Column(db.Integer, default=1)
+    condition_type = db.Column(db.String(50), nullable=False)
+    condition_value = db.Column(db.Integer, nullable=False)
+    points = db.Column(db.Integer, default=10)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user_achievements = db.relationship('UserAchievement', backref='achievement', lazy='dynamic')
+
+    def to_dict(self, unlocked=False, unlocked_at=None):
+        return {
+            'id': self.id,
+            'code': self.code,
+            'name': self.name,
+            'description': self.description,
+            'category': self.category,
+            'icon': self.icon,
+            'level': self.level,
+            'condition_type': self.condition_type,
+            'condition_value': self.condition_value,
+            'points': self.points,
+            'is_active': self.is_active,
+            'unlocked': unlocked,
+            'unlocked_at': unlocked_at.isoformat() if unlocked_at else None,
+        }
+
+
+class UserAchievement(db.Model):
+    __tablename__ = 'user_achievements'
+    __table_args__ = {'extend_existing': True}
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    achievement_id = db.Column(db.Integer, db.ForeignKey('achievements.id'), nullable=False)
+    unlocked_at = db.Column(db.DateTime, default=datetime.utcnow)
+    notified = db.Column(db.Boolean, default=False)
+
+    user = db.relationship('User', backref='user_achievements')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'achievement_id': self.achievement_id,
+            'achievement': self.achievement.to_dict(unlocked=True, unlocked_at=self.unlocked_at) if self.achievement else None,
+            'unlocked_at': self.unlocked_at.isoformat() if self.unlocked_at else None,
+            'notified': self.notified,
+        }
+
+
+class CourseGenerationConfig(db.Model):
+    __tablename__ = 'course_generation_configs'
+    __table_args__ = {'extend_existing': True}
+
+    id = db.Column(db.Integer, primary_key=True)
+    teacher_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    course_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=True)
+    difficulty = db.Column(db.Integer, default=3)
+    duration = db.Column(db.Integer, default=45)
+    interaction_level = db.Column(db.String(20), default='medium')
+    video_ratio = db.Column(db.Integer, default=40)
+    experiment_ratio = db.Column(db.Integer, default=30)
+    discussion_ratio = db.Column(db.Integer, default=30)
+    teaching_goal = db.Column(db.String(50), default='normal')
+    custom_requirements = db.Column(db.Text, default='')
+    current_step = db.Column(db.Integer, default=0)
+    status = db.Column(db.String(20), default='configuring')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    teacher = db.relationship('User', backref='generation_configs')
+    course = db.relationship('Course', backref='generation_configs')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'teacher_id': self.teacher_id,
+            'course_id': self.course_id,
+            'difficulty': self.difficulty,
+            'duration': self.duration,
+            'interaction_level': self.interaction_level,
+            'video_ratio': self.video_ratio,
+            'experiment_ratio': self.experiment_ratio,
+            'discussion_ratio': self.discussion_ratio,
+            'teaching_goal': self.teaching_goal,
+            'custom_requirements': self.custom_requirements,
+            'current_step': self.current_step,
+            'status': self.status,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class CourseGenerationVersion(db.Model):
+    __tablename__ = 'course_generation_versions'
+    __table_args__ = {'extend_existing': True}
+
+    id = db.Column(db.Integer, primary_key=True)
+    config_id = db.Column(db.Integer, db.ForeignKey('course_generation_configs.id'), nullable=False)
+    step = db.Column(db.Integer, nullable=False)
+    step_name = db.Column(db.String(50), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    version_number = db.Column(db.Integer, default=1)
+    change_summary = db.Column(db.String(200), default='')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    config = db.relationship('CourseGenerationConfig', backref='versions')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'config_id': self.config_id,
+            'step': self.step,
+            'step_name': self.step_name,
+            'content': self.content,
+            'version_number': self.version_number,
+            'change_summary': self.change_summary,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class CourseReview(db.Model):
+    __tablename__ = 'course_reviews'
+    __table_args__ = {'extend_existing': True}
+
+    id = db.Column(db.Integer, primary_key=True)
+    config_id = db.Column(db.Integer, db.ForeignKey('course_generation_configs.id'), nullable=False)
+    reviewer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    review_type = db.Column(db.String(20), nullable=False)
+    status = db.Column(db.String(20), default='pending')
+    comment = db.Column(db.Text, default='')
+    score = db.Column(db.Integer, default=None)
+    reviewed_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    config = db.relationship('CourseGenerationConfig', backref='reviews')
+    reviewer = db.relationship('User', backref='course_reviews')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'config_id': self.config_id,
+            'reviewer_id': self.reviewer_id,
+            'reviewer_name': self.reviewer.username if self.reviewer else None,
+            'review_type': self.review_type,
+            'status': self.status,
+            'comment': self.comment,
+            'score': self.score,
+            'reviewed_at': self.reviewed_at.isoformat() if self.reviewed_at else None,
+        }
+
+
+class AIFeedback(db.Model):
+    __tablename__ = 'ai_feedbacks'
+    __table_args__ = {'extend_existing': True}
+
+    id = db.Column(db.Integer, primary_key=True)
+    config_id = db.Column(db.Integer, db.ForeignKey('course_generation_configs.id'), nullable=False)
+    original_content = db.Column(db.Text, default='')
+    modified_content = db.Column(db.Text, default='')
+    modification_type = db.Column(db.String(50), default='')
+    feedback_text = db.Column(db.Text, default='')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    config = db.relationship('CourseGenerationConfig', backref='ai_feedbacks')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'config_id': self.config_id,
+            'original_content': self.original_content[:200] if self.original_content else '',
+            'modified_content': self.modified_content[:200] if self.modified_content else '',
+            'modification_type': self.modification_type,
+            'feedback_text': self.feedback_text,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }

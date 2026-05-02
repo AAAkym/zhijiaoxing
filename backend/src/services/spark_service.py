@@ -8,7 +8,8 @@ from __future__ import annotations
 import json
 import logging
 import os
-from typing import Dict, Generator, Iterable, List, Optional, Union
+import re
+from typing import Any, Dict, Generator, Iterable, List, Optional, Union
 
 import requests
 from dotenv import load_dotenv
@@ -24,8 +25,10 @@ logger = logging.getLogger(__name__)
 DEFAULT_SPARK_API_URL = "https://spark-api-open.xf-yun.com/v1/chat/completions"
 # 如果未指定，默认用 Spark Lite（已开通的免费/低配版）
 DEFAULT_SPARK_MODEL = "lite"
-# 修复：增加默认超时时间到120秒，避免AI分析超时导致流中断
-DEFAULT_TIMEOUT_SECONDS = 120
+# 提高默认超时时间，降低长文本分析被中断概率
+DEFAULT_TIMEOUT_SECONDS = 240
+# 靶向练习/批量生成等复杂任务的超时时间（5分钟）
+COMPLEX_TASK_TIMEOUT_SECONDS = 300
 
 
 class SparkServiceError(Exception):
@@ -65,6 +68,116 @@ def is_configured():
         return True
     except SparkServiceError:
         return False
+
+
+_MISTAKE_ANALYSIS_REQUIRED_SECTIONS = [
+    "## 错因结论",
+    "## 知识点掌握情况",
+    "## 解题思路偏差",
+    "## 计算失误类型",
+    "## 概念理解错误",
+    "## 改进建议",
+]
+
+
+def _normalize_analysis_line(text: str) -> str:
+    cleaned = re.sub(r"[^\w\u4e00-\u9fff]+", "", (text or "").lower())
+    return cleaned.strip()
+
+
+def _has_redundant_analysis(text: str) -> bool:
+    lines = [line.strip() for line in (text or "").splitlines() if line.strip()]
+    normalized = [_normalize_analysis_line(line) for line in lines if not line.strip().startswith("##")]
+    normalized = [line for line in normalized if len(line) >= 10]
+    if not normalized:
+        return False
+    unique_count = len(set(normalized))
+    return (len(normalized) - unique_count) >= 2
+
+
+def _validate_mistake_analysis(text: str) -> Dict[str, Any]:
+    issues: List[str] = []
+    normalized = (text or "").strip()
+    if len(normalized) < 180:
+        issues.append("分析内容过短")
+
+    for section in _MISTAKE_ANALYSIS_REQUIRED_SECTIONS:
+        if section not in normalized:
+            issues.append(f"缺少必需章节: {section}")
+
+    if _has_redundant_analysis(normalized):
+        issues.append("检测到重复分析内容")
+
+    generic_markers = ["建议多做练习", "复习相关知识点", "认真审题"]
+    generic_hits = sum(1 for marker in generic_markers if marker in normalized)
+    if generic_hits >= 2:
+        issues.append("分析过于笼统")
+
+    return {"valid": len(issues) == 0, "issues": issues}
+
+
+def _build_mistake_analysis_prompt(
+    question_content: str,
+    user_answer: str,
+    correct_answer: str,
+    tags_str: str,
+    course_info: str,
+    explanation_section: str,
+    quality_hints: Optional[str] = None,
+) -> str:
+    quality_section = f"\n【质量修正提示】\n{quality_hints}\n" if quality_hints else ""
+    return f"""你是一位资深学科教师，请为学生输出高质量、无重复、强针对性的错因解析。
+
+【题目内容】
+{question_content}
+{course_info}
+
+【学生答案】
+{user_answer}
+
+【正确答案】
+{correct_answer}
+{explanation_section}
+
+【知识点标签】
+{tags_str}
+{quality_section}
+【硬性要求】
+1. 严禁输出重复句子、重复段落、同义改写重复内容。
+2. 禁止空泛结论，必须结合本题“学生答案 vs 正确答案”的具体差异。
+3. 必须覆盖：知识点掌握、解题思路偏差、计算失误类型、概念理解错误四个维度。
+4. 若某维度不适用，明确写“本题该维度不显著”，并说明依据。
+5. 语言简洁易懂，每条结论都要可执行。
+
+【输出格式（必须严格按以下标题）】
+## 错因结论
+- 用1-2句话指出最关键错误原因与错误类型。
+
+## 知识点掌握情况
+- 已掌握：
+- 未掌握/薄弱：
+- 依据（题干或答案差异）：
+
+## 解题思路偏差
+- 学生可能采用的错误思路：
+- 正确思路应为：
+- 关键分叉点：
+
+## 计算失误类型
+- 失误类型（如符号、单位、步骤、代入、约分、无）：
+- 本题证据：
+- 避免策略：
+
+## 概念理解错误
+- 易混淆概念：
+- 学生误解点：
+- 正确认知：
+
+## 改进建议
+1. 立即修正（今天可执行）：
+2. 巩固训练（3天内）：
+3. 迁移检查（如何避免同类错误）：
+"""
 
 
 def _get_headers() -> Dict[str, str]:
@@ -444,49 +557,33 @@ def analyze_mistake(
     course_info = f"\n所属课程：{course_title}" if course_title else ""
     explanation_section = f"\n【题目解析】\n{explanation}" if explanation else "\n【题目解析】\n暂无解析"
 
-    prompt = f"""你是一位经验丰富的教育专家，擅长分析学生的错题原因并提供针对性的学习建议。
-
-请分析以下错题：
-
-【题目内容】
-{question_content}
-{course_info}
-
-【学生的答案】
-{user_answer}
-
-【正确答案】
-{correct_answer}
-{explanation_section}
-
-【相关知识点】
-{tags_str}
-
-请从以下几个方面进行详细分析：
-
-## 一、错误原因分析
-请深入分析学生为什么会做错这道题：
-1. 是概念理解错误？计算失误？还是审题不清？
-2. 具体的错误点在哪里？
-3. 错误的思维过程是怎样的？
-
-## 二、知识点漏洞识别
-请识别学生可能存在的知识点漏洞：
-1. 这道题涉及哪些核心知识点？
-2. 学生在哪些知识点上可能存在理解偏差？
-3. 是否有前置知识没有掌握好？
-
-## 三、学习建议
-请给出针对性的学习建议：
-1. 如何正确理解这道题的解题思路？
-2. 需要重点复习哪些知识点？
-3. 有什么练习方法可以帮助巩固？
-4. 如何避免类似错误？
-
-请用清晰、易懂的语言进行分析，帮助学生真正理解错误原因并改进。"""
+    prompt = _build_mistake_analysis_prompt(
+        question_content=question_content,
+        user_answer=user_answer,
+        correct_answer=correct_answer,
+        tags_str=tags_str,
+        course_info=course_info,
+        explanation_section=explanation_section,
+    )
 
     try:
-        return chat(prompt)
+        result = chat(prompt)
+        check = _validate_mistake_analysis(result)
+        if check["valid"]:
+            return result
+
+        retry_prompt = _build_mistake_analysis_prompt(
+            question_content=question_content,
+            user_answer=user_answer,
+            correct_answer=correct_answer,
+            tags_str=tags_str,
+            course_info=course_info,
+            explanation_section=explanation_section,
+            quality_hints="上一版未达标：" + "；".join(check["issues"]) + "。请完整重写，不要沿用原句。",
+        )
+        retried = chat(retry_prompt)
+        retry_check = _validate_mistake_analysis(retried)
+        return retried if retry_check["valid"] else retried
     except Exception as e:
         logger.error(f"错题分析失败: {e}")
         return f"分析过程中出现错误：{str(e)}\n\n请稍后重试，或检查AI服务配置是否正确。"
@@ -521,46 +618,14 @@ def analyze_mistake_stream(
     course_info = f"\n所属课程：{course_title}" if course_title else ""
     explanation_section = f"\n【题目解析】\n{explanation}" if explanation else "\n【题目解析】\n暂无解析"
 
-    prompt = f"""你是一位经验丰富的教育专家，擅长分析学生的错题原因并提供针对性的学习建议。
-
-请分析以下错题：
-
-【题目内容】
-{question_content}
-{course_info}
-
-【学生的答案】
-{user_answer}
-
-【正确答案】
-{correct_answer}
-{explanation_section}
-
-【相关知识点】
-{tags_str}
-
-请从以下几个方面进行详细分析：
-
-## 一、错误原因分析
-请深入分析学生为什么会做错这道题：
-1. 是概念理解错误？计算失误？还是审题不清？
-2. 具体的错误点在哪里？
-3. 错误的思维过程是怎样的？
-
-## 二、知识点漏洞识别
-请识别学生可能存在的知识点漏洞：
-1. 这道题涉及哪些核心知识点？
-2. 学生在哪些知识点上可能存在理解偏差？
-3. 是否有前置知识没有掌握好？
-
-## 三、学习建议
-请给出针对性的学习建议：
-1. 如何正确理解这道题的解题思路？
-2. 需要重点复习哪些知识点？
-3. 有什么练习方法可以帮助巩固？
-4. 如何避免类似错误？
-
-请用清晰、易懂的语言进行分析，帮助学生真正理解错误原因并改进。"""
+    prompt = _build_mistake_analysis_prompt(
+        question_content=question_content,
+        user_answer=user_answer,
+        correct_answer=correct_answer,
+        tags_str=tags_str,
+        course_info=course_info,
+        explanation_section=explanation_section,
+    )
 
     try:
         logger.info(f"[analyze_mistake_stream] 调用chat_stream API...")
@@ -601,34 +666,236 @@ def analyze_mistakes_batch(
 
 {mistakes_text}
 
-请进行综合分析：
+请进行综合分析，确保分析完整且准确：
 
-## 一、整体错误模式分析
+## 错误模式汇总
 1. 学生在哪些类型的题目上容易出错？
 2. 是否存在反复出现的错误类型？
-3. 错误的主要原因是什么？（概念理解、计算、审题等）
+3. 每个错题的错误现象描述（答案差异、错误类型）
 
-## 二、知识点薄弱环节汇总
+## 根本原因分析
+1. 错误的主要原因是什么？（概念理解、计算、审题等）
+2. 按可能性从高到低排列可能的原因
+3. 推理依据：为什么得出这些结论
+
+## 知识点薄弱环节汇总
 1. 学生最薄弱的知识点有哪些？
 2. 这些知识点之间是否存在关联？
 3. 哪些前置知识可能没有掌握好？
+4. 影响范围评估：这些薄弱点会影响哪些后续学习
 
-## 三、综合学习建议
-1. 制定怎样的复习计划最有效？
-2. 应该优先复习哪些知识点？
-3. 推荐的学习资源和练习方法？
-4. 如何系统性地提高？
+## 学习路径规划
+1. 优先需要解决的知识点（按紧急程度排序）
+2. 推荐的复习顺序和方法
+3. 针对性的练习建议
 
-## 四、后续学习路径
-请给出一个具体的学习路径建议，帮助学生逐步提高。
+## 进步跟踪建议
+1. 如何验证学生是否真正掌握了这些知识点？
+2. 推荐的自我检测频率
+3. 遇到类似题目时的应对策略
 
-请用清晰、有条理的语言进行分析，帮助学生制定有效的学习计划。"""
+请用清晰、易懂的语言进行分析，确保推理过程严密、结论可靠。"""
 
     try:
         return chat(prompt)
     except Exception as e:
         logger.error(f"批量错题分析失败: {e}")
         return "分析暂时不可用，请稍后再试。"
+
+
+def generate_targeted_practice(
+    mistake_summaries: List[Dict[str, Any]],
+    knowledge_tags: List[str],
+    course_title: Optional[str] = None,
+    question_count: int = 10,
+) -> str:
+    """基于错题提示词汇总生成靶向练习题，内置去重机制。"""
+    if not mistake_summaries:
+        return "没有错题数据用于生成练习。"
+
+    summaries_text = "\n\n".join([
+        f"错题 {i+1}：{s.get('question_content', '未知')}\n"
+        f"  错误类型：{s.get('error_type', '未知')}\n"
+        f"  学生答案：{s.get('user_answer', '未作答')}\n"
+        f"  正确答案：{s.get('correct_answer', '未知')}\n"
+        f"  错因分析：{s.get('ai_analysis', '暂无分析')[:200]}"
+        for i, s in enumerate(mistake_summaries)
+    ])
+
+    original_questions = [s.get('question_content', '') for s in mistake_summaries if s.get('question_content')]
+    original_questions_text = "\n".join([f"- {q}" for q in original_questions[:10]])
+
+    tags_text = "、".join(knowledge_tags) if knowledge_tags else "未指定"
+    course_info = f"所属课程：{course_title}" if course_title else ""
+
+    distribution = []
+    easy_count = max(2, question_count // 3)
+    medium_count = max(2, question_count // 3)
+    hard_count = question_count - easy_count - medium_count
+    if easy_count > 0:
+        distribution.append(f"基础纠偏（easy）{easy_count}道")
+    if medium_count > 0:
+        distribution.append(f"能力巩固（medium）{medium_count}道")
+    if hard_count > 0:
+        distribution.append(f"冲刺迁移（hard）{hard_count}道")
+
+    prompt = f"""你是一位教育专家，请根据以下学生错题信息，生成一套有针对性的练习题。
+
+{course_info}
+知识点标签：{tags_text}
+
+=== 学生原始错题（仅供参考错因，不得重复或改写这些题目）===
+{original_questions_text}
+
+=== 错题汇总分析 ===
+{summaries_text}
+
+=== 生成要求 ===
+请生成 {question_count} 道选择题，难度分布：{"、".join(distribution)}
+
+【去重要求 - 必须严格遵守】
+1. 每道题的题目内容必须是全新的，不得与上述原始错题重复或相似
+2. 不得仅改写原始错题的文字来生成新题
+3. 每道题的四个选项必须互不相同且具有迷惑性
+4. 每道题的考查角度必须不同（如概念辨析、场景应用、推理判断等）
+5. 题目重复率为0%，这是硬性要求
+
+【题目格式】
+每道题严格遵循以下JSON格式：
+   - content: 题目内容字符串
+   - options: 字符串数组，4个选项
+   - correctAnswer: 整数，正确选项的索引（0-3）
+   - knowledge_tags: 字符串数组，知识点标签
+   - explanation: 字符串，题目解析
+   - difficulty: 字符串，难度等级（"easy"/"medium"/"hard"）
+
+【输出要求】
+以严格的JSON数组格式输出，不要包含任何其他文字或markdown标记。
+直接输出JSON数组，不要有任何前缀或后缀。"""
+
+    try:
+        result = chat(prompt)
+        json_match = re.search(r'\[.*\]', result, re.DOTALL)
+        if json_match:
+            raw_questions = json.loads(json_match.group(0))
+            deduped = _deduplicate_questions(raw_questions, original_questions)
+            return json.dumps(deduped, ensure_ascii=False)
+        return result
+    except Exception as e:
+        logger.error(f"靶向练习生成失败: {e}")
+        return "练习生成暂时不可用，请稍后再试。"
+
+
+def generate_adaptive_practice_plan(
+    student_performance: Dict[str, Any],
+    previous_results: List[Dict[str, Any]],
+    knowledge_tags: List[str],
+    course_title: Optional[str] = None,
+) -> str:
+    """基于学生历史表现生成自适应练习计划。"""
+    perf_info = f"""
+学生当前表现：
+- 总体正确率：{student_performance.get('overall_accuracy', 0)}%
+- 已答题数：{student_performance.get('total_answered', 0)}
+- 正确题数：{student_performance.get('total_correct', 0)}
+- 错误题数：{student_performance.get('total_wrong', 0)}
+"""
+
+    weak_tags = student_performance.get('weak_tags', [])
+    strong_tags = student_performance.get('strong_tags', [])
+    if weak_tags:
+        perf_info += f"- 薄弱知识点：{'、'.join(weak_tags)}\n"
+    if strong_tags:
+        perf_info += f"- 擅长知识点：{'、'.join(strong_tags)}\n"
+
+    if previous_results:
+        perf_info += "\n最近练习结果：\n"
+        for i, r in enumerate(previous_results[-10:]):
+            perf_info += f"  第{i+1}次：正确率 {r.get('accuracy', 0)}%，完成 {r.get('completed', 0)} 题，耗时 {r.get('time_spent', 0)} 分钟\n"
+
+    all_tags = set(knowledge_tags)
+    for r in previous_results:
+        for t in r.get('knowledge_tags', []):
+            all_tags.add(t)
+    tags_text = "、".join(sorted(all_tags)) if all_tags else "未指定"
+    course_info = f"所属课程：{course_title}" if course_title else ""
+
+    prompt = f"""你是一位智能教育规划师，请根据以下学生的学习表现，生成个性化的练习计划。
+
+{course_info}
+知识点标签：{tags_text}
+
+{perf_info}
+
+请生成一个分阶段的练习计划，要求：
+1. 根据学生的薄弱环节安排更多练习
+2. 根据学生的强项适当减少练习
+3. 难度循序渐进，由浅入深
+4. 考虑学生最近的正确率趋势调整难度
+
+请以严格的JSON格式输出，不要包含任何其他文字或markdown标记。
+JSON格式为一个对象，包含以下字段：
+- stage_plan: 数组，每个阶段包含 phase(整数1-3)、name(字符串)、goal(字符串)、question_count(整数)、difficulty(字符串)、focus_tags(数组)、recommended_time(整数分钟)
+- plan_metrics: 对象，包含 question_total(整数)、target_tag_count(整数)、estimated_time(整数)、expected_improvement(浮点数0-1)
+- advice: 字符串，整体学习建议
+
+请直接输出JSON对象："""
+
+    try:
+        result = chat(prompt)
+        json_match = re.search(r'\{.*\}', result, re.DOTALL)
+        if json_match:
+            return json_match.group(0)
+        return result
+    except Exception as e:
+        logger.error(f"自适应练习计划生成失败: {e}")
+        return "计划生成暂时不可用，请稍后再试。"
+
+
+def _deduplicate_questions(
+    generated: List[Dict],
+    original_questions: List[str],
+    similarity_threshold: float = 0.6,
+) -> List[Dict]:
+    """对生成的题目进行去重处理，确保与原始错题不重复，且生成的题目之间也不重复。"""
+    if not generated:
+        return []
+
+    def normalize_text(text: str) -> str:
+        return re.sub(r'[\s\p{P}]+', '', text.lower(), flags=re.UNICODE)
+
+    def similarity(s1: str, s2: str) -> float:
+        n1, n2 = normalize_text(s1), normalize_text(s2)
+        if not n1 or not n2:
+            return 0.0
+        if n1 == n2:
+            return 1.0
+        set1, set2 = set(n1), set(n2)
+        if not set1 or not set2:
+            return 0.0
+        intersection = len(set1 & set2)
+        union = len(set1 | set2)
+        return intersection / union if union > 0 else 0.0
+
+    def is_duplicate(new_q: str, existing: List[str]) -> bool:
+        for eq in existing:
+            if similarity(new_q, eq) >= similarity_threshold:
+                return True
+        return False
+
+    unique_questions = []
+    seen_contents = []
+
+    for q in generated:
+        content = q.get('content', '').strip()
+        if not content:
+            continue
+        if not is_duplicate(content, original_questions) and not is_duplicate(content, seen_contents):
+            unique_questions.append(q)
+            seen_contents.append(content)
+
+    logger.info(f"[去重] 生成 {len(generated)} 道，去重后保留 {len(unique_questions)} 道")
+    return unique_questions
 
 
 def summarize_note(
@@ -1063,6 +1330,30 @@ class _SparkServiceSingleton:
         mistakes: List[Dict[str, str]],
     ) -> str:
         return analyze_mistakes_batch(mistakes)
+
+    def generate_targeted_practice(
+        self,
+        mistake_summaries: List[Dict[str, Any]],
+        knowledge_tags: List[str],
+        course_title: Optional[str] = None,
+        question_count: int = 10,
+    ) -> str:
+        """基于错题提示词汇总生成靶向练习题。"""
+        return generate_targeted_practice(
+            mistake_summaries, knowledge_tags, course_title, question_count
+        )
+
+    def generate_adaptive_practice_plan(
+        self,
+        student_performance: Dict[str, Any],
+        previous_results: List[Dict[str, Any]],
+        knowledge_tags: List[str],
+        course_title: Optional[str] = None,
+    ) -> str:
+        """基于学生表现生成自适应练习计划。"""
+        return generate_adaptive_practice_plan(
+            student_performance, previous_results, knowledge_tags, course_title
+        )
 
     def summarize_note(
         self,

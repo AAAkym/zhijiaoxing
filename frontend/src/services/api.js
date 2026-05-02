@@ -136,6 +136,97 @@ export const content = {
   }),
 }
 
+export const courseGeneration = {
+  getConfigs: () => request('/course-generation/configs'),
+
+  getConfig: (id) => request(`/course-generation/configs/${id}`),
+
+  createConfig: (data) => request('/course-generation/configs', {
+    method: 'POST',
+    body: data,
+  }),
+
+  updateConfig: (id, data) => request(`/course-generation/configs/${id}`, {
+    method: 'PUT',
+    body: data,
+  }),
+
+  generateStep: (configId, step) => request(`/course-generation/configs/${configId}/generate/${step}`, {
+    method: 'POST',
+  }),
+
+  confirmStep: (configId, step, data = {}) => request(`/course-generation/configs/${configId}/confirm/${step}`, {
+    method: 'POST',
+    body: data,
+  }),
+
+  getVersions: (configId, step) => request(`/course-generation/configs/${configId}/versions/${step}`),
+
+  getVersionDiff: (configId, step, versionA, versionB) =>
+    request(`/course-generation/configs/${configId}/versions/${step}/diff?version_a=${versionA}&version_b=${versionB}`),
+
+  rollback: (configId, step, versionNumber) =>
+    request(`/course-generation/configs/${configId}/rollback/${step}/${versionNumber}`, {
+      method: 'POST',
+    }),
+
+  submitReview: (configId) => request(`/course-generation/configs/${configId}/submit-review`, {
+    method: 'POST',
+  }),
+
+  approveReview: (configId, reviewId, data) => request(`/course-generation/configs/${configId}/approve`, {
+    method: 'POST',
+    body: { review_id: reviewId, ...data },
+  }),
+
+  sharePeerReview: (configId, data) => request(`/course-generation/configs/${configId}/share-peer-review`, {
+    method: 'POST',
+    body: data,
+  }),
+
+  getPeerReviews: (configId) => request(`/course-generation/configs/${configId}/peer-reviews`),
+
+  getPendingReviews: () => request('/course-generation/pending-reviews'),
+
+  finalize: (configId) => request(`/course-generation/configs/${configId}/finalize`, {
+    method: 'POST',
+  }),
+
+  getSteps: () => request('/course-generation/steps'),
+}
+
+export const classManagement = {
+  getClasses: () => request('/classes'),
+
+  getClass: (id) => request(`/classes/${id}`),
+
+  createClass: (data) => request('/classes', { method: 'POST', body: data }),
+
+  updateClass: (id, data) => request(`/classes/${id}`, { method: 'PUT', body: data }),
+
+  deleteClass: (id) => request(`/classes/${id}`, { method: 'DELETE' }),
+
+  addStudent: (classId, data) => request(`/classes/${classId}/students`, { method: 'POST', body: data }),
+
+  removeStudent: (classId, studentId) => request(`/classes/${classId}/students/${studentId}`, { method: 'DELETE' }),
+
+  assignCourse: (classId, data) => request(`/classes/${classId}/courses`, { method: 'POST', body: data }),
+
+  removeCourse: (classId, assignmentId) => request(`/classes/${classId}/courses/${assignmentId}`, { method: 'DELETE' }),
+
+  getStats: (classId) => request(`/classes/${classId}/stats`),
+
+  batchAddStudents: (data) => request('/classes/batch-students', { method: 'POST', body: data }),
+
+  getAvailableStudents: () => request('/students/available'),
+
+  addExistingStudent: (classId, data) => request(`/classes/${classId}/students/existing`, { method: 'POST', body: data }),
+
+  getStudentProfile: (classId, userId) => request(`/classes/${classId}/students/${userId}/profile`),
+
+  getClassStudentsProfiles: (classId) => request(`/classes/${classId}/students/profiles`),
+}
+
 // AI助手API
 export const ai = {
   chat: async (data) => {
@@ -219,6 +310,27 @@ export const ai = {
     method: 'POST',
     body: data,
   }),
+
+  videoAssistantChat: (data) => request('/video_assistant', {
+    method: 'POST',
+    body: data,
+  }),
+
+  videoAssistantStream: (data) => {
+    const payload = {
+      question: data.question || data.message || '',
+      video_id: data.video_id || null,
+      course_id: data.course_id || null,
+      video_timestamp: data.video_timestamp || null,
+      topic: data.topic || '',
+    }
+    return fetch(`${API_BASE_URL}/video_assistant_stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    })
+  },
 }
 
 // 管理员API
@@ -523,6 +635,15 @@ export const mistakeBook = {
     method: 'PUT',
     body: { mastery_status: masteryStatus, note_id: noteId },
   }),
+
+  deleteMistake: (id) => request(`/mistakes/${id}`, {
+    method: 'DELETE',
+  }),
+
+  batchDelete: (ids) => request('/mistakes/batch-delete', {
+    method: 'POST',
+    body: { ids },
+  }),
   
   extractMistakes: (practiceEvaluationId) => request('/mistakes/extract', {
     method: 'POST',
@@ -551,6 +672,28 @@ export const mistakeBook = {
   
   analyzeMistake: (mistakeId) => request(`/mistakes/${mistakeId}/analyze`, {
     method: 'POST',
+  }),
+
+  getErrorAnalysis: (mistakeId) => request(`/mistakes/${mistakeId}/error-analysis`),
+
+  updateErrorAnalysis: (mistakeId, payload) => request(`/mistakes/${mistakeId}/error-analysis`, {
+    method: 'PUT',
+    body: payload,
+  }),
+
+  getKnowledgeGraph: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString()
+    return request(`/mistakes/knowledge-graph${queryString ? `?${queryString}` : ''}`)
+  },
+
+  getTargetedPractice: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString()
+    return request(`/mistakes/targeted-practice${queryString ? `?${queryString}` : ''}`)
+  },
+
+  submitTargetedFeedback: (payload) => request('/mistakes/targeted-practice/feedback', {
+    method: 'POST',
+    body: payload,
   }),
   
   analyzeMistakeStream: (mistakeId, signal = null) => {
@@ -586,6 +729,43 @@ export const mistakeBook = {
     }
     return fetch(`${API_BASE_URL}/mistakes/batch-analyze/stream`, options)
   },
+
+  generateTargetedPractice: (payload) => request('/mistakes/targeted-practice/generate', {
+    method: 'POST',
+    body: payload,
+  }),
+
+  generateTargetedPracticeStream: (payload, signal = null) => {
+    const options = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    }
+    if (signal) {
+      options.signal = signal
+    }
+    return fetch(`${API_BASE_URL}/mistakes/targeted-practice/generate/stream`, options)
+  },
+
+  generateAdaptivePlan: (payload) => request('/mistakes/targeted-practice/adaptive-plan', {
+    method: 'POST',
+    body: payload,
+  }),
+
+  submitTargetedFeedback: (payload) => request('/mistakes/targeted-practice/feedback', {
+    method: 'POST',
+    body: payload,
+  }),
+
+  exportMistakes: (payload) => fetch(`${API_BASE_URL}/mistakes/export`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(payload),
+  }),
 }
 
 export const notes = {
@@ -693,4 +873,115 @@ export const notes = {
       body: JSON.stringify({ week_start: weekStart, week_end: weekEnd }),
     })
   },
+}
+
+export const teacher = {
+  getDashboardStats: () => request('/teacher/dashboard/stats'),
+
+  getStudentProgressDistribution: () => request('/teacher/analytics/student-progress'),
+
+  getWeeklyActivity: () => request('/teacher/analytics/weekly-activity'),
+
+  getLearningTrend: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString()
+    return request(`/teacher/analytics/learning-trend${queryString ? `?${queryString}` : ''}`)
+  },
+
+  getRecentActivities: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString()
+    return request(`/teacher/recent-activities${queryString ? `?${queryString}` : ''}`)
+  },
+}
+
+export const analytics = {
+  getUserGrowth: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString()
+    return request(`/analytics/user-growth${queryString ? `?${queryString}` : ''}`)
+  },
+
+  getCourseActivity: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString()
+    return request(`/analytics/course-activity${queryString ? `?${queryString}` : ''}`)
+  },
+
+  getLearningProgress: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString()
+    return request(`/analytics/learning-progress${queryString ? `?${queryString}` : ''}`)
+  },
+
+  getDailyActivity: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString()
+    return request(`/analytics/daily-activity${queryString ? `?${queryString}` : ''}`)
+  },
+
+  getPerformanceMetrics: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString()
+    return request(`/analytics/performance-metrics${queryString ? `?${queryString}` : ''}`)
+  },
+
+  getSystemUsage: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString()
+    return request(`/analytics/system-usage${queryString ? `?${queryString}` : ''}`)
+  },
+}
+
+export const achievements = {
+  getAll: () => request('/achievements'),
+
+  check: () => request('/achievements/check', {
+    method: 'POST',
+  }),
+
+  getUnlocked: () => request('/achievements/unlocked'),
+
+  getNotifications: () => request('/achievements/notifications'),
+
+  getStats: () => request('/achievements/stats'),
+}
+
+export const profileApi = {
+  getProfile: () => request('/profile'),
+
+  updateProfile: (data) => request('/profile', { method: 'PUT', body: data }),
+
+  startDialog: () => request('/profile/dialog/start', { method: 'POST' }),
+
+  continueDialog: (data) => request('/profile/dialog/continue', { method: 'POST', body: data }),
+
+  getDialogHistory: () => request('/profile/dialog/history'),
+
+  getDimensions: () => request('/profile/dimensions'),
+
+  syncProfile: (source = 'all') => request('/profile/sync', { method: 'POST', body: { source } }),
+
+  getInsight: () => request('/profile/insight'),
+
+  getStudentProfile: (userId) => request(`/profile/teacher/${userId}`),
+}
+
+export const learningPathApi = {
+  getPaths: () => request('/learning-path'),
+
+  generatePath: (courseId) => request('/learning-path/generate', { method: 'POST', body: { course_id: courseId } }),
+
+  getPathDetail: (pathId) => request(`/learning-path/${pathId}`),
+
+  updateNodeStatus: (pathId, nodeId, status) => request(`/learning-path/${pathId}/node/${nodeId}`, { method: 'PUT', body: { status } }),
+
+  generatePlan: () => request('/learning-plan/generate', { method: 'POST' }),
+
+  getPlans: () => request('/learning-plans'),
+
+  getRecommendations: (params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return request(`/recommendations${qs ? `?${qs}` : ''}`)
+  },
+
+  generateRecommendations: (limit = 20) => request('/recommendations/generate', { method: 'POST', body: { limit } }),
+
+  completeRecommendation: (recId) => request(`/recommendations/${recId}/complete`, { method: 'POST' }),
+
+  dismissRecommendation: (recId) => request(`/recommendations/${recId}/dismiss`, { method: 'POST' }),
+
+  feedbackRecommendation: (recId, score) => request(`/recommendations/${recId}/feedback`, { method: 'POST', body: { score } }),
 }

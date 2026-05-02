@@ -55,18 +55,24 @@ class Config:
     # 连接前ping测试: 检测连接是否有效，避免使用失效连接
     DB_POOL_PRE_PING = os.environ.get('DB_POOL_PRE_PING', 'true').lower() in ('true', '1', 'yes')
     
-    # SQLAlchemy引擎选项
-    SQLALCHEMY_ENGINE_OPTIONS = {
-        'pool_size': DB_POOL_SIZE,
-        'max_overflow': DB_MAX_OVERFLOW,
-        'pool_timeout': DB_POOL_TIMEOUT,
-        'pool_recycle': DB_POOL_RECYCLE,
-        'pool_pre_ping': DB_POOL_PRE_PING,
-        
-        # 额外的连接池配置
-        'echo': False,                # 是否打印SQL语句（调试用）
-        'echo_pool': False,           # 是否打印连接池日志
-    }
+    # SQLAlchemy引擎选项 - SQLite不支持连接池，需排除相关参数
+    _is_sqlite = 'sqlite' in (DATABASE_URL or '').lower()
+    if _is_sqlite:
+        SQLALCHEMY_ENGINE_OPTIONS = {
+            'pool_pre_ping': DB_POOL_PRE_PING,
+            'echo': False,
+            'echo_pool': False,
+        }
+    else:
+        SQLALCHEMY_ENGINE_OPTIONS = {
+            'pool_size': DB_POOL_SIZE,
+            'max_overflow': DB_MAX_OVERFLOW,
+            'pool_timeout': DB_POOL_TIMEOUT,
+            'pool_recycle': DB_POOL_RECYCLE,
+            'pool_pre_ping': DB_POOL_PRE_PING,
+            'echo': False,
+            'echo_pool': False,
+        }
     
     # ============================================
     # 缓存配置 (Redis)

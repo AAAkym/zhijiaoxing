@@ -25,12 +25,13 @@ export default function AdminDashboard({ user, onLogout }) {
   const navigate = useNavigate()
   const [currentView, setCurrentView] = useState('overview')
   const [stats, setStats] = useState({
-    totalUsers: 3,
-    teacherCount: 1,
-    studentCount: 1,
+    totalUsers: 0,
+    teacherCount: 0,
+    studentCount: 0,
     courseCount: 0,
     onlineUsers: 0,
-    systemStatus: 'normal'
+    systemStatus: 'normal',
+    pendingReviewCount: 0
   })
 
   const loadStats = async () => {
@@ -43,7 +44,8 @@ export default function AdminDashboard({ user, onLogout }) {
         teacherCount: s.total_teachers ?? prev.teacherCount,
         studentCount: s.total_students ?? prev.studentCount,
         courseCount: s.total_courses ?? prev.courseCount,
-        onlineUsers: s.today_active_users ?? prev.onlineUsers
+        onlineUsers: s.today_active_users ?? prev.onlineUsers,
+        pendingReviewCount: s.pending_review_count ?? prev.pendingReviewCount
       }))
     } catch (error) {
       console.error('加载统计数据失败:', error)
@@ -174,7 +176,7 @@ export default function AdminDashboard({ user, onLogout }) {
                   <CardContent className="p-6 text-center">
                     <Shield className="h-12 w-12 text-amber-600 mx-auto mb-4" />
                     <h4 className="font-semibold text-gray-900">AI内容审核</h4>
-                    <Badge className="mt-2 bg-amber-100 text-amber-700">24 待审核</Badge>
+                    <Badge className="mt-2 bg-amber-100 text-amber-700">{stats.pendingReviewCount} 待审核</Badge>
                   </CardContent>
                 </Card>
 
@@ -216,27 +218,10 @@ export default function AdminDashboard({ user, onLogout }) {
                   <p className="text-sm text-gray-600">系统最近的操作记录</p>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-3">
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                      <div>
-                        <p className="text-sm font-medium">完成了Python基础练习</p>
-                        <p className="text-xs text-gray-500">1小时前</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <Activity className="h-5 w-5 text-blue-600" />
-                      <div>
-                        <p className="text-sm font-medium">向AI助手提问了关于函数的问题</p>
-                        <p className="text-xs text-gray-500">3小时前</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <BookOpen className="h-5 w-5 text-orange-600" />
-                      <div>
-                        <p className="text-sm font-medium">提交了《数据结构》测验</p>
-                        <p className="text-xs text-gray-500">1天前</p>
-                      </div>
+                  <div className="flex items-center justify-center py-8">
+                    <div className="text-center">
+                      <Activity className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                      <p className="text-sm text-gray-500">暂无活动记录</p>
                     </div>
                   </div>
                 </CardContent>
