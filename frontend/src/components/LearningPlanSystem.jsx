@@ -196,10 +196,10 @@ export default function LearningPlanSystem({ user }) {
             display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '24px',
           }}>
             {[
-              { label: '认知风格', value: profile.cognitive_style, icon: '🧠' },
-              { label: '学习节奏', value: profile.learning_pace, icon: '⏱️' },
-              { label: '目标导向', value: profile.goal_orientation, icon: '🎯' },
-              { label: '画像完整度', value: `${Math.round((profile.confidence_score || 0) * 100)}%`, icon: '📊' },
+              { label: '认知风格', value: { visual: '视觉型', auditory: '听觉型', kinesthetic: '动觉型', reading: '阅读型', mixed: '混合型' }[profile.cognitive_style] || profile.cognitive_style || '未设置', icon: '🧠' },
+              { label: '学习节奏', value: { fast: '快速型', moderate: '适中型', slow: '深度型', adaptive: '灵活型' }[profile.learning_pace] || profile.learning_pace || '未设置', icon: '⏱️' },
+              { label: '目标导向', value: { exam: '应试导向', career: '职业发展', hobby: '兴趣驱动', research: '学术研究' }[profile.goal_orientation] || profile.goal_orientation || '未设置', icon: '🎯' },
+              { label: '互动偏好', value: { guided: '引导式', independent: '自主式', collaborative: '协作式', competitive: '竞争式' }[profile.interaction_preference] || profile.interaction_preference || '未设置', icon: '💬' },
             ].map(item => (
               <div key={item.label} style={{
                 padding: '12px 16px', backgroundColor: '#fff', borderRadius: '8px',
@@ -286,27 +286,42 @@ function PathView({ paths, selectedPath, setSelectedPath, onGenerate, onUpdateNo
   return (
     <div>
       <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
-        {paths.map(p => (
-          <button
-            key={p.id}
-            onClick={() => setSelectedPath(p)}
-            style={{
-              padding: '8px 16px', borderRadius: '8px', border: `2px solid ${selectedPath?.id === p.id ? '#3b82f6' : '#e2e8f0'}`,
-              backgroundColor: selectedPath?.id === p.id ? '#eff6ff' : '#fff',
-              cursor: 'pointer', fontSize: '13px', fontWeight: 500, color: '#1e293b',
-            }}
-          >
-            {p.title}
-            <span style={{ marginLeft: '8px', fontSize: '12px', color: '#64748b' }}>
-              {Math.round(p.progress_percentage)}%
-            </span>
-          </button>
-        ))}
+        {paths.map(p => {
+          const nodes = p.path_data || []
+          const courseNodes = nodes.filter(n => n.node_type === 'course')
+          const courseCount = nodes.filter(n => n.node_type === 'course').length
+          const overallProgress = courseCount > 0
+            ? Math.round(courseNodes.reduce((sum, n) => sum + (n.progress_percentage || 0), 0) / courseNodes.length)
+            : Math.round(p.progress_percentage || 0)
+          return (
+            <button
+              key={p.id}
+              onClick={() => setSelectedPath(p)}
+              style={{
+                padding: '10px 16px', borderRadius: '10px', border: `2px solid ${selectedPath?.id === p.id ? '#3b82f6' : '#e2e8f0'}`,
+                backgroundColor: selectedPath?.id === p.id ? '#eff6ff' : '#fff',
+                cursor: 'pointer', fontSize: '13px', fontWeight: 500, color: '#1e293b',
+                display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px',
+                minWidth: '160px', textAlign: 'left',
+              }}
+            >
+              <span style={{ fontWeight: 600, fontSize: '13px', color: '#1e293b' }}>{p.title}</span>
+              {courseCount > 0 && (
+                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                  <div style={{ flex: 1, height: '4px', backgroundColor: '#e2e8f0', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', borderRadius: '2px', width: `${overallProgress}%`, backgroundColor: overallProgress >= 80 ? '#10b981' : overallProgress >= 40 ? '#f59e0b' : '#3b82f6' }} />
+                  </div>
+                  <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>{overallProgress}%</span>
+                </div>
+              )}
+            </button>
+          )
+        })}
         <button
           onClick={() => onGenerate(null)}
           disabled={loading}
           style={{
-            padding: '8px 16px', borderRadius: '8px', border: '2px dashed #cbd5e1',
+            padding: '8px 16px', borderRadius: '10px', border: '2px dashed #cbd5e1',
             backgroundColor: '#fff', cursor: loading ? 'not-allowed' : 'pointer',
             fontSize: '13px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px',
           }}

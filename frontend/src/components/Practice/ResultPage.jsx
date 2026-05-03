@@ -79,10 +79,14 @@ export default function ResultPage({ onRestart, onBackToList, submitResponse }) 
           stats[type] = { total: 0, correct: 0, score: 0, maxScore: 0 }
         }
         stats[type].total++
-        stats[type].maxScore += r.score
+        if (r.type === 'programming') {
+          stats[type].maxScore += r.maxScore || r.score || 10
+        } else {
+          stats[type].maxScore += r.score
+        }
         if (r.isCorrect) {
           stats[type].correct++
-          stats[type].score += r.score
+          stats[type].score += r.type === 'programming' ? (r.score || 0) : r.score
         }
       }
     })
@@ -258,6 +262,9 @@ export default function ResultPage({ onRestart, onBackToList, submitResponse }) 
                   
                   {isExpanded && (
                     <div className="px-4 pb-4 pl-15 ml-11">
+                      {result.type === 'programming' && result.programmingFeedback && (
+                        <ProgrammingFeedbackSection feedback={result.programmingFeedback} />
+                      )}
                       {result.options && result.options.length > 0 && (
                         <div className="mb-3 space-y-2">
                           {result.options.map((opt, optIdx) => {
@@ -353,6 +360,142 @@ function StatCard({ icon, label, value, subValue }) {
         {value}{subValue}
       </div>
       <div className="text-sm text-gray-500">{label}</div>
+    </div>
+  )
+}
+
+function ProgrammingFeedbackSection({ feedback }) {
+  const [showAiAnalysis, setShowAiAnalysis] = React.useState(false)
+  const dimensions = feedback.dimensions || {}
+  const aiDetailed = feedback.aiDetailedAnalysis
+  const aiFeedback = feedback.aiFeedback || {}
+
+  const dimensionLabels = {
+    compile: { label: '编译', icon: '⚙️' },
+    runtime: { label: '运行', icon: '▶️' },
+    io_match: { label: 'IO匹配', icon: '🔄' },
+    syntax: { label: '语法', icon: '📝' },
+    logic: { label: '逻辑', icon: '🧠' },
+    efficiency: { label: '效率', icon: '⚡' },
+  }
+
+  return (
+    <div className="space-y-4 mb-4">
+      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="font-semibold text-indigo-800 flex items-center gap-2">
+            <Target className="w-4 h-4" />
+            AI/OJ 综合评分：{feedback.score}/100
+          </h4>
+          <Badge className={feedback.score >= 90 ? 'bg-green-100 text-green-700' : feedback.score >= 60 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}>
+            {feedback.score >= 90 ? '优秀' : feedback.score >= 60 ? '及格' : '需改进'}
+          </Badge>
+        </div>
+
+        <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+          {Object.entries(dimensionLabels).map(([key, config]) => {
+            const dim = dimensions[key] || {}
+            const score = typeof dim.score === 'number' ? dim.score : '-'
+            return (
+              <div key={key} className="bg-white rounded-lg p-2 text-center border">
+                <div className="text-lg">{config.icon}</div>
+                <div className="text-xs text-gray-500">{config.label}</div>
+                <div className={`text-sm font-bold ${typeof score === 'number' && score >= 80 ? 'text-green-600' : typeof score === 'number' && score >= 50 ? 'text-yellow-600' : typeof score === 'number' ? 'text-red-600' : 'text-gray-400'}`}>
+                  {score}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {aiFeedback.summary && (
+        <div className="bg-gray-50 border rounded-lg p-3">
+          <h5 className="font-medium text-gray-700 mb-1">总评</h5>
+          <p className="text-sm text-gray-600">{aiFeedback.summary}</p>
+        </div>
+      )}
+
+      {aiFeedback.improvement_suggestions && aiFeedback.improvement_suggestions.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+          <h5 className="font-medium text-amber-800 mb-2">改进建议</h5>
+          <ul className="space-y-1">
+            {aiFeedback.improvement_suggestions.map((s, i) => (
+              <li key={i} className="text-sm text-amber-700 flex items-start gap-2">
+                <span className="text-amber-500 mt-0.5">•</span>
+                {s}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {aiDetailed && (
+        <div className="border rounded-lg overflow-hidden">
+          <button
+            className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-left flex items-center justify-between hover:from-purple-700 hover:to-indigo-700 transition-colors"
+            onClick={() => setShowAiAnalysis(!showAiAnalysis)}
+          >
+            <span className="font-medium flex items-center gap-2">
+              <Lightbulb className="w-4 h-4" />
+              AI 深度代码分析
+            </span>
+            {showAiAnalysis ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+          {showAiAnalysis && (
+            <div className="p-4 space-y-3 bg-white">
+              {aiDetailed.error_analysis && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <h5 className="font-medium text-red-800 mb-1 flex items-center gap-1">
+                    <XCircle className="w-4 h-4" /> 错误分析
+                  </h5>
+                  <p className="text-sm text-red-700 whitespace-pre-wrap">{aiDetailed.error_analysis}</p>
+                </div>
+              )}
+              {aiDetailed.code_quality && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <h5 className="font-medium text-blue-800 mb-1 flex items-center gap-1">
+                    <BookOpen className="w-4 h-4" /> 代码质量
+                  </h5>
+                  <p className="text-sm text-blue-700 whitespace-pre-wrap">{aiDetailed.code_quality}</p>
+                </div>
+              )}
+              {aiDetailed.optimization_suggestions && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                  <h5 className="font-medium text-green-800 mb-1 flex items-center gap-1">
+                    <TrendingUp className="w-4 h-4" /> 优化建议
+                  </h5>
+                  <p className="text-sm text-green-700 whitespace-pre-wrap">{aiDetailed.optimization_suggestions}</p>
+                </div>
+              )}
+              {aiDetailed.best_practices && (
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                  <h5 className="font-medium text-purple-800 mb-1 flex items-center gap-1">
+                    <Award className="w-4 h-4" /> 最佳实践
+                  </h5>
+                  <p className="text-sm text-purple-700 whitespace-pre-wrap">{aiDetailed.best_practices}</p>
+                </div>
+              )}
+              {aiDetailed.learning_points && (
+                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
+                  <h5 className="font-medium text-indigo-800 mb-1 flex items-center gap-1">
+                    <Lightbulb className="w-4 h-4" /> 学习要点
+                  </h5>
+                  <p className="text-sm text-indigo-700 whitespace-pre-wrap">{aiDetailed.learning_points}</p>
+                </div>
+              )}
+              {aiDetailed.step_by_step_fix && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <h5 className="font-medium text-amber-800 mb-1 flex items-center gap-1">
+                    <CheckCircle className="w-4 h-4" /> 逐步修复
+                  </h5>
+                  <p className="text-sm text-amber-700 whitespace-pre-wrap">{aiDetailed.step_by_step_fix}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

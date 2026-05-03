@@ -695,6 +695,13 @@ export const mistakeBook = {
     method: 'POST',
     body: payload,
   }),
+
+  generateQuestionGroup: (payload) => request('/mistakes/targeted-practice/question-group', {
+    method: 'POST',
+    body: payload,
+  }),
+
+  getProgrammingMistakeDetail: (mistakeId) => request(`/mistakes/${mistakeId}/programming-detail`),
   
   analyzeMistakeStream: (mistakeId, signal = null) => {
     const options = {
@@ -893,6 +900,23 @@ export const teacher = {
   },
 }
 
+export const programming = {
+  generate: (payload) => request('/programming/generate', {
+    method: 'POST',
+    body: payload,
+  }),
+
+  submit: (payload) => request('/programming/submit', {
+    method: 'POST',
+    body: payload,
+  }),
+
+  getTeacherSubmissions: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString()
+    return request(`/teacher/programming/submissions${queryString ? `?${queryString}` : ''}`)
+  },
+}
+
 export const analytics = {
   getUserGrowth: (params = {}) => {
     const queryString = new URLSearchParams(params).toString()
@@ -984,4 +1008,54 @@ export const learningPathApi = {
   dismissRecommendation: (recId) => request(`/recommendations/${recId}/dismiss`, { method: 'POST' }),
 
   feedbackRecommendation: (recId, score) => request(`/recommendations/${recId}/feedback`, { method: 'POST', body: { score } }),
+}
+
+export const aiAnalysis = {
+  getDashboard: () => request('/ai-analysis/dashboard'),
+
+  getReports: (params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return request(`/ai-analysis/reports${qs ? `?${qs}` : ''}`)
+  },
+
+  generateReport: (reportType) => request('/ai-analysis/reports/generate', {
+    method: 'POST',
+    body: { report_type: reportType },
+  }),
+
+  getReportDetail: (reportId) => request(`/ai-analysis/reports/${reportId}`),
+
+  getInsights: (params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return request(`/ai-analysis/insights${qs ? `?${qs}` : ''}`)
+  },
+
+  generateInsight: (insightType) => request('/ai-analysis/insights/generate', {
+    method: 'POST',
+    body: { insight_type: insightType },
+  }),
+
+  getInsightDetail: (insightId) => request(`/ai-analysis/insights/${insightId}`),
+
+  dismissInsight: (insightId) => request(`/ai-analysis/insights/${insightId}/dismiss`, {
+    method: 'POST',
+  }),
+
+  getNotifications: (params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return request(`/ai-analysis/notifications${qs ? `?${qs}` : ''}`)
+  },
+
+  markNotificationRead: (notificationId) => request(`/ai-analysis/notifications/${notificationId}/read`, {
+    method: 'POST',
+  }),
+
+  markAllNotificationsRead: () => request('/ai-analysis/notifications/read-all', {
+    method: 'POST',
+  }),
+
+  customAnalysis: (data) => request('/ai-analysis/custom', {
+    method: 'POST',
+    body: data,
+  }),
 }

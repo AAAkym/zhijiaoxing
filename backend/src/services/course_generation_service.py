@@ -411,6 +411,9 @@ def finalize_course(config_id: int, teacher_id: int) -> Dict:
     if config.status != "approved":
         return {"error": "Course must be approved before finalization"}
 
+    if not config.course_id:
+        return {"error": "请先关联课程后再定稿"}
+
     versions = CourseGenerationVersion.query.filter_by(config_id=config_id).order_by(
         CourseGenerationVersion.step, CourseGenerationVersion.version_number.desc()
     ).all()

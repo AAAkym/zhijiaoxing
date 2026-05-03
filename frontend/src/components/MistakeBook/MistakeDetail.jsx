@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import AIAnalysisPanel from './AIAnalysisPanel'
 import ErrorTypeAnalysisPanel from './ErrorTypeAnalysisPanel'
+import ProgrammingMistakeDiff from './ProgrammingMistakeDiff'
 
 const STATUS_CONFIG = {
   unmastered: {
@@ -456,6 +457,10 @@ export default function MistakeDetail({ mistake, onBack, onUpdateStatus, onMista
           if (onMistakeChange) onMistakeChange(next)
         }}
       />
+
+      {(mistake.error_type_auto === 'programming_error' || mistake.error_type_manual === 'programming_error') && (
+        <ProgrammingMistakeDiff mistakeId={mistake.id} mistake={mistake} />
+      )}
 
       <Card>
         <CardHeader>

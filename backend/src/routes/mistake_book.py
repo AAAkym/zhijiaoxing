@@ -26,6 +26,10 @@ from src.services.mistake_intelligence_service import (
 )
 from src.services.spark_service import spark_service
 from src.services.export_service import generate_pdf, generate_docx
+from src.services.targeted_practice_service import (
+    generate_mixed_question_group,
+    get_programming_mistake_detail,
+)
 
 logger = logging.getLogger(__name__)
 mistake_book_bp = Blueprint("mistake_book", __name__)
@@ -606,6 +610,49 @@ def analyze_mistake_stream(mistake_id):
 
         return Response(generate(), mimetype="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"})
     except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@mistake_book_bp.route("/mistakes/targeted-practice/question-group", methods=["POST"])
+def generate_question_group():
+    try:
+        user_id = session.get("user_id")
+        if not user_id:
+            return jsonify({"error": "Authentication required"}), 401
+        data = request.get_json() or {}
+        course_id = data.get("course_id")
+        choice_count = data.get("choice_count", 5)
+        programming_count = data.get("programming_count", 2)
+        difficulty = data.get("difficulty", "adaptive")
+        result = generate_mixed_question_group(
+            user_id=user_id,
+            course_id=course_id,
+            choice_count=min(choice_count, 15),
+            programming_count=min(programming_count, 5),
+            difficulty=difficulty,
+        )
+        if "error" in result:
+            return jsonify(result), 400
+        return jsonify(result), 200
+    except Exception as e:
+        logger.error(f"Generate question group error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@mistake_book_bp.route("/mistakes/<int:mistake_id>/programming-detail", methods=["GET"])
+def get_programming_detail(mistake_id):
+    try:
+        user_id = session.get("user_id")
+        if not user_id:
+            return jsonify({"error": "Authentication required"}), 401
+        result = get_programming_mistake_detail(mistake_id)
+        if not result:
+            return jsonify({"error": "Mistake not found"}), 404
+        if result.get("user_id") != user_id:
+            return jsonify({"error": "Access denied"}), 403
+        return jsonify(result), 200
+    except Exception as e:
+        logger.error(f"Get programming detail error: {e}")
         return jsonify({"error": str(e)}), 500
 
 

@@ -1,4 +1,6 @@
 from datetime import datetime
+import json
+
 from src.models.user import db
 
 
@@ -548,7 +550,6 @@ class MistakeRecord(db.Model):
     note = db.relationship('StudyNote', backref='linked_mistakes')
     
     def _resolve_answer_display(self, answer_str, options=None):
-        import json
         if not answer_str or answer_str.strip() == '':
             return {'raw': answer_str, 'display': '未作答', 'label': None}
         
@@ -641,6 +642,60 @@ class MistakeRecord(db.Model):
             result['answer_type'] = 'choice' if (options and len(options) > 0) else 'text'
         
         return result
+
+
+class ProgrammingSubmission(db.Model):
+    __tablename__ = 'programming_submissions'
+    __table_args__ = {'extend_existing': True}
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    assessment_id = db.Column(db.Integer, db.ForeignKey('assessments.id'), nullable=False)
+    course_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=False)
+    question_index = db.Column(db.Integer, default=0)
+    language = db.Column(db.String(50), default='python')
+    code = db.Column(db.Text, default='')
+    standard_answer = db.Column(db.Text, default='')
+    score = db.Column(db.Float, default=0)
+    max_score = db.Column(db.Float, default=100)
+    status = db.Column(db.String(30), default='pending')
+    compile_result = db.Column(db.Text, default='')
+    runtime_result = db.Column(db.Text, default='')
+    io_match_result = db.Column(db.Text, default='')
+    syntax_result = db.Column(db.Text, default='')
+    logic_result = db.Column(db.Text, default='')
+    efficiency_result = db.Column(db.Text, default='')
+    line_comparison = db.Column(db.Text, default='')
+    ai_feedback = db.Column(db.Text, default='')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref='programming_submissions')
+    assessment = db.relationship('Assessment', backref='programming_submissions')
+    course = db.relationship('Course', backref='programming_submissions')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'assessment_id': self.assessment_id,
+            'course_id': self.course_id,
+            'question_index': self.question_index,
+            'language': self.language,
+            'code': self.code,
+            'standard_answer': self.standard_answer,
+            'score': self.score,
+            'max_score': self.max_score,
+            'status': self.status,
+            'compile_result': self.compile_result,
+            'runtime_result': self.runtime_result,
+            'io_match_result': self.io_match_result,
+            'syntax_result': self.syntax_result,
+            'logic_result': self.logic_result,
+            'efficiency_result': self.efficiency_result,
+            'line_comparison': self.line_comparison,
+            'ai_feedback': self.ai_feedback,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
 
 
 class Achievement(db.Model):

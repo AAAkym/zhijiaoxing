@@ -38,6 +38,7 @@ const typeConfig = {
   choice: { label: '选择题', icon: '📝' },
   fill: { label: '填空题', icon: '✏️' },
   essay: { label: '简答题', icon: '📄' },
+  programming: { label: '编程题', icon: '</>' },
   mixed: { label: '混合题型', icon: '📋' }
 }
 
@@ -80,7 +81,7 @@ export default function PracticeSelector({ myCourses, onSelectPractice }) {
           subject: course.category || '通用',
           chapter: a.chapter || '综合练习',
           difficulty: a.difficulty || 'medium',
-          type: a.type || 'mixed',
+          type: a.type || (Array.isArray(a.questions) && a.questions.some(q => q?.type === 'programming') ? 'programming' : 'mixed'),
           questionCount: Array.isArray(a.questions) ? a.questions.length : 
             (typeof a.questions === 'string' ? (a.questions.match(/\?/g) || []).length || 1 : 0),
           duration: a.duration || 30,
@@ -137,7 +138,7 @@ export default function PracticeSelector({ myCourses, onSelectPractice }) {
           subject: course.category || '通用',
           chapter: a.chapter || '综合练习',
           difficulty: a.difficulty || 'medium',
-          type: a.type || 'mixed',
+          type: a.type || (Array.isArray(a.questions) && a.questions.some(q => q?.type === 'programming') ? 'programming' : 'mixed'),
           questionCount: Array.isArray(a.questions) ? a.questions.length : 
             (typeof a.questions === 'string' ? (a.questions.match(/\?/g) || []).length || 1 : 0),
           duration: a.duration || 30,
@@ -294,7 +295,15 @@ export default function PracticeSelector({ myCourses, onSelectPractice }) {
       
       return {
         id: q.id || idx + 1,
-        question: q.question || '',
+        question: q.question || q.title || '',
+        title: q.title || q.question || '',
+        description: q.description || q.content || '',
+        input_format: q.input_format || q.inputFormat || '',
+        output_format: q.output_format || q.outputFormat || '',
+        constraints: q.constraints || '',
+        samples: Array.isArray(q.samples) ? q.samples : [],
+        standard_answer: q.standard_answer || q.reference_answer || '',
+        language: q.language || 'python',
         type: questionType,
         options: options,
         score: typeof q.score === 'number' ? q.score : Math.floor((assessment.totalScore || 100) / (questionsData.length || 1)),
@@ -401,6 +410,7 @@ export default function PracticeSelector({ myCourses, onSelectPractice }) {
                   <SelectItem value="choice">选择题</SelectItem>
                   <SelectItem value="fill">填空题</SelectItem>
                   <SelectItem value="essay">简答题</SelectItem>
+                  <SelectItem value="programming">编程题</SelectItem>
                   <SelectItem value="mixed">混合题型</SelectItem>
                 </SelectContent>
               </Select>

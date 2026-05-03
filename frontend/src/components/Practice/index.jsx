@@ -6,10 +6,10 @@ import ResultPage from './ResultPage'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, BookOpen, AlertCircle, CheckCircle } from 'lucide-react'
-import { student } from '@/services/api'
+import { student, programming } from '@/services/api'
 
 function PracticeContent({ myCourses, onBack }) {
-  const { currentView, selectPractice, result, reset, selectedPractice } = usePractice()
+  const { currentView, selectPractice, result, reset, selectedPractice, dispatch } = usePractice()
   const [submitStatus, setSubmitStatus] = useState(null)
   const [submitResponse, setSubmitResponse] = useState(null)
 
@@ -32,7 +32,79 @@ function PracticeContent({ myCourses, onBack }) {
 
     try {
       setSubmitStatus({ type: 'loading', message: '正在提交答案...' })
-      
+
+      const programmingResults = resultData.results.filter(r => r.type === 'programming')
+      if (programmingResults.length > 0) {
+        const reviewed = []
+        for (const item of programmingResults) {
+          const questionIndex = Math.max(0, resultData.results.findIndex(r => r.questionId === item.questionId))
+          const res = await programming.submit({
+            assessment_id: selectedPractice.id,
+            question_index: questionIndex,
+            language: item.language || 'python',
+            code: item.code || ''
+          })
+          reviewed.push(res)
+        }
+        const mistakeCount = reviewed.filter(r => r.mistake_synced).length
+        const avgScore = reviewed.length
+          ? Math.round(reviewed.reduce((sum, r) => sum + (r.submission?.score || 0), 0) / reviewed.length)
+          : 0
+
+        const enhancedResults = resultData.results.map(r => {
+          if (r.type === 'programming') {
+            const qIdx = resultData.results.findIndex(rr => rr.questionId === r.questionId)
+            const review = reviewed[qIdx]
+            const submission = review?.submission
+            const aiFeedback = submission?.ai_feedback || {}
+            const aiDetailed = aiFeedback.ai_detailed_analysis || null
+            return {
+              ...r,
+              isCorrect: (submission?.score || 0) >= 90,
+              score: submission?.score || 0,
+              maxScore: submission?.max_score || 100,
+              programmingFeedback: {
+                score: submission?.score || 0,
+                dimensions: {
+                  compile: submission?.compile_result || {},
+                  runtime: submission?.runtime_result || {},
+                  io_match: submission?.io_match_result || {},
+                  syntax: submission?.syntax_result || {},
+                  logic: submission?.logic_result || {},
+                  efficiency: submission?.efficiency_result || {},
+                },
+                lineComparison: submission?.line_comparison || [],
+                aiFeedback: aiFeedback,
+                aiDetailedAnalysis: aiDetailed,
+              }
+            }
+          }
+          return r
+        })
+
+        const enhancedTotalScore = enhancedResults.reduce((sum, r) => sum + (r.isCorrect ? (r.score || r.maxScore || 10) : 0), 0)
+        const enhancedMaxScore = enhancedResults.reduce((sum, r) => sum + (r.maxScore || r.score || 10), 0)
+
+        setSubmitResponse({ programming_reviews: reviewed, extracted_mistakes: mistakeCount })
+        setSubmitStatus({
+          type: 'success',
+          message: `编程题提交成功，AI/OJ 综合评分：${avgScore}/100，已同步 ${mistakeCount} 道错题`
+        })
+
+        dispatch({
+          type: 'SUBMIT_SUCCESS',
+          payload: {
+            results: enhancedResults,
+            totalScore: enhancedTotalScore,
+            maxScore: enhancedMaxScore,
+            timeElapsed: resultData.timeElapsed,
+            answeredCount: resultData.answeredCount,
+            totalQuestions: resultData.totalQuestions
+          }
+        })
+        return
+      }
+
       const answersArray = resultData.results.map(r => r.userAnswer)
       
       const submissionData = {

@@ -28,7 +28,7 @@ import {
   MessageCircle
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts'
-import { courses, content, ai, auth, videos, teacher as teacherApi } from '../services/api'
+import { courses, content, ai, auth, videos, teacher as teacherApi, programming } from '../services/api'
 import ErrorBoundary from './ErrorBoundary'
 import VideoLessonManager from './VideoLessonManager'
 import CourseGenerationWizard from './CourseGenerationWizard'
@@ -67,6 +67,9 @@ export default function TeacherDashboard({ user, onLogout }) {
   const [isAddExamOpen, setIsAddExamOpen] = useState(false)
   const [examTopic, setExamTopic] = useState('')
   const [questionCount, setQuestionCount] = useState(5)
+  const [programmingLanguage, setProgrammingLanguage] = useState('python')
+  const [programmingSubmissions, setProgrammingSubmissions] = useState([])
+  const [programmingSubmissionsLoading, setProgrammingSubmissionsLoading] = useState(false)
   const [generatedQuestions, setGeneratedQuestions] = useState([])
   const [generatedParseError, setGeneratedParseError] = useState(null)
   const [lastAssessmentId, setLastAssessmentId] = useState(null)
@@ -230,10 +233,22 @@ export default function TeacherDashboard({ user, onLogout }) {
           if (Array.isArray(questionsData) && questionsData.length > 0) {
             setGeneratedQuestions(questionsData.map(q => ({
               question: q.question || '',
+              title: q.title || q.question || '',
               type: q.type || 'choice',
               options: q.options || [],
               correctAnswer: typeof q.correctAnswer === 'number' ? q.correctAnswer : null,
-              explanation: q.explanation || ''
+              explanation: q.explanation || '',
+              description: q.description || q.content || '',
+              input_format: q.input_format || q.inputFormat || '',
+              output_format: q.output_format || q.outputFormat || '',
+              constraints: q.constraints || '',
+              samples: Array.isArray(q.samples) ? q.samples : [],
+              test_cases: Array.isArray(q.test_cases) ? q.test_cases : [],
+              standard_answer: q.standard_answer || q.reference_answer || '',
+              language: q.language || 'python',
+              knowledge_tags: Array.isArray(q.knowledge_tags) ? q.knowledge_tags : [],
+              score: typeof q.score === 'number' ? q.score : 10,
+              difficulty: q.difficulty || 'medium'
             })))
           } else {
             setGeneratedQuestions([])
@@ -272,10 +287,24 @@ export default function TeacherDashboard({ user, onLogout }) {
       const copy = [...prev]
       const q = { ...(copy[qIndex] || {}) }
       q.type = type
-      // ensure options exist for choice type
       if (type === 'choice' && !Array.isArray(q.options)) q.options = ['', '']
-      if (type !== 'choice') q.options = []
-      if (type !== 'choice') q.correctAnswer = null
+      if (type === 'programming') {
+        q.description = q.description || ''
+        q.input_format = q.input_format || ''
+        q.output_format = q.output_format || ''
+        q.constraints = q.constraints || ''
+        q.samples = Array.isArray(q.samples) ? q.samples : []
+        q.test_cases = Array.isArray(q.test_cases) ? q.test_cases : []
+        q.standard_answer = q.standard_answer || ''
+        q.language = q.language || programmingLanguage || 'python'
+        q.knowledge_tags = Array.isArray(q.knowledge_tags) ? q.knowledge_tags : []
+        q.options = []
+        q.correctAnswer = null
+      }
+      if (type === 'fill' || type === 'essay') {
+        q.options = []
+        q.correctAnswer = null
+      }
       copy[qIndex] = q
       return copy
     })
@@ -692,6 +721,56 @@ export default function TeacherDashboard({ user, onLogout }) {
     setIsGenerating(false)
   }
 
+  const generateProgrammingExam = async () => {
+    if (!selectedCourse || !examTopic) {
+      alert('请选择课程和输入考试主题')
+      return
+    }
+
+    setIsGenerating(true)
+    setGeneratedParseError(null)
+
+    try {
+      const res = await programming.generate({
+        course_id: parseInt(selectedCourse, 10),
+        topic: examTopic,
+        title: `${examTopic}编程题`,
+        question_count: Math.max(1, Math.min(20, Number(questionCount) || 1)),
+        difficulty: 'medium',
+        language: programmingLanguage
+      })
+      const normalizedQuestions = normalizeQuestions(res.questions || res.assessment?.questions || [])
+      if (normalizedQuestions.length === 0) {
+        setGeneratedParseError('AI未返回有效编程题，请重试')
+        setGeneratedQuestions([])
+      } else {
+        setGeneratedQuestions(normalizedQuestions)
+        setGeneratedParseError(null)
+      }
+      if (res.assessment?.id) setLastAssessmentId(res.assessment.id)
+      await loadAllAssessments()
+      alert('编程题生成成功，已保存到考核列表')
+    } catch (error) {
+      console.error('生成编程题失败:', error)
+      setGeneratedParseError(error.message || '生成编程题失败')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const loadProgrammingSubmissions = async () => {
+    setProgrammingSubmissionsLoading(true)
+    try {
+      const res = await programming.getTeacherSubmissions(selectedCourse ? { course_id: selectedCourse } : {})
+      setProgrammingSubmissions(res.submissions || [])
+    } catch (error) {
+      console.warn('加载编程题提交详情失败:', error)
+      setProgrammingSubmissions([])
+    } finally {
+      setProgrammingSubmissionsLoading(false)
+    }
+  }
+
   // 规范化题目数据格式
   const normalizeQuestions = (rawData) => {
     if (!rawData) return []
@@ -741,7 +820,17 @@ export default function TeacherDashboard({ user, onLogout }) {
     
     return {
       id: q.id || `q-${idx}-${Date.now()}`,
-      question: q.question || '',
+      question: q.question || q.title || '',
+      title: q.title || q.question || '',
+      description: q.description || q.content || '',
+      input_format: q.input_format || q.inputFormat || '',
+      output_format: q.output_format || q.outputFormat || '',
+      constraints: q.constraints || '',
+      samples: Array.isArray(q.samples) ? q.samples : [],
+      test_cases: Array.isArray(q.test_cases) ? q.test_cases : [],
+      standard_answer: q.standard_answer || q.reference_answer || '',
+      language: q.language || programmingLanguage || 'python',
+      knowledge_tags: Array.isArray(q.knowledge_tags) ? q.knowledge_tags : [],
       options: options,
       correctAnswer: correctAnswer,
       explanation: q.explanation || '',
@@ -808,7 +897,7 @@ export default function TeacherDashboard({ user, onLogout }) {
         errors.push(`第 ${qNum} 题：题干不能为空`)
       }
       
-      if (q.type === 'choice' || !q.type) {
+      if (q.type === 'choice' || (!q.type && q.options && q.options.length >= 2)) {
         if (!q.options || !Array.isArray(q.options) || q.options.length < 2) {
           errors.push(`第 ${qNum} 题：选择题至少需要2个选项`)
         } else {
@@ -820,6 +909,18 @@ export default function TeacherDashboard({ user, onLogout }) {
         
         if (typeof q.correctAnswer !== 'number' || q.correctAnswer < 0 || q.correctAnswer >= (q.options?.length || 0)) {
           errors.push(`第 ${qNum} 题：未设置正确答案`)
+        }
+      }
+
+      if (q.type === 'programming') {
+        if (!q.description || q.description.trim() === '') {
+          warnings.push(`第 ${qNum} 题：编程题缺少详细描述`)
+        }
+        if (!q.standard_answer || q.standard_answer.trim() === '') {
+          warnings.push(`第 ${qNum} 题：编程题缺少参考答案`)
+        }
+        if (!Array.isArray(q.test_cases) || q.test_cases.length === 0) {
+          warnings.push(`第 ${qNum} 题：编程题缺少测试用例`)
         }
       }
       
@@ -854,11 +955,21 @@ export default function TeacherDashboard({ user, onLogout }) {
     setIsGenerating(true)
     try {
       const normalizedQuestions = generatedQuestions.map(q => ({
-        question: q.question || '',
+        question: q.question || q.title || '',
+        title: q.title || q.question || '',
         type: q.type || 'choice',
         options: Array.isArray(q.options) ? q.options.filter(opt => opt && opt.trim() !== '') : [],
         correctAnswer: typeof q.correctAnswer === 'number' ? q.correctAnswer : null,
-        explanation: q.explanation || ''
+        explanation: q.explanation || '',
+        description: q.description || '',
+        input_format: q.input_format || '',
+        output_format: q.output_format || '',
+        constraints: q.constraints || '',
+        samples: Array.isArray(q.samples) ? q.samples : [],
+        test_cases: Array.isArray(q.test_cases) ? q.test_cases : [],
+        standard_answer: q.standard_answer || '',
+        language: q.language || programmingLanguage || 'python',
+        knowledge_tags: Array.isArray(q.knowledge_tags) ? q.knowledge_tags : []
       }))
 
       if (lastAssessmentId) {
@@ -1300,6 +1411,11 @@ export default function TeacherDashboard({ user, onLogout }) {
                 <h2 className="text-2xl font-bold text-gray-900">考核管理</h2>
                 <p className="text-gray-600">管理考试和生成题目</p>
               </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={loadProgrammingSubmissions}>
+                  <BarChart3 className="w-4 h-4 mr-2" />
+                  编程评分详情
+                </Button>
               <Dialog open={isAddExamOpen} onOpenChange={(open) => {
                 setIsAddExamOpen(open)
                 if (!open) {
@@ -1361,9 +1477,29 @@ export default function TeacherDashboard({ user, onLogout }) {
                         className="h-9 w-24"
                       />
                     </div>
-                    <Button onClick={generateExam} disabled={isGenerating} className="w-full">
-                      {isGenerating ? '生成中...' : '生成考试题目'}
-                    </Button>
+                    <div>
+                      <Label className="text-sm">编程题参考语言</Label>
+                      <Select value={programmingLanguage} onValueChange={setProgrammingLanguage}>
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="选择语言" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="python">Python</SelectItem>
+                          <SelectItem value="javascript">JavaScript</SelectItem>
+                          <SelectItem value="java">Java</SelectItem>
+                          <SelectItem value="cpp">C++</SelectItem>
+                          <SelectItem value="c">C</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <Button onClick={generateExam} disabled={isGenerating} className="w-full">
+                        {isGenerating ? '生成中...' : '生成客观题'}
+                      </Button>
+                      <Button onClick={generateProgrammingExam} disabled={isGenerating} variant="outline" className="w-full">
+                        {isGenerating ? '生成中...' : '生成编程题'}
+                      </Button>
+                    </div>
                     {generatedQuestions && generatedQuestions.length > 0 && (
                       <div className="mt-4">
                         <Label>生成的题目（JSON）</Label>
@@ -1430,6 +1566,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                                           <option value="choice">选择题</option>
                                           <option value="fill">填空题</option>
                                           <option value="essay">主观题</option>
+                                          <option value="programming">编程题</option>
                                         </select>
                                         <Button variant="ghost" size="sm" className="h-6 w-6 sm:h-7 sm:w-7 p-0 text-white hover:bg-white/20" onClick={() => moveQuestionUp(qi)} disabled={qi === 0}>↑</Button>
                                         <Button variant="ghost" size="sm" className="h-6 w-6 sm:h-7 sm:w-7 p-0 text-white hover:bg-white/20" onClick={() => moveQuestionDown(qi)} disabled={qi === generatedQuestions.length - 1}>↓</Button>
@@ -1510,6 +1647,232 @@ export default function TeacherDashboard({ user, onLogout }) {
                                         </div>
                                       )}
 
+                                      {q.type === 'programming' && (
+                                        <div className="space-y-3 border border-indigo-200 rounded-lg p-3 bg-indigo-50/30">
+                                          <div className="text-xs font-semibold text-indigo-700 mb-2">编程题详细配置</div>
+                                          <div>
+                                            <Label className="text-xs font-medium text-gray-700">题目描述</Label>
+                                            <Textarea
+                                              value={q.description || ''}
+                                              onChange={(e) => {
+                                                setGeneratedQuestions(prev => {
+                                                  const copy = [...prev]
+                                                  copy[qi] = { ...(copy[qi] || {}), description: e.target.value }
+                                                  return copy
+                                                })
+                                              }}
+                                              className="mt-1 min-h-[60px] text-xs sm:text-sm resize-none"
+                                              placeholder="详细描述编程题要求..."
+                                            />
+                                          </div>
+                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <div>
+                                              <Label className="text-xs font-medium text-gray-700">输入格式</Label>
+                                              <Input
+                                                value={q.input_format || ''}
+                                                onChange={(e) => {
+                                                  setGeneratedQuestions(prev => {
+                                                    const copy = [...prev]
+                                                    copy[qi] = { ...(copy[qi] || {}), input_format: e.target.value }
+                                                    return copy
+                                                  })
+                                                }}
+                                                className="mt-1 h-8 text-xs sm:text-sm"
+                                                placeholder="输入格式说明"
+                                              />
+                                            </div>
+                                            <div>
+                                              <Label className="text-xs font-medium text-gray-700">输出格式</Label>
+                                              <Input
+                                                value={q.output_format || ''}
+                                                onChange={(e) => {
+                                                  setGeneratedQuestions(prev => {
+                                                    const copy = [...prev]
+                                                    copy[qi] = { ...(copy[qi] || {}), output_format: e.target.value }
+                                                    return copy
+                                                  })
+                                                }}
+                                                className="mt-1 h-8 text-xs sm:text-sm"
+                                                placeholder="输出格式说明"
+                                              />
+                                            </div>
+                                          </div>
+                                          <div>
+                                            <Label className="text-xs font-medium text-gray-700">约束条件</Label>
+                                            <Input
+                                              value={q.constraints || ''}
+                                              onChange={(e) => {
+                                                setGeneratedQuestions(prev => {
+                                                  const copy = [...prev]
+                                                  copy[qi] = { ...(copy[qi] || {}), constraints: e.target.value }
+                                                  return copy
+                                                })
+                                              }}
+                                              className="mt-1 h-8 text-xs sm:text-sm"
+                                              placeholder="如：1 <= n <= 1000"
+                                            />
+                                          </div>
+                                          <div>
+                                            <div className="flex justify-between items-center mb-1">
+                                              <Label className="text-xs font-medium text-gray-700">样例 (JSON)</Label>
+                                              <Button size="sm" variant="ghost" className="h-5 text-xs text-blue-600" onClick={() => {
+                                                setGeneratedQuestions(prev => {
+                                                  const copy = [...prev]
+                                                  const q = { ...(copy[qi] || {}) }
+                                                  q.samples = [...(Array.isArray(q.samples) ? q.samples : []), { input: '', output: '', explanation: '' }]
+                                                  copy[qi] = q
+                                                  return copy
+                                                })
+                                              }}>+ 添加样例</Button>
+                                            </div>
+                                            {(Array.isArray(q.samples) ? q.samples : []).map((s, si) => (
+                                              <div key={`sample-${qi}-${si}`} className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2 p-2 bg-white rounded border">
+                                                <Input value={s.input || ''} onChange={(e) => {
+                                                  setGeneratedQuestions(prev => {
+                                                    const copy = [...prev]
+                                                    const q = { ...(copy[qi] || {}) }
+                                                    q.samples = [...(q.samples || [])]
+                                                    q.samples[si] = { ...q.samples[si], input: e.target.value }
+                                                    copy[qi] = q
+                                                    return copy
+                                                  })
+                                                }} placeholder="样例输入" className="h-7 text-xs" />
+                                                <Input value={s.output || ''} onChange={(e) => {
+                                                  setGeneratedQuestions(prev => {
+                                                    const copy = [...prev]
+                                                    const q = { ...(copy[qi] || {}) }
+                                                    q.samples = [...(q.samples || [])]
+                                                    q.samples[si] = { ...q.samples[si], output: e.target.value }
+                                                    copy[qi] = q
+                                                    return copy
+                                                  })
+                                                }} placeholder="样例输出" className="h-7 text-xs" />
+                                                <div className="flex gap-1">
+                                                  <Input value={s.explanation || ''} onChange={(e) => {
+                                                    setGeneratedQuestions(prev => {
+                                                      const copy = [...prev]
+                                                      const q = { ...(copy[qi] || {}) }
+                                                      q.samples = [...(q.samples || [])]
+                                                      q.samples[si] = { ...q.samples[si], explanation: e.target.value }
+                                                      copy[qi] = q
+                                                      return copy
+                                                    })
+                                                  }} placeholder="样例说明" className="h-7 text-xs flex-1" />
+                                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-gray-400 hover:text-red-500" onClick={() => {
+                                                    setGeneratedQuestions(prev => {
+                                                      const copy = [...prev]
+                                                      const q = { ...(copy[qi] || {}) }
+                                                      q.samples = (q.samples || []).filter((_, i) => i !== si)
+                                                      copy[qi] = q
+                                                      return copy
+                                                    })
+                                                  }}>×</Button>
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                          <div>
+                                            <div className="flex justify-between items-center mb-1">
+                                              <Label className="text-xs font-medium text-gray-700">测试用例 (JSON)</Label>
+                                              <Button size="sm" variant="ghost" className="h-5 text-xs text-blue-600" onClick={() => {
+                                                setGeneratedQuestions(prev => {
+                                                  const copy = [...prev]
+                                                  const q = { ...(copy[qi] || {}) }
+                                                  q.test_cases = [...(Array.isArray(q.test_cases) ? q.test_cases : []), { input: '', output: '' }]
+                                                  copy[qi] = q
+                                                  return copy
+                                                })
+                                              }}>+ 添加测试用例</Button>
+                                            </div>
+                                            {(Array.isArray(q.test_cases) ? q.test_cases : []).map((tc, tci) => (
+                                              <div key={`tc-${qi}-${tci}`} className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2 p-2 bg-white rounded border">
+                                                <Input value={tc.input || ''} onChange={(e) => {
+                                                  setGeneratedQuestions(prev => {
+                                                    const copy = [...prev]
+                                                    const q = { ...(copy[qi] || {}) }
+                                                    q.test_cases = [...(q.test_cases || [])]
+                                                    q.test_cases[tci] = { ...q.test_cases[tci], input: e.target.value }
+                                                    copy[qi] = q
+                                                    return copy
+                                                  })
+                                                }} placeholder="测试输入" className="h-7 text-xs" />
+                                                <Input value={tc.output || ''} onChange={(e) => {
+                                                  setGeneratedQuestions(prev => {
+                                                    const copy = [...prev]
+                                                    const q = { ...(copy[qi] || {}) }
+                                                    q.test_cases = [...(q.test_cases || [])]
+                                                    q.test_cases[tci] = { ...q.test_cases[tci], output: e.target.value }
+                                                    copy[qi] = q
+                                                    return copy
+                                                  })
+                                                }} placeholder="期望输出" className="h-7 text-xs" />
+                                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-gray-400 hover:text-red-500" onClick={() => {
+                                                  setGeneratedQuestions(prev => {
+                                                    const copy = [...prev]
+                                                    const q = { ...(copy[qi] || {}) }
+                                                    q.test_cases = (q.test_cases || []).filter((_, i) => i !== tci)
+                                                    copy[qi] = q
+                                                    return copy
+                                                  })
+                                                }}>×</Button>
+                                              </div>
+                                            ))}
+                                          </div>
+                                          <div>
+                                            <Label className="text-xs font-medium text-gray-700">参考答案</Label>
+                                            <Textarea
+                                              value={q.standard_answer || ''}
+                                              onChange={(e) => {
+                                                setGeneratedQuestions(prev => {
+                                                  const copy = [...prev]
+                                                  copy[qi] = { ...(copy[qi] || {}), standard_answer: e.target.value }
+                                                  return copy
+                                                })
+                                              }}
+                                              className="mt-1 min-h-[80px] text-xs sm:text-sm font-mono resize-none"
+                                              placeholder="参考代码答案..."
+                                            />
+                                          </div>
+                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <div>
+                                              <Label className="text-xs font-medium text-gray-700">编程语言</Label>
+                                              <select
+                                                value={q.language || 'python'}
+                                                onChange={(e) => {
+                                                  setGeneratedQuestions(prev => {
+                                                    const copy = [...prev]
+                                                    copy[qi] = { ...(copy[qi] || {}), language: e.target.value }
+                                                    return copy
+                                                  })
+                                                }}
+                                                className="mt-1 border rounded px-2 py-1 text-xs w-full"
+                                              >
+                                                <option value="python">Python</option>
+                                                <option value="javascript">JavaScript</option>
+                                                <option value="java">Java</option>
+                                                <option value="cpp">C++</option>
+                                                <option value="c">C</option>
+                                              </select>
+                                            </div>
+                                            <div>
+                                              <Label className="text-xs font-medium text-gray-700">知识点标签 (逗号分隔)</Label>
+                                              <Input
+                                                value={Array.isArray(q.knowledge_tags) ? q.knowledge_tags.join(', ') : ''}
+                                                onChange={(e) => {
+                                                  setGeneratedQuestions(prev => {
+                                                    const copy = [...prev]
+                                                    copy[qi] = { ...(copy[qi] || {}), knowledge_tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) }
+                                                    return copy
+                                                  })
+                                                }}
+                                                className="mt-1 h-8 text-xs sm:text-sm"
+                                                placeholder="如：数组, 排序, 动态规划"
+                                              />
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+
                                       <div>
                                         <div className="flex justify-between items-center mb-1">
                                           <Label className="text-xs sm:text-sm font-medium text-gray-700">解析</Label>
@@ -1553,7 +1916,45 @@ export default function TeacherDashboard({ user, onLogout }) {
                   </div>
                 </DialogContent>
               </Dialog>
+              </div>
             </div>
+
+            {(programmingSubmissionsLoading || programmingSubmissions.length > 0) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>编程题评分详情</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {programmingSubmissionsLoading ? (
+                    <div className="py-6 text-sm text-gray-500">正在加载...</div>
+                  ) : (
+                    <div className="space-y-3">
+                      {programmingSubmissions.map((item) => (
+                        <div key={item.id} className="border rounded-lg p-4 bg-white">
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-3">
+                            <div>
+                              <div className="font-semibold">{item.assessment_title} · 第 {item.question_index + 1} 题</div>
+                              <div className="text-sm text-gray-500">{item.user_name || `学生${item.user_id}`} · {item.language} · {item.created_at}</div>
+                            </div>
+                            <Badge className={item.score >= 90 ? 'bg-green-100 text-green-700' : item.score >= 60 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}>
+                              {item.score}/{item.max_score}
+                            </Badge>
+                          </div>
+                          <div className="grid md:grid-cols-5 gap-2 text-xs">
+                            <div className="bg-gray-50 rounded p-2">编译 {item.compile_result?.score ?? '-'}</div>
+                            <div className="bg-gray-50 rounded p-2">运行 {item.runtime_result?.score ?? '-'}</div>
+                            <div className="bg-gray-50 rounded p-2">IO {item.io_match_result?.score ?? '-'}</div>
+                            <div className="bg-gray-50 rounded p-2">逻辑 {item.logic_result?.score ?? '-'}</div>
+                            <div className="bg-gray-50 rounded p-2">效率 {item.efficiency_result?.score ?? '-'}</div>
+                          </div>
+                          <pre className="mt-3 bg-slate-950 text-slate-100 rounded p-3 overflow-auto text-xs max-h-48">{item.code}</pre>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             <Dialog open={statsDialogOpen} onOpenChange={setStatsDialogOpen}>
               <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">

@@ -11,7 +11,8 @@ import {
   CheckCircle,
   AlertCircle,
   TrendingUp,
-  Shield
+  Shield,
+  Sparkles
 } from 'lucide-react'
 import { admin, auth } from '../services/api'
 import UserManagement from './UserManagement'
@@ -19,6 +20,7 @@ import CourseManagement from './CourseManagement'
 import DataAnalytics from './DataAnalytics'
 import SystemSettings from './SystemSettings'
 import AIContentReview from './AIContentReview'
+import AIAnalysisDashboard from './AIAnalysisDashboard'
 import { useNavigate } from 'react-router-dom'
 
 export default function AdminDashboard({ user, onLogout }) {
@@ -59,6 +61,7 @@ export default function AdminDashboard({ user, onLogout }) {
   const menuItems = [
     { id: 'overview', label: '系统概览', icon: BarChart3 },
     { id: 'ai-review', label: 'AI内容审核', icon: Shield },
+    { id: 'ai-analysis', label: 'AI智能分析', icon: Sparkles },
     { id: 'users', label: '用户管理', icon: Users },
     { id: 'courses', label: '课程管理', icon: BookOpen },
     { id: 'analytics', label: '数据分析', icon: BarChart3 },
@@ -69,6 +72,8 @@ export default function AdminDashboard({ user, onLogout }) {
     switch (currentView) {
       case 'ai-review':
         return <AIContentReview />
+      case 'ai-analysis':
+        return <AIAnalysisDashboard />
       case 'users':
         return <UserManagement />
       case 'courses':
@@ -171,12 +176,20 @@ export default function AdminDashboard({ user, onLogout }) {
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">快速操作</h3>
               <p className="text-gray-600 mb-6">常用管理功能快速入口</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
                 <Card className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-amber-500" onClick={() => setCurrentView('ai-review')}>
                   <CardContent className="p-6 text-center">
                     <Shield className="h-12 w-12 text-amber-600 mx-auto mb-4" />
                     <h4 className="font-semibold text-gray-900">AI内容审核</h4>
                     <Badge className="mt-2 bg-amber-100 text-amber-700">{stats.pendingReviewCount} 待审核</Badge>
+                  </CardContent>
+                </Card>
+
+                <Card className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-purple-500" onClick={() => setCurrentView('ai-analysis')}>
+                  <CardContent className="p-6 text-center">
+                    <Sparkles className="h-12 w-12 text-purple-600 mx-auto mb-4" />
+                    <h4 className="font-semibold text-gray-900">AI智能分析</h4>
+                    <Badge className="mt-2 bg-purple-100 text-purple-700">决策支持</Badge>
                   </CardContent>
                 </Card>
 

@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
+import CodeEditor from '@/components/ui/CodeEditor'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -129,6 +131,9 @@ export default function QuestionPanel({ onSubmit }) {
              typeof question.correctAnswer === 'number' && 
              userAnswer === question.correctAnswer
     }
+    if (question.type === 'programming') {
+      return false
+    }
     return false
   }, [])
 
@@ -175,7 +180,10 @@ export default function QuestionPanel({ onSubmit }) {
           isCorrect: isCorrect,
           score: typeof q.score === 'number' ? q.score : 10,
           explanation: q.explanation || '',
-          options: Array.isArray(q.options) ? q.options : []
+          options: Array.isArray(q.options) ? q.options : [],
+          type: q.type || 'essay',
+          code: q.type === 'programming' ? (typeof userAnswer === 'object' ? userAnswer.code : userAnswer) || '' : undefined,
+          language: q.type === 'programming' ? (typeof userAnswer === 'object' ? userAnswer.language : q.language) || 'python' : undefined
         }
       }).filter(Boolean) // 过滤掉 null 条目
 
@@ -245,7 +253,7 @@ export default function QuestionPanel({ onSubmit }) {
   // 对 currentQuestion 各字段做防御性取值，防止 undefined 崩溃
   const questionId = currentQuestion?.id ?? 'unknown'
   const questionType = currentQuestion?.type || 'essay'
-  const questionText = currentQuestion?.question || '（题目内容缺失）'
+  const questionText = currentQuestion?.question || currentQuestion?.title || '（题目内容缺失）'
   const questionScore = typeof currentQuestion?.score === 'number' ? currentQuestion.score : 10
   const questionOptions = Array.isArray(currentQuestion?.options) ? currentQuestion.options : []
 
@@ -268,7 +276,8 @@ export default function QuestionPanel({ onSubmit }) {
                   <p className="text-blue-100 text-sm">第 {safeIndex + 1} 题 / 共 {safeQuestions.length} 题</p>
                   <p className="font-medium">
                     {questionType === 'choice' ? '选择题' :
-                     questionType === 'fill' ? '填空题' : '简答题'}
+                     questionType === 'fill' ? '填空题' :
+                     questionType === 'programming' ? '编程题' : '简答题'}
                     &middot; {questionScore} 分
                   </p>
                 </div>
@@ -297,6 +306,20 @@ export default function QuestionPanel({ onSubmit }) {
             <p className="text-lg text-gray-800 leading-relaxed whitespace-pre-wrap">
               {questionText}
             </p>
+            {questionType === 'programming' && (
+              <div className="mt-4 space-y-3 text-sm text-gray-700">
+                {currentQuestion.description && <p className="whitespace-pre-wrap">{currentQuestion.description}</p>}
+                {currentQuestion.input_format && <p><span className="font-semibold">输入：</span>{currentQuestion.input_format}</p>}
+                {currentQuestion.output_format && <p><span className="font-semibold">输出：</span>{currentQuestion.output_format}</p>}
+                {currentQuestion.constraints && <p><span className="font-semibold">约束：</span>{currentQuestion.constraints}</p>}
+                {Array.isArray(currentQuestion.samples) && currentQuestion.samples.length > 0 && (
+                  <div className="grid md:grid-cols-2 gap-3">
+                    <pre className="bg-white border rounded-md p-3 overflow-auto"><span className="font-semibold">样例输入</span>{'\n'}{currentQuestion.samples[0].input}</pre>
+                    <pre className="bg-white border rounded-md p-3 overflow-auto"><span className="font-semibold">样例输出</span>{'\n'}{currentQuestion.samples[0].output}</pre>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {questionType === 'choice' && questionOptions.length > 0 ? (
@@ -309,6 +332,11 @@ export default function QuestionPanel({ onSubmit }) {
           ) : questionType === 'fill' ? (
             <FillAnswer
               value={currentAnswer || ''}
+              onChange={handleAnswerChange}
+            />
+          ) : questionType === 'programming' ? (
+            <CodeAnswer
+              value={currentAnswer || { code: '', language: currentQuestion.language || 'python' }}
               onChange={handleAnswerChange}
             />
           ) : (
@@ -484,6 +512,42 @@ function FillAnswer({ value, onChange }) {
         autoComplete="off"
       />
       <p className="text-xs text-gray-400">提示：请仔细核对答案，确保准确无误</p>
+    </div>
+  )
+}
+
+function CodeAnswer({ value, onChange }) {
+  const current = typeof value === 'object' && value !== null ? value : { code: value || '', language: 'python' }
+  const update = (patch) => onChange({ ...current, ...patch })
+
+  return (
+    <div className="space-y-3" key="code-answer-container">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <p className="text-sm font-medium text-gray-700">代码作答</p>
+        <Select value={current.language || 'python'} onValueChange={(language) => update({ language })}>
+          <SelectTrigger className="w-full sm:w-44 bg-white">
+            <SelectValue placeholder="选择语言" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="python">Python</SelectItem>
+            <SelectItem value="javascript">JavaScript</SelectItem>
+            <SelectItem value="java">Java</SelectItem>
+            <SelectItem value="cpp">C++</SelectItem>
+            <SelectItem value="c">C</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <CodeEditor
+        value={current.code || ''}
+        onChange={(code) => update({ code })}
+        language={current.language || 'python'}
+        height="320px"
+        placeholder="在这里输入代码..."
+      />
+      <div className="flex justify-between text-xs text-gray-400">
+        <span>支持语法高亮、自动补全、括号匹配 · 提交后系统会进行样例运行、输出匹配、语法、逻辑和效率评分</span>
+        <span>{(current.code || '').length} 字符</span>
+      </div>
     </div>
   )
 }

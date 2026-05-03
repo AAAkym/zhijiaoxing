@@ -5,6 +5,8 @@ from sqlalchemy import func, case
 from datetime import datetime, timedelta
 import logging
 
+from flask import current_app
+
 logger = logging.getLogger(__name__)
 
 teacher_bp = Blueprint('teacher', __name__)
@@ -28,12 +30,26 @@ def require_teacher(f):
     return decorated_function
 
 
+def _get_cache():
+    try:
+        return current_app.extensions.get('cache')
+    except Exception:
+        return None
+
+
 @teacher_bp.route('/teacher/dashboard/stats', methods=['GET'])
 @require_auth
 @require_teacher
 def get_dashboard_stats():
     try:
         user_id = session['user_id']
+        cache = _get_cache()
+        cache_key = f'teacher_stats:{user_id}'
+        if cache:
+            cached = cache.get(cache_key)
+            if cached:
+                return jsonify(cached), 200
+
         my_courses = Course.query.filter_by(teacher_id=user_id).count()
         total_students = db.session.query(func.count(func.distinct(LearningProgress.user_id))).join(
             Course, LearningProgress.course_id == Course.id
@@ -46,7 +62,7 @@ def get_dashboard_stats():
         ai_generated_content = TeachingContent.query.filter_by(generated_by_llm=True).join(
             Course, TeachingContent.course_id == Course.id
         ).filter(Course.teacher_id == user_id).count()
-        return jsonify({
+        result = {
             'stats': {
                 'my_courses': my_courses,
                 'course_count': my_courses,
@@ -56,7 +72,10 @@ def get_dashboard_stats():
                 'ai_generated_content': ai_generated_content,
                 'content_count': ai_generated_content
             }
-        }), 200
+        }
+        if cache:
+            cache.set(cache_key, result, timeout=60)
+        return jsonify(result), 200
     except Exception as e:
         logger.error(f'获取教师统计失败: {str(e)}')
         return jsonify({'error': str(e)}), 500
@@ -68,6 +87,13 @@ def get_dashboard_stats():
 def get_student_progress_distribution():
     try:
         user_id = session['user_id']
+        cache = _get_cache()
+        cache_key = f'teacher_progress:{user_id}'
+        if cache:
+            cached = cache.get(cache_key)
+            if cached:
+                return jsonify(cached), 200
+
         course_ids = [c.id for c in Course.query.filter_by(teacher_id=user_id).all()]
         if not course_ids:
             return jsonify({'distribution': []}), 200
@@ -94,7 +120,10 @@ def get_student_progress_distribution():
                 {'name': '一般', 'value': 0, 'color': '#F59E0B'},
                 {'name': '待提高', 'value': 0, 'color': '#EF4444'}
             ]
-        return jsonify({'distribution': distribution, 'data': distribution}), 200
+        result = {'distribution': distribution, 'data': distribution}
+        if cache:
+            cache.set(cache_key, result, timeout=120)
+        return jsonify(result), 200
     except Exception as e:
         logger.error(f'获取学生进度分布失败: {str(e)}')
         return jsonify({'error': str(e)}), 500

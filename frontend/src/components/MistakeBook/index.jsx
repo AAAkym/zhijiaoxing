@@ -24,6 +24,7 @@ import MistakeStats from './MistakeStats'
 import MistakeReview from './MistakeReview'
 import MistakeExport from './MistakeExport'
 import TargetedTherapy from './TargetedTherapy'
+import TargetedQuestionGroup from './TargetedQuestionGroup'
 
 export default function MistakeBook({ myCourses = [] }) {
   const [currentView, setCurrentView] = useState('list')
@@ -326,6 +327,10 @@ export default function MistakeBook({ myCourses = [] }) {
             <Target className="w-4 h-4 mr-1" />
             靶向治疗
           </TabsTrigger>
+          <TabsTrigger value="question-group">
+            <GraduationCap className="w-4 h-4 mr-1" />
+            靶向题组
+          </TabsTrigger>
         </TabsList>
         
         <TabsContent value="list" className="mt-4">
@@ -412,6 +417,10 @@ export default function MistakeBook({ myCourses = [] }) {
 
         <TabsContent value="targeted" className="mt-4">
           <TargetedTherapy myCourses={myCourses} />
+        </TabsContent>
+
+        <TabsContent value="question-group" className="mt-4">
+          <TargetedQuestionGroup courseId={filters.course_id || undefined} />
         </TabsContent>
       </Tabs>
     </div>

@@ -30,6 +30,11 @@ from src.routes.class_management import class_mgmt_bp
 from src.routes.profile_routes import profile_bp
 from src.routes.resource_generation import resource_gen_bp
 from src.routes.learning_path_routes import learning_path_bp
+from src.routes.programming import programming_bp
+from src.routes.ai_analysis import ai_analysis_bp
+from src.routes.lesson_plan import lesson_plan_bp
+from src.routes.learning_analytics import learning_analytics_bp
+from src.routes.ai_optimization import ai_optimization_bp
 from src.services.websocket_service import init_socketio
 
 config = get_config()
@@ -83,6 +88,11 @@ app.register_blueprint(class_mgmt_bp, url_prefix='/api')
 app.register_blueprint(profile_bp, url_prefix='/api')
 app.register_blueprint(resource_gen_bp, url_prefix='/api')
 app.register_blueprint(learning_path_bp, url_prefix='/api')
+app.register_blueprint(programming_bp, url_prefix='/api')
+app.register_blueprint(ai_analysis_bp, url_prefix='/api')
+app.register_blueprint(lesson_plan_bp, url_prefix='/api')
+app.register_blueprint(learning_analytics_bp, url_prefix='/api')
+app.register_blueprint(ai_optimization_bp, url_prefix='/api')
 
 db.init_app(app)
 
@@ -212,6 +222,35 @@ with app.app_context():
                         print(f'[DB Migration] [OK] Added column: mistake_records.{col_name} ({col_type})')
                     except Exception as e:
                         print(f'[DB Migration] [WARN] Failed to add mistake_records.{col_name}: {e}')
+
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='programming_submissions'")
+            if not cursor.fetchone():
+                cursor.execute('''
+                    CREATE TABLE programming_submissions (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL REFERENCES users(id),
+                        assessment_id INTEGER NOT NULL REFERENCES assessments(id),
+                        course_id INTEGER NOT NULL REFERENCES courses(id),
+                        question_index INTEGER DEFAULT 0 NOT NULL,
+                        language VARCHAR(30) DEFAULT 'python',
+                        code TEXT NOT NULL,
+                        standard_answer TEXT,
+                        score FLOAT DEFAULT 0.0,
+                        max_score FLOAT DEFAULT 100.0,
+                        status VARCHAR(30) DEFAULT 'reviewed',
+                        compile_result TEXT,
+                        runtime_result TEXT,
+                        io_match_result TEXT,
+                        syntax_result TEXT,
+                        logic_result TEXT,
+                        efficiency_result TEXT,
+                        line_comparison TEXT,
+                        ai_feedback TEXT,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+                print('[DB Migration] [OK] Created table: programming_submissions')
 
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='student_profiles'")
             if not cursor.fetchone():
@@ -364,17 +403,113 @@ with app.app_context():
                         except Exception as e:
                             print(f'[DB Migration] [WARN] Failed to add learning_plans.{col_name}: {e}')
 
+            # AI Analysis tables
+            ai_analysis_tables = {
+                'ai_analysis_reports': '''
+                    CREATE TABLE IF NOT EXISTS ai_analysis_reports (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        report_type VARCHAR(20) NOT NULL,
+                        title VARCHAR(200) NOT NULL,
+                        period_start DATETIME NOT NULL,
+                        period_end DATETIME NOT NULL,
+                        summary TEXT DEFAULT '',
+                        key_metrics TEXT DEFAULT '{}',
+                        anomalies TEXT DEFAULT '[]',
+                        recommendations TEXT DEFAULT '[]',
+                        detailed_analysis TEXT DEFAULT '',
+                        roi_analysis TEXT DEFAULT '',
+                        resource_optimization TEXT DEFAULT '',
+                        status VARCHAR(20) DEFAULT 'generated',
+                        generated_by VARCHAR(20) DEFAULT 'ai',
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''',
+                'ai_insights': '''
+                    CREATE TABLE IF NOT EXISTS ai_insights (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        insight_type VARCHAR(50) NOT NULL,
+                        title VARCHAR(200) NOT NULL,
+                        description TEXT DEFAULT '',
+                        risk_level VARCHAR(20) DEFAULT 'low',
+                        confidence FLOAT DEFAULT 0.0,
+                        affected_count INTEGER DEFAULT 0,
+                        metrics_data TEXT DEFAULT '{}',
+                        recommendations TEXT DEFAULT '[]',
+                        status VARCHAR(20) DEFAULT 'active',
+                        valid_until DATETIME,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''',
+                'analysis_notifications': '''
+                    CREATE TABLE IF NOT EXISTS analysis_notifications (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        notification_type VARCHAR(50) NOT NULL,
+                        title VARCHAR(200) NOT NULL,
+                        content TEXT DEFAULT '',
+                        related_id INTEGER,
+                        related_type VARCHAR(50),
+                        channel VARCHAR(20) DEFAULT 'system',
+                        is_read BOOLEAN DEFAULT 0,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(id)
+                    )
+                ''',
+                'analysis_access_logs': '''
+                    CREATE TABLE IF NOT EXISTS analysis_access_logs (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        resource_type VARCHAR(50) NOT NULL,
+                        resource_id INTEGER,
+                        access_level VARCHAR(20) DEFAULT 'basic',
+                        ip_address VARCHAR(45),
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(id)
+                    )
+                ''',
+            }
+            for table_name, create_sql in ai_analysis_tables.items():
+                cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}'")
+                if not cursor.fetchone():
+                    cursor.execute(create_sql)
+                    print(f'[DB Migration] [OK] Created table: {table_name}')
+
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='programming_submissions'")
+            if not cursor.fetchone():
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS programming_submissions (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        assessment_id INTEGER NOT NULL,
+                        course_id INTEGER NOT NULL,
+                        question_index INTEGER DEFAULT 0,
+                        language VARCHAR(50) DEFAULT 'python',
+                        code TEXT DEFAULT '',
+                        standard_answer TEXT DEFAULT '',
+                        score FLOAT DEFAULT 0,
+                        max_score FLOAT DEFAULT 100,
+                        status VARCHAR(30) DEFAULT 'pending',
+                        compile_result TEXT DEFAULT '',
+                        runtime_result TEXT DEFAULT '',
+                        io_match_result TEXT DEFAULT '',
+                        syntax_result TEXT DEFAULT '',
+                        logic_result TEXT DEFAULT '',
+                        efficiency_result TEXT DEFAULT '',
+                        line_comparison TEXT DEFAULT '',
+                        ai_feedback TEXT DEFAULT '',
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(id),
+                        FOREIGN KEY (assessment_id) REFERENCES assessments(id),
+                        FOREIGN KEY (course_id) REFERENCES courses(id)
+                    )
+                ''')
+                print('[DB Migration] [OK] Created table: programming_submissions')
+
             conn.commit()
             conn.close()
 
-            changed = (
-                any(col not in existing_note_columns for col in note_columns.keys())
-                or any(col not in existing_mistake_columns for col in mistake_columns.keys())
-            )
-            if changed:
-                print('[DB Migration] 数据库 Schema 迁移完成')
-            else:
-                print('[DB Migration] 数据库 Schema 已是最新，无需迁移')
+            print('[DB Migration] 数据库 Schema 迁移检查完成')
 
         except Exception as e:
             print(f'[DB Migration] [ERROR] Migration failed: {e}')

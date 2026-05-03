@@ -111,7 +111,7 @@ export default function CourseGenerationWizard({ myCourses = [], onBack }) {
     setSaving(true)
     try {
       const payload = { ...config }
-      if (!payload.course_id) delete payload.course_id
+      if (!payload.course_id || payload.course_id === 'none') delete payload.course_id
       const result = await courseGeneration.createConfig(payload)
       setConfigId(result.id)
       setConfig(result)
@@ -226,13 +226,24 @@ export default function CourseGenerationWizard({ myCourses = [], onBack }) {
 
   const handleFinalize = async () => {
     if (!configId) return
+    if (!config.course_id || config.course_id === 'none') {
+      alert('请先关联课程后再定稿')
+      return
+    }
     try {
       const result = await courseGeneration.finalize(configId)
       alert('课程内容已定稿并保存！\n' + (result.created_items || []).join('\n'))
       if (onBack) onBack()
     } catch (err) {
       console.error('Finalize error:', err)
-      alert('定稿失败，请重试')
+      const msg = err?.response?.data?.error || err?.message || ''
+      if (msg.includes('approved') || msg.includes('审核')) {
+        alert('定稿失败：请先完成审核通过后再定稿')
+      } else if (msg.includes('course_id') || msg.includes('关联课程')) {
+        alert('定稿失败：请先关联课程后再定稿')
+      } else {
+        alert('定稿失败，请重试')
+      }
     }
   }
 

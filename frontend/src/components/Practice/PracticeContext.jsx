@@ -51,6 +51,14 @@ function practiceReducer(state, action) {
           return {
             id: q.id ?? idx + 1,
             question: q.question || '',
+            title: q.title || q.question || '',
+            description: q.description || '',
+            input_format: q.input_format || '',
+            output_format: q.output_format || '',
+            constraints: q.constraints || '',
+            samples: Array.isArray(q.samples) ? q.samples : [],
+            standard_answer: q.standard_answer || '',
+            language: q.language || 'python',
             type: q.type || 'essay',
             options: Array.isArray(q.options) ? q.options : [],
             score: typeof q.score === 'number' ? q.score : 10,
@@ -170,7 +178,8 @@ export function PracticeProvider({ children }) {
     toggleMark,
     setFilter,
     submitPractice,
-    reset
+    reset,
+    dispatch
   }
 
   return (

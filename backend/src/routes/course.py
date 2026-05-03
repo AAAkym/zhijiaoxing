@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, session
 from src.models.user import User, db
-from src.models.course import Course, TeachingContent, Assessment, PracticeEvaluation, VideoLesson
+from src.models.course import Course, TeachingContent, Assessment, PracticeEvaluation, VideoLesson, ProgrammingSubmission, MistakeRecord
 from src.services.spark_service import spark_service
 from src.services.knowledge_base import knowledge_base_service
 import json
@@ -707,6 +707,8 @@ def delete_assessment(assessment_id):
         if session.get('user_role') == 'teacher' and course and course.teacher_id != session.get('user_id'):
             return jsonify({'error': 'Permission denied'}), 403
 
+        ProgrammingSubmission.query.filter_by(assessment_id=assessment_id).delete()
+        MistakeRecord.query.filter_by(assessment_id=assessment_id).delete()
         PracticeEvaluation.query.filter_by(assessment_id=assessment_id).delete()
         
         db.session.delete(assessment)

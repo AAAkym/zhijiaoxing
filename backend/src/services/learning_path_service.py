@@ -23,7 +23,13 @@ class LearningPathService:
                 return {"error": "课程不存在"}
             path = self._generate_course_path(user_id, course_id, profile)
         else:
-            path = self._generate_overall_path(user_id, profile)
+            existing = LearningPath.query.filter_by(
+                user_id=user_id, course_id=None, status='active'
+            ).first()
+            if existing:
+                path = self._update_existing_path(existing, profile)
+            else:
+                path = self._generate_overall_path(user_id, profile)
 
         return path.to_dict() if path else {"error": "路径生成失败"}
 
@@ -149,11 +155,15 @@ class LearningPathService:
         course_ids = [lp.course_id for lp in progresses]
         courses = Course.query.filter(Course.id.in_(course_ids)).all()
 
+        completed_count = sum(1 for lp in progresses if lp.progress_percentage >= 90)
+        active_count = sum(1 for lp in progresses if 0 < lp.progress_percentage < 90)
+        title = f"{profile.display_name}的综合学习路径" if profile and profile.display_name else f"综合学习路径（{len(courses)}门课程）"
+
         path = LearningPath(
             user_id=user_id,
             course_id=None,
-            title="综合学习路径",
-            description="基于你的学习画像和所有课程进度生成的综合学习路径",
+            title=title,
+            description=f"涵盖{len(courses)}门课程的综合学习路径：{', '.join([c.title for c in courses[:3]])}{'等' if len(courses) > 3 else ''}",
             generated_by='ai',
         )
 
@@ -185,8 +195,8 @@ class LearningPathService:
             order += 1
 
         path.set_path_data(nodes_data)
-        completed = sum(1 for n in nodes_data if n['status'] == 'completed')
-        path.progress_percentage = round(completed / len(nodes_data) * 100, 1) if nodes_data else 0
+        total_progress = sum(n['progress_percentage'] for n in nodes_data)
+        path.progress_percentage = round(total_progress / len(nodes_data), 1) if nodes_data else 0
 
         first_available = next((n for n in nodes_data if n['status'] == 'available'), None)
         path.current_node_id = first_available['node_id'] if first_available else None
@@ -206,12 +216,37 @@ class LearningPathService:
                 if mastery >= 80 and node['status'] != 'completed':
                     node['status'] = 'completed'
                     node['progress_percentage'] = 100
+            elif node.get('node_type') == 'course':
+                course_id = node.get('resource_ids', [None])[0] if node.get('resource_ids') else None
+                if not course_id:
+                    node_id = node.get('node_id', '')
+                    if node_id.startswith('course_'):
+                        try:
+                            course_id = int(node_id.replace('course_', ''))
+                        except (ValueError, AttributeError):
+                            course_id = None
+                if course_id:
+                    progress_record = LearningProgress.query.filter_by(
+                        user_id=path.user_id, course_id=course_id
+                    ).first()
+                    if progress_record:
+                        node['progress_percentage'] = progress_record.progress_percentage
+                        node['mastery_level'] = progress_record.progress_percentage / 100.0
+                        if progress_record.progress_percentage >= 90:
+                            node['status'] = 'completed'
+                        elif progress_record.progress_percentage > 0:
+                            node['status'] = 'available'
+                        elif node['status'] == 'locked':
+                            pass
 
         self._recalculate_node_statuses(nodes)
 
         path.set_path_data(nodes)
-        completed = sum(1 for n in nodes if n['status'] == 'completed')
-        path.progress_percentage = round(completed / len(nodes) * 100, 1) if nodes else 0
+        if nodes:
+            total_progress = sum(n.get('progress_percentage', 0) for n in nodes)
+            path.progress_percentage = round(total_progress / len(nodes), 1)
+        else:
+            path.progress_percentage = 0
         path.updated_at = datetime.utcnow()
         db.session.commit()
         return path
