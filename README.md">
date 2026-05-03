@@ -1,0 +1,787 @@
+# 智教星 - 智能教学管理平台
+
+> 基于 Spark4.0 Ultra 星火大模型的 AI 驱动智能教学解决方案
+
+[![React](https://img.shields.io/badge/React-19-blue?logo=react)](https://react.dev/)
+[![Flask](https://img.shields.io/badge/Flask-3.x-blue?logo=flask)](https://flask.palletsprojects.com/)
+[![Python](https://img.shields.io/badge/Python-3.11+-yellow?logo=python)](https://www.python.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.x-blue?logo=tailwindcss)](https://tailwindcss.com/)
+
+---
+
+## 📋 目录
+
+- [项目简介](#项目简介)
+- [核心功能](#核心功能)
+- [技术架构](#技术架构)
+- [快速开始](#快速开始)
+- [项目结构](#项目结构)
+- [API 文档](#api-文档)
+- [配置说明](#配置说明)
+- [开发指南](#开发指南)
+- [常见问题](#常见问题)
+
+---
+
+## 🚀 项目简介
+
+智教星是一个功能完整、设计精美的智能教学管理平台，深度集成讯飞星火大模型，为教育工作者和学生提供全方位的 AI 辅助教学服务。
+
+### ✨ 核心亮点
+
+- 🤖 **AI 深度整合** - Spark4.0 Ultra 驱动，智能生成教学内容
+- 👥 **三端完整** - 管理员、教师、学生平台功能齐全
+- ⚡ **实时互动** - WebSocket 双向通信，师生互动零延迟
+- 📊 **数据驱动** - 丰富的可视化图表，多维度学情分析
+- 🎨 **现代 UI** - 响应式设计，支持桌面和移动设备
+- 🔒 **安全可靠** - 完善的权限控制，数据加密保护
+- 📈 **监控系统** - Prometheus + Grafana，全方位系统监控
+
+---
+
+## 🎯 核心功能
+
+### 🔧 管理员平台
+
+| 功能模块 | 描述 |
+|---------|------|
+| **用户管理** | 添加/删除用户、角色分配、用户统计、权限控制 |
+| **课程管理** | 创建/管理课程、课程分类、状态跟踪、教师分配 |
+| **数据分析** | 用户增长趋势、课程活跃度、学习进度、多维度统计图表 |
+| **系统设置** | 基础配置、功能开关、AI 模型配置、安全设置 |
+
+### 👨‍🏫 教师平台
+
+| 功能模块 | 描述 |
+|---------|------|
+| **课程管理** | 创建课程、学生管理、进度跟踪、课程资源上传 |
+| **AI 内容生成** | 基于 Spark 生成学习目标、知识要点、代码示例、练习题 |
+| **考核管理** | AI 智能出题、考试管理、成绩统计、学情分析 |
+| **师生互动** | 实时问答、讨论区管理、举手响应、作业批改 |
+| **内容版本控制** | 教学内容版本管理，支持回滚和对比 |
+
+### 👨‍🎓 学生平台
+
+| 功能模块 | 描述 |
+|---------|------|
+| **我的课程** | 课程列表、学习进度、继续学习、任务完成跟踪 |
+| **AI 学习助手** | 智能问答对话、学习疑问解答、个性化学习建议 |
+| **练习评测** | AI 智能评测、详细解析、错题本、成绩统计 |
+| **学习进度** | 学习时长、完成任务、成绩趋势、数据可视化 |
+| **学习笔记** | 笔记编辑、标签管理、笔记搜索、AI 摘要生成 |
+| **互动学习** | 向老师提问、参与讨论、查看通知、接收反馈 |
+
+### 🤖 AI 特色功能
+
+#### AI 学习助手
+- **多种对话风格**：严谨学术、幽默风趣、鼓励引导、简洁直接
+- **上下文理解**：结合课程内容和学习历史进行智能回答
+- **流式响应**：实时生成 AI 回复，提升用户体验
+
+#### 智能内容生成
+- **教学内容生成**：学习目标、知识要点、代码示例
+- **题库智能创建**：自动生成选择题、解析、难度分级
+- **错题智能分析**：深度分析错误原因、识别知识漏洞
+- **笔记智能整理**：笔记摘要、标签推荐、知识框架梳理
+- **学习报告生成**：周学习报告、综合学习建议
+
+---
+
+## 🏗️ 技术架构
+
+### 前端技术栈
+
+| 技术 | 版本 | 用途 |
+|------|------|------|
+| **React** | 19 | 核心 UI 框架 |
+| **Vite** | 6 | 构建工具 |
+| **Tailwind CSS** | 4 | 原子化 CSS 框架 |
+| **shadcn/ui** | Latest | UI 组件库 |
+| **React Router** | 7 | 路由管理 |
+| **Recharts** | 2 | 数据可视化 |
+| **Lucide React** | Latest | 图标库 |
+| **Socket.IO Client** | 4 | 实时通信 |
+| **React Hook Form** | 7 | 表单管理 |
+| **Zod** | 3 | 数据验证 |
+| **Tiptap** | 2.4 | 富文本编辑器 |
+| **Jest** | 29 | 测试框架 |
+
+### 后端技术栈
+
+| 技术 | 版本 | 用途 |
+|------|------|------|
+| **Flask** | 3.x | Web 框架 |
+| **Python** | 3.11+ | 编程语言 |
+| **Flask-SQLAlchemy** | 3.x | ORM 框架 |
+| **Flask-CORS** | 4.x | 跨域支持 |
+| **Flask-Caching** | - | 缓存支持 |
+| **SQLite** | - | 默认数据库 |
+| **Celery** | 5.x | 异步任务队列 |
+| **Redis** | 5.x+ | 缓存/消息队列 |
+| **Elasticsearch** | 8.x | 搜索引擎（可选） |
+| **Spark4.0 API** | Ultra | 大模型集成 |
+| **Alembic** | - | 数据库迁移 |
+| **Prometheus** | - | 监控系统 |
+| **Grafana** | - | 可视化仪表盘 |
+| **Logstash** | - | 日志处理 |
+| **Filebeat** | - | 日志采集 |
+
+### 系统架构图
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        前端层 (React)                        │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐ │
+│  │  管理员端   │  │   教师端    │  │      学生端         │ │
+│  └─────────────┘  └─────────────┘  └─────────────────────┘ │
+│         │                 │                  │              │
+│         └─────────────────┴──────────────────┘              │
+│                           │                                   │
+│                HTTP/WebSocket/SSE                           │
+└───────────────────────────┼───────────────────────────────────┘
+                            │
+┌───────────────────────────┼───────────────────────────────────┐
+│                      后端层 (Flask)                          │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │                    路由层                             │  │
+│  │  auth、course、ai、conversation、sse、metrics 等    │  │
+│  └──────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │                    服务层                             │  │
+│  │  Spark 服务、WebSocket 服务、搜索服务、知识库服务    │  │
+│  └──────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │                    模型层                             │  │
+│  │  User、Course、Conversation、Practice、Note 等     │  │
+│  └──────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │                  任务队列 (Celery)                    │  │
+│  │  AI 任务、邮件任务、导出任务、维护任务                │  │
+│  └──────────────────────────────────────────────────────┘  │
+└───────────────────────────┼───────────────────────────────────┘
+                            │
+┌───────────────────────────┼───────────────────────────────────┐
+│                       数据层                                │
+│  ┌──────────┐  ┌──────────┐  ┌──────────────────────────┐  │
+│  │  SQLite  │  │  Redis   │  │   Elasticsearch (可选)   │  │
+│  └──────────┘  └──────────┘  └──────────────────────────┘  │
+└───────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                      监控与日志层                            │
+│  ┌─────────────┐  ┌─────────────┐  ┌───────────────────┐  │
+│  │  Prometheus │  │   Grafana   │  │  ELK (日志系统)   │  │
+│  └─────────────┘  └─────────────┘  └───────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🚀 快速开始
+
+### 📋 环境要求
+
+- **Python**: 3.11+
+- **Node.js**: 18+
+- **包管理器**: npm 或 pnpm
+- **Redis** (可选，生产环境推荐)
+- **Elasticsearch** (可选，搜索引擎功能)
+
+### 🛠️ 后端启动
+
+1. 进入后端目录
+```bash
+cd backend
+```
+
+2. 创建虚拟环境
+```bash
+python -m venv venv
+```
+
+3. 激活虚拟环境
+```bash
+# Windows PowerShell
+.\venv\Scripts\Activate.ps1
+
+# Linux/macOS
+source venv/bin/activate
+```
+
+4. 安装依赖
+```bash
+pip install -r requirements.txt
+```
+
+5. 配置环境变量
+```bash
+cp .env.example .env
+# 编辑 .env 文件，填入 Spark API 密钥等配置
+```
+
+6. 启动后端服务
+```bash
+python src/main.py
+```
+
+✅ 后端将在 [http://localhost:5000](http://localhost:5000) 启动
+
+### 🎨 前端启动
+
+1. 进入前端目录
+```bash
+cd frontend
+```
+
+2. 安装依赖
+```bash
+pnpm install
+# 或
+npm install
+```
+
+3. 配置环境变量
+```bash
+cp .env.example .env
+```
+
+4. 启动开发服务器
+```bash
+pnpm run dev
+# 或
+npm run dev
+```
+
+✅ 前端将在 [http://localhost:5173](http://localhost:5173) 启动
+
+### 🔑 默认测试账号
+
+系统启动后会自动创建以下测试账号：
+
+| 角色 | 用户名 | 密码 |
+|------|--------|------|
+| 管理员 | admin | admin123 |
+| 教师 | teacher | teacher123 |
+| 学生 | student | student123 |
+
+---
+
+## 📁 项目结构
+
+```
+zhijiaoxing/
+├── backend/                           # 后端代码
+│   ├── src/
+│   │   ├── __init__.py
+│   │   ├── main.py                    # 应用入口
+│   │   ├── config.py                  # 配置管理
+│   │   ├── celery_app.py              # Celery 应用
+│   │   ├── celeryconfig.py            # Celery 配置
+│   │   ├── models/                    # 数据模型
+│   │   │   ├── __init__.py
+│   │   │   ├── user.py                # 用户模型
+│   │   │   ├── course.py              # 课程模型
+│   │   │   ├── conversation.py        # 对话模型
+│   │   │   ├── content_version.py     # 内容版本模型
+│   │   │   └── search_log.py          # 搜索日志模型
+│   │   ├── routes/                    # 路由模块
+│   │   │   ├── __init__.py
+│   │   │   ├── auth.py                # 认证路由
+│   │   │   ├── course.py              # 课程路由
+│   │   │   ├── ai_assistant.py        # AI 助手路由
+│   │   │   ├── admin.py               # 管理员路由
+│   │   │   ├── teacher.py             # 教师路由
+│   │   │   ├── student.py             # 学生路由
+│   │   │   ├── conversation_routes.py # 对话路由
+│   │   │   ├── sse_routes.py          # SSE 事件流路由
+│   │   │   ├── search_routes.py       # 搜索路由
+│   │   │   ├── mistake_book.py        # 错题本路由
+│   │   │   ├── notes.py               # 笔记路由
+│   │   │   ├── metrics_routes.py      # 监控指标路由
+│   │   │   └── student_settings.py    # 学生设置路由
+│   │   ├── services/                  # 服务层
+│   │   │   ├── __init__.py
+│   │   │   ├── spark_service.py       # Spark AI 服务
+│   │   │   ├── websocket_service.py   # WebSocket 服务
+│   │   │   ├── search_service.py      # 搜索服务
+│   │   │   ├── knowledge_base.py      # 知识库服务
+│   │   │   ├── elasticsearch_service.py # Elasticsearch 服务
+│   │   │   ├── alert_service.py       # 告警服务
+│   │   │   ├── metrics_service.py     # 监控服务
+│   │   │   └── version_control_service.py # 版本控制服务
+│   │   ├── tasks/                     # 异步任务
+│   │   │   ├── __init__.py
+│   │   │   ├── ai_tasks.py            # AI 任务
+│   │   │   ├── email_tasks.py         # 邮件任务
+│   │   │   ├── export_tasks.py        # 导出任务
+│   │   │   └── maintenance_tasks.py   # 维护任务
+│   │   ├── middleware/                # 中间件
+│   │   │   └── metrics_middleware.py  # 监控中间件
+│   │   ├── utils/                     # 工具函数
+│   │   │   ├── __init__.py
+│   │   │   ├── logger.py              # 日志工具
+│   │   │   ├── cache_utils.py         # 缓存工具
+│   │   │   └── sse_utils.py           # SSE 工具
+│   │   ├── alembic/                   # 数据库迁移
+│   │   │   ├── versions/
+│   │   │   ├── env.py
+│   │   │   └── script.py.mako
+│   │   ├── alembic.ini
+│   │   └── static/                    # 静态文件
+│   ├── instance/                      # 数据库文件
+│   ├── uploads/                       # 上传文件
+│   │   ├── avatars/
+│   │   └── videos/
+│   ├── logging/                       # 日志配置
+│   │   ├── filebeat/
+│   │   │   └── filebeat.yml
+│   │   └── logstash/
+│   │       ├── logstash.conf
+│   │       └── pipelines.yml
+│   ├── monitoring/                    # 监控配置
+│   │   ├── prometheus/
+│   │   │   ├── prometheus.yml
+│   │   │   └── alert_rules.yml
+│   │   ├── alertmanager/
+│   │   │   └── alertmanager.yml
+│   │   └── grafana/
+│   │       ├── dashboards/
+│   │       │   └── eduai-dashboard.json
+│   │       └── provisioning/
+│   │           ├── dashboards/
+│   │           │   └── dashboard.yml
+│   │           └── datasources/
+│   │               └── datasource.yml
+│   ├── 搜索引擎配置/                   # Elasticsearch 配置
+│   │   ├── config/
+│   │   ├── mappings/
+│   │   ├── scripts/
+│   │   └── README.md
+│   ├── .env                           # 环境变量
+│   ├── .env.example
+│   ├── requirements.txt               # Python 依赖
+│   ├── check_config.py                # 配置检查工具
+│   ├── emergency_fix.py              # 紧急修复工具
+│   └── test_spark_api.py             # Spark API 测试工具
+│
+├── frontend/                          # 前端代码
+│   ├── src/
+│   │   ├── main.jsx                   # 应用入口
+│   │   ├── App.jsx                    # 根组件
+│   │   ├── App.css
+│   │   ├── index.css
+│   │   ├── components/                # React 组件
+│   │   │   ├── LandingPage.jsx        # 首页
+│   │   │   ├── LoginPage.jsx          # 登录页
+│   │   │   ├── WelcomeGuide.jsx       # 欢迎向导
+│   │   │   ├── AdminDashboard.jsx     # 管理员仪表板
+│   │   │   ├── TeacherDashboard.jsx   # 教师仪表板
+│   │   │   ├── StudentDashboard.jsx   # 学生仪表板
+│   │   │   ├── CourseLearningPage.jsx # 课程学习页
+│   │   │   ├── UserManagement.jsx     # 用户管理
+│   │   │   ├── CourseManagement.jsx   # 课程管理
+│   │   │   ├── DataAnalytics.jsx      # 数据分析
+│   │   │   ├── SystemSettings.jsx     # 系统设置
+│   │   │   ├── AIChatPanel.jsx        # AI 聊天面板
+│   │   │   ├── StudentInteractionPanel.jsx # 学生互动面板
+│   │   │   ├── VideoPlayer.jsx        # 视频播放器
+│   │   │   ├── VideoLessonManager.jsx # 视频课程管理
+│   │   │   ├── ErrorBoundary.jsx      # 错误边界
+│   │   │   ├── MistakeBook/           # 错题本组件
+│   │   │   │   ├── index.jsx
+│   │   │   │   ├── MistakeList.jsx
+│   │   │   │   ├── MistakeDetail.jsx
+│   │   │   │   ├── MistakeStats.jsx
+│   │   │   │   ├── AIAnalysisPanel.jsx
+│   │   │   │   ├── ReviewQuestion.jsx
+│   │   │   │   ├── ReviewResult.jsx
+│   │   │   │   └── __tests__/
+│   │   │   ├── StudyNotes/            # 学习笔记组件
+│   │   │   │   ├── index.jsx
+│   │   │   │   ├── NoteEditor.jsx
+│   │   │   │   ├── NoteViewer.jsx
+│   │   │   │   ├── NoteCard.jsx
+│   │   │   │   ├── NoteSearch.jsx
+│   │   │   │   ├── NoteAIPanel.jsx
+│   │   │   │   ├── VideoNotesPanel.jsx
+│   │   │   │   ├── TagCloud.jsx
+│   │   │   │   └── __tests__/
+│   │   │   ├── Practice/              # 练习组件
+│   │   │   │   ├── index.jsx
+│   │   │   │   ├── PracticeContext.jsx
+│   │   │   │   ├── PracticeSelector.jsx
+│   │   │   │   ├── QuestionPanel.jsx
+│   │   │   │   └── ResultPage.jsx
+│   │   │   ├── Search/                # 搜索组件
+│   │   │   │   ├── index.js
+│   │   │   │   ├── SearchBar.jsx
+│   │   │   │   ├── SearchResults.jsx
+│   │   │   │   └── __tests__/
+│   │   │   ├── AIContentReview/       # AI 内容审核组件
+│   │   │   │   ├── index.jsx
+│   │   │   │   ├── ContentReviewList.jsx
+│   │   │   │   ├── OperationLog.jsx
+│   │   │   │   ├── QualityScoring.jsx
+│   │   │   │   ├── ReviewMechanism.jsx
+│   │   │   │   └── VersionCompare.jsx
+│   │   │   ├── VirtualList/           # 虚拟列表组件
+│   │   │   │   ├── index.jsx
+│   │   │   │   └── VirtualList.css
+│   │   │   ├── OptimizedChart/        # 优化图表组件
+│   │   │   │   ├── index.jsx
+│   │   │   │   └── OptimizedChart.css
+│   │   │   └── ui/                    # UI 基础组件 (shadcn)
+│   │   │       ├── button.jsx
+│   │   │       ├── input.jsx
+│   │   │       ├── card.jsx
+│   │   │       ├── dialog.jsx
+│   │   │       ├── dropdown-menu.jsx
+│   │   │       ├── form.jsx
+│   │   │       ├── select.jsx
+│   │   │       ├── table.jsx
+│   │   │       ├── tabs.jsx
+│   │   │       ├── textarea.jsx
+│   │   │       ├── tooltip.jsx
+│   │   │       ├── alert.jsx
+│   │   │       ├── badge.jsx
+│   │   │       ├── breadcrumb.jsx
+│   │   │       ├── calendar.jsx
+│   │   │       ├── carousel.jsx
+│   │   │       ├── checkbox.jsx
+│   │   │       ├── collapsible.jsx
+│   │   │       ├── command.jsx
+│   │   │       ├── context-menu.jsx
+│   │   │       ├── drawer.jsx
+│   │   │       ├── hover-card.jsx
+│   │   │       ├── input-otp.jsx
+│   │   │       ├── label.jsx
+│   │   │       ├── menubar.jsx
+│   │   │       ├── navigation-menu.jsx
+│   │   │       ├── pagination.jsx
+│   │   │       ├── popover.jsx
+│   │   │       ├── progress.jsx
+│   │   │       ├── radio-group.jsx
+│   │   │       ├── resizable.jsx
+│   │   │       ├── scroll-area.jsx
+│   │   │       ├── separator.jsx
+│   │   │       ├── sheet.jsx
+│   │   │       ├── sidebar.jsx
+│   │   │       ├── skeleton.jsx
+│   │   │       ├── slider.jsx
+│   │   │       ├── sonner.jsx
+│   │   │       ├── switch.jsx
+│   │   │       ├── toggle-group.jsx
+│   │   │       ├── toggle.jsx
+│   │   │       └── RichTextEditor.jsx
+│   │   ├── hooks/                     # 自定义 Hooks
+│   │   │   ├── use-mobile.js
+│   │   │   └── useSSEChat.js
+│   │   ├── services/                  # API 服务
+│   │   │   ├── api.js
+│   │   │   ├── searchApi.js
+│   │   │   ├── websocket.js
+│   │   │   └── __tests__/
+│   │   ├── router/                    # 路由配置
+│   │   │   └── index.jsx
+│   │   ├── lib/                       # 工具库
+│   │   │   └── utils.js
+│   │   ├── styles/                    # 样式文件
+│   │   │   └── rich-text-editor.css
+│   │   └── utils/                     # 工具函数
+│   │       ├── lazyLoad.js
+│   │       └── pwa.js
+│   ├── public/                        # 公共静态文件
+│   │   ├── index.html
+│   │   ├── 404.html
+│   │   ├── favicon.ico
+│   │   ├── manifest.json
+│   │   └── service-worker.js
+│   ├── index.html
+│   ├── vite.config.js
+│   ├── jest.config.js
+│   ├── jest.setup.js
+│   ├── eslint.config.js
+│   ├── jsconfig.json
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── pnpm-lock.yaml
+│   ├── components.json
+│   ├── .env.example
+│   ├── .env.development
+│   ├── .env.production
+│   ├── .gitignore
+│   ├── diagnose_admin.py
+│   ├── diagnose_page.py
+│   ├── check_page_content.py
+│   ├── create_manual_docx.js
+│   ├── final_verify.py
+│   └── verify_ai_review.py
+│
+├── README.md                           # 项目说明
+└── 智教星项目开发文档.docx            # 开发文档
+```
+
+---
+
+## 📚 API 文档
+
+### 认证 API
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| POST | `/api/login` | 用户登录 |
+| POST | `/api/logout` | 用户登出 |
+| GET | `/api/user` | 获取当前用户信息 |
+
+### 课程 API
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/api/courses` | 获取课程列表 |
+| POST | `/api/courses` | 创建课程 |
+| GET | `/api/courses/:id` | 获取课程详情 |
+| PUT | `/api/courses/:id` | 更新课程 |
+| DELETE | `/api/courses/:id` | 删除课程 |
+
+### AI 助手 API
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| POST | `/api/ai/chat` | AI 对话 |
+| POST | `/api/ai/chat-stream` | AI 流式对话 |
+| POST | `/api/ai/evaluate` | 评测练习答案 |
+| GET | `/api/ai/practice-history` | 获取练习历史 |
+| POST | `/api/ai/knowledge-search` | 搜索知识库 |
+
+### SSE 事件流 API
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | `/api/sse/ai-stream` | AI 响应流式传输 |
+| GET | `/api/sse/mistake-analysis` | 错题分析流式传输 |
+| GET | `/api/sse/note-summary` | 笔记摘要流式传输 |
+
+### WebSocket 事件
+
+| 事件 | 描述 |
+|------|------|
+| `student_join` | 学生加入课程 |
+| `student_leave` | 学生离开课程 |
+| `raise_hand` | 学生举手 |
+| `lower_hand` | 学生放下手 |
+| `send_message` | 发送消息 |
+| `teacher_response` | 教师响应 |
+
+---
+
+## ⚙️ 配置说明
+
+### 后端环境变量 (`backend/.env`)
+
+```bash
+# Spark 星火大模型 API 配置
+SPARK_API_PASSWORD=your_api_password_here
+# 或者使用 API Key + Secret
+SPARK_API_KEY=your_api_key
+SPARK_API_SECRET=your_api_secret
+SPARK_MODEL=lite  # 可选: lite, pro, ultra
+SPARK_API_URL=https://spark-api-open.xf-yun.com/v1/chat/completions
+
+# 数据库配置
+DATABASE_URL=sqlite:///instance/dev.db
+# PostgreSQL 示例: postgresql://user:password@host:5432/dbname
+
+# Flask 配置
+SECRET_KEY=your-secret-key-change-this-in-production
+FLASK_ENV=development  # development/production/testing
+DEBUG=True
+
+# Redis 配置 (Celery 和缓存)
+REDIS_URL=redis://localhost:6379/0
+
+# 缓存配置
+CACHE_TYPE=SimpleCache  # SimpleCache/RedisCache/NullCache
+
+# Elasticsearch 配置 (可选)
+ELASTICSEARCH_ENABLED=True
+ELASTICSEARCH_HOST=localhost
+ELASTICSEARCH_PORT=9200
+```
+
+### 前端环境变量 (`frontend/.env`)
+
+```bash
+# 后端 API 地址
+VITE_API_BASE_URL=http://localhost:5000/api
+
+# 生产环境配置
+# VITE_API_BASE_URL=https://your-backend-domain.com/api
+```
+
+---
+
+## 🔧 开发指南
+
+### 运行测试
+
+#### 后端测试
+```bash
+cd backend
+pytest
+```
+
+#### 前端测试
+```bash
+cd frontend
+pnpm test
+# 或
+npm test
+
+# 测试覆盖率
+pnpm test:coverage
+```
+
+### 代码规范
+
+#### 后端 (Python)
+- 遵循 PEP 8 规范
+- 使用类型提示
+- 文档字符串使用 Google 风格
+
+#### 前端 (JavaScript/React)
+- 使用 ESLint 进行代码检查
+- 组件使用函数式组件 + Hooks
+- 使用 Tailwind CSS 进行样式开发
+
+### 数据库迁移
+
+项目使用 Alembic 进行数据库迁移：
+
+```bash
+cd backend/src
+
+# 创建新的迁移
+alembic revision --autogenerate -m "description"
+
+# 应用迁移
+alembic upgrade head
+
+# 回滚迁移
+alembic downgrade -1
+```
+
+### 异步任务
+
+启动 Celery worker：
+
+```bash
+cd backend
+celery -A src.celery_app worker --loglevel=info
+```
+
+启动 Celery Beat (定时任务)：
+
+```bash
+cd backend
+celery -A src.celery_app beat --loglevel=info
+```
+
+---
+
+## 📊 监控与日志
+
+### Prometheus + Grafana
+
+项目内置完整的监控系统：
+
+1. **Prometheus**: 系统指标采集
+2. **Grafana**: 可视化仪表盘
+3. **Alertmanager**: 告警管理
+
+启动监控系统：
+
+```bash
+cd backend/monitoring
+# 使用 Docker Compose 或单独启动各组件
+```
+
+访问 Grafana: [http://localhost:3000](http://localhost:3000) (默认账号: admin/admin)
+
+### 日志系统 (ELK Stack)
+
+1. **Filebeat**: 日志采集
+2. **Logstash**: 日志处理
+3. **Elasticsearch**: 日志存储与搜索
+4. **Kibana**: 日志可视化 (可选)
+
+---
+
+## 🤔 常见问题
+
+### Q: 如何配置 Spark API？
+
+A: 在 `backend/.env` 文件中配置 `SPARK_API_PASSWORD` 或 `SPARK_API_KEY` + `SPARK_API_SECRET`。
+
+### Q: 数据库在哪里？
+
+A: 默认使用 SQLite，数据库文件在 `backend/instance/dev.db`。生产环境建议使用 PostgreSQL。
+
+### Q: 前端无法连接后端？
+
+A: 检查 `frontend/.env` 中的 `VITE_API_BASE_URL` 是否正确指向后端地址。
+
+### Q: AI 功能无法使用？
+
+A: 
+1. 检查 Spark API 密钥是否正确配置
+2. 查看后端日志是否有 API 调用错误
+3. 运行 `python backend/check_config.py` 诊断配置
+
+### Q: 如何重置数据库？
+
+A: 删除 `backend/instance/dev.db`，重启后端会自动创建新数据库和默认用户。
+
+### Q: 如何启用 Elasticsearch 搜索功能？
+
+A: 
+1. 安装并启动 Elasticsearch
+2. 运行 `backend/搜索引擎配置/scripts/init_indices.py` 初始化索引
+3. 在 `.env` 中设置 `ELASTICSEARCH_ENABLED=True`
+
+---
+
+## 📄 许可证
+
+本项目仅供学习和研究使用。
+
+---
+
+## 👥 团队信息
+
+**项目名称**: 智教星 - 智能教学管理平台
+
+**技术栈**: React 19 + Flask 3.0 + Spark4.0 Ultra
+
+**适用场景**:
+- 在线教育系统
+- 智慧课堂
+- 企业培训平台
+- 个性化学习系统
+
+---
+
+## 🙏 致谢
+
+感谢以下开源项目和服务：
+
+- [Spark 星火大模型](https://www.xfyun.cn/) - AI 能力支持
+- [React](https://react.dev/) - 前端框架
+- [Flask](https://flask.palletsprojects.com/) - 后端框架
+- [Tailwind CSS](https://tailwindcss.com/) - 样式框架
+- [shadcn/ui](https://ui.shadcn.com/) - UI 组件
+- [Vite](https://vitejs.dev/) - 构建工具
+- [Prometheus](https://prometheus.io/) - 监控系统
+- [Grafana](https://grafana.com/) - 可视化仪表盘
+
+---
+
+**🌟 祝您使用愉快！**
