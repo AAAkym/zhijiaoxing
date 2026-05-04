@@ -1,0 +1,142 @@
+/**
+ * 优化图表组件样式
+ */
+
+/* 图表容器 */
+.optimized-chart {
+  position: relative;
+  width: 100%;
+}
+
+/* 图表占位符 */
+.optimized-chart-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+  border-radius: 8px;
+  min-height: 200px;
+}
+
+/* 加载状态 */
+.chart-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: #666;
+}
+
+.chart-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e0e0e0;
+  border-top-color: #2196f3;
+  border-radius: 50%;
+  animation: chart-spin 1s linear infinite;
+}
+
+@keyframes chart-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 性能指标显示 */
+.chart-performance-metrics {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: monospace;
+  z-index: 10;
+}
+
+.chart-performance-metrics .metric {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.chart-performance-metrics .metric-label {
+  opacity: 0.8;
+}
+
+.chart-performance-metrics .metric-value {
+  font-weight: bold;
+}
+
+/* 大数据提示 */
+.big-data-notice {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 4px 8px;
+  background: rgba(33, 150, 243, 0.9);
+  color: white;
+  border-radius: 4px;
+  font-size: 11px;
+  z-index: 10;
+}
+
+/* 图表工具提示优化 */
+.recharts-tooltip-wrapper {
+  outline: none;
+}
+
+.recharts-default-tooltip {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid #e0e0e0 !important;
+  border-radius: 4px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* 响应式适配 */
+@media (max-width: 768px) {
+  .optimized-chart-placeholder {
+    min-height: 150px;
+  }
+  
+  .chart-performance-metrics {
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+  
+  .big-data-notice {
+    font-size: 10px;
+  }
+}
+
+/* 暗黑模式 */
+@media (prefers-color-scheme: dark) {
+  .optimized-chart-placeholder {
+    background: #1e1e1e;
+  }
+  
+  .chart-loading {
+    color: #aaa;
+  }
+  
+  .chart-spinner {
+    border-color: #333;
+    border-top-color: #2196f3;
+  }
+  
+  .recharts-default-tooltip {
+    background: rgba(30, 30, 30, 0.95) !important;
+    border-color: #333 !important;
+    color: white !important;
+  }
+}
+
+/* 打印样式 */
+@media print {
+  .chart-performance-metrics,
+  .big-data-notice {
+    display: none;
+  }
+}

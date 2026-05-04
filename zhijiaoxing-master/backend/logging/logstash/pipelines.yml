@@ -1,0 +1,21 @@
+# Logstash Pipelines 配置
+# 定义多个管道用于不同的日志处理场景
+
+- pipeline.id: main
+  path.config: "/usr/share/logstash/pipeline/logstash.conf"
+  pipeline.workers: 2
+  pipeline.batch.size: 125
+  pipeline.batch.delay: 50
+  queue.type: persisted
+  queue.max_bytes: 1gb
+
+- pipeline.id: error-processing
+  path.config: "/usr/share/logstash/pipeline/error-pipeline.conf"
+  pipeline.workers: 1
+  pipeline.batch.size: 50
+  queue.type: persisted
+
+- pipeline.id: metrics-processing
+  path.config: "/usr/share/logstash/pipeline/metrics-pipeline.conf"
+  pipeline.workers: 2
+  pipeline.batch.size: 100

@@ -1,0 +1,84 @@
+# Elasticsearch JVM 配置
+# 版本: 8.11.0
+
+# ==================== 堆内存配置 ====================
+# 建议设置为物理内存的50%，但不超过32GB
+# 对于开发环境，建议至少2GB
+-Xms2g
+-Xmx2g
+
+# ==================== 垃圾回收配置 ====================
+# 使用G1垃圾回收器
+-XX:+UseG1GC
+
+# G1GC配置
+-XX:G1ReservePercent=25
+-XX:InitiatingHeapOccupancyPercent=30
+-XX:MaxGCPauseMillis=200
+-XX:+UseStringDeduplication
+
+# ==================== 性能优化 ====================
+# 禁用显式GC
+-XX:+DisableExplicitGC
+
+# 使用LargePages
+-XX:+UseLargePages
+
+# 压缩OOPs
+-XX:+UseCompressedOops
+
+# ==================== 错误处理 ====================
+# OOM时生成堆转储
+-XX:+HeapDumpOnOutOfMemoryError
+-XX:HeapDumpPath=/usr/share/elasticsearch/logs/heap_dump.hprof
+
+# 错误日志路径
+-XX:ErrorFile=/usr/share/elasticsearch/logs/hs_err_pid%p.log
+
+# ==================== GC日志 ====================
+# 启用GC日志
+-XX:+PrintGCDetails
+-XX:+PrintGCDateStamps
+-XX:+PrintTenuringDistribution
+-XX:+PrintGCApplicationStoppedTime
+-Xloggc:/usr/share/elasticsearch/logs/gc.log
+-XX:+UseGCLogFileRotation
+-XX:NumberOfGCLogFiles=10
+-XX:GCLogFileSize=64m
+
+# ==================== 网络配置 ====================
+# 使用IPv4
+-Djava.net.preferIPv4Stack=true
+
+# ==================== 时区配置 ====================
+-Duser.timezone=Asia/Shanghai
+
+# ==================== 编码配置 ====================
+-Dfile.encoding=UTF-8
+-Dsun.jnu.encoding=UTF-8
+
+# ==================== 安全配置 ====================
+# 禁用Java序列化
+-Djdk.serialFilter=!*
+
+# ==================== Elasticsearch特定配置 ====================
+# 配置路径
+-Des.path.home=/usr/share/elasticsearch
+-Des.path.conf=/usr/share/elasticsearch/config
+-Des.path.logs=/usr/share/elasticsearch/logs
+-Des.path.data=/usr/share/elasticsearch/data
+
+# 分布式配置
+-Des.networkaddress.cache.ttl=60
+-Des.networkaddress.cache.negative.ttl=10
+
+# 模块配置
+-Des.transport.cname_in_publish_address=true
+
+# ==================== 调试配置 (仅开发环境) ====================
+# 启用JMX (可选)
+# -Dcom.sun.management.jmxremote
+# -Dcom.sun.management.jmxremote.port=9010
+# -Dcom.sun.management.jmxremote.local.only=false
+# -Dcom.sun.management.jmxremote.authenticate=false
+# -Dcom.sun.management.jmxremote.ssl=false

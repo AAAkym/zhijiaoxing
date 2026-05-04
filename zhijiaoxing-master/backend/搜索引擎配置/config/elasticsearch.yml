@@ -1,0 +1,138 @@
+# Elasticsearch 配置文件
+# 版本: 8.11.0
+
+# ==================== 集群配置 ====================
+cluster:
+  name: eduai-cluster
+  routing:
+    allocation:
+      disk:
+        watermark:
+          low: 85%
+          high: 90%
+          flood_stage: 95%
+      awareness:
+        attributes: rack_id
+
+# ==================== 节点配置 ====================
+node:
+  name: eduai-node-1
+  master: true
+  data: true
+  ingest: true
+  max_local_storage_nodes: 1
+
+# ==================== 路径配置 ====================
+path:
+  data: /usr/share/elasticsearch/data
+  logs: /usr/share/elasticsearch/logs
+
+# ==================== 网络配置 ====================
+network:
+  host: 0.0.0.0
+  bind_host: 0.0.0.0
+  publish_host: _local_
+
+http:
+  port: 9200
+  cors:
+    enabled: true
+    allow-origin: "*"
+    allow-methods: OPTIONS, HEAD, GET, POST, PUT, DELETE
+    allow-headers: X-Requested-With, X-Auth-Token, Content-Type, Content-Length, Authorization
+    allow-credentials: true
+  max_content_length: 500mb
+  compression: true
+
+transport:
+  port: 9300
+
+# ==================== 发现配置 ====================
+discovery:
+  type: single-node
+  seed_hosts: []
+  initial_master_nodes:
+    - eduai-node-1
+
+# ==================== 网关配置 ====================
+gateway:
+  recover_after_nodes: 1
+  expected_nodes: 1
+  recover_after_time: 5m
+
+# ==================== 索引配置 ====================
+indices:
+  memory:
+    index_buffer_size: 20%
+  queries:
+    cache:
+      size: 20%
+  fielddata:
+    cache:
+      size: 30%
+  recovery:
+    max_bytes_per_sec: 50mb
+    max_concurrent_file_streams: 5
+
+# ==================== 线程池配置 ====================
+thread_pool:
+  search:
+    size: 1000
+    queue_size: 10000
+  write:
+    size: 100
+    queue_size: 200
+  index:
+    size: 100
+    queue_size: 200
+
+# ==================== 缓存配置 ====================
+indices.queries.cache.size: 20%
+indices.fielddata.cache.size: 30%
+indices.memory.index_buffer_size: 20%
+
+# ==================== 安全配置 ====================
+xpack:
+  security:
+    enabled: true
+    authc:
+      api_key:
+        enabled: true
+    enrollment:
+      enabled: true
+    http:
+      ssl:
+        enabled: false
+    transport:
+      ssl:
+        enabled: false
+  monitoring:
+    enabled: true
+    collection:
+      enabled: true
+  ml:
+    enabled: true
+  watcher:
+    enabled: true
+  ilm:
+    enabled: true
+
+# ==================== 性能配置 ====================
+bootstrap:
+  memory_lock: true
+  system_call_filter: false
+
+# ==================== 日志配置 ====================
+logger:
+  level: INFO
+  org.elasticsearch.discovery: DEBUG
+  org.elasticsearch.cluster.service: DEBUG
+
+# ==================== 其他配置 ====================
+action:
+  auto_create_index: false
+  destructive_requires_name: true
+
+cluster.max_shards_per_node: 3000
+
+reindex.remote.whitelist: "*:*"

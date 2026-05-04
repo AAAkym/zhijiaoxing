@@ -1,0 +1,310 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 1,
+    "analysis": {
+      "analyzer": {
+        "ik_smart_custom": {
+          "type": "custom",
+          "tokenizer": "ik_smart",
+          "filter": [
+            "lowercase",
+            "asciifolding"
+          ]
+        },
+        "ik_max_word_custom": {
+          "type": "custom",
+          "tokenizer": "ik_max_word",
+          "filter": [
+            "lowercase",
+            "asciifolding"
+          ]
+        },
+        "pinyin_analyzer": {
+          "type": "custom",
+          "tokenizer": "pinyin_tokenizer"
+        }
+      },
+      "tokenizer": {
+        "pinyin_tokenizer": {
+          "type": "pinyin",
+          "keep_separate_first_letter": false,
+          "keep_full_pinyin": true,
+          "keep_original": true,
+          "limit_first_letter_length": 16,
+          "lowercase": true,
+          "remove_duplicated_term": true
+        }
+      },
+      "filter": {
+        "asciifolding": {
+          "type": "asciifolding",
+          "preserve_original": true
+        }
+      }
+    },
+    "index": {
+      "max_result_window": 10000,
+      "refresh_interval": "5s",
+      "number_of_routing_shards": 30
+    }
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "id": {
+        "type": "keyword",
+        "index": true,
+        "store": true
+      },
+      "title": {
+        "type": "text",
+        "analyzer": "ik_max_word_custom",
+        "search_analyzer": "ik_smart_custom",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          },
+          "pinyin": {
+            "type": "text",
+            "analyzer": "pinyin_analyzer"
+          }
+        },
+        "boost": 3.0
+      },
+      "subtitle": {
+        "type": "text",
+        "analyzer": "ik_max_word_custom",
+        "search_analyzer": "ik_smart_custom",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        },
+        "boost": 2.0
+      },
+      "description": {
+        "type": "text",
+        "analyzer": "ik_max_word_custom",
+        "search_analyzer": "ik_smart_custom",
+        "boost": 1.5
+      },
+      "content": {
+        "type": "text",
+        "analyzer": "ik_max_word_custom",
+        "search_analyzer": "ik_smart_custom",
+        "store": false
+      },
+      "category": {
+        "type": "keyword",
+        "index": true,
+        "fields": {
+          "text": {
+            "type": "text",
+            "analyzer": "ik_smart_custom"
+          }
+        }
+      },
+      "sub_category": {
+        "type": "keyword",
+        "index": true
+      },
+      "tags": {
+        "type": "keyword",
+        "index": true,
+        "boost": 1.2
+      },
+      "difficulty": {
+        "type": "keyword",
+        "index": true
+      },
+      "difficulty_level": {
+        "type": "integer",
+        "index": true
+      },
+      "duration": {
+        "type": "integer",
+        "index": true,
+        "null_value": 0
+      },
+      "duration_unit": {
+        "type": "keyword"
+      },
+      "instructor": {
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "text",
+            "analyzer": "ik_smart_custom",
+            "fields": {
+              "keyword": {
+                "type": "keyword"
+              }
+            }
+          },
+          "title": {
+            "type": "keyword"
+          },
+          "avatar": {
+            "type": "keyword",
+            "index": false
+          }
+        }
+      },
+      "cover_image": {
+        "type": "keyword",
+        "index": false
+      },
+      "video_url": {
+        "type": "keyword",
+        "index": false
+      },
+      "price": {
+        "type": "scaled_float",
+        "scaling_factor": 100
+      },
+      "original_price": {
+        "type": "scaled_float",
+        "scaling_factor": 100
+      },
+      "currency": {
+        "type": "keyword"
+      },
+      "is_free": {
+        "type": "boolean",
+        "index": true
+      },
+      "is_published": {
+        "type": "boolean",
+        "index": true
+      },
+      "status": {
+        "type": "keyword",
+        "index": true
+      },
+      "language": {
+        "type": "keyword",
+        "index": true
+      },
+      "target_audience": {
+        "type": "keyword",
+        "index": true
+      },
+      "prerequisites": {
+        "type": "text",
+        "analyzer": "ik_smart_custom"
+      },
+      "learning_objectives": {
+        "type": "text",
+        "analyzer": "ik_smart_custom"
+      },
+      "syllabus": {
+        "type": "nested",
+        "properties": {
+          "chapter_id": {
+            "type": "keyword"
+          },
+          "chapter_title": {
+            "type": "text",
+            "analyzer": "ik_smart_custom"
+          },
+          "order": {
+            "type": "integer"
+          },
+          "lessons": {
+            "type": "nested",
+            "properties": {
+              "lesson_id": {
+                "type": "keyword"
+              },
+              "lesson_title": {
+                "type": "text",
+                "analyzer": "ik_smart_custom"
+              },
+              "duration": {
+                "type": "integer"
+              },
+              "is_free": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      },
+      "rating": {
+        "type": "float",
+        "index": true
+      },
+      "rating_count": {
+        "type": "integer",
+        "index": true
+      },
+      "student_count": {
+        "type": "integer",
+        "index": true
+      },
+      "completion_count": {
+        "type": "integer"
+      },
+      "view_count": {
+        "type": "integer",
+        "index": true
+      },
+      "like_count": {
+        "type": "integer"
+      },
+      "favorite_count": {
+        "type": "integer"
+      },
+      "comment_count": {
+        "type": "integer"
+      },
+      "created_at": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis",
+        "index": true
+      },
+      "updated_at": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      },
+      "published_at": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis",
+        "index": true
+      },
+      "start_date": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      },
+      "end_date": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      },
+      "organization": {
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "text",
+            "analyzer": "ik_smart_custom",
+            "fields": {
+              "keyword": {
+                "type": "keyword"
+              }
+            }
+          }
+        }
+      },
+      "metadata": {
+        "type": "object",
+        "enabled": false
+      }
+    }
+  }
+}

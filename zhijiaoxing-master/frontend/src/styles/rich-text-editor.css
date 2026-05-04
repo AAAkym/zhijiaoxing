@@ -1,0 +1,299 @@
+/* Rich Text Editor Styles */
+
+/* Basic prose styles */
+.tiptap {
+  outline: none;
+}
+
+.tiptap p.is-editor-empty:first-child::before {
+  color: #adb5bd;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Headings */
+.tiptap h1 {
+  font-size: 2em;
+  font-weight: 700;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+}
+
+.tiptap h2 {
+  font-size: 1.5em;
+  font-weight: 600;
+  margin-top: 0.8em;
+  margin-bottom: 0.4em;
+}
+
+.tiptap h3 {
+  font-size: 1.25em;
+  font-weight: 600;
+  margin-top: 0.6em;
+  margin-bottom: 0.3em;
+}
+
+/* Paragraphs and text */
+.tiptap p {
+  margin: 0.5em 0;
+  line-height: 1.6;
+}
+
+/* Bold, Italic, Underline, Strike */
+.tiptap strong {
+  font-weight: 700;
+}
+
+.tiptap em {
+  font-style: italic;
+}
+
+.tiptap u {
+  text-decoration: underline;
+}
+
+.tiptap s {
+  text-decoration: line-through;
+}
+
+/* Code */
+.tiptap code {
+  background-color: #f3f4f6;
+  border-radius: 0.25rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.875em;
+  padding: 0.125rem 0.25rem;
+}
+
+/* Code Block */
+.tiptap pre {
+  background-color: #1f2937;
+  border-radius: 0.5rem;
+  color: #f9fafb;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  margin: 1rem 0;
+  overflow-x: auto;
+  padding: 0.75rem 1rem;
+}
+
+.tiptap pre code {
+  background-color: transparent;
+  color: inherit;
+  font-size: 0.875rem;
+  padding: 0;
+}
+
+/* Blockquote */
+.tiptap blockquote {
+  border-left: 3px solid #e5e7eb;
+  margin-left: 0;
+  margin-right: 0;
+  padding-left: 1rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* Lists */
+.tiptap ul,
+.tiptap ol {
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+
+.tiptap ul {
+  list-style-type: disc;
+}
+
+.tiptap ol {
+  list-style-type: decimal;
+}
+
+.tiptap li {
+  margin: 0.25rem 0;
+}
+
+.tiptap li p {
+  margin: 0;
+}
+
+/* Task List */
+.tiptap ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.tiptap ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.tiptap ul[data-type="taskList"] li > label {
+  flex: 0 0 auto;
+  margin-right: 0.5rem;
+  user-select: none;
+}
+
+.tiptap ul[data-type="taskList"] li > label input[type="checkbox"] {
+  cursor: pointer;
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.25rem;
+}
+
+.tiptap ul[data-type="taskList"] li > div {
+  flex: 1 1 auto;
+}
+
+/* Text Alignment */
+.tiptap[style*="text-align: center"] {
+  text-align: center;
+}
+
+.tiptap[style*="text-align: right"] {
+  text-align: right;
+}
+
+.tiptap[style*="text-align: justify"] {
+  text-align: justify;
+}
+
+/* Highlight */
+.tiptap mark {
+  background-color: #fef08a;
+  border-radius: 0.25rem;
+  padding: 0.125rem 0.25rem;
+}
+
+/* Links */
+.tiptap a {
+  color: #2563eb;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.tiptap a:hover {
+  color: #1d4ed8;
+}
+
+/* Images */
+.tiptap img {
+  border-radius: 0.5rem;
+  max-width: 100%;
+  height: auto;
+  margin: 1rem 0;
+}
+
+.tiptap img.ProseMirror-selectednode {
+  outline: 3px solid #3b82f6;
+}
+
+/* Horizontal Rule */
+.tiptap hr {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 1.5rem 0;
+}
+
+/* Selection */
+.tiptap ::selection {
+  background-color: #bfdbfe;
+}
+
+/* Placeholder */
+.tiptap p.is-editor-empty:first-child::before {
+  color: #9ca3af;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Syntax Highlighting for Code Blocks */
+.hljs-comment,
+.hljs-quote {
+  color: #6e7681;
+}
+
+.hljs-variable,
+.hljs-template-variable,
+.hljs-attr,
+.hljs-tag,
+.hljs-name,
+.hljs-regexp,
+.hljs-link,
+.hljs-selector-id,
+.hljs-selector-class {
+  color: #f97583;
+}
+
+.hljs-number,
+.hljs-meta,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params {
+  color: #79c0ff;
+}
+
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet {
+  color: #a5d6ff;
+}
+
+.hljs-title,
+.hljs-section {
+  color: #d2a8ff;
+}
+
+.hljs-keyword,
+.hljs-selector-tag {
+  color: #ff7b72;
+}
+
+/* Dark mode support */
+.dark .tiptap code {
+  background-color: #374151;
+}
+
+.dark .tiptap blockquote {
+  border-left-color: #4b5563;
+  color: #9ca3af;
+}
+
+.dark .tiptap hr {
+  border-top-color: #4b5563;
+}
+
+.dark .tiptap ::selection {
+  background-color: #1e40af;
+}
+
+/* Fullscreen mode */
+.fixed.inset-0 .tiptap {
+  min-height: calc(100vh - 120px);
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .tiptap h1 {
+    font-size: 1.5em;
+  }
+
+  .tiptap h2 {
+    font-size: 1.25em;
+  }
+
+  .tiptap h3 {
+    font-size: 1.125em;
+  }
+
+  .tiptap pre {
+    padding: 0.5rem;
+    font-size: 0.75rem;
+  }
+}

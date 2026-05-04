@@ -1,0 +1,165 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "analysis": {
+      "analyzer": {
+        "ik_smart_custom": {
+          "type": "custom",
+          "tokenizer": "ik_smart",
+          "filter": [
+            "lowercase",
+            "asciifolding"
+          ]
+        },
+        "ik_max_word_custom": {
+          "type": "custom",
+          "tokenizer": "ik_max_word",
+          "filter": [
+            "lowercase",
+            "asciifolding"
+          ]
+        },
+        "pinyin_analyzer": {
+          "type": "custom",
+          "tokenizer": "pinyin_tokenizer"
+        },
+        "edge_ngram_analyzer": {
+          "type": "custom",
+          "tokenizer": "edge_ngram_tokenizer",
+          "filter": [
+            "lowercase"
+          ]
+        },
+        "standard_with_asciifolding": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": [
+            "lowercase",
+            "asciifolding"
+          ]
+        }
+      },
+      "tokenizer": {
+        "pinyin_tokenizer": {
+          "type": "pinyin",
+          "keep_separate_first_letter": false,
+          "keep_full_pinyin": true,
+          "keep_original": true,
+          "limit_first_letter_length": 16,
+          "lowercase": true,
+          "remove_duplicated_term": true
+        },
+        "edge_ngram_tokenizer": {
+          "type": "edge_ngram",
+          "min_gram": 1,
+          "max_gram": 20,
+          "token_chars": [
+            "letter",
+            "digit",
+            "punctuation"
+          ]
+        }
+      },
+      "filter": {
+        "asciifolding": {
+          "type": "asciifolding",
+          "preserve_original": true
+        }
+      }
+    },
+    "index": {
+      "max_result_window": 1000,
+      "refresh_interval": "1s"
+    }
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "id": {
+        "type": "keyword",
+        "store": true
+      },
+      "title": {
+        "type": "text",
+        "analyzer": "ik_max_word_custom",
+        "search_analyzer": "ik_smart_custom",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          },
+          "pinyin": {
+            "type": "text",
+            "analyzer": "pinyin_analyzer"
+          },
+          "edge_ngram": {
+            "type": "text",
+            "analyzer": "edge_ngram_analyzer"
+          },
+          "completion": {
+            "type": "completion",
+            "analyzer": "ik_max_word_custom",
+            "search_analyzer": "ik_smart_custom",
+            "preserve_separators": true,
+            "preserve_position_increments": true,
+            "max_input_length": 100
+          }
+        },
+        "boost": 3.0
+      },
+      "suggest_text": {
+        "type": "completion",
+        "analyzer": "ik_max_word_custom",
+        "search_analyzer": "ik_smart_custom",
+        "preserve_separators": true,
+        "preserve_position_increments": true,
+        "max_input_length": 100
+      },
+      "suggest_pinyin": {
+        "type": "completion",
+        "analyzer": "pinyin_analyzer",
+        "search_analyzer": "pinyin_analyzer",
+        "preserve_separators": false,
+        "preserve_position_increments": false,
+        "max_input_length": 100
+      },
+      "source_type": {
+        "type": "keyword",
+        "index": true
+      },
+      "source_id": {
+        "type": "keyword",
+        "index": true
+      },
+      "category": {
+        "type": "keyword",
+        "index": true
+      },
+      "tags": {
+        "type": "keyword",
+        "index": true
+      },
+      "popularity_score": {
+        "type": "float",
+        "index": true
+      },
+      "search_count": {
+        "type": "integer",
+        "index": true
+      },
+      "last_searched_at": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      },
+      "created_at": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      },
+      "updated_at": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      }
+    }
+  }
+}
