@@ -104,18 +104,31 @@ LEGACY_AVATAR_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads', 'avata
 NOTES_UPLOAD_FOLDER = os.path.join(PROJECT_ROOT, 'uploads', 'notes')
 
 
+from werkzeug.utils import secure_filename
+
+
 @app.route('/uploads/videos/<filename>')
 def serve_video(filename):
+    safe_name = secure_filename(filename)
+    if not safe_name:
+        return jsonify({'error': 'Invalid filename'}), 400
     for folder in (UPLOAD_FOLDER, LEGACY_UPLOAD_FOLDER):
-        file_path = os.path.join(folder, filename)
+        file_path = os.path.join(folder, safe_name)
         if os.path.exists(file_path):
-            return _serve_video_with_range(file_path, filename)
+            return _serve_video_with_range(file_path, safe_name)
     return jsonify({'error': 'Video not found'}), 404
 
 
 def _serve_video_with_range(file_path, filename):
     size = os.path.getsize(file_path)
     range_header = request.headers.get('Range', None)
+
+    if filename.endswith('.webm'):
+        content_type = 'video/webm'
+    elif filename.endswith('.ogg'):
+        content_type = 'video/ogg'
+    else:
+        content_type = 'video/mp4'
 
     if range_header:
         byte1, byte2 = 0, None
@@ -128,6 +141,12 @@ def _serve_video_with_range(file_path, filename):
                 byte2 = int(groups[1])
         if byte2 is None:
             byte2 = size - 1
+        if byte1 >= size:
+            resp = make_response()
+            resp.status_code = 416
+            resp.headers['Content-Range'] = f'bytes */{size}'
+            return resp
+        byte2 = min(byte2, size - 1)
         length = byte2 - byte1 + 1
 
         resp = make_response()
@@ -135,6 +154,8 @@ def _serve_video_with_range(file_path, filename):
         resp.headers['Content-Range'] = f'bytes {byte1}-{byte2}/{size}'
         resp.headers['Accept-Ranges'] = 'bytes'
         resp.headers['Content-Length'] = str(length)
+        resp.headers['Content-Type'] = content_type
+        resp.headers['Cache-Control'] = 'public, max-age=3600'
 
         with open(file_path, 'rb') as f:
             f.seek(byte1)
@@ -142,13 +163,20 @@ def _serve_video_with_range(file_path, filename):
         resp.data = data
         return resp
 
-    with open(file_path, 'rb') as f:
-        data = f.read()
+    CHUNK_SIZE = 8192
+    def generate():
+        with open(file_path, 'rb') as f:
+            while True:
+                chunk = f.read(CHUNK_SIZE)
+                if not chunk:
+                    break
+                yield chunk
 
-    resp = make_response(data)
-    resp.headers['Content-Type'] = 'video/mp4'
+    resp = make_response(generate())
+    resp.headers['Content-Type'] = content_type
     resp.headers['Accept-Ranges'] = 'bytes'
     resp.headers['Content-Length'] = str(size)
+    resp.headers['Cache-Control'] = 'public, max-age=3600'
     return resp
 
 
@@ -505,6 +533,27 @@ with app.app_context():
                     )
                 ''')
                 print('[DB Migration] [OK] Created table: programming_submissions')
+
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='targeted_question_groups'")
+            if not cursor.fetchone():
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS targeted_question_groups (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        course_id INTEGER,
+                        title VARCHAR(200) DEFAULT '',
+                        questions TEXT DEFAULT '[]',
+                        weak_tags TEXT DEFAULT '[]',
+                        difficulty VARCHAR(20) DEFAULT 'adaptive',
+                        choice_count INTEGER DEFAULT 0,
+                        programming_count INTEGER DEFAULT 0,
+                        status VARCHAR(20) DEFAULT 'active',
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(id),
+                        FOREIGN KEY (course_id) REFERENCES courses(id)
+                    )
+                ''')
+                print('[DB Migration] [OK] Created table: targeted_question_groups')
 
             conn.commit()
             conn.close()

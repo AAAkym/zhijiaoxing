@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import CodeEditor from '@/components/ui/CodeEditor'
 import {
   Target,
   Loader2,
@@ -26,7 +27,10 @@ import {
   Send,
   ChevronLeft,
   Flag,
-  FileText
+  FileText,
+  Code,
+  Play,
+  ListChecks
 } from 'lucide-react'
 import { mistakeBook } from '@/services/api'
 import PromptAggregation from './PromptAggregation'
@@ -72,13 +76,21 @@ export default function TargetedTherapy({ myCourses = [], initialContext = null 
     setLoading(true)
     setError(null)
     try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 90000)
       const params = {}
       if (courseFilter) params.course_id = courseFilter
+      params._signal = controller.signal
       const data = await mistakeBook.getTargetedPractice(params)
+      clearTimeout(timeoutId)
       setPlan(data)
     } catch (err) {
       console.error('加载靶向练习方案失败', err)
-      setError('加载靶向练习方案失败，请稍后重试')
+      if (err.name === 'AbortError') {
+        setError('AI生成练习方案超时，请稍后重试')
+      } else {
+        setError(`加载靶向练习方案失败：${err.message || '请稍后重试'}`)
+      }
     } finally {
       setLoading(false)
     }
@@ -118,11 +130,11 @@ export default function TargetedTherapy({ myCourses = [], initialContext = null 
     if (!plan?.recommended_questions) return []
     const groups = {}
     plan.recommended_questions.forEach(q => {
-      const phase = q.phase || 1
+      const phase = q.phase || (q.difficulty === 'easy' ? 1 : q.difficulty === 'hard' ? 3 : 2)
       if (!groups[phase]) {
         groups[phase] = {
           phase,
-          phaseName: q.phase_name || PHASE_CONFIG[phase]?.label || '未知阶段',
+          phaseName: q.phase_name || (phase === 1 ? '基础纠偏' : phase === 3 ? '冲刺迁移' : '能力巩固'),
           difficulty: q.difficulty || 'medium',
           questions: []
         }
@@ -135,7 +147,10 @@ export default function TargetedTherapy({ myCourses = [], initialContext = null 
   const filteredQuestions = useMemo(() => {
     if (!plan?.recommended_questions) return []
     if (activePhase === 'all') return plan.recommended_questions
-    return plan.recommended_questions.filter(q => q.phase === Number(activePhase))
+    return plan.recommended_questions.filter(q => {
+      const phase = q.phase || (q.difficulty === 'easy' ? 1 : q.difficulty === 'hard' ? 3 : 2)
+      return phase === Number(activePhase)
+    })
   }, [plan, activePhase])
 
   const phaseStats = useMemo(() => {
@@ -149,20 +164,39 @@ export default function TargetedTherapy({ myCourses = [], initialContext = null 
   }, [plan])
 
   const handleStartPractice = useCallback(() => {
-    const questions = filteredQuestions.map((q, idx) => ({
-      id: idx + 1,
-      question: q.question_content || '',
-      type: q.question_type === 'choice' ? 'choice' : 'essay',
-      options: q.options || [],
-      score: 10,
-      correctAnswer: q.correct_answer,
-      explanation: q.explanation || '',
-      phase: q.phase,
-      phaseName: q.phase_name,
-      difficulty: q.difficulty,
-      matchedTags: q.matched_tags || [],
-      matchScore: q.match_score,
-    })).filter(q => q.question.trim() !== '')
+    const seenKnowledgePoints = new Set()
+    const questions = filteredQuestions.map((q, idx) => {
+      const qType = q.question_type || q.type || 'choice'
+      const isProgramming = qType === 'programming'
+      const knowledgeTags = q.knowledge_tags || q.matched_tags || []
+      const primaryTag = knowledgeTags[0] || ''
+
+      if (primaryTag && seenKnowledgePoints.has(primaryTag)) {
+        return null
+      }
+      if (primaryTag) {
+        seenKnowledgePoints.add(primaryTag)
+      }
+
+      return {
+        id: idx + 1,
+        question: q.question_content || q.content || '',
+        type: isProgramming ? 'programming' : (qType === 'choice' ? 'choice' : 'essay'),
+        options: q.options || [],
+        score: q.score || (isProgramming ? 25 : 10),
+        correctAnswer: q.correctAnswer ?? q.correct_answer ?? 0,
+        explanation: q.explanation || '',
+        phase: q.phase,
+        phaseName: q.phase_name,
+        difficulty: q.difficulty,
+        matchedTags: q.matched_tags || q.knowledge_tags || [],
+        matchScore: q.match_score,
+        language: q.language || 'python',
+        starter_code: q.starter_code || '',
+        standard_answer: q.standard_answer || '',
+        test_cases: q.test_cases || [],
+      }
+    }).filter(q => q !== null && q.question.trim() !== '')
 
     if (questions.length === 0) {
       setError('暂无可练习的题目，请先确保题库中有带知识点标签的题目')
@@ -192,7 +226,13 @@ export default function TargetedTherapy({ myCourses = [], initialContext = null 
   }, [])
 
   const handleSubmit = useCallback(() => {
-    const unanswered = practiceQuestions.filter(q => answers[q.id] === undefined || answers[q.id] === null || answers[q.id] === '')
+    const unanswered = practiceQuestions.filter(q => {
+      const ans = answers[q.id]
+      if (q.type === 'programming') {
+        return !ans || !ans.code
+      }
+      return ans === undefined || ans === null || ans === ''
+    })
     if (unanswered.length > 0 && !showConfirmSubmit) {
       setShowConfirmSubmit(true)
       return
@@ -214,6 +254,9 @@ export default function TargetedTherapy({ myCourses = [], initialContext = null 
         phaseName: q.phaseName,
         difficulty: q.difficulty,
         matchedTags: q.matchedTags,
+        type: q.type,
+        standard_answer: q.standard_answer,
+        language: q.language,
       }
     })
 
@@ -297,6 +340,9 @@ export default function TargetedTherapy({ myCourses = [], initialContext = null 
         completedCount={completedCount}
         wrongCount={wrongCount}
         afterAccuracy={afterAccuracy}
+        onCompletedCountChange={setCompletedCount}
+        onWrongCountChange={setWrongCount}
+        onAfterAccuracyChange={setAfterAccuracy}
         onSubmitFeedback={handleSubmitFeedback}
         onBackToPlan={() => { setCurrentView('plan'); fetchPlan() }}
         onRetry={handleStartPractice}
@@ -315,7 +361,7 @@ export default function TargetedTherapy({ myCourses = [], initialContext = null 
           {initialContext ? (
             <p className="text-gray-600 mt-1">针对「{initialContext.questionPreview || '当前错题'}」的专项练习</p>
           ) : (
-            <p className="text-gray-600 mt-1">基于错题智能分析，精准定位薄弱知识点，生成个性化练习方案</p>
+            <p className="text-gray-600 mt-1">基于学习画像与错题智能分析，AI精准生成个性化练习方案</p>
           )}
         </div>
         <div className="flex items-center gap-3">
@@ -356,7 +402,7 @@ export default function TargetedTherapy({ myCourses = [], initialContext = null 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-16">
           <Loader2 className="w-10 h-10 animate-spin text-purple-500 mb-4" />
-          <p className="text-gray-500">正在分析错题数据，生成靶向练习方案...</p>
+          <p className="text-gray-500">正在分析学习画像与错题数据，AI生成个性化练习方案...</p>
         </div>
       ) : plan ? (
         <>
@@ -460,6 +506,11 @@ export default function TargetedTherapy({ myCourses = [], initialContext = null 
                 <CardTitle className="text-lg flex items-center gap-2">
                   <BookOpen className="w-5 h-5 text-indigo-500" />
                   推荐题组
+                  {plan.ai_generated && (
+                    <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs ml-1">
+                      <Sparkles className="w-3 h-3 mr-1" />AI生成
+                    </Badge>
+                  )}
                 </CardTitle>
                 <Badge variant="outline" className="text-sm">{groupedQuestions.length} 个阶段</Badge>
               </div>
@@ -483,17 +534,27 @@ export default function TargetedTherapy({ myCourses = [], initialContext = null 
                           </div>
                         </div>
                         <div className="bg-white divide-y">
-                          {group.questions.map((q, idx) => (
-                            <div key={`${q.assessment_id}-${q.question_index}-${idx}`} className="p-3 hover:bg-slate-50 transition-colors">
-                              <div className="flex items-start gap-2">
-                                <span className="text-xs font-medium text-gray-400 w-6 pt-0.5">{idx + 1}.</span>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-gray-800 line-clamp-2">{q.question_content || '题目内容缺失'}</p>
-                                  <p className="text-xs text-gray-500 mt-0.5">知识点：{(q.matched_tags || []).join('、') || '暂无'}</p>
+                          {group.questions.map((q, idx) => {
+                            const qType = q.question_type || q.type || 'choice'
+                            const isProg = qType === 'programming'
+                            return (
+                              <div key={`${q.assessment_id || ''}-${q.question_index || ''}-${idx}`} className="p-3 hover:bg-slate-50 transition-colors">
+                                <div className="flex items-start gap-2">
+                                  <span className="text-xs font-medium text-gray-400 w-6 pt-0.5">{idx + 1}.</span>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-1.5 mb-0.5">
+                                      <Badge variant="outline" className="text-xs py-0">
+                                        {isProg ? <Code className="w-3 h-3 mr-0.5" /> : <ListChecks className="w-3 h-3 mr-0.5" />}
+                                        {isProg ? '编程' : '选择'}
+                                      </Badge>
+                                    </div>
+                                    <p className="text-sm font-medium text-gray-800 line-clamp-2">{q.question_content || q.content || '题目内容缺失'}</p>
+                                    <p className="text-xs text-gray-500 mt-0.5">知识点：{(q.matched_tags || q.knowledge_tags || []).join('、') || '暂无'}</p>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       </div>
                     )
@@ -503,7 +564,7 @@ export default function TargetedTherapy({ myCourses = [], initialContext = null 
                 <div className="text-center py-8 text-gray-500">
                   <BookOpen className="w-12 h-12 mx-auto text-gray-300 mb-3" />
                   <p>暂无可推荐题目</p>
-                  <p className="text-sm mt-1">建议先在课程中添加带知识点标签的题目</p>
+                  <p className="text-sm mt-1">请先完成练习并积累错题记录，AI将根据薄弱点生成个性化题目</p>
                 </div>
               )}
             </CardContent>
@@ -527,20 +588,33 @@ export default function TargetedTherapy({ myCourses = [], initialContext = null 
                 onClick={() => {
                   const firstGroup = groupedQuestions[0]
                   if (firstGroup) {
-                    const questions = firstGroup.questions.map((q, idx) => ({
-                      id: idx + 1,
-                      question: q.question_content || '',
-                      type: q.question_type === 'choice' ? 'choice' : 'essay',
-                      options: q.options || [],
-                      score: 10,
-                      correctAnswer: q.correct_answer,
-                      explanation: q.explanation || '',
-                      phase: q.phase,
-                      phaseName: q.phase_name,
-                      difficulty: q.difficulty,
-                      matchedTags: q.matched_tags || [],
-                      matchScore: q.match_score,
-                    })).filter(q => q.question.trim() !== '')
+                    const seenKP = new Set()
+                    const questions = firstGroup.questions.map((q, idx) => {
+                      const qType = q.question_type || q.type || 'choice'
+                      const isProgramming = qType === 'programming'
+                      const knowledgeTags = q.knowledge_tags || q.matched_tags || []
+                      const primaryTag = knowledgeTags[0] || ''
+                      if (primaryTag && seenKP.has(primaryTag)) return null
+                      if (primaryTag) seenKP.add(primaryTag)
+                      return {
+                        id: idx + 1,
+                        question: q.question_content || q.content || '',
+                        type: isProgramming ? 'programming' : (qType === 'choice' ? 'choice' : 'essay'),
+                        options: q.options || [],
+                        score: q.score || (isProgramming ? 25 : 10),
+                        correctAnswer: q.correctAnswer ?? q.correct_answer ?? 0,
+                        explanation: q.explanation || '',
+                        phase: q.phase,
+                        phaseName: q.phase_name,
+                        difficulty: q.difficulty,
+                        matchedTags: q.matched_tags || q.knowledge_tags || [],
+                        matchScore: q.match_score,
+                        language: q.language || 'python',
+                        starter_code: q.starter_code || '',
+                        standard_answer: q.standard_answer || '',
+                        test_cases: q.test_cases || [],
+                      }
+                    }).filter(q => q !== null && q.question.trim() !== '')
                     setPracticeQuestions(questions)
                     setAnswers({})
                     setCurrentIndex(0)
@@ -591,9 +665,13 @@ function PracticeView({ questions, currentIndex, answers, timeElapsed, showConfi
   }
 
   const questionType = currentQuestion.type || 'essay'
+  const isProgramming = questionType === 'programming'
   const questionOptions = Array.isArray(currentQuestion.options) ? currentQuestion.options : []
   const currentAnswer = answers[currentQuestion.id]
   const phaseConf = PHASE_CONFIG[currentQuestion.phase] || PHASE_CONFIG[1]
+
+  const typeLabel = isProgramming ? '编程题' : (questionType === 'choice' ? '选择题' : '简答题')
+  const typeIcon = isProgramming ? <Code className="w-4 h-4" /> : (questionType === 'choice' ? <ListChecks className="w-4 h-4" /> : null)
 
   return (
     <div className="space-y-4">
@@ -605,6 +683,7 @@ function PracticeView({ questions, currentIndex, answers, timeElapsed, showConfi
         <div className="flex items-center gap-2 text-sm text-gray-500">
           <Badge className={phaseConf.color}>{phaseConf.icon} {phaseConf.label}</Badge>
           <Badge variant="outline">{DIFFICULTY_CONFIG[currentQuestion.difficulty]?.label || '中等'}</Badge>
+          <Badge variant="outline" className="flex items-center gap-1">{typeIcon}{typeLabel}</Badge>
         </div>
       </div>
 
@@ -617,9 +696,7 @@ function PracticeView({ questions, currentIndex, answers, timeElapsed, showConfi
               </div>
               <div>
                 <p className="text-purple-100 text-sm">第 {safeIndex + 1} 题 / 共 {safeQuestions.length} 题</p>
-                <p className="font-medium">
-                  {questionType === 'choice' ? '选择题' : '简答题'} · {currentQuestion.score} 分
-                </p>
+                <p className="font-medium">{typeLabel} · {currentQuestion.score} 分</p>
               </div>
             </div>
             <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-lg">
@@ -634,6 +711,17 @@ function PracticeView({ questions, currentIndex, answers, timeElapsed, showConfi
             <p className="text-lg text-gray-800 leading-relaxed whitespace-pre-wrap">
               {currentQuestion.question || '（题目内容缺失）'}
             </p>
+            {isProgramming && currentQuestion.test_cases?.length > 0 && (
+              <div className="mt-3 space-y-2">
+                <p className="text-sm font-medium text-gray-600">示例：</p>
+                {currentQuestion.test_cases.slice(0, 2).map((tc, idx) => (
+                  <div key={idx} className="bg-white rounded p-2 text-sm font-mono">
+                    <span className="text-gray-500">输入：</span>{tc.input}
+                    <span className="text-gray-500 ml-3">输出：</span>{tc.expected_output}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {questionType === 'choice' && questionOptions.length > 0 ? (
@@ -666,6 +754,19 @@ function PracticeView({ questions, currentIndex, answers, timeElapsed, showConfi
                   </button>
                 )
               })}
+            </div>
+          ) : isProgramming ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Badge variant="outline">{(currentQuestion.language || 'python').toUpperCase()}</Badge>
+              </div>
+              <CodeEditor
+                value={typeof currentAnswer === 'object' ? currentAnswer?.code || '' : (currentAnswer || '')}
+                onChange={(code) => onAnswerChange(currentQuestion.id, { code, language: currentQuestion.language || 'python' })}
+                language={currentQuestion.language || 'python'}
+                height="300px"
+                placeholder="在这里编写代码..."
+              />
             </div>
           ) : (
             <div className="space-y-3">
@@ -767,7 +868,7 @@ function PracticeView({ questions, currentIndex, answers, timeElapsed, showConfi
   )
 }
 
-function ResultView({ results, feedback, feedbackLoading, completedCount, wrongCount, afterAccuracy, onSubmitFeedback, onBackToPlan, onRetry }) {
+function ResultView({ results, feedback, feedbackLoading, completedCount, wrongCount, afterAccuracy, onCompletedCountChange, onWrongCountChange, onAfterAccuracyChange, onSubmitFeedback, onBackToPlan, onRetry }) {
   if (!results) return null
 
   const { totalScore, maxScore, accuracy, correctCount: correct, wrongCount: wrong, timeElapsed: elapsed } = results
@@ -828,6 +929,7 @@ function ResultView({ results, feedback, feedbackLoading, completedCount, wrongC
           <div className="space-y-3">
             {(results.results || []).map((r, idx) => {
               const phaseConf = PHASE_CONFIG[r.phase] || PHASE_CONFIG[1]
+              const isProg = r.type === 'programming'
               return (
                 <div key={idx} className={`p-3 border-l-4 rounded-r-lg ${
                   r.isCorrect ? 'border-green-500 bg-green-50/50' : 'border-red-500 bg-red-50/50'
@@ -842,15 +944,38 @@ function ResultView({ results, feedback, feedbackLoading, completedCount, wrongC
                           <XCircle className="w-4 h-4 text-red-600" />
                         )}
                         <Badge className={`${phaseConf.color} text-xs`}>{phaseConf.icon} {r.phaseName}</Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {isProg ? <Code className="w-3 h-3 mr-1" /> : <ListChecks className="w-3 h-3 mr-1" />}
+                          {isProg ? '编程题' : '选择题'}
+                        </Badge>
                       </div>
                       <p className="text-sm text-gray-700 line-clamp-2">{r.question}</p>
-                      {!r.isCorrect && r.correctAnswer !== null && r.correctAnswer !== undefined && r.options && r.options.length > 0 && (
+                      {!isProg && !r.isCorrect && r.correctAnswer !== null && r.correctAnswer !== undefined && r.options && r.options.length > 0 && (
                         <p className="text-xs text-green-600 mt-1">
                           正确答案：{String.fromCharCode(65 + r.correctAnswer)}. {r.options[r.correctAnswer]}
                         </p>
                       )}
+                      {isProg && r.standard_answer && (
+                        <div className="mt-2">
+                          <p className="text-xs font-medium text-green-600 mb-1">参考解答：</p>
+                          <pre className="bg-green-50 border border-green-200 rounded p-2 text-xs font-mono overflow-x-auto whitespace-pre-wrap max-h-40">
+                            {r.standard_answer}
+                          </pre>
+                        </div>
+                      )}
+                      {isProg && r.userAnswer?.code && (
+                        <div className="mt-2">
+                          <p className="text-xs font-medium text-red-600 mb-1">你的代码：</p>
+                          <pre className="bg-red-50 border border-red-200 rounded p-2 text-xs font-mono overflow-x-auto whitespace-pre-wrap max-h-40">
+                            {r.userAnswer.code}
+                          </pre>
+                        </div>
+                      )}
                       {r.explanation && (
-                        <p className="text-xs text-gray-500 mt-1">解析：{r.explanation}</p>
+                        <div className="mt-2 bg-amber-50 border border-amber-200 rounded p-2">
+                          <p className="text-xs font-medium text-amber-800 mb-0.5">解析</p>
+                          <p className="text-xs text-amber-700 whitespace-pre-wrap">{r.explanation}</p>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -872,15 +997,15 @@ function ResultView({ results, feedback, feedbackLoading, completedCount, wrongC
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
               <label className="text-sm text-gray-600 mb-1 block">完成题数</label>
-              <Input type="number" min="0" value={completedCount} onChange={(e) => setCompletedCount(Number(e.target.value) || 0)} />
+              <Input type="number" min="0" value={completedCount} onChange={(e) => onCompletedCountChange(Number(e.target.value) || 0)} />
             </div>
             <div>
               <label className="text-sm text-gray-600 mb-1 block">错题数</label>
-              <Input type="number" min="0" value={wrongCount} onChange={(e) => setWrongCount(Number(e.target.value) || 0)} />
+              <Input type="number" min="0" value={wrongCount} onChange={(e) => onWrongCountChange(Number(e.target.value) || 0)} />
             </div>
             <div>
               <label className="text-sm text-gray-600 mb-1 block">本轮正确率(%)</label>
-              <Input type="number" min="0" max="100" value={afterAccuracy} onChange={(e) => setAfterAccuracy(Number(e.target.value) || 0)} />
+              <Input type="number" min="0" max="100" value={afterAccuracy} onChange={(e) => onAfterAccuracyChange(Number(e.target.value) || 0)} />
             </div>
           </div>
           <Button onClick={onSubmitFeedback} disabled={feedbackLoading} className="bg-green-600 hover:bg-green-700">

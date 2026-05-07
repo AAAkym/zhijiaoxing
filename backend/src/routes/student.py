@@ -587,21 +587,34 @@ def _extract_question_content(question):
 
 
 def _extract_knowledge_tags(question):
-    """提取知识点标签 - 兼容数组和字符串格式"""
     if not isinstance(question, dict):
         return []
-    
+
     tags = question.get('knowledge_tags', question.get('tags', []))
-    
+
     if isinstance(tags, list):
-        return tags
+        result = []
+        for t in tags:
+            if isinstance(t, dict):
+                result.append(str(t.get('name', t.get('label', t.get('tag', str(t))))))
+            elif t is not None:
+                result.append(str(t).strip())
+        return [t for t in result if t]
     elif isinstance(tags, str):
         try:
             parsed = json.loads(tags)
-            return parsed if isinstance(parsed, list) else [t.strip() for t in tags.split(',') if t.strip()]
+            if isinstance(parsed, list):
+                result = []
+                for t in parsed:
+                    if isinstance(t, dict):
+                        result.append(str(t.get('name', t.get('label', t.get('tag', str(t))))))
+                    elif t is not None:
+                        result.append(str(t).strip())
+                return [t for t in result if t]
+            return [t.strip() for t in tags.split(',') if t.strip()]
         except (json.JSONDecodeError, ValueError):
             return [t.strip() for t in tags.split(',') if t.strip()]
-    
+
     return []
 
 

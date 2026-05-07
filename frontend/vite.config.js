@@ -27,6 +27,8 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
           ws: true,
+          timeout: 120000,
+          proxyTimeout: 120000,
           configure: (proxy, options) => {
             proxy.on('error', (err, req, res) => {
               console.log('[Proxy Error]', err.message, req.url)
@@ -60,6 +62,17 @@ export default defineConfig(({ mode }) => {
           target: 'http://localhost:5000',
           changeOrigin: true,
           secure: false,
+          timeout: 300000,
+          proxyTimeout: 300000,
+          configure: (proxy) => {
+            proxy.on('proxyRes', (proxyRes) => {
+              const contentType = proxyRes.headers['content-type'] || ''
+              if (contentType.startsWith('video/') || contentType.startsWith('application/octet-stream')) {
+                proxyRes.headers['cache-control'] = 'public, max-age=3600'
+                delete proxyRes.headers['x-accel-buffering']
+              }
+            })
+          },
         },
       },
     },

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useCallback } from 'react'
-import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter } from '@codemirror/view'
+import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter, placeholder as cmPlaceholder } from '@codemirror/view'
 import { EditorState } from '@codemirror/state'
 import { defaultKeymap, indentWithTab, history, historyKeymap } from '@codemirror/commands'
 import { syntaxHighlighting, defaultHighlightStyle, bracketMatching, foldGutter, indentOnInput } from '@codemirror/language'
@@ -84,7 +84,7 @@ export default function CodeEditor({
         }),
         EditorState.readOnly.of(readOnly),
         EditorState.tabSize.of(4),
-        placeholder ? EditorView.placeholder.of(placeholder) : [],
+        placeholder ? cmPlaceholder(placeholder) : [],
       ],
     })
 

@@ -209,7 +209,13 @@ class MistakePDF(FPDF):
 
         tags = m.get("knowledge_tags", [])
         if tags:
-            tags_str = "、".join(tags) if isinstance(tags, list) else str(tags)
+            safe_tags = []
+            for t in (tags if isinstance(tags, list) else [tags]):
+                if isinstance(t, dict):
+                    safe_tags.append(str(t.get('name', t.get('label', t.get('tag', str(t))))))
+                elif t is not None:
+                    safe_tags.append(str(t).strip())
+            tags_str = "、".join(t for t in safe_tags if t)
             self._write_label_value("知识点标签：", tags_str, font_size=10)
 
         error_type = m.get("error_type", "")
@@ -412,7 +418,13 @@ def generate_docx(
 
         tags = m.get("knowledge_tags", [])
         if tags:
-            tags_str = "、".join(tags) if isinstance(tags, list) else str(tags)
+            safe_tags = []
+            for t in (tags if isinstance(tags, list) else [tags]):
+                if isinstance(t, dict):
+                    safe_tags.append(str(t.get('name', t.get('label', t.get('tag', str(t))))))
+                elif t is not None:
+                    safe_tags.append(str(t).strip())
+            tags_str = "、".join(t for t in safe_tags if t)
             p = doc.add_paragraph()
             run_label = p.add_run("知识点标签：")
             run_label.bold = True

@@ -1,6 +1,27 @@
 // 开发环境使用相对路径通过Vite代理，生产环境使用环境变量或相对路径
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 
+const SSE_TIMEOUT = 120000
+
+function fetchWithTimeout(url, options = {}, timeout = SSE_TIMEOUT) {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeout)
+  const mergedOptions = {
+    ...options,
+    signal: options.signal
+      ? (() => {
+          const externalSignal = options.signal
+          if (externalSignal.aborted) {
+            controller.abort()
+          }
+          externalSignal.addEventListener('abort', () => controller.abort())
+          return controller.signal
+        })()
+      : controller.signal,
+  }
+  return fetch(url, mergedOptions).finally(() => clearTimeout(timeoutId))
+}
+
 // 通用请求函数
 async function request(url, options = {}) {
   const config = {
@@ -250,7 +271,7 @@ export const ai = {
       context: data.context || '',
       topic: data.topic || ''
     }
-    return fetch(`${API_BASE_URL}/ai_chat_stream`, {
+    return fetchWithTimeout(`${API_BASE_URL}/ai_chat_stream`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -269,7 +290,7 @@ export const ai = {
       temperature: data.temperature || 0.7,
       max_context_length: data.maxContextLength || data.max_context_length || 10
     }
-    return fetch(`${API_BASE_URL}/sse/chat`, {
+    return fetchWithTimeout(`${API_BASE_URL}/sse/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -286,7 +307,7 @@ export const ai = {
       context: data.context || '',
       topic: data.topic || ''
     }
-    return fetch(`${API_BASE_URL}/sse/chat/simple`, {
+    return fetchWithTimeout(`${API_BASE_URL}/sse/chat/simple`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -324,7 +345,7 @@ export const ai = {
       video_timestamp: data.video_timestamp || null,
       topic: data.topic || '',
     }
-    return fetch(`${API_BASE_URL}/video_assistant_stream`, {
+    return fetchWithTimeout(`${API_BASE_URL}/video_assistant_stream`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -687,16 +708,14 @@ export const mistakeBook = {
   },
 
   getTargetedPractice: (params = {}) => {
-    const queryString = new URLSearchParams(params).toString()
-    return request(`/mistakes/targeted-practice${queryString ? `?${queryString}` : ''}`)
+    const { _signal, ...queryParams } = params
+    const queryString = new URLSearchParams(queryParams).toString()
+    return request(`/mistakes/targeted-practice${queryString ? `?${queryString}` : ''}`, {
+      signal: _signal,
+    })
   },
 
   submitTargetedFeedback: (payload) => request('/mistakes/targeted-practice/feedback', {
-    method: 'POST',
-    body: payload,
-  }),
-
-  generateQuestionGroup: (payload) => request('/mistakes/targeted-practice/question-group', {
     method: 'POST',
     body: payload,
   }),
@@ -714,7 +733,7 @@ export const mistakeBook = {
     if (signal) {
       options.signal = signal
     }
-    return fetch(`${API_BASE_URL}/mistakes/${mistakeId}/analyze/stream`, options)
+    return fetchWithTimeout(`${API_BASE_URL}/mistakes/${mistakeId}/analyze/stream`, options)
   },
   
   batchAnalyzeMistakes: (mistakeIds) => request('/mistakes/batch-analyze', {
@@ -734,7 +753,7 @@ export const mistakeBook = {
     if (signal) {
       options.signal = signal
     }
-    return fetch(`${API_BASE_URL}/mistakes/batch-analyze/stream`, options)
+    return fetchWithTimeout(`${API_BASE_URL}/mistakes/batch-analyze/stream`, options)
   },
 
   generateTargetedPractice: (payload) => request('/mistakes/targeted-practice/generate', {
@@ -754,7 +773,7 @@ export const mistakeBook = {
     if (signal) {
       options.signal = signal
     }
-    return fetch(`${API_BASE_URL}/mistakes/targeted-practice/generate/stream`, options)
+    return fetchWithTimeout(`${API_BASE_URL}/mistakes/targeted-practice/generate/stream`, options)
   },
 
   generateAdaptivePlan: (payload) => request('/mistakes/targeted-practice/adaptive-plan', {
@@ -835,7 +854,7 @@ export const notes = {
   }),
   
   summarizeNoteStream: (noteId) => {
-    return fetch(`${API_BASE_URL}/notes/${noteId}/summarize/stream`, {
+    return fetchWithTimeout(`${API_BASE_URL}/notes/${noteId}/summarize/stream`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -850,7 +869,7 @@ export const notes = {
   }),
   
   organizeNotesStream: (noteIds) => {
-    return fetch(`${API_BASE_URL}/notes/organize/stream`, {
+    return fetchWithTimeout(`${API_BASE_URL}/notes/organize/stream`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -871,7 +890,7 @@ export const notes = {
   }),
   
   generateWeeklyReportStream: (weekStart, weekEnd) => {
-    return fetch(`${API_BASE_URL}/notes/weekly-report/stream`, {
+    return fetchWithTimeout(`${API_BASE_URL}/notes/weekly-report/stream`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

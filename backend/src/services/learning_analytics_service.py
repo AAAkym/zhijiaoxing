@@ -108,7 +108,7 @@ def get_student_detail_analytics(teacher_id: int, student_id: int) -> Dict:
     mistake_summary = {
         "total": len(mistakes),
         "unmastered": sum(1 for m in mistakes if m.mastery_status == 'unmastered'),
-        "learning": sum(1 for m in mistakes if m.mastery_status == 'learning'),
+        "reviewing": sum(1 for m in mistakes if m.mastery_status == 'reviewing'),
         "mastered": sum(1 for m in mistakes if m.mastery_status == 'mastered'),
         "by_type": {},
     }
@@ -182,15 +182,27 @@ def get_knowledge_mastery_heatmap(teacher_id: int, course_id: int) -> Dict:
     for m in mistakes:
         tags = []
         try:
-            tags = json.loads(m.knowledge_tags) if m.knowledge_tags else []
+            raw_tags = json.loads(m.knowledge_tags) if m.knowledge_tags else []
         except Exception:
-            tags = []
+            raw_tags = []
+        for t in (raw_tags if isinstance(raw_tags, list) else [raw_tags]):
+            if isinstance(t, dict):
+                tag_str = str(t.get('name', t.get('label', t.get('tag', str(t)))))
+            elif t is not None:
+                tag_str = str(t).strip()
+            else:
+                continue
+            if not tag_str:
+                continue
+            tags.append(tag_str)
         for tag in tags:
             if tag not in knowledge_map:
-                knowledge_map[tag] = {"total_mistakes": 0, "unmastered": 0, "mastered": 0}
+                knowledge_map[tag] = {"total_mistakes": 0, "unmastered": 0, "reviewing": 0, "mastered": 0}
             knowledge_map[tag]["total_mistakes"] += 1
             if m.mastery_status == 'unmastered':
                 knowledge_map[tag]["unmastered"] += 1
+            elif m.mastery_status == 'reviewing':
+                knowledge_map[tag]["reviewing"] += 1
             elif m.mastery_status == 'mastered':
                 knowledge_map[tag]["mastered"] += 1
 
@@ -204,8 +216,18 @@ def get_knowledge_mastery_heatmap(teacher_id: int, course_id: int) -> Dict:
                     question_data = questions[s.question_index]
         except Exception:
             pass
-        tags = question_data.get("knowledge_tags", [])
-        for tag in tags:
+        raw_tags = question_data.get("knowledge_tags", [])
+        safe_tags = []
+        for t in (raw_tags if isinstance(raw_tags, list) else [raw_tags]):
+            if isinstance(t, dict):
+                tag_str = str(t.get('name', t.get('label', t.get('tag', str(t)))))
+            elif t is not None:
+                tag_str = str(t).strip()
+            else:
+                continue
+            if tag_str:
+                safe_tags.append(tag_str)
+        for tag in safe_tags:
             if tag not in knowledge_map:
                 knowledge_map[tag] = {"total_submissions": 0, "avg_score": 0, "scores": []}
             knowledge_map[tag].setdefault("total_submissions", 0)
@@ -227,6 +249,8 @@ def get_knowledge_mastery_heatmap(teacher_id: int, course_id: int) -> Dict:
             "avg_programming_score": avg_score,
             "total_mistakes": data.get("total_mistakes", 0),
             "unmastered_count": data.get("unmastered", 0),
+            "reviewing_count": data.get("reviewing", 0),
+            "mastered_count": data.get("mastered", 0),
             "total_submissions": data.get("total_submissions", 0),
         })
 
@@ -249,8 +273,10 @@ def get_at_risk_students(teacher_id: int, threshold: float = 40.0) -> List[Dict]
     for lp in low_progress:
         user = User.query.get(lp.user_id)
         course = Course.query.get(lp.course_id)
-        mistake_count = MistakeRecord.query.filter_by(
-            user_id=lp.user_id, course_id=lp.course_id, mastery_status='unmastered'
+        mistake_count = MistakeRecord.query.filter(
+            MistakeRecord.user_id == lp.user_id,
+            MistakeRecord.course_id == lp.course_id,
+            MistakeRecord.mastery_status.in_(['unmastered', 'reviewing'])
         ).count()
         failed_submissions = ProgrammingSubmission.query.filter(
             ProgrammingSubmission.user_id == lp.user_id,
@@ -265,7 +291,7 @@ def get_at_risk_students(teacher_id: int, threshold: float = 40.0) -> List[Dict]
 
         at_risk.append({
             "student_id": lp.user_id,
-            "student_name": user.real_name or user.username if user else "未知",
+            "student_name": (user.real_name or user.username) if user else "未知",
             "course_id": lp.course_id,
             "course_title": course.title if course else "未知",
             "progress": lp.progress_percentage or 0,

@@ -27,7 +27,7 @@ from src.services.mistake_intelligence_service import (
 from src.services.spark_service import spark_service
 from src.services.export_service import generate_pdf, generate_docx
 from src.services.targeted_practice_service import (
-    generate_mixed_question_group,
+    generate_ai_targeted_practice,
     get_programming_mistake_detail,
 )
 
@@ -83,7 +83,17 @@ def _extract_knowledge_tags(question: Any) -> List[str]:
     if isinstance(tags, str):
         return [tags.strip()] if tags.strip() else []
     if isinstance(tags, list):
-        return [str(tag).strip() for tag in tags if str(tag).strip()]
+        result = []
+        for tag in tags:
+            if isinstance(tag, dict):
+                tag_str = str(tag.get('name', tag.get('label', tag.get('tag', str(tag)))))
+                if tag_str.strip():
+                    result.append(tag_str.strip())
+            elif tag is not None:
+                tag_str = str(tag).strip()
+                if tag_str:
+                    result.append(tag_str)
+        return result
     return []
 
 
@@ -353,7 +363,12 @@ def get_mistake_stats():
                 tags = [tags]
             if isinstance(tags, list):
                 for tag in tags:
-                    tag_text = str(tag).strip()
+                    if isinstance(tag, dict):
+                        tag_text = str(tag.get('name', tag.get('label', tag.get('tag', str(tag))))).strip()
+                    elif tag is not None:
+                        tag_text = str(tag).strip()
+                    else:
+                        tag_text = ''
                     if tag_text:
                         knowledge_point_stats[tag_text] = knowledge_point_stats.get(tag_text, 0) + 1
 
@@ -613,32 +628,6 @@ def analyze_mistake_stream(mistake_id):
         return jsonify({"error": str(e)}), 500
 
 
-@mistake_book_bp.route("/mistakes/targeted-practice/question-group", methods=["POST"])
-def generate_question_group():
-    try:
-        user_id = session.get("user_id")
-        if not user_id:
-            return jsonify({"error": "Authentication required"}), 401
-        data = request.get_json() or {}
-        course_id = data.get("course_id")
-        choice_count = data.get("choice_count", 5)
-        programming_count = data.get("programming_count", 2)
-        difficulty = data.get("difficulty", "adaptive")
-        result = generate_mixed_question_group(
-            user_id=user_id,
-            course_id=course_id,
-            choice_count=min(choice_count, 15),
-            programming_count=min(programming_count, 5),
-            difficulty=difficulty,
-        )
-        if "error" in result:
-            return jsonify(result), 400
-        return jsonify(result), 200
-    except Exception as e:
-        logger.error(f"Generate question group error: {e}")
-        return jsonify({"error": str(e)}), 500
-
-
 @mistake_book_bp.route("/mistakes/<int:mistake_id>/programming-detail", methods=["GET"])
 def get_programming_detail(mistake_id):
     try:
@@ -767,7 +756,14 @@ def generate_targeted_practice_questions():
             _ensure_error_classification(m, sync)
             tags = _safe_json_loads(m.knowledge_tags, [])
             for t in tags:
-                all_tags.add(t)
+                if isinstance(t, dict):
+                    tag_str = str(t.get('name', t.get('label', t.get('tag', str(t))))).strip()
+                elif t is not None:
+                    tag_str = str(t).strip()
+                else:
+                    continue
+                if tag_str:
+                    all_tags.add(tag_str)
             if not course_title_value and m.course:
                 course_title_value = m.course.title
             mistake_summaries.append({
@@ -828,7 +824,14 @@ def generate_targeted_practice_stream():
             sync = _sync_choice_answers_for_mistake(m)
             tags = _safe_json_loads(m.knowledge_tags, [])
             for t in tags:
-                all_tags.add(t)
+                if isinstance(t, dict):
+                    tag_str = str(t.get('name', t.get('label', t.get('tag', str(t))))).strip()
+                elif t is not None:
+                    tag_str = str(t).strip()
+                else:
+                    continue
+                if tag_str:
+                    all_tags.add(tag_str)
             if not course_title_value and m.course:
                 course_title_value = m.course.title
             mistake_summaries.append({
@@ -841,7 +844,6 @@ def generate_targeted_practice_stream():
                 "mistake_count": m.mistake_count,
             })
 
-        # 构建Prompt - 简化版本以减少API超时风险
         course_info = f"所属课程：{course_title_value}" if course_title_value else ""
 
         # 简化摘要，减少token使用
@@ -1008,6 +1010,18 @@ def get_targeted_practice():
         user_id = session["user_id"]
         course_id = request.args.get("course_id", type=int)
         limit = request.args.get("limit", 18, type=int)
+        use_ai = request.args.get("use_ai", "1")
+
+        if use_ai == "1":
+            result = generate_ai_targeted_practice(
+                user_id=user_id,
+                course_id=course_id,
+                question_count=min(20, max(5, limit)),
+            )
+            if "error" in result:
+                return jsonify(result), 400
+            return jsonify(result), 200
+
         mistakes = _base_query(user_id, course_id=course_id).all()
         if not mistakes:
             return jsonify({"target_tags": [], "recommended_questions": [], "stage_plan": [], "plan_metrics": {"question_total": 0, "target_tag_count": 0, "baseline_effectiveness": 0, "expected_improvement": 0}}), 200

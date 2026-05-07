@@ -46,6 +46,42 @@ class AIAnalysisReport(db.Model):
         return result
 
 
+class TargetedQuestionGroup(db.Model):
+    __tablename__ = 'targeted_question_groups'
+    __table_args__ = {'extend_existing': True}
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    course_id = db.Column(db.Integer, db.ForeignKey('courses.id'))
+    title = db.Column(db.String(200), default='')
+    questions = db.Column(db.Text, default='[]')
+    weak_tags = db.Column(db.Text, default='[]')
+    difficulty = db.Column(db.String(20), default='adaptive')
+    choice_count = db.Column(db.Integer, default=0)
+    programming_count = db.Column(db.Integer, default=0)
+    status = db.Column(db.String(20), default='active')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref='question_groups')
+
+    def to_dict(self, include_questions=False):
+        result = {
+            'id': self.id,
+            'user_id': self.user_id,
+            'course_id': self.course_id,
+            'title': self.title,
+            'weak_tags': json.loads(self.weak_tags) if isinstance(self.weak_tags, str) else self.weak_tags,
+            'difficulty': self.difficulty,
+            'choice_count': self.choice_count,
+            'programming_count': self.programming_count,
+            'status': self.status,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+        if include_questions:
+            result['questions'] = json.loads(self.questions) if isinstance(self.questions, str) else self.questions
+        return result
+
+
 class AIInsight(db.Model):
     __tablename__ = 'ai_insights'
     __table_args__ = {'extend_existing': True}

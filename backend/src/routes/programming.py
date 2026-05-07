@@ -414,16 +414,60 @@ def _get_programming_question(assessment: Assessment, question_index: int) -> Di
     return question
 
 
+_SANDBOX_DIR = os.path.join(tempfile.gettempdir(), 'edu_sandbox')
+_MAX_CODE_LENGTH = 10000
+_FORBIDDEN_PATTERNS = [
+    re.compile(r'\bimport\s+os\b'),
+    re.compile(r'\bimport\s+sys\b'),
+    re.compile(r'\bimport\s+subprocess\b'),
+    re.compile(r'\bimport\s+shutil\b'),
+    re.compile(r'\b__import__\b'),
+    re.compile(r'\bopen\s*\('),
+    re.compile(r'\beval\s*\('),
+    re.compile(r'\bexec\s*\('),
+    re.compile(r'\bcompile\s*\('),
+    re.compile(r'\bglobals\s*\(\s*\)'),
+    re.compile(r'\blocals\s*\(\s*\)'),
+    re.compile(r'\bgetattr\s*\('),
+    re.compile(r'\bsetattr\s*\('),
+    re.compile(r'\bdelattr\s*\('),
+    re.compile(r'\brequire\s*\(\s*[\'\"]fs[\'\"]'),
+    re.compile(r'\brequire\s*\(\s*[\'\"]child_process[\'\"]'),
+    re.compile(r'\brequire\s*\(\s*[\'\"]net[\'\"]'),
+    re.compile(r'\brequire\s*\(\s*[\'\"]http[\'\"]'),
+    re.compile(r'\bprocess\b'),
+]
+
+
+def _validate_code_safety(code: str, language: str) -> Optional[str]:
+    if not code or not code.strip():
+        return '代码为空'
+    if len(code) > _MAX_CODE_LENGTH:
+        return f'代码长度超过限制（{_MAX_CODE_LENGTH}字符）'
+    for pattern in _FORBIDDEN_PATTERNS:
+        if pattern.search(code):
+            return f'代码包含不允许的操作'
+    return None
+
+
 def _run_code(language: str, code: str, test_cases: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     if language not in RUNNABLE_LANGUAGES:
         return [], {'passed': False, 'message': f'{language} 暂未配置本地编译/运行器，已跳过真实运行验证。'}
+
+    safety_error = _validate_code_safety(code, language)
+    if safety_error:
+        return [], {'passed': False, 'message': f'代码安全检查未通过：{safety_error}'}
+
+    os.makedirs(_SANDBOX_DIR, exist_ok=True)
     suffix = '.py' if language == 'python' else '.js'
     command = ['python'] if language == 'python' else ['node']
     results = []
-    with tempfile.NamedTemporaryFile('w', suffix=suffix, delete=False, encoding='utf-8') as tmp:
-        tmp.write(code)
-        path = tmp.name
+    path = None
     try:
+        with tempfile.NamedTemporaryFile('w', suffix=suffix, delete=False, encoding='utf-8', dir=_SANDBOX_DIR) as tmp:
+            tmp.write(code)
+            path = tmp.name
+
         for i, case in enumerate(test_cases[:8]):
             expected = str(case.get('output', '')).strip()
             proc = subprocess.run(
@@ -431,7 +475,7 @@ def _run_code(language: str, code: str, test_cases: List[Dict[str, Any]]) -> Tup
                 input=str(case.get('input', '')),
                 capture_output=True,
                 text=True,
-                timeout=3,
+                timeout=5,
                 encoding='utf-8',
                 errors='replace',
             )
@@ -447,12 +491,17 @@ def _run_code(language: str, code: str, test_cases: List[Dict[str, Any]]) -> Tup
                 'passed': passed,
             })
     except subprocess.TimeoutExpired:
-        results.append({'passed': False, 'error': '运行超时'})
+        results.append({'passed': False, 'error': '运行超时（5秒限制）'})
+    except Exception as e:
+        logger.error('[_run_code] 执行异常: %s', e)
+        if not results:
+            results.append({'passed': False, 'error': f'运行异常: {str(e)}'})
     finally:
-        try:
-            os.unlink(path)
-        except OSError:
-            pass
+        if path:
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
     passed_count = len([r for r in results if r.get('passed')])
     return results, {'passed': passed_count == len(results) and len(results) > 0, 'passed_count': passed_count, 'total': len(results)}
 

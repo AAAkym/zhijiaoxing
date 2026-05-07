@@ -5,7 +5,11 @@ from src.services.spark_service import spark_service
 from src.services.knowledge_base import knowledge_base_service
 import json
 import os
+import re
 from werkzeug.utils import secure_filename
+
+
+_OPTION_LINE_RE = re.compile(r'^([A-D])\s*[.．)）:：\s]\s*(.*)', re.UNICODE)
 
 
 def _parse_generated_assessment_text(text: str):
@@ -35,40 +39,26 @@ def _parse_generated_assessment_text(text: str):
         correct = None
         explanation = ''
 
-        # 收集选项（识别 A. A)、A： 等多种形式）
         for ln in lines[1:]:
-            if ln[:2].upper().startswith('A') and (ln[1:2] in ['.', ')', '：', ':'] or ln[1:2].isspace()):
-                options.append(ln.split(ln[1], 1)[-1].strip())
-                continue
-            if ln[:2].upper().startswith('B') and (ln[1:2] in ['.', ')', '：', ':'] or ln[1:2].isspace()):
-                options.append(ln.split(ln[1], 1)[-1].strip())
-                continue
-            if ln[:2].upper().startswith('C') and (ln[1:2] in ['.', ')', '：', ':'] or ln[1:2].isspace()):
-                options.append(ln.split(ln[1], 1)[-1].strip())
-                continue
-            if ln[:2].upper().startswith('D') and (ln[1:2] in ['.', ')', '：', ':'] or ln[1:2].isspace()):
-                options.append(ln.split(ln[1], 1)[-1].strip())
+            opt_match = _OPTION_LINE_RE.match(ln)
+            if opt_match:
+                option_text = opt_match.group(2).strip()
+                if option_text:
+                    options.append(option_text)
                 continue
 
-            # 答案行识别
             low = ln.lower()
             if '答案' in ln or 'answer' in low or ln.startswith('正确'):
-                # 提取字母
-                import re
                 m = re.search(r'([A-D])', ln.upper())
                 if m:
-                    letter = m.group(1)
-                    correct = ord(letter) - ord('A')
+                    correct = ord(m.group(1)) - ord('A')
                 else:
-                    # 中文格式可能是"答案：C" 或 "答案：  C"
                     m2 = re.search(r'答案[:：\s]*([A-D])', ln.upper())
                     if m2:
                         correct = ord(m2.group(1)) - ord('A')
                 continue
 
-            # 解析/解释
             if ln.startswith('解析') or ln.startswith('解释') or '解析：' in ln or '解释：' in ln:
-                # 取该行以及后续行为解析
                 idx = lines.index(ln)
                 explanation = '\n'.join(lines[idx:])
                 break
