@@ -7,7 +7,12 @@ from src.models.user import db
 class Course(db.Model):
     """课程模型"""
     __tablename__ = 'courses'
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        db.Index('idx_courses_teacher_status', 'teacher_id', 'status'),
+        db.Index('idx_courses_category_difficulty', 'category', 'difficulty'),
+        db.Index('idx_courses_status_created', 'status', 'created_at'),
+        {'extend_existing': True},
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
@@ -46,7 +51,11 @@ class Course(db.Model):
 class TeachingContent(db.Model):
     """教学内容模型"""
     __tablename__ = 'teaching_contents'
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        db.Index('idx_teaching_contents_course_created', 'course_id', 'created_at'),
+        db.Index('idx_teaching_contents_video', 'video_id'),
+        {'extend_existing': True},
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     course_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=False)
@@ -77,7 +86,11 @@ class TeachingContent(db.Model):
 class Assessment(db.Model):
     """考核模型"""
     __tablename__ = 'assessments'
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        db.Index('idx_assessments_course_created', 'course_id', 'created_at', 'id'),
+        db.Index('idx_assessments_recommended', 'is_recommended'),
+        {'extend_existing': True},
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     course_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=False)
@@ -109,7 +122,11 @@ class Assessment(db.Model):
 class LearningProgress(db.Model):
     """学习进度模型"""
     __tablename__ = 'learning_progress'
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        db.Index('idx_learning_progress_user_course', 'user_id', 'course_id'),
+        db.Index('idx_learning_progress_course_accessed', 'course_id', 'last_accessed'),
+        {'extend_existing': True},
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -135,7 +152,11 @@ class LearningProgress(db.Model):
 class PracticeEvaluation(db.Model):
     """练习评测模型"""
     __tablename__ = 'practice_evaluations'
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        db.Index('idx_practice_evaluations_user_assessment', 'user_id', 'assessment_id'),
+        db.Index('idx_practice_evaluations_assessment_created', 'assessment_id', 'created_at'),
+        {'extend_existing': True},
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -164,7 +185,11 @@ class PracticeEvaluation(db.Model):
 class VideoLesson(db.Model):
     """视频课程模型"""
     __tablename__ = 'video_lessons'
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        db.Index('idx_video_lessons_course_order', 'course_id', 'order_index', 'created_at'),
+        db.Index('idx_video_lessons_status', 'status'),
+        {'extend_existing': True},
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     course_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=False)
@@ -204,7 +229,10 @@ class VideoLesson(db.Model):
 class VideoProgress(db.Model):
     """视频观看进度模型"""
     __tablename__ = 'video_progress'
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        db.Index('idx_video_progress_user_video', 'user_id', 'video_id'),
+        {'extend_existing': True},
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -231,7 +259,12 @@ class VideoProgress(db.Model):
 class CourseQuestion(db.Model):
     """课程问答模型"""
     __tablename__ = 'course_questions'
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        db.Index('idx_course_questions_course_status', 'course_id', 'status', 'created_at'),
+        db.Index('idx_course_questions_user_created', 'user_id', 'created_at'),
+        db.Index('idx_course_questions_video', 'video_id'),
+        {'extend_existing': True},
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     course_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=False)
@@ -287,7 +320,11 @@ class CourseQuestion(db.Model):
 class QuestionAnswer(db.Model):
     """问题回答模型"""
     __tablename__ = 'question_answers'
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        db.Index('idx_question_answers_question_created', 'question_id', 'created_at'),
+        db.Index('idx_question_answers_user_created', 'user_id', 'created_at'),
+        {'extend_existing': True},
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     question_id = db.Column(db.Integer, db.ForeignKey('course_questions.id'), nullable=False)
@@ -333,7 +370,12 @@ class QuestionAnswer(db.Model):
 class CourseDiscussion(db.Model):
     """课程讨论模型"""
     __tablename__ = 'course_discussions'
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        db.Index('idx_course_discussions_course_created', 'course_id', 'created_at'),
+        db.Index('idx_course_discussions_parent', 'parent_id'),
+        db.Index('idx_course_discussions_user_created', 'user_id', 'created_at'),
+        {'extend_existing': True},
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     course_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=False)
@@ -384,7 +426,11 @@ class CourseDiscussion(db.Model):
 class HandRaise(db.Model):
     """举手提问模型"""
     __tablename__ = 'hand_raises'
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        db.Index('idx_hand_raises_course_status', 'course_id', 'status', 'created_at'),
+        db.Index('idx_hand_raises_user_status', 'user_id', 'status'),
+        {'extend_existing': True},
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     course_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=False)
@@ -429,7 +475,12 @@ class HandRaise(db.Model):
 class StudyNote(db.Model):
     """学习笔记模型"""
     __tablename__ = 'study_notes'
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        db.Index('idx_study_notes_user_course', 'user_id', 'course_id', 'updated_at'),
+        db.Index('idx_study_notes_course_public', 'course_id', 'is_public', 'created_at'),
+        db.Index('idx_study_notes_video', 'video_id'),
+        {'extend_existing': True},
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -481,7 +532,11 @@ class StudyNote(db.Model):
 class ContentBookmark(db.Model):
     """内容书签/重点标记模型"""
     __tablename__ = 'content_bookmarks'
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        db.Index('idx_content_bookmarks_user_course', 'user_id', 'course_id', 'created_at'),
+        db.Index('idx_content_bookmarks_content', 'content_id'),
+        {'extend_existing': True},
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -520,7 +575,12 @@ class ContentBookmark(db.Model):
 class MistakeRecord(db.Model):
     """错题记录模型"""
     __tablename__ = 'mistake_records'
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        db.Index('idx_mistake_records_user_course_status', 'user_id', 'course_id', 'mastery_status'),
+        db.Index('idx_mistake_records_assessment_question', 'assessment_id', 'question_index'),
+        db.Index('idx_mistake_records_last_mistake', 'last_mistake_at'),
+        {'extend_existing': True},
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -646,7 +706,11 @@ class MistakeRecord(db.Model):
 
 class ProgrammingSubmission(db.Model):
     __tablename__ = 'programming_submissions'
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = (
+        db.Index('idx_programming_submissions_user_assessment', 'user_id', 'assessment_id'),
+        db.Index('idx_programming_submissions_course_created', 'course_id', 'created_at'),
+        {'extend_existing': True},
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)

@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify, session, Response
+from src.utils.auth import require_auth
 from src.models.user import db, User
 from src.models.course import PracticeEvaluation, Assessment, VideoLesson, TeachingContent, Course
 from src.services.spark_service import spark_service
@@ -7,16 +8,6 @@ from src.models.student_profile import StudentProfile
 import json
 
 ai_bp = Blueprint('ai', __name__)
-
-
-def require_auth(f):
-    """认证装饰器"""
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            return jsonify({'error': 'Authentication required'}), 401
-        return f(*args, **kwargs)
-    decorated_function.__name__ = f.__name__
-    return decorated_function
 
 
 def get_ai_style_prompt(style):

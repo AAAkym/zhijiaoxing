@@ -350,6 +350,22 @@ export default function TeacherDashboard({ user, onLogout }) {
   ]
 
   // 初始加载：从后端拉取课程列表以保证与服务器同步
+  const refreshDashboardStats = async () => {
+    try {
+      const res = await teacherApi.getDashboardStats()
+      const s = res?.stats || res || {}
+      setStats(prev => ({
+        ...prev,
+        myCourses: s.my_courses ?? s.course_count ?? prev.myCourses,
+        totalStudents: s.total_students ?? prev.totalStudents,
+        completedExams: s.completed_exams ?? s.assessment_count ?? prev.completedExams,
+        aiGeneratedContent: s.ai_generated_content ?? s.content_count ?? prev.aiGeneratedContent
+      }))
+    } catch (err) {
+      console.warn('加载教师统计失败', err)
+    }
+  }
+
   useEffect(() => {
     let mounted = true
     const loadCourses = async () => {
@@ -378,21 +394,8 @@ export default function TeacherDashboard({ user, onLogout }) {
     }
 
     const loadStats = async () => {
-      try {
-        const res = await teacherApi.getDashboardStats()
-        const s = res?.stats || res || {}
-        if (mounted) {
-          setStats(prev => ({
-            ...prev,
-            myCourses: s.my_courses ?? s.course_count ?? prev.myCourses,
-            totalStudents: s.total_students ?? prev.totalStudents,
-            completedExams: s.completed_exams ?? s.assessment_count ?? prev.completedExams,
-            aiGeneratedContent: s.ai_generated_content ?? s.content_count ?? prev.aiGeneratedContent
-          }))
-        }
-      } catch (err) {
-        console.warn('加载教师统计失败', err)
-      }
+      if (!mounted) return
+      await refreshDashboardStats()
     }
 
     const loadAnalyticsData = async () => {
@@ -608,6 +611,7 @@ export default function TeacherDashboard({ user, onLogout }) {
       const res = await content.generate(params)
       // 后端返回的结构: { content: teaching_content.to_dict() }
       setGeneratedContent(res.content ? res.content.content : '')
+      await refreshDashboardStats()
     } catch (error) {
       console.error('生成内容失败:', error)
       setGeneratedContent('')
@@ -637,6 +641,7 @@ export default function TeacherDashboard({ user, onLogout }) {
       
       const res = await content.create(params)
       setSaveStatus('success')
+      await refreshDashboardStats()
       setTimeout(() => setSaveStatus(null), 3000)
     } catch (error) {
       console.error('保存内容失败:', error)
@@ -1038,6 +1043,7 @@ export default function TeacherDashboard({ user, onLogout }) {
       }
       setIsAddCourseOpen(false)
       setNewCourse({ title: '', description: '', category: 'programming', difficulty: 'beginner' })
+      await refreshDashboardStats()
       alert('课程添加成功！')
     } catch (error) {
       console.error('添加课程失败:', error)
@@ -1052,6 +1058,7 @@ export default function TeacherDashboard({ user, onLogout }) {
     try {
       await courses.delete(courseId)
       setCourseList(prev => prev.filter(c => c.id !== courseId))
+      await refreshDashboardStats()
       alert('课程删除成功！')
     } catch (error) {
       console.error('删除课程失败:', error)

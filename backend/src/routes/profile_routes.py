@@ -1,5 +1,6 @@
 import logging
 from flask import Blueprint, jsonify, request, session
+from src.utils.auth import require_auth
 from src.models.user import db, User
 from src.models.student_profile import StudentProfile, ProfileDialogSession
 from src.services.multi_agent.profile_agent import ProfileAgent
@@ -10,15 +11,6 @@ logger = logging.getLogger(__name__)
 profile_bp = Blueprint("profile", __name__)
 
 profile_agent = ProfileAgent()
-
-
-def require_auth(f):
-    def decorated(*args, **kwargs):
-        if "user_id" not in session:
-            return jsonify({"error": "Authentication required"}), 401
-        return f(*args, **kwargs)
-    decorated.__name__ = f.__name__
-    return decorated
 
 
 @profile_bp.route("/profile", methods=["GET"])

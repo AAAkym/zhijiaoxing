@@ -3,6 +3,7 @@ import logging
 from datetime import datetime
 
 from flask import Blueprint, jsonify, request, session
+from src.utils.auth import require_auth
 from sqlalchemy import func
 
 from src.models.user import db, User, ClassGroup, ClassGroupStudent, ClassGroupCourse
@@ -12,15 +13,6 @@ from src.services.spark_service import spark_service
 
 logger = logging.getLogger(__name__)
 class_mgmt_bp = Blueprint("class_management", __name__)
-
-
-def require_auth(f):
-    def decorated_function(*args, **kwargs):
-        if "user_id" not in session:
-            return jsonify({"error": "Authentication required"}), 401
-        return f(*args, **kwargs)
-    decorated_function.__name__ = f.__name__
-    return decorated_function
 
 
 @class_mgmt_bp.route("/classes", methods=["GET"])

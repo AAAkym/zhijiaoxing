@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 from flask import Blueprint, jsonify, request, session
+from src.utils.auth import require_auth
 
 from src.models.course import Assessment, Course, MistakeRecord, ProgrammingSubmission
 from src.models.user import db
@@ -21,15 +22,6 @@ programming_bp = Blueprint('programming', __name__)
 SUPPORTED_LANGUAGES = ['python', 'javascript', 'java', 'cpp', 'c']
 RUNNABLE_LANGUAGES = {'python', 'javascript'}
 MAX_QUESTION_COUNT = 20
-
-
-def require_auth(f):
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            return jsonify({'error': 'Authentication required'}), 401
-        return f(*args, **kwargs)
-    decorated_function.__name__ = f.__name__
-    return decorated_function
 
 
 def require_teacher(f):

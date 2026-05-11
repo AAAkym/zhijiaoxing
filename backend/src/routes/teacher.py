@@ -43,12 +43,7 @@ def _get_cache():
 def get_dashboard_stats():
     try:
         user_id = session['user_id']
-        cache = _get_cache()
-        cache_key = f'teacher_stats:{user_id}'
-        if cache:
-            cached = cache.get(cache_key)
-            if cached:
-                return jsonify(cached), 200
+        # 教师概览要求强实时，避免缓存导致前后端显示不同步
 
         my_courses = Course.query.filter_by(teacher_id=user_id).count()
         total_students = db.session.query(func.count(func.distinct(LearningProgress.user_id))).join(
@@ -59,9 +54,13 @@ def get_dashboard_stats():
         ).join(Course, Assessment.course_id == Course.id).filter(
             Course.teacher_id == user_id
         ).count()
-        ai_generated_content = TeachingContent.query.filter_by(generated_by_llm=True).join(
+        ai_generated_teaching_content = TeachingContent.query.filter_by(generated_by_llm=True).join(
             Course, TeachingContent.course_id == Course.id
         ).filter(Course.teacher_id == user_id).count()
+        ai_generated_assessments = Assessment.query.filter_by(generated_by_llm=True).join(
+            Course, Assessment.course_id == Course.id
+        ).filter(Course.teacher_id == user_id).count()
+        ai_generated_content = ai_generated_teaching_content + ai_generated_assessments
         result = {
             'stats': {
                 'my_courses': my_courses,
@@ -73,8 +72,6 @@ def get_dashboard_stats():
                 'content_count': ai_generated_content
             }
         }
-        if cache:
-            cache.set(cache_key, result, timeout=60)
         return jsonify(result), 200
     except Exception as e:
         logger.error(f'获取教师统计失败: {str(e)}')

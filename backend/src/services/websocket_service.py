@@ -8,7 +8,9 @@ WebSocket 实时通信服务
 如果没有安装，会自动降级为非实时模式
 """
 
-from flask import session
+import os
+
+from flask import request, session
 from datetime import datetime
 import logging
 
@@ -33,11 +35,17 @@ course_rooms = {}  # course_id -> set of user_ids
 
 # 如果 SocketIO 可用，初始化它
 if WEBSOCKET_AVAILABLE:
+    cors_origins = os.environ.get(
+        "SOCKETIO_CORS_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173",
+    ).split(",")
     socketio = SocketIO(
-        cors_allowed_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-        async_mode='threading',
-        logger=True,
-        engineio_logger=True
+        cors_allowed_origins=[origin.strip() for origin in cors_origins if origin.strip()],
+        async_mode=os.environ.get("SOCKETIO_ASYNC_MODE", "threading"),
+        logger=os.environ.get("SOCKETIO_LOGGER", "false").lower() in ("true", "1", "yes"),
+        engineio_logger=os.environ.get("SOCKETIO_ENGINEIO_LOGGER", "false").lower() in ("true", "1", "yes"),
+        ping_interval=int(os.environ.get("SOCKETIO_PING_INTERVAL", "25")),
+        ping_timeout=int(os.environ.get("SOCKETIO_PING_TIMEOUT", "60")),
     )
 else:
     # 创建一个模拟的 socketio 对象，提供空实现
@@ -96,7 +104,7 @@ def register_events():
         
         # 记录在线用户
         online_users[user_id] = {
-            'sid': session.sid,
+            'sid': request.sid,
             'role': user_role,
             'course_id': course_id,
             'joined_at': datetime.utcnow()

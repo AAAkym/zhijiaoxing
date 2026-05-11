@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify, session
+from src.utils.auth import require_auth
 from src.models.user import db, User
 from src.services import ai_analysis_service as svc
 import logging
@@ -6,15 +7,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 ai_analysis_bp = Blueprint('ai_analysis', __name__)
-
-
-def require_auth(f):
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            return jsonify({'error': 'Authentication required'}), 401
-        return f(*args, **kwargs)
-    decorated_function.__name__ = f.__name__
-    return decorated_function
 
 
 def require_admin(f):

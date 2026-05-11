@@ -1,6 +1,7 @@
 import logging
 
 from flask import Blueprint, jsonify, request, session
+from src.utils.auth import require_auth
 
 from src.models.course import Achievement, UserAchievement
 from src.services.achievement_service import (
@@ -13,16 +14,6 @@ from src.services.achievement_service import (
 
 logger = logging.getLogger(__name__)
 achievement_bp = Blueprint("achievement", __name__)
-
-
-def require_auth(f):
-    def decorated_function(*args, **kwargs):
-        if "user_id" not in session:
-            return jsonify({"error": "Authentication required"}), 401
-        return f(*args, **kwargs)
-
-    decorated_function.__name__ = f.__name__
-    return decorated_function
 
 
 @achievement_bp.route("/achievements", methods=["GET"])

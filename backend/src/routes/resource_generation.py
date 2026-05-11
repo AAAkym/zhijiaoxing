@@ -2,6 +2,7 @@ import json
 import logging
 
 from flask import Blueprint, jsonify, request, session
+from src.utils.auth import require_auth
 
 from src.models.user import db, User
 from src.models.student_profile import StudentProfile
@@ -21,15 +22,6 @@ def _get_coordinator():
         from src.services.spark_service import spark_service
         _coordinator = CoordinatorAgent(spark_service=spark_service)
     return _coordinator
-
-
-def require_auth(f):
-    def decorated(*args, **kwargs):
-        if "user_id" not in session:
-            return jsonify({"error": "Authentication required"}), 401
-        return f(*args, **kwargs)
-    decorated.__name__ = f.__name__
-    return decorated
 
 
 def _get_student_profile(user_id):

@@ -17,7 +17,6 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from src.services.spark_service import spark_service
-from src.services.spark_service import spark_service
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)

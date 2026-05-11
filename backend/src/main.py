@@ -7,6 +7,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from flask import Flask, jsonify, send_from_directory, send_file, make_response, request
 from flask_caching import Cache
 from flask_cors import CORS
+from werkzeug.exceptions import RequestEntityTooLarge
+try:
+    from flask_session import Session
+except ImportError:
+    Session = None
 
 from src.config import get_config
 from src.models.user import db
@@ -44,6 +49,11 @@ app.config.from_object(config)
 app.config['JSON_AS_ASCII'] = False
 app.config['RESTFUL_JSON'] = {'ensure_ascii': False}
 
+if Session is not None:
+    Session(app)
+else:
+    app.logger.warning('Flask-Session is not installed; falling back to signed cookie sessions')
+
 
 @app.after_request
 def after_request(response):
@@ -53,6 +63,11 @@ def after_request(response):
         elif 'text/' in response.content_type:
             response.content_type = response.content_type + '; charset=utf-8'
     return response
+
+
+@app.errorhandler(RequestEntityTooLarge)
+def handle_request_entity_too_large(error):
+    return jsonify({'error': 'File too large'}), 413
 
 
 CORS(
@@ -318,6 +333,50 @@ with app.app_context():
                     )
                 ''')
                 print('[DB Migration] [OK] Created table: profile_dialog_sessions')
+
+            sqlite_indexes = {
+                'idx_courses_teacher_status': ('courses', 'teacher_id, status'),
+                'idx_courses_category_difficulty': ('courses', 'category, difficulty'),
+                'idx_courses_status_created': ('courses', 'status, created_at'),
+                'idx_teaching_contents_course_created': ('teaching_contents', 'course_id, created_at'),
+                'idx_teaching_contents_video': ('teaching_contents', 'video_id'),
+                'idx_assessments_course_created': ('assessments', 'course_id, created_at, id'),
+                'idx_assessments_recommended': ('assessments', 'is_recommended'),
+                'idx_learning_progress_user_course': ('learning_progress', 'user_id, course_id'),
+                'idx_learning_progress_course_accessed': ('learning_progress', 'course_id, last_accessed'),
+                'idx_practice_evaluations_user_assessment': ('practice_evaluations', 'user_id, assessment_id'),
+                'idx_practice_evaluations_assessment_created': ('practice_evaluations', 'assessment_id, created_at'),
+                'idx_video_lessons_course_order': ('video_lessons', 'course_id, order_index, created_at'),
+                'idx_video_lessons_status': ('video_lessons', 'status'),
+                'idx_video_progress_user_video': ('video_progress', 'user_id, video_id'),
+                'idx_course_questions_course_status': ('course_questions', 'course_id, status, created_at'),
+                'idx_course_questions_user_created': ('course_questions', 'user_id, created_at'),
+                'idx_course_questions_video': ('course_questions', 'video_id'),
+                'idx_question_answers_question_created': ('question_answers', 'question_id, created_at'),
+                'idx_question_answers_user_created': ('question_answers', 'user_id, created_at'),
+                'idx_course_discussions_course_created': ('course_discussions', 'course_id, created_at'),
+                'idx_course_discussions_parent': ('course_discussions', 'parent_id'),
+                'idx_course_discussions_user_created': ('course_discussions', 'user_id, created_at'),
+                'idx_hand_raises_course_status': ('hand_raises', 'course_id, status, created_at'),
+                'idx_hand_raises_user_status': ('hand_raises', 'user_id, status'),
+                'idx_study_notes_user_course': ('study_notes', 'user_id, course_id, updated_at'),
+                'idx_study_notes_course_public': ('study_notes', 'course_id, is_public, created_at'),
+                'idx_study_notes_video': ('study_notes', 'video_id'),
+                'idx_content_bookmarks_user_course': ('content_bookmarks', 'user_id, course_id, created_at'),
+                'idx_content_bookmarks_content': ('content_bookmarks', 'content_id'),
+                'idx_mistake_records_user_course_status': ('mistake_records', 'user_id, course_id, mastery_status'),
+                'idx_mistake_records_assessment_question': ('mistake_records', 'assessment_id, question_index'),
+                'idx_mistake_records_last_mistake': ('mistake_records', 'last_mistake_at'),
+                'idx_programming_submissions_user_assessment': ('programming_submissions', 'user_id, assessment_id'),
+                'idx_programming_submissions_course_created': ('programming_submissions', 'course_id, created_at'),
+            }
+            for index_name, (table_name, columns) in sqlite_indexes.items():
+                try:
+                    cursor.execute(
+                        f'CREATE INDEX IF NOT EXISTS {index_name} ON {table_name} ({columns})'
+                    )
+                except Exception as e:
+                    print(f'[DB Migration] [WARN] Failed to create index {index_name}: {e}')
 
             conn.commit()
 

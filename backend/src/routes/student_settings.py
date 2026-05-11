@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify, session
+from src.utils.auth import require_auth
 from src.models.user import db, User
 from datetime import datetime
 import base64
@@ -9,14 +10,6 @@ student_settings_bp = Blueprint('student_settings', __name__)
 
 UPLOAD_FOLDER = 'uploads/avatars'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-
-def require_auth(f):
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            return jsonify({'error': 'Authentication required'}), 401
-        return f(*args, **kwargs)
-    decorated_function.__name__ = f.__name__
-    return decorated_function
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS

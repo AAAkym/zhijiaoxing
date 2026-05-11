@@ -1,20 +1,11 @@
 from flask import Blueprint, request, jsonify, session
+from src.utils.auth import require_auth
 from src.models.user import User, db
 from src.models.course import Course, LearningProgress, PracticeEvaluation, Assessment, TeachingContent
 from sqlalchemy import func
 from datetime import datetime, timedelta
 
 admin_bp = Blueprint('admin', __name__)
-
-
-def require_auth(f):
-    """认证装饰器"""
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            return jsonify({'error': 'Authentication required'}), 401
-        return f(*args, **kwargs)
-    decorated_function.__name__ = f.__name__
-    return decorated_function
 
 
 def require_admin(f):

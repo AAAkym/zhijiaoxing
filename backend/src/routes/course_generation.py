@@ -1,21 +1,13 @@
 import logging
 
 from flask import Blueprint, jsonify, request, session
+from src.utils.auth import require_auth
 
 from src.models.course import CourseGenerationConfig, CourseGenerationVersion, CourseReview
 from src.services import course_generation_service as svc
 
 logger = logging.getLogger(__name__)
 course_gen_bp = Blueprint("course_generation", __name__)
-
-
-def require_auth(f):
-    def decorated_function(*args, **kwargs):
-        if "user_id" not in session:
-            return jsonify({"error": "Authentication required"}), 401
-        return f(*args, **kwargs)
-    decorated_function.__name__ = f.__name__
-    return decorated_function
 
 
 def require_teacher(f):

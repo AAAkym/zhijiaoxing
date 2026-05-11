@@ -51,22 +51,15 @@ def get_my_courses():
         # 获取学生的学习进度记录
         progress_records = LearningProgress.query.filter_by(user_id=user_id).all()
         
-        # 如果没有学习进度记录，返回所有可用课程
-        if not progress_records:
-            courses = Course.query.all()
-            course_list = []
-            for course in courses:
-                course_dict = course.to_dict()
-                course_dict['progress_percentage'] = 0.0
-                course_dict['last_accessed'] = None
-                course_list.append(course_dict)
-        else:
-            course_list = []
-            for progress in progress_records:
-                course_dict = progress.course.to_dict()
-                course_dict['progress_percentage'] = progress.progress_percentage
-                course_dict['last_accessed'] = progress.last_accessed.isoformat() if progress.last_accessed else None
-                course_list.append(course_dict)
+        # 仅返回真实已加入/已分配课程，避免未分配课程误显示
+        course_list = []
+        for progress in progress_records:
+            if not progress.course:
+                continue
+            course_dict = progress.course.to_dict()
+            course_dict['progress_percentage'] = progress.progress_percentage
+            course_dict['last_accessed'] = progress.last_accessed.isoformat() if progress.last_accessed else None
+            course_list.append(course_dict)
         
         return jsonify({
             'courses': course_list

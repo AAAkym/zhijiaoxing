@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from flask import Blueprint, Response, current_app, jsonify, request, session
+from src.utils.auth import require_auth
 from sqlalchemy import func, or_
 
 from src.models.course import (
@@ -47,16 +48,6 @@ def _is_redundant_analysis_text(text: str) -> bool:
     if len(normalized) < 3:
         return False
     return (len(normalized) - len(set(normalized))) >= 2
-
-
-def require_auth(f):
-    def decorated_function(*args, **kwargs):
-        if "user_id" not in session:
-            return jsonify({"error": "Authentication required"}), 401
-        return f(*args, **kwargs)
-
-    decorated_function.__name__ = f.__name__
-    return decorated_function
 
 
 def _safe_json_loads(value: Any, default: Any):

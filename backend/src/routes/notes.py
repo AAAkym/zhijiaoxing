@@ -3,6 +3,7 @@ import os
 import uuid
 from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify, session, current_app, Response
+from src.utils.auth import require_auth
 from werkzeug.utils import secure_filename
 from PIL import Image
 import io
@@ -52,16 +53,6 @@ def compress_image(image_file, max_width=1920, quality=85):
     except Exception as e:
         print(f"Image compression error: {e}")
         return None
-
-
-def require_auth(f):
-    """认证装饰器"""
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            return jsonify({'error': 'Authentication required'}), 401
-        return f(*args, **kwargs)
-    decorated_function.__name__ = f.__name__
-    return decorated_function
 
 
 @notes_bp.route('/notes', methods=['GET'])

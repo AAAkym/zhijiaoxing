@@ -1,20 +1,12 @@
 import logging
 from flask import Blueprint, jsonify, request, session
+from src.utils.auth import require_auth
 from src.models.user import db
 from src.services.learning_path_service import learning_path_service, recommendation_engine
 
 logger = logging.getLogger(__name__)
 
 learning_path_bp = Blueprint('learning_path', __name__)
-
-
-def require_auth(f):
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            return jsonify({'error': 'Authentication required'}), 401
-        return f(*args, **kwargs)
-    decorated_function.__name__ = f.__name__
-    return decorated_function
 
 
 @learning_path_bp.route('/learning-path', methods=['GET'])

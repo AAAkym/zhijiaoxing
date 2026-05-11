@@ -9,6 +9,9 @@ import json
 import logging
 import os
 import re
+import threading
+import time
+from contextlib import contextmanager
 from typing import Any, Dict, Generator, Iterable, List, Optional, Union
 
 import requests
@@ -33,6 +36,74 @@ COMPLEX_TASK_TIMEOUT_SECONDS = 300
 
 class SparkServiceError(Exception):
     pass
+
+
+class SparkCircuitOpenError(SparkServiceError):
+    pass
+
+
+class _CircuitBreaker:
+    def __init__(self, failure_threshold: int, recovery_timeout: int) -> None:
+        self.failure_threshold = max(1, failure_threshold)
+        self.recovery_timeout = max(1, recovery_timeout)
+        self._failure_count = 0
+        self._opened_at: Optional[float] = None
+        self._lock = threading.Lock()
+
+    def before_call(self) -> None:
+        with self._lock:
+            if self._opened_at is None:
+                return
+            elapsed = time.monotonic() - self._opened_at
+            if elapsed >= self.recovery_timeout:
+                return
+            remaining = int(self.recovery_timeout - elapsed)
+            raise SparkCircuitOpenError(
+                f"Spark circuit is open; retry after {remaining}s"
+            )
+
+    def record_success(self) -> None:
+        with self._lock:
+            self._failure_count = 0
+            self._opened_at = None
+
+    def record_failure(self) -> None:
+        with self._lock:
+            self._failure_count += 1
+            if self._failure_count >= self.failure_threshold:
+                self._opened_at = time.monotonic()
+                logger.warning(
+                    "Spark circuit opened after %s consecutive failures",
+                    self._failure_count,
+                )
+
+
+_spark_circuit = _CircuitBreaker(
+    failure_threshold=int(os.environ.get("SPARK_CIRCUIT_FAILURE_THRESHOLD", "5")),
+    recovery_timeout=int(os.environ.get("SPARK_CIRCUIT_RECOVERY_TIMEOUT", "60")),
+)
+_spark_bulkhead = threading.BoundedSemaphore(
+    value=max(1, int(os.environ.get("SPARK_MAX_IN_FLIGHT", "8")))
+)
+
+
+@contextmanager
+def _guarded_spark_call():
+    _spark_circuit.before_call()
+    acquire_timeout = float(os.environ.get("SPARK_BULKHEAD_WAIT_SECONDS", "2"))
+    acquired = _spark_bulkhead.acquire(timeout=acquire_timeout)
+    if not acquired:
+        raise SparkServiceError("Spark service is busy; please retry later")
+
+    try:
+        yield
+    except Exception:
+        _spark_circuit.record_failure()
+        raise
+    else:
+        _spark_circuit.record_success()
+    finally:
+        _spark_bulkhead.release()
 
 
 def _env(name: str, default: Optional[str] = None) -> Optional[str]:
@@ -309,45 +380,58 @@ def chat(messages: Union[str, List[Dict[str, str]]]) -> str:
     url = _env("SPARK_API_URL", DEFAULT_SPARK_API_URL)
     timeout = int(_env("SPARK_TIMEOUT", str(DEFAULT_TIMEOUT_SECONDS)))
     payload = _build_payload(messages, stream=False, user=_env("SPARK_USER"))
-    logger.info(f"🚀 发送同步API请求到: {url}, 超时: {timeout}秒")
-    logger.debug(f"📦 请求payload: {json.dumps(payload, ensure_ascii=False)[:500]}...")
-    resp = requests.post(url, json=payload, headers=_get_headers(), timeout=timeout)
-    try:
-        resp.raise_for_status()
-        logger.info(f"✅ API请求成功, 状态码: {resp.status_code}")
-    except requests.RequestException as exc:
-        logger.error(f"❌ API请求失败: {exc}, 响应内容: {resp.text[:200] if resp.text else '无'}")
-        raise SparkServiceError(f"Spark API request failed: {exc}")
-    return _parse_chat_response(resp.json())
+    logger.info("Sending Spark API request to %s with timeout=%ss", url, timeout)
+    logger.debug("Spark request payload: %s...", json.dumps(payload, ensure_ascii=False)[:500])
+
+    with _guarded_spark_call():
+        try:
+            resp = requests.post(url, json=payload, headers=_get_headers(), timeout=timeout)
+            resp.raise_for_status()
+            logger.info("Spark API request succeeded with status=%s", resp.status_code)
+            return _parse_chat_response(resp.json())
+        except requests.RequestException as exc:
+            response_text = ""
+            if getattr(exc, "response", None) is not None:
+                response_text = getattr(exc.response, "text", "")[:200]
+            elif "resp" in locals():
+                response_text = resp.text[:200] if resp.text else ""
+            logger.error("Spark API request failed: %s; response=%s", exc, response_text or "<empty>")
+            raise SparkServiceError(f"Spark API request failed: {exc}") from exc
+        except ValueError as exc:
+            logger.error("Spark API returned invalid JSON: %s", exc)
+            raise SparkServiceError("Spark API returned invalid JSON") from exc
 
 
 def chat_stream(messages: Union[str, List[Dict[str, str]]]) -> Generator[str, None, None]:
     """Yield chunks from the streaming endpoint using SSE."""
     if not is_configured():
-        error_msg = "AI服务未配置，请在后端.env文件中设置SPARK_API_KEY和SPARK_API_SECRET"
+        error_msg = "Spark credentials are not configured. Set SPARK_API_PASSWORD or SPARK_API_KEY/SPARK_API_SECRET."
         logger.error(error_msg)
         raise SparkServiceError(error_msg)
 
     url = _env("SPARK_API_URL", DEFAULT_SPARK_API_URL)
     timeout = int(_env("SPARK_TIMEOUT", str(DEFAULT_TIMEOUT_SECONDS)))
     payload = _build_payload(messages, stream=True, user=_env("SPARK_USER"))
-    logger.info(f"🚀 发送流式API请求到: {url}, 超时: {timeout}秒")
-    with requests.post(
-        url, json=payload, headers=_get_headers(), timeout=timeout, stream=True
-    ) as resp:
-        try:
-            resp.raise_for_status()
-            logger.info(f"✅ 流式API请求成功, 状态码: {resp.status_code}")
-        except requests.RequestException as exc:
-            logger.error(f"❌ 流式API请求失败: {exc}, 响应内容: {resp.text[:200] if resp.text else '无'}")
-            raise SparkServiceError(f"Spark API request failed: {exc}")
+    logger.info("Sending Spark streaming request to %s with timeout=%ss", url, timeout)
 
-        chunk_index = 0
-        for chunk in _iter_stream_chunks(resp):
-            chunk_index += 1
-            yield chunk
+    with _guarded_spark_call():
+        with requests.post(
+            url, json=payload, headers=_get_headers(), timeout=timeout, stream=True
+        ) as resp:
+            try:
+                resp.raise_for_status()
+                logger.info("Spark streaming request succeeded with status=%s", resp.status_code)
+            except requests.RequestException as exc:
+                response_text = resp.text[:200] if resp.text else ""
+                logger.error("Spark streaming request failed: %s; response=%s", exc, response_text or "<empty>")
+                raise SparkServiceError(f"Spark API request failed: {exc}") from exc
 
-        logger.info(f"✅ 流式响应处理完成, 共 {chunk_index} 个内容块")
+            chunk_index = 0
+            for chunk in _iter_stream_chunks(resp):
+                chunk_index += 1
+                yield chunk
+
+            logger.info("Spark streaming response completed with %s chunks", chunk_index)
 
 
 def generate_teaching_content(

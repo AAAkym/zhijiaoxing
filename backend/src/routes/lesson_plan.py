@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify, session
+from src.utils.auth import require_auth
 import logging
 
 from src.services.lesson_plan_service import (
@@ -9,15 +10,6 @@ from src.services.lesson_plan_service import (
 
 logger = logging.getLogger(__name__)
 lesson_plan_bp = Blueprint('lesson_plan', __name__)
-
-
-def require_auth(f):
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            return jsonify({'error': 'Authentication required'}), 401
-        return f(*args, **kwargs)
-    decorated_function.__name__ = f.__name__
-    return decorated_function
 
 
 def require_teacher(f):

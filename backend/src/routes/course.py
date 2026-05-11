@@ -3,82 +3,76 @@ from src.models.user import User, db
 from src.models.course import Course, TeachingContent, Assessment, PracticeEvaluation, VideoLesson, ProgrammingSubmission, MistakeRecord
 from src.services.spark_service import spark_service
 from src.services.knowledge_base import knowledge_base_service
+from src.utils.auth import require_auth, require_role
 import json
 import os
 import re
 from werkzeug.utils import secure_filename
 
 
-_OPTION_LINE_RE = re.compile(r'^([A-D])\s*[.．)）:：\s]\s*(.*)', re.UNICODE)
+_OPTION_LINE_RE = re.compile(r'^\s*[\(\uff08]?([A-D])[\)\uff09]?\s*[\.\u3001:\uff1a]?\s*(.*)', re.IGNORECASE)
+MAX_ASSESSMENT_PARSE_CHARS = int(os.environ.get('ASSESSMENT_PARSE_MAX_CHARS', '200000'))
+MAX_ASSESSMENT_PARSE_QUESTIONS = int(os.environ.get('ASSESSMENT_PARSE_MAX_QUESTIONS', '100'))
 
 
 def _parse_generated_assessment_text(text: str):
-    """尝试将 LLM 返回的纯文本解析成结构化的题目列表。
-    返回格式: [{ 'question': str, 'options': [str], 'correctAnswer': int|null, 'explanation': str }, ...]
-    解析逻辑尽量鲁棒：
-    - 首先按空行分段，每段视为一题
-    - 每段中查找 A. B. C. D. 类似选项行
-    - 查找“答案”或"Answer"所在行，提取正确选项字母并转换为索引
-    - 查找“解析”或"解析："后的文本作为解析
-    如果无法解析为多题，则将整个文本作为单个简答题的 content。
-    """
+    """Parse an LLM assessment response with bounded, linear-time work."""
     if not text or not text.strip():
         return []
 
-    parts = [p.strip() for p in text.split('\n\n') if p.strip()]
+    source = text.strip()[:MAX_ASSESSMENT_PARSE_CHARS]
     questions = []
+    current_lines = []
 
-    for part in parts:
-        lines = [l.strip() for l in part.splitlines() if l.strip()]
+    def flush_block():
+        if not current_lines or len(questions) >= MAX_ASSESSMENT_PARSE_QUESTIONS:
+            return
+
+        lines = [line.strip() for line in current_lines if line.strip()]
+        current_lines.clear()
         if not lines:
-            continue
+            return
 
-        # 初始值
-        q_text = lines[0]
+        question_text = lines[0]
         options = []
         correct = None
         explanation = ''
 
-        for ln in lines[1:]:
-            opt_match = _OPTION_LINE_RE.match(ln)
+        for idx, line in enumerate(lines[1:], start=1):
+            opt_match = _OPTION_LINE_RE.match(line)
             if opt_match:
                 option_text = opt_match.group(2).strip()
                 if option_text:
                     options.append(option_text)
                 continue
 
-            low = ln.lower()
-            if '答案' in ln or 'answer' in low or ln.startswith('正确'):
-                m = re.search(r'([A-D])', ln.upper())
-                if m:
-                    correct = ord(m.group(1)) - ord('A')
-                else:
-                    m2 = re.search(r'答案[:：\s]*([A-D])', ln.upper())
-                    if m2:
-                        correct = ord(m2.group(1)) - ord('A')
+            lower_line = line.lower()
+            if 'answer' in lower_line or 'correct' in lower_line or '\u7b54\u6848' in line or line.startswith('\u6b63\u786e'):
+                match = re.search(r'([A-D])', line.upper())
+                if match:
+                    correct = ord(match.group(1)) - ord('A')
                 continue
 
-            if ln.startswith('解析') or ln.startswith('解释') or '解析：' in ln or '解释：' in ln:
-                idx = lines.index(ln)
+            if 'explanation' in lower_line or line.startswith(('\u89e3\u6790', '\u89e3\u91ca')):
                 explanation = '\n'.join(lines[idx:])
                 break
 
-        # 如果没有识别到选项并且文本较长，可以把整个 part 作为题干
-        if not options:
-            questions.append({
-                'question': part,
-                'options': [],
-                'correctAnswer': None,
-                'explanation': ''
-            })
-        else:
-            questions.append({
-                'question': q_text,
-                'options': options,
-                'correctAnswer': correct,
-                'explanation': explanation
-            })
+        questions.append({
+            'question': question_text if options else '\n'.join(lines),
+            'options': options,
+            'correctAnswer': correct,
+            'explanation': explanation,
+        })
 
+    for raw_line in source.splitlines():
+        if not raw_line.strip():
+            flush_block()
+            if len(questions) >= MAX_ASSESSMENT_PARSE_QUESTIONS:
+                break
+            continue
+        current_lines.append(raw_line)
+
+    flush_block()
     return questions
 
 
@@ -118,28 +112,6 @@ def _serialize_assessment(assessment: Assessment):
 
     return a
 course_bp = Blueprint('course', __name__)
-
-
-def require_auth(f):
-    """认证装饰器"""
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            return jsonify({'error': 'Authentication required'}), 401
-        return f(*args, **kwargs)
-    decorated_function.__name__ = f.__name__
-    return decorated_function
-
-
-def require_role(roles):
-    """角色权限装饰器"""
-    def decorator(f):
-        def decorated_function(*args, **kwargs):
-            if 'user_role' not in session or session['user_role'] not in roles:
-                return jsonify({'error': 'Insufficient permissions'}), 403
-            return f(*args, **kwargs)
-        decorated_function.__name__ = f.__name__
-        return decorated_function
-    return decorator
 
 
 @course_bp.route('/courses', methods=['GET'])
@@ -877,6 +849,7 @@ def delete_video_lesson(video_id):
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 UPLOAD_FOLDER = os.path.join(PROJECT_ROOT, 'uploads', 'videos')
 ALLOWED_EXTENSIONS = {'mp4', 'webm', 'ogg', 'mov'}
+MAX_VIDEO_UPLOAD_BYTES = int(os.environ.get('VIDEO_UPLOAD_MAX_BYTES', str(200 * 1024 * 1024)))
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -887,6 +860,9 @@ def allowed_file(filename):
 def upload_video_file():
     """上传视频文件"""
     try:
+        if request.content_length and request.content_length > MAX_VIDEO_UPLOAD_BYTES:
+            return jsonify({'error': 'File too large'}), 413
+
         if 'video' not in request.files:
             return jsonify({'error': 'No video file provided'}), 400
         

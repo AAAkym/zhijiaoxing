@@ -147,12 +147,16 @@ class Config:
     # 会话配置
     # ============================================
     SESSION_TYPE = 'filesystem'
+    SESSION_FILE_DIR = os.environ.get('SESSION_FILE_DIR', os.path.join(os.getcwd(), 'flask_session'))
+    SESSION_PERMANENT = True
+    SESSION_USE_SIGNER = True
     PERMANENT_SESSION_LIFETIME = 86400  # 会话有效期24小时
     SESSION_COOKIE_SAMESITE = 'Lax'  # 开发环境使用Lax，生产环境可用None
     SESSION_COOKIE_HTTPONLY = True  # 防止JavaScript访问cookie
-    SESSION_COOKIE_SECURE = False  # 开发环境设为False，生产环境应为True
+    SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'false').lower() in ('true', '1', 'yes')  # 开发环境设为False，生产环境应为True
     SESSION_COOKIE_NAME = 'session_id'
     SESSION_COOKIE_PATH = '/'
+    MAX_CONTENT_LENGTH = int(os.environ.get('MAX_CONTENT_LENGTH', str(200 * 1024 * 1024)))
     
     # ============================================
     # CORS配置
@@ -203,6 +207,7 @@ class ProductionConfig(Config):
     CACHE_STATS_TIMEOUT = 300     # 5分钟
     CACHE_CONTENT_TIMEOUT = 1800  # 30分钟
     CACHE_ASSESSMENT_TIMEOUT = 900 # 15分钟
+    SESSION_COOKIE_SECURE = True
 
 
 class TestingConfig(Config):
