@@ -308,7 +308,7 @@ chmod -R 777 elasticsearch/logs
 
 ```bash
 # 手动安装 IK 分词器
-docker exec -it eduai-elasticsearch bin/elasticsearch-plugin install \
+docker exec -it zhijiaoxing-elasticsearch bin/elasticsearch-plugin install \
   https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v8.11.0/elasticsearch-analysis-ik-8.11.0.zip
 
 # 重启服务

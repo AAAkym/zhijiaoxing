@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # 创建Celery应用
-celery_app = Celery('eduai')
+celery_app = Celery('zhijiaoxing')
 
 # 从配置文件加载配置
 celery_app.config_from_object('src.celeryconfig')

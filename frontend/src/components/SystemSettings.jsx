@@ -26,7 +26,7 @@ export default function SystemSettings() {
     // 基本设置
     siteName: '智教星',
     siteDescription: '智教星 - 智能教学系统',
-    adminEmail: 'admin@eduai.com',
+    adminEmail: 'admin@zhijiaoxing.com',
     timezone: 'Asia/Shanghai',
     language: 'zh-CN',
     

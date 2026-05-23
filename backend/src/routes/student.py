@@ -548,7 +548,14 @@ def _extract_mistakes_from_submission(user_id, assessment, user_answer, score):
                     })
                     logger.info(f'[错题提取] 创建新错题: 用户={user_id}, 题目索引={i}, 内容预览={question_content[:30]}...')
             else:
-                # 答对的题目，智能过滤不添加到错题本
+                existing_mistake = MistakeRecord.query.filter_by(
+                    user_id=user_id,
+                    assessment_id=assessment.id,
+                    question_index=i
+                ).first()
+                if existing_mistake and existing_mistake.mastery_status != 'mastered':
+                    existing_mistake.mastery_status = 'mastered'
+                    logger.info(f'[错题提取] 答对题目，升级为已掌握: 用户={user_id}, 题目索引={i}')
                 result['filtered_count'] += 1
                 logger.debug(f'[错题提取] 过滤答对题目: 用户={user_id}, 题目索引={i}, 用户答案={user_ans}, 正确答案={correct_ans}')
                 

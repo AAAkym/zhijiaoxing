@@ -1,6 +1,6 @@
 # Prometheus 告警规则
 groups:
-  - name: eduai_alerts
+  - name: zhijiaoxing_alerts
     interval: 30s
     rules:
       # API 高错误率告警
@@ -33,13 +33,13 @@ groups:
 
       # 服务不可用告警
       - alert: ServiceDown
-        expr: up{job="eduai-backend"} == 0
+        expr: up{job="zhijiaoxing-backend"} == 0
         for: 1m
         labels:
           severity: critical
         annotations:
           summary: "服务不可用"
-          description: "EduAI 后端服务已停止运行"
+          description: "智教星 后端服务已停止运行"
 
       # 数据库查询缓慢告警
       - alert: SlowDatabaseQuery

@@ -21,15 +21,19 @@ class LearningPathService:
             course = Course.query.get(course_id)
             if not course:
                 return {"error": "课程不存在"}
+            existing_course = LearningPath.query.filter_by(
+                user_id=user_id, course_id=course_id, status='active'
+            ).first()
+            if existing_course:
+                db.session.delete(existing_course)
             path = self._generate_course_path(user_id, course_id, profile)
         else:
-            existing = LearningPath.query.filter_by(
+            existing_overall = LearningPath.query.filter_by(
                 user_id=user_id, course_id=None, status='active'
-            ).first()
-            if existing:
-                path = self._update_existing_path(existing, profile)
-            else:
-                path = self._generate_overall_path(user_id, profile)
+            ).all()
+            for old_path in existing_overall:
+                db.session.delete(old_path)
+            path = self._generate_overall_path(user_id, profile)
 
         return path.to_dict() if path else {"error": "路径生成失败"}
 
@@ -37,9 +41,9 @@ class LearningPathService:
         course = Course.query.get(course_id)
         existing = LearningPath.query.filter_by(
             user_id=user_id, course_id=course_id, status='active'
-        ).first()
-        if existing:
-            return self._update_existing_path(existing, profile)
+        ).all()
+        for old_path in existing:
+            db.session.delete(old_path)
 
         path = LearningPath(
             user_id=user_id,
@@ -157,7 +161,10 @@ class LearningPathService:
 
         completed_count = sum(1 for lp in progresses if lp.progress_percentage >= 90)
         active_count = sum(1 for lp in progresses if 0 < lp.progress_percentage < 90)
-        title = f"{profile.display_name}的综合学习路径" if profile and profile.display_name else f"综合学习路径（{len(courses)}门课程）"
+        display_name = None
+        if profile and profile.user:
+            display_name = profile.user.real_name or profile.user.username
+        title = f"{display_name}的综合学习路径" if display_name else f"综合学习路径（{len(courses)}门课程）"
 
         path = LearningPath(
             user_id=user_id,

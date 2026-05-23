@@ -534,10 +534,10 @@ function InsightDetailDialog({ insight, open, onOpenChange }) {
                 <h3 className="text-sm font-semibold text-gray-700 mb-2">热门课程排行</h3>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={metricsData.top_courses.slice(0, 8).map(d => ({ ...d, heat_score: Number(d.heat_score) || 0 }))} layout="vertical">
+                    <BarChart data={metricsData.top_courses.slice(0, 8).map(d => ({ ...d, heat_score: Number(d.heat_score) || 0 }))} layout="vertical" margin={{ left: 10 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis type="number" tick={{ fontSize: 11 }} />
-                      <YAxis type="category" dataKey="course_title" width={100} tick={{ fontSize: 11 }} />
+                      <YAxis type="category" dataKey="course_title" width={120} tick={{ fontSize: 11 }} />
                       <Tooltip />
                       <Bar dataKey="heat_score" fill="#3B82F6" name="热度" minPointSize={3} />
                     </BarChart>
@@ -567,10 +567,10 @@ function InsightDetailDialog({ insight, open, onOpenChange }) {
                 <h3 className="text-sm font-semibold text-gray-700 mb-2">课程ROI排行</h3>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={metricsData.top_roi_courses.slice(0, 8).map(d => ({ ...d, roi: Number(d.roi) || 0 }))} layout="vertical">
+                    <BarChart data={metricsData.top_roi_courses.slice(0, 8).map(d => ({ ...d, roi: Number(d.roi) || 0 }))} layout="vertical" margin={{ left: 10 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis type="number" tick={{ fontSize: 11 }} />
-                      <YAxis type="category" dataKey="course_title" width={100} tick={{ fontSize: 11 }} />
+                      <YAxis type="category" dataKey="course_title" width={120} tick={{ fontSize: 11 }} />
                       <Tooltip />
                       <Bar dataKey="roi" fill="#10B981" name="ROI" minPointSize={3} />
                     </BarChart>

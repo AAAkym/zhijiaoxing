@@ -27,22 +27,16 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
           ws: true,
-          timeout: 120000,
-          proxyTimeout: 120000,
           configure: (proxy, options) => {
             proxy.on('error', (err, req, res) => {
               console.log('[Proxy Error]', err.message, req.url)
             })
             proxy.on('proxyReq', (proxyReq, req, res) => {
               proxyReq.setHeader('X-Accel-Buffering', 'no')
-              // 所有API请求都保持长连接
               proxyReq.setHeader('Connection', 'keep-alive')
               if (req.url && req.url.includes('/stream')) {
                 proxyReq.setHeader('Accept', 'text/event-stream')
                 proxyReq.setHeader('Cache-Control', 'no-cache')
-                // 禁用SSE请求的socket超时
-                proxyReq.socket && proxyReq.socket.setTimeout(0)
-                proxyReq.socket && proxyReq.socket.setNoDelay(true)
               }
             })
             proxy.on('proxyRes', (proxyRes, req, res) => {
@@ -51,7 +45,6 @@ export default defineConfig(({ mode }) => {
                 proxyRes.headers['cache-control'] = 'no-cache'
                 proxyRes.headers['x-accel-buffering'] = 'no'
                 proxyRes.headers['connection'] = 'keep-alive'
-                // 禁用SSE响应的socket超时
                 res.setTimeout(0)
                 res.flushHeaders()
               }
@@ -62,14 +55,18 @@ export default defineConfig(({ mode }) => {
           target: 'http://localhost:5000',
           changeOrigin: true,
           secure: false,
-          timeout: 300000,
-          proxyTimeout: 300000,
           configure: (proxy) => {
-            proxy.on('proxyRes', (proxyRes) => {
+            proxy.on('proxyReq', (proxyReq, req) => {
+              if (req.url && req.url.includes('/videos/')) {
+                proxyReq.setHeader('Connection', 'keep-alive')
+              }
+            })
+            proxy.on('proxyRes', (proxyRes, req, res) => {
               const contentType = proxyRes.headers['content-type'] || ''
               if (contentType.startsWith('video/') || contentType.startsWith('application/octet-stream')) {
                 proxyRes.headers['cache-control'] = 'public, max-age=3600'
                 delete proxyRes.headers['x-accel-buffering']
+                res.setTimeout(0)
               }
             })
           },

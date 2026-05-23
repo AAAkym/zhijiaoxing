@@ -12,6 +12,7 @@ const AdminDashboard = lazy(() => import('./components/AdminDashboard'))
 const TeacherDashboard = lazy(() => import('./components/TeacherDashboard'))
 const StudentDashboard = lazy(() => import('./components/StudentDashboard'))
 const CourseLearningPage = lazy(() => import('./components/CourseLearningPage'))
+const AITutorPanel = lazy(() => import('./components/AITutor/AITutorPanel'))
 const UserManagement = lazy(() => import('./components/UserManagement'))
 const CourseManagement = lazy(() => import('./components/CourseManagement'))
 const DataAnalytics = lazy(() => import('./components/DataAnalytics'))
@@ -95,35 +96,37 @@ function App() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    checkAuth()
+    const controller = new AbortController()
+    checkAuth(controller.signal)
+    return () => controller.abort()
   }, [])
 
-  const checkAuth = async () => {
+  const checkAuth = async (signal) => {
     try {
-      // 优先尝试验证服务端会话
       try {
-        const response = await getCurrentUser()
+        const response = await getCurrentUser(signal)
         if (response && response.user) {
-          // 服务端验证成功
           setUser(response.user)
           localStorage.setItem('currentUser', JSON.stringify(response.user))
         } else {
-          // 服务端返回异常，清除本地缓存
           localStorage.removeItem('currentUser')
           setUser(null)
         }
       } catch (sessionError) {
-        // 服务端会话验证失败，清除本地缓存并登出
+        if (sessionError?.name === 'AbortError') return
         console.warn('服务端会话验证失败，需要重新登录:', sessionError)
         localStorage.removeItem('currentUser')
         setUser(null)
       }
     } catch (error) {
+      if (error?.name === 'AbortError') return
       console.error('认证检查失败:', error)
       localStorage.removeItem('currentUser')
       setUser(null)
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) {
+        setLoading(false)
+      }
     }
   }
 
@@ -239,6 +242,16 @@ function App() {
               element={
                 user && user.role === 'student' ? (
                   <LazyRoute component={CourseLearningPage} user={user} />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              } 
+            />
+            <Route 
+              path="/ai-tutor" 
+              element={
+                user && user.role === 'student' ? (
+                  <LazyRoute component={AITutorPanel} />
                 ) : (
                   <Navigate to="/login" replace />
                 )

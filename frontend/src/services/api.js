@@ -1,11 +1,10 @@
 // 开发环境使用相对路径通过Vite代理，生产环境使用环境变量或相对路径
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 
-const SSE_TIMEOUT = 120000
+const SSE_TIMEOUT = 300000
 
 function fetchWithTimeout(url, options = {}, timeout = SSE_TIMEOUT) {
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), timeout)
   const mergedOptions = {
     ...options,
     signal: options.signal
@@ -19,30 +18,46 @@ function fetchWithTimeout(url, options = {}, timeout = SSE_TIMEOUT) {
         })()
       : controller.signal,
   }
-  return fetch(url, mergedOptions).finally(() => clearTimeout(timeoutId))
+  if (timeout > 0) {
+    const timeoutId = setTimeout(() => controller.abort(), timeout)
+    return fetch(url, mergedOptions).finally(() => clearTimeout(timeoutId))
+  }
+  return fetch(url, mergedOptions)
 }
 
 // 通用请求函数
 async function request(url, options = {}) {
+  const { signal, ...restOptions } = options
   const config = {
     headers: {
       'Content-Type': 'application/json',
     },
-    credentials: 'include', // 包含cookies
-    ...options,
+    credentials: 'include',
+    ...restOptions,
   }
 
-  if (options.body && typeof options.body === 'object') {
-    config.body = JSON.stringify(options.body)
+  if (signal) {
+    config.signal = signal
   }
 
-  const response = await fetch(`${API_BASE_URL}${url}`, config)
+  if (restOptions.body && typeof restOptions.body === 'object') {
+    config.body = JSON.stringify(restOptions.body)
+  }
+
+  let response
+  try {
+    response = await fetch(`${API_BASE_URL}${url}`, config)
+  } catch (err) {
+    const networkError = new Error('网络连接失败，请检查网络后重试')
+    networkError.isNetworkError = true
+    networkError.originalError = err
+    throw networkError
+  }
   
-  // 特殊处理401认证失败：返回包含状态码的错误对象，便于调用方区分处理
   if (response.status === 401) {
     const errorData = await response.json().catch(() => ({ error: 'Authentication required' }))
     const authError = new Error(errorData.error || 'Authentication required')
-    authError.isAuthError = true // 标记为认证错误
+    authError.isAuthError = true
     authError.status = 401
     throw authError
   }
@@ -51,7 +66,7 @@ async function request(url, options = {}) {
     const error = await response.json().catch(() => ({ error: 'Network error' }))
     const requestError = new Error(error.error || 'Request failed')
     requestError.status = response.status
-    requestError.errorDetail = error.error // 保留原始错误详情
+    requestError.errorDetail = error.error
     throw requestError
   }
 
@@ -76,7 +91,7 @@ export const auth = {
 }
 
 // 用户相关API
-export const getCurrentUser = () => request('/me')
+export const getCurrentUser = (signal) => request('/me', { signal })
 
 export const users = {
   getAll: (params = {}) => {
@@ -733,7 +748,7 @@ export const mistakeBook = {
     if (signal) {
       options.signal = signal
     }
-    return fetchWithTimeout(`${API_BASE_URL}/mistakes/${mistakeId}/analyze/stream`, options)
+    return fetchWithTimeout(`${API_BASE_URL}/mistakes/${mistakeId}/analyze/stream`, options, 0)
   },
   
   batchAnalyzeMistakes: (mistakeIds) => request('/mistakes/batch-analyze', {
@@ -753,7 +768,7 @@ export const mistakeBook = {
     if (signal) {
       options.signal = signal
     }
-    return fetchWithTimeout(`${API_BASE_URL}/mistakes/batch-analyze/stream`, options)
+    return fetchWithTimeout(`${API_BASE_URL}/mistakes/batch-analyze/stream`, options, 0)
   },
 
   generateTargetedPractice: (payload) => request('/mistakes/targeted-practice/generate', {
@@ -773,7 +788,7 @@ export const mistakeBook = {
     if (signal) {
       options.signal = signal
     }
-    return fetchWithTimeout(`${API_BASE_URL}/mistakes/targeted-practice/generate/stream`, options)
+    return fetchWithTimeout(`${API_BASE_URL}/mistakes/targeted-practice/generate/stream`, options, 0)
   },
 
   generateAdaptivePlan: (payload) => request('/mistakes/targeted-practice/adaptive-plan', {
@@ -1077,4 +1092,66 @@ export const aiAnalysis = {
     method: 'POST',
     body: data,
   }),
+}
+
+export const aiTutor = {
+  answer: (data) => request('/ai-tutor/answer', { method: 'POST', body: data }),
+  answerStream: (data) => {
+    const { _signal, ...restData } = data || {}
+    return fetchWithTimeout(`${API_BASE_URL}/ai-tutor/answer/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(restData),
+      signal: _signal,
+    }, SSE_TIMEOUT)
+  },
+  explain: (data) => request('/ai-tutor/explain', { method: 'POST', body: data }),
+  explainStream: (data) => {
+    const { _signal, ...restData } = data || {}
+    return fetchWithTimeout(`${API_BASE_URL}/ai-tutor/explain/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(restData),
+      signal: _signal,
+    }, SSE_TIMEOUT)
+  },
+  getResources: (params) => request(`/ai-tutor/resources?${new URLSearchParams(params).toString()}`),
+  suggestLearningPath: (data) => request('/ai-tutor/learning-path', { method: 'POST', body: data }),
+  getProgress: () => request('/ai-tutor/progress'),
+  getDiagnosis: (params) => {
+    const qs = params ? `?${new URLSearchParams(params).toString()}` : ''
+    return request(`/ai-tutor/diagnosis${qs}`)
+  },
+  diagnosisReportStream: (data) => {
+    const { _signal, ...restData } = data || {}
+    return fetchWithTimeout(`${API_BASE_URL}/ai-tutor/diagnosis/report/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(restData),
+      signal: _signal,
+    }, SSE_TIMEOUT)
+  },
+  getDiagnosisComparison: (params) => {
+    const qs = params ? `?${new URLSearchParams(params).toString()}` : ''
+    return request(`/ai-tutor/diagnosis/comparison${qs}`)
+  },
+  submitFeedback: (data) => request('/ai-tutor/feedback', { method: 'POST', body: data }),
+  exportDiagnosisReport: async (data) => {
+    const { _signal, ...restData } = data || {}
+    const response = await fetchWithTimeout(`${API_BASE_URL}/ai-tutor/diagnosis/export`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(restData),
+    }, SSE_TIMEOUT)
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '')
+      throw new Error(errText || `导出失败: ${response.status}`)
+    }
+    const blob = await response.blob()
+    return blob
+  },
 }

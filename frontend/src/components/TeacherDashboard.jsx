@@ -77,6 +77,9 @@ export default function TeacherDashboard({ user, onLogout }) {
   const [statsLoading, setStatsLoading] = useState(false)
   const [assessmentStats, setAssessmentStats] = useState(null)
   const [statsAssessmentTitle, setStatsAssessmentTitle] = useState('')
+  const [courseDetailOpen, setCourseDetailOpen] = useState(false)
+  const [courseDetail, setCourseDetail] = useState(null)
+  const [courseDetailLoading, setCourseDetailLoading] = useState(false)
 
   // 题目编辑器辅助方法
   const updateQuestionText = (index, text) => {
@@ -381,10 +384,15 @@ export default function TeacherDashboard({ user, onLogout }) {
           mapped.push({
             id: c.id,
             title: c.title,
-            students: c.students || 0,
-            progress: c.progress || 0,
+            students: c.student_count || c.students || 0,
+            progress: c.progress || c.progress_percentage || 0,
             status: c.status || 'active',
-            created_at: c.created_at ? c.created_at.split('T')[0] : ''
+            created_at: c.created_at ? c.created_at.split('T')[0] : '',
+            description: c.description || '',
+            category: c.category || '',
+            difficulty: c.difficulty || '',
+            duration: c.duration || '',
+            teacher_name: c.teacher_name || ''
           })
         }
         if (mounted) setCourseList(mapped)
@@ -1028,10 +1036,15 @@ export default function TeacherDashboard({ user, onLogout }) {
             const displayCourse = {
               id: created.id,
               title: created.title,
-              students: 0,
-              progress: 0,
+              students: created.student_count || created.students || 0,
+              progress: created.progress || created.progress_percentage || 0,
               status: 'active',
-              created_at: created.created_at ? created.created_at.split('T')[0] : new Date().toISOString().split('T')[0]
+              created_at: created.created_at ? created.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+              description: created.description || '',
+              category: created.category || '',
+              difficulty: created.difficulty || '',
+              duration: created.duration || '',
+              teacher_name: created.teacher_name || ''
             }
             // 追加但避免重复 id
             setCourseList(prev => {
@@ -1063,6 +1076,35 @@ export default function TeacherDashboard({ user, onLogout }) {
     } catch (error) {
       console.error('删除课程失败:', error)
       alert('课程删除失败：' + (error.message || '未知错误'))
+    }
+  }
+
+  const handleViewCourseDetail = async (course) => {
+    setCourseDetail(course)
+    setCourseDetailOpen(true)
+    setCourseDetailLoading(true)
+    try {
+      const [contentRes, assessmentsRes, videosRes] = await Promise.allSettled([
+        courses.getContent(course.id),
+        courses.getAssessments(course.id),
+        videos.getByCourse(course.id)
+      ])
+      const contents = contentRes.status === 'fulfilled' ? (contentRes.value?.contents || []) : []
+      const assessments = assessmentsRes.status === 'fulfilled' ? (assessmentsRes.value?.assessments || []) : []
+      const videoList = videosRes.status === 'fulfilled' ? (videosRes.value?.videos || []) : []
+      setCourseDetail(prev => ({
+        ...prev,
+        contents,
+        assessments,
+        videoList,
+        contentCount: contents.length,
+        assessmentCount: assessments.length,
+        videoCount: videoList.length
+      }))
+    } catch (err) {
+      console.warn('加载课程详情失败:', err)
+    } finally {
+      setCourseDetailLoading(false)
     }
   }
 
@@ -1139,7 +1181,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-600">总学生数</p>
                       <p className="text-2xl font-bold text-gray-900">
-                        {courseList.reduce((sum, course) => sum + course.students, 0)}
+                        {stats.totalStudents || courseList.reduce((sum, course) => sum + course.students, 0)}
                       </p>
                     </div>
                   </div>
@@ -1198,7 +1240,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                         <TableCell>{course.created_at}</TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
-                            <Button variant="outline" size="sm">
+                            <Button variant="outline" size="sm" onClick={() => handleViewCourseDetail(course)}>
                               <Edit className="w-4 h-4" />
                             </Button>
                             <Button
@@ -2420,6 +2462,144 @@ export default function TeacherDashboard({ user, onLogout }) {
           </div>
         </div>
       </div>
+
+      <Dialog open={courseDetailOpen} onOpenChange={setCourseDetailOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-blue-600" />
+              课程详情
+            </DialogTitle>
+          </DialogHeader>
+          {courseDetail ? (
+            <div className="space-y-5 overflow-y-auto flex-1 pr-1" style={{ maxHeight: 'calc(85vh - 80px)' }}>
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4">
+                <h3 className="text-xl font-bold text-gray-900 mb-1">{courseDetail.title}</h3>
+                {courseDetail.description && (
+                  <p className="text-sm text-gray-600">{courseDetail.description}</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="bg-blue-50 rounded-lg p-3 text-center">
+                  <Users className="h-5 w-5 text-blue-600 mx-auto mb-1" />
+                  <p className="text-lg font-bold text-gray-900">{courseDetail.students}</p>
+                  <p className="text-xs text-gray-500">学生数</p>
+                </div>
+                <div className="bg-green-50 rounded-lg p-3 text-center">
+                  <Video className="h-5 w-5 text-green-600 mx-auto mb-1" />
+                  <p className="text-lg font-bold text-gray-900">{courseDetail.videoCount ?? '-'}</p>
+                  <p className="text-xs text-gray-500">视频数</p>
+                </div>
+                <div className="bg-purple-50 rounded-lg p-3 text-center">
+                  <FileText className="h-5 w-5 text-purple-600 mx-auto mb-1" />
+                  <p className="text-lg font-bold text-gray-900">{courseDetail.contentCount ?? '-'}</p>
+                  <p className="text-xs text-gray-500">讲义数</p>
+                </div>
+                <div className="bg-orange-50 rounded-lg p-3 text-center">
+                  <Target className="h-5 w-5 text-orange-600 mx-auto mb-1" />
+                  <p className="text-lg font-bold text-gray-900">{courseDetail.assessmentCount ?? '-'}</p>
+                  <p className="text-xs text-gray-500">考核数</p>
+                </div>
+              </div>
+
+              {courseDetailLoading && (
+                <div className="text-center py-4 text-sm text-gray-500">加载详细数据中...</div>
+              )}
+
+              {!courseDetailLoading && (
+                <>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-500">分类：</span>
+                      <span className="font-medium">{courseDetail.category || '-'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">难度：</span>
+                      <span className="font-medium">{courseDetail.difficulty || '-'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">时长：</span>
+                      <span className="font-medium">{courseDetail.duration || '-'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">状态：</span>
+                      <Badge className={courseDetail.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                        {courseDetail.status === 'active' ? '活跃' : '停用'}
+                      </Badge>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">创建时间：</span>
+                      <span className="font-medium">{courseDetail.created_at || '-'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">教师：</span>
+                      <span className="font-medium">{courseDetail.teacher_name || '-'}</span>
+                    </div>
+                  </div>
+
+                  {courseDetail.videoList && courseDetail.videoList.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-1">
+                        <Video className="h-4 w-4" /> 视频列表
+                      </h4>
+                      <div className="space-y-1">
+                        {courseDetail.videoList.map((v, i) => (
+                          <div key={v.id} className="flex items-center justify-between bg-gray-50 rounded px-3 py-2 text-sm">
+                            <span>{i + 1}. {v.title}</span>
+                            {v.duration && <span className="text-gray-400">{Math.floor(v.duration / 60)}:{(v.duration % 60).toString().padStart(2, '0')}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {courseDetail.assessments && courseDetail.assessments.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-1">
+                        <Target className="h-4 w-4" /> 考核列表
+                      </h4>
+                      <div className="space-y-1">
+                        {courseDetail.assessments.map((a, i) => (
+                          <div key={a.id} className="flex items-center justify-between bg-gray-50 rounded px-3 py-2 text-sm">
+                            <span>{i + 1}. {a.title}</span>
+                            <div className="flex items-center gap-2">
+                              {a.is_recommended && <Badge className="bg-yellow-100 text-yellow-700 text-xs">推荐</Badge>}
+                              <Badge className={a.generated_by_llm ? 'bg-blue-100 text-blue-700 text-xs' : 'bg-gray-100 text-gray-600 text-xs'}>
+                                {a.generated_by_llm ? 'AI生成' : '手动'}
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {courseDetail.contents && courseDetail.contents.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-1">
+                        <FileText className="h-4 w-4" /> 讲义列表
+                      </h4>
+                      <div className="space-y-1">
+                        {courseDetail.contents.map((c, i) => (
+                          <div key={c.id} className="flex items-center justify-between bg-gray-50 rounded px-3 py-2 text-sm">
+                            <span>{i + 1}. {c.title}</span>
+                            {c.generated_by_llm && (
+                              <Badge className="bg-blue-100 text-blue-700 text-xs">AI生成</Badge>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="py-6 text-sm text-gray-500">暂无课程数据</div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -57,7 +57,7 @@ class CustomJsonFormatter(jsonlogger.JsonFormatter):
 
 
 def setup_logger(
-    name: str = 'eduai',
+    name: str = 'zhijiaoxing',
     level: int = logging.INFO,
     log_file: Optional[str] = None,
     json_format: bool = True
@@ -161,7 +161,7 @@ logger = setup_logger()
 contextual_logger = ContextualLogger(logger)
 
 
-def get_logger(name: str = 'eduai') -> logging.Logger:
+def get_logger(name: str = 'zhijiaoxing') -> logging.Logger:
     """获取日志记录器"""
     return logging.getLogger(name)
 

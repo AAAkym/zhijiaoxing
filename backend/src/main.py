@@ -40,6 +40,7 @@ from src.routes.ai_analysis import ai_analysis_bp
 from src.routes.lesson_plan import lesson_plan_bp
 from src.routes.learning_analytics import learning_analytics_bp
 from src.routes.ai_optimization import ai_optimization_bp
+from src.routes.ai_tutor_routes import ai_tutor_bp
 from src.services.websocket_service import init_socketio
 
 config = get_config()
@@ -108,6 +109,7 @@ app.register_blueprint(ai_analysis_bp, url_prefix='/api')
 app.register_blueprint(lesson_plan_bp, url_prefix='/api')
 app.register_blueprint(learning_analytics_bp, url_prefix='/api')
 app.register_blueprint(ai_optimization_bp, url_prefix='/api')
+app.register_blueprint(ai_tutor_bp, url_prefix='/api/ai-tutor')
 
 db.init_app(app)
 
@@ -630,15 +632,15 @@ with app.app_context():
 
         admin_user = User.query.filter_by(username='admin').first()
         if not admin_user:
-            admin_user = User(username='admin', email='admin@eduai.com', role='admin', real_name='系统管理员')
+            admin_user = User(username='admin', email='admin@zhijiaoxing.com', role='admin', real_name='系统管理员')
             admin_user.set_password('admin123')
             db.session.add(admin_user)
 
-            teacher_user = User(username='teacher', email='teacher@eduai.com', role='teacher', real_name='示例教师')
+            teacher_user = User(username='teacher', email='teacher@zhijiaoxing.com', role='teacher', real_name='示例教师')
             teacher_user.set_password('teacher123')
             db.session.add(teacher_user)
 
-            student_user = User(username='student', email='student@eduai.com', role='student', real_name='示例学生')
+            student_user = User(username='student', email='student@zhijiaoxing.com', role='student', real_name='示例学生')
             student_user.set_password('student123')
             db.session.add(student_user)
 

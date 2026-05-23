@@ -55,7 +55,7 @@ export default function MistakeStats({ stats }) {
   ].filter(item => item.value > 0)
 
   const courseData = (statsData.by_course || []).map(item => ({
-    name: item.course_title?.slice(0, 10) || '未知课程',
+    name: item.course_title || '未知课程',
     fullName: item.course_title,
     count: item.count
   }))
@@ -131,10 +131,10 @@ export default function MistakeStats({ stats }) {
           <CardContent>
             {courseData.length > 0 ? (
               <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={courseData} layout="vertical">
+                <BarChart data={courseData} layout="vertical" margin={{ left: 20, right: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" width={80} />
+                  <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12 }} />
                   <Tooltip 
                     formatter={(value, name, props) => [
                       value, 

@@ -3,7 +3,7 @@
 
 # ==================== 集群配置 ====================
 cluster:
-  name: eduai-cluster
+  name: zhijiaoxing-cluster
   routing:
     allocation:
       disk:
@@ -16,7 +16,7 @@ cluster:
 
 # ==================== 节点配置 ====================
 node:
-  name: eduai-node-1
+  name: zhijiaoxing-node-1
   master: true
   data: true
   ingest: true
@@ -52,7 +52,7 @@ discovery:
   type: single-node
   seed_hosts: []
   initial_master_nodes:
-    - eduai-node-1
+    - zhijiaoxing-node-1
 
 # ==================== 网关配置 ====================
 gateway:

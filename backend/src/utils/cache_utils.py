@@ -337,7 +337,7 @@ def invalidate_cache(key_pattern: str):
 class CacheKeyBuilder:
     """缓存键构建器"""
     
-    PREFIX = 'eduai'
+    PREFIX = 'zhijiaoxing'
     
     @classmethod
     def user_session(cls, user_id: int) -> str:

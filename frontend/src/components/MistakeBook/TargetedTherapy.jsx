@@ -72,7 +72,25 @@ export default function TargetedTherapy({ myCourses = [], initialContext = null 
 
   const [practiceResults, setPracticeResults] = useState(null)
 
-  const fetchPlan = useCallback(async () => {
+  const CACHE_KEY = courseFilter ? `targeted_therapy_plan_${courseFilter}` : 'targeted_therapy_plan_all'
+
+  const fetchPlan = useCallback(async (forceRefresh = false) => {
+    if (!forceRefresh) {
+      try {
+        const cached = localStorage.getItem(CACHE_KEY)
+        if (cached) {
+          const parsed = JSON.parse(cached)
+          if (parsed && parsed.recommended_questions) {
+            setPlan(parsed)
+            setLoading(false)
+            return
+          }
+        }
+      } catch (e) {
+        console.warn('[TargetedTherapy] 读取缓存失败:', e)
+      }
+    }
+
     setLoading(true)
     setError(null)
     try {
@@ -84,6 +102,11 @@ export default function TargetedTherapy({ myCourses = [], initialContext = null 
       const data = await mistakeBook.getTargetedPractice(params)
       clearTimeout(timeoutId)
       setPlan(data)
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify(data))
+      } catch (e) {
+        console.warn('[TargetedTherapy] 保存缓存失败:', e)
+      }
     } catch (err) {
       console.error('加载靶向练习方案失败', err)
       if (err.name === 'AbortError') {
@@ -94,7 +117,7 @@ export default function TargetedTherapy({ myCourses = [], initialContext = null 
     } finally {
       setLoading(false)
     }
-  }, [courseFilter])
+  }, [courseFilter, CACHE_KEY])
 
   useEffect(() => {
     fetchPlan()
@@ -238,6 +261,7 @@ export default function TargetedTherapy({ myCourses = [], initialContext = null 
       return
     }
 
+    const perQuestionScore = safeQuestions.length > 0 ? 100 / safeQuestions.length : 0
     const results = practiceQuestions.map(q => {
       const userAnswer = answers[q.id]
       const isCorrect = checkAnswer(q, userAnswer)
@@ -247,7 +271,7 @@ export default function TargetedTherapy({ myCourses = [], initialContext = null 
         userAnswer,
         correctAnswer: q.correctAnswer,
         isCorrect,
-        score: q.score,
+        score: perQuestionScore,
         explanation: q.explanation,
         options: q.options,
         phase: q.phase,
@@ -261,7 +285,7 @@ export default function TargetedTherapy({ myCourses = [], initialContext = null 
     })
 
     const totalScore = results.reduce((sum, r) => sum + (r.isCorrect ? r.score : 0), 0)
-    const maxScore = results.reduce((sum, q) => sum + q.score, 0)
+    const maxScore = 100
     const correctCount = results.filter(r => r.isCorrect).length
     const wrongCount = results.filter(r => !r.isCorrect).length
     const accuracy = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0
@@ -344,7 +368,7 @@ export default function TargetedTherapy({ myCourses = [], initialContext = null 
         onWrongCountChange={setWrongCount}
         onAfterAccuracyChange={setAfterAccuracy}
         onSubmitFeedback={handleSubmitFeedback}
-        onBackToPlan={() => { setCurrentView('plan'); fetchPlan() }}
+        onBackToPlan={() => { setCurrentView('plan') }}
         onRetry={handleStartPractice}
       />
     )
@@ -385,7 +409,7 @@ export default function TargetedTherapy({ myCourses = [], initialContext = null 
               </SelectContent>
             </Select>
           )}
-          <Button variant="outline" size="sm" onClick={fetchPlan} disabled={loading} className="gap-1">
+          <Button variant="outline" size="sm" onClick={() => fetchPlan(true)} disabled={loading} className="gap-1">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             刷新方案
           </Button>

@@ -6,9 +6,9 @@ filebeat.inputs:
   - type: log
     enabled: true
     paths:
-      - /var/log/eduai/*.log
+      - /var/log/zhijiaoxing/*.log
     fields:
-      service: eduai-backend
+      service: zhijiaoxing-backend
       log_type: application
     fields_under_root: true
     multiline.pattern: '^\d{4}-\d{2}-\d{2}'
@@ -19,9 +19,9 @@ filebeat.inputs:
   - type: log
     enabled: true
     paths:
-      - /var/log/eduai/error*.log
+      - /var/log/zhijiaoxing/error*.log
     fields:
-      service: eduai-backend
+      service: zhijiaoxing-backend
       log_type: error
     fields_under_root: true
     multiline.pattern: '^\d{4}-\d{2}-\d{2}'

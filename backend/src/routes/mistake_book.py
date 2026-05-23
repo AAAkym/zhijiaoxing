@@ -167,6 +167,13 @@ def _extract_mistakes_core(user_id: int, assessment: Assessment, user_answer_pay
         user_ans = user_answers[idx]
         correct_ans = answers[idx] if idx < len(answers) else None
         if _is_answer_correct(user_ans, correct_ans):
+            existing_correct = MistakeRecord.query.filter_by(
+                user_id=user_id,
+                assessment_id=assessment.id,
+                question_index=idx,
+            ).first()
+            if existing_correct and existing_correct.mastery_status != 'mastered':
+                existing_correct.mastery_status = 'mastered'
             continue
 
         options = question.get("options", []) if isinstance(question, dict) else []

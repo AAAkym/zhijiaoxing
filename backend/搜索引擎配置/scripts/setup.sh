@@ -66,7 +66,7 @@ start_elasticsearch() {
     print_info "启动 Elasticsearch 服务..."
     
     # 检查是否已运行
-    if docker ps | grep -q "eduai-elasticsearch"; then
+    if docker ps | grep -q "zhijiaoxing-elasticsearch"; then
         print_warn "Elasticsearch 已在运行"
         return 0
     fi
@@ -101,13 +101,13 @@ install_ik_plugin() {
     print_info "安装 IK 分词器插件..."
     
     # 检查插件是否已安装
-    if docker exec eduai-elasticsearch bin/elasticsearch-plugin list | grep -q "analysis-ik"; then
+    if docker exec zhijiaoxing-elasticsearch bin/elasticsearch-plugin list | grep -q "analysis-ik"; then
         print_warn "IK 分词器已安装"
         return 0
     fi
     
     # 安装插件
-    docker exec -it eduai-elasticsearch bin/elasticsearch-plugin install \
+    docker exec -it zhijiaoxing-elasticsearch bin/elasticsearch-plugin install \
         https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v${ES_VERSION}/elasticsearch-analysis-ik-${ES_VERSION}.zip
     
     # 重启 Elasticsearch
@@ -123,13 +123,13 @@ install_pinyin_plugin() {
     print_info "安装拼音分词器插件..."
     
     # 检查插件是否已安装
-    if docker exec eduai-elasticsearch bin/elasticsearch-plugin list | grep -q "analysis-pinyin"; then
+    if docker exec zhijiaoxing-elasticsearch bin/elasticsearch-plugin list | grep -q "analysis-pinyin"; then
         print_warn "拼音分词器已安装"
         return 0
     fi
     
     # 安装插件
-    docker exec -it eduai-elasticsearch bin/elasticsearch-plugin install \
+    docker exec -it zhijiaoxing-elasticsearch bin/elasticsearch-plugin install \
         https://github.com/medcl/elasticsearch-analysis-pinyin/releases/download/v${ES_VERSION}/elasticsearch-analysis-pinyin-${ES_VERSION}.zip
     
     # 重启 Elasticsearch
@@ -168,7 +168,7 @@ create_synonyms_file() {
     print_info "创建同义词文件..."
     
     # 创建同义词目录
-    docker exec eduai-elasticsearch mkdir -p /usr/share/elasticsearch/config/analysis
+    docker exec zhijiaoxing-elasticsearch mkdir -p /usr/share/elasticsearch/config/analysis
     
     # 创建同义词文件
     cat > /tmp/synonyms.txt << 'EOF'
@@ -198,7 +198,7 @@ create_synonyms_file() {
 EOF
     
     # 复制到容器
-    docker cp /tmp/synonyms.txt eduai-elasticsearch:/usr/share/elasticsearch/config/analysis/synonyms.txt
+    docker cp /tmp/synonyms.txt zhijiaoxing-elasticsearch:/usr/share/elasticsearch/config/analysis/synonyms.txt
     
     print_info "同义词文件创建完成"
 }

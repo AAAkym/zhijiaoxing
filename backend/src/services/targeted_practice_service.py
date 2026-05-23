@@ -15,6 +15,27 @@ logger = logging.getLogger(__name__)
 _PUNCTUATION_RE = re.compile(r'[\s\u3000-\u303f\uff00-\uffef\u2000-\u206f\u0080-\u00ff\u0021-\u002f\u003a-\u0040\u005b-\u0060\u007b-\u007e]+')
 
 
+def _extract_json_array(text: str) -> List[Dict]:
+    if not text:
+        return []
+    cleaned = text.strip()
+    cleaned = re.sub(r'^```(?:json)?', '', cleaned, flags=re.IGNORECASE).strip()
+    cleaned = re.sub(r'```$', '', cleaned).strip()
+    try:
+        parsed = json.loads(cleaned)
+        return parsed if isinstance(parsed, list) else [parsed] if isinstance(parsed, dict) else []
+    except Exception:
+        pass
+    match = re.search(r'\[.*\]', cleaned, re.DOTALL)
+    if match:
+        try:
+            parsed = json.loads(match.group(0))
+            return parsed if isinstance(parsed, list) else []
+        except Exception:
+            pass
+    return []
+
+
 def _jaccard_similarity(s1: str, s2: str) -> float:
     n1 = _PUNCTUATION_RE.sub('', s1.lower())
     n2 = _PUNCTUATION_RE.sub('', s2.lower())
@@ -210,13 +231,11 @@ correctAnswer是正确选项索引(0-3)。只输出JSON数组："""
             {"role": "system", "content": "你是教育专家，擅长生成高质量选择题。只输出JSON数组。"},
             {"role": "user", "content": prompt},
         ])
-        json_match = re.search(r'\[.*\]', result, re.DOTALL)
-        if json_match:
-            questions = json.loads(json_match.group(0))
-            for q in questions:
-                q['type'] = 'choice'
-                q['score'] = 10
-            return questions
+        questions = _extract_json_array(result)
+        for q in questions:
+            q['type'] = 'choice'
+            q['score'] = 10
+        return questions
     except Exception as e:
         logger.error(f"Choice question generation failed: {e}")
     return []
@@ -257,17 +276,15 @@ test_cases至少2个。只输出JSON数组："""
             {"role": "system", "content": "你是编程教育专家，擅长生成高质量编程题。只输出JSON数组。"},
             {"role": "user", "content": prompt},
         ])
-        json_match = re.search(r'\[.*\]', result, re.DOTALL)
-        if json_match:
-            questions = json.loads(json_match.group(0))
-            for q in questions:
-                q['type'] = 'programming'
-                q.setdefault('language', 'python')
-                q.setdefault('score', 25)
-                q.setdefault('starter_code', '')
-                q.setdefault('test_cases', [])
-                q.setdefault('standard_answer', '')
-            return questions
+        questions = _extract_json_array(result)
+        for q in questions:
+            q['type'] = 'programming'
+            q.setdefault('language', 'python')
+            q.setdefault('score', 25)
+            q.setdefault('starter_code', '')
+            q.setdefault('test_cases', [])
+            q.setdefault('standard_answer', '')
+        return questions
     except Exception as e:
         logger.error(f"Programming question generation failed: {e}")
     return []
@@ -599,12 +616,17 @@ def generate_ai_targeted_practice(
 6. 每道题必须包含详尽的解析说明
 
 【选择题JSON格式】
-{{"content": "题干内容", "options": ["A选项", "B选项", "C选项", "D选项"], "correctAnswer": 0, "knowledge_tags": ["知识点标签"], "explanation": "详细解析，包含解题思路和知识点说明", "difficulty": "easy", "type": "choice", "question_type": "choice"}}
+{{"content": "题干内容", "options": ["选项A的具体内容描述", "选项B的具体内容描述", "选项C的具体内容描述", "选项D的具体内容描述"], "correctAnswer": 0, "knowledge_tags": ["知识点标签"], "explanation": "详细解析，包含解题思路和知识点说明", "difficulty": "easy", "type": "choice", "question_type": "choice"}}
 
 【编程题JSON格式】
 {{"content": "题目描述，包含输入输出要求", "starter_code": "def solution():\\n    pass", "standard_answer": "参考解答代码", "test_cases": [{{"input": "示例输入", "expected_output": "期望输出"}}], "knowledge_tags": ["知识点标签"], "explanation": "解题思路和算法说明", "difficulty": "medium", "language": "python", "type": "programming", "question_type": "programming"}}
 
-correctAnswer是正确选项索引(0-3)。test_cases至少2个。
+【选项格式严格要求】
+- options数组必须恰好4个元素
+- 每个选项必须是具体的知识内容描述，如"使用for循环遍历列表"
+- 绝对禁止使用占位文本如"选项A"、"选项B"、"A"、"B"等
+- 绝对禁止选项内容重复
+- correctAnswer是正确选项索引(0-3)。test_cases至少2个。
 严格输出JSON数组，不要有任何其他文字："""
 
     try:
@@ -612,11 +634,11 @@ correctAnswer是正确选项索引(0-3)。test_cases至少2个。
             {"role": "system", "content": "你是资深教育专家，擅长根据学生画像生成个性化靶向练习题。只输出JSON数组。"},
             {"role": "user", "content": prompt},
         ])
-        json_match = re.search(r'\[.*\]', result, re.DOTALL)
-        if not json_match:
+        questions = _extract_json_array(result)
+        if not questions:
+            logger.warning(f"[靶向练习] AI返回内容无法解析为JSON数组, 前200字符: {result[:200]}")
             return {"error": "AI生成结果解析失败，请重试"}
 
-        questions = json.loads(json_match.group(0))
         validated = []
         for q in questions:
             if not isinstance(q, dict):
@@ -631,6 +653,22 @@ correctAnswer是正确选项索引(0-3)。test_cases至少2个。
             if q['type'] == 'choice':
                 if not isinstance(q.get('options'), list) or len(q.get('options', [])) < 2:
                     continue
+                opts = q['options']
+                if len(opts) < 4:
+                    continue
+                placeholder_patterns = ['选项A', '选项B', '选项C', '选项D', '选项E', '选项F']
+                has_placeholder = any(
+                    isinstance(o, str) and (o.strip().upper() in ['A', 'B', 'C', 'D'] or any(p in o for p in placeholder_patterns))
+                    for o in opts
+                )
+                if has_placeholder:
+                    logger.warning(f"[靶向练习] 过滤掉含占位选项的题目: {q.get('content', '')[:50]}")
+                    continue
+                if len(set(str(o).strip() for o in opts)) < len(opts):
+                    logger.warning(f"[靶向练习] 过滤掉选项重复的题目: {q.get('content', '')[:50]}")
+                    continue
+                if isinstance(q.get('correctAnswer'), int) and (q['correctAnswer'] < 0 or q['correctAnswer'] >= len(opts)):
+                    q['correctAnswer'] = 0
                 q.setdefault('correctAnswer', 0)
                 q.setdefault('score', 10)
             elif q['type'] == 'programming':

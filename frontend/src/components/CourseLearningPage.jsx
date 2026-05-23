@@ -4,6 +4,7 @@ import { courses, videos, notes, ai } from '../services/api'
 import VideoPlayer from './VideoPlayer'
 import StudentInteractionPanel from './StudentInteractionPanel'
 import VideoNotesPanel from './StudyNotes/VideoNotesPanel'
+import { AITutorPanel } from '@/components/AITutor'
 
 export default function CourseLearningPage({ user }) {
   const { courseId } = useParams()
@@ -539,7 +540,7 @@ export default function CourseLearningPage({ user }) {
             overflow: 'hidden',
             position: 'relative',
           }}>
-            {/* AI助手切换按钮 */}
+            {/* AI助教切换按钮 */}
             <button
               onClick={() => setShowAiSidebar(!showAiSidebar)}
               style={{
@@ -562,182 +563,22 @@ export default function CourseLearningPage({ user }) {
                 transition: 'all 0.2s',
               }}
             >
-              🤖 {showAiSidebar ? '学习工具' : 'AI助手'}
+              🎓 {showAiSidebar ? '学习工具' : 'AI助教'}
             </button>
 
             {showAiSidebar ? (
-              /* AI学习助手面板 */
+              /* AI助教面板 */
               <div style={{
                 display: 'flex',
                 flexDirection: 'column',
                 height: 'calc(100vh - 200px)',
                 maxHeight: '800px',
               }}>
-                <div style={{
-                  padding: '16px 16px 12px',
-                  borderBottom: '1px solid #e5e7eb',
-                  backgroundColor: '#f8fafc',
-                }}>
-                  <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    🤖 AI学习助手
-                  </h3>
-                  <p style={{ fontSize: '12px', color: '#64748b', margin: '4px 0 0' }}>
-                    基于当前视频内容为你答疑解惑
-                  </p>
-                </div>
-
-                <div style={{
-                  flex: 1,
-                  overflowY: 'auto',
-                  padding: '16px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '12px',
-                }}>
-                  {aiMessages.length === 0 && (
-                    <div style={{ textAlign: 'center', padding: '24px 0', color: '#94a3b8' }}>
-                      <div style={{ fontSize: '40px', marginBottom: '8px' }}>🤖</div>
-                      <p style={{ fontSize: '14px', fontWeight: 500, marginBottom: '4px' }}>AI学习助手</p>
-                      <p style={{ fontSize: '12px' }}>观看视频时遇到问题？随时向我提问</p>
-                      <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        {[
-                          '解释一下当前视频的核心概念',
-                          '这个知识点有什么应用场景？',
-                          '帮我总结视频中的重点内容',
-                        ].map((suggestion, i) => (
-                          <button
-                            key={i}
-                            onClick={() => { setAiInput(suggestion) }}
-                            style={{
-                              padding: '8px 12px',
-                              backgroundColor: '#f1f5f9',
-                              border: '1px solid #e2e8f0',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              fontSize: '12px',
-                              color: '#475569',
-                              textAlign: 'left',
-                              transition: 'all 0.15s',
-                            }}
-                            onMouseEnter={(e) => { e.target.style.backgroundColor = '#e2e8f0' }}
-                            onMouseLeave={(e) => { e.target.style.backgroundColor = '#f1f5f9' }}
-                          >
-                            💡 {suggestion}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {aiMessages.map((msg, i) => (
-                    <div key={i} style={{
-                      display: 'flex',
-                      justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                    }}>
-                      <div style={{
-                        maxWidth: '85%',
-                        padding: '10px 14px',
-                        borderRadius: msg.role === 'user' ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
-                        backgroundColor: msg.role === 'user' ? '#3b82f6' : '#f1f5f9',
-                        color: msg.role === 'user' ? '#fff' : '#1e293b',
-                        fontSize: '13px',
-                        lineHeight: '1.6',
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-word',
-                      }}>
-                        {msg.content}
-                      </div>
-                    </div>
-                  ))}
-                  {aiLoading && (
-                    <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-                      <div style={{
-                        padding: '10px 14px',
-                        borderRadius: '12px 12px 12px 4px',
-                        backgroundColor: '#f1f5f9',
-                        color: '#64748b',
-                        fontSize: '13px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                      }}>
-                        <span style={{
-                          display: 'inline-block',
-                          width: '6px',
-                          height: '6px',
-                          backgroundColor: '#94a3b8',
-                          borderRadius: '50%',
-                          animation: 'blink 1.4s infinite both',
-                        }} />
-                        <span style={{
-                          display: 'inline-block',
-                          width: '6px',
-                          height: '6px',
-                          backgroundColor: '#94a3b8',
-                          borderRadius: '50%',
-                          animation: 'blink 1.4s infinite both 0.2s',
-                        }} />
-                        <span style={{
-                          display: 'inline-block',
-                          width: '6px',
-                          height: '6px',
-                          backgroundColor: '#94a3b8',
-                          borderRadius: '50%',
-                          animation: 'blink 1.4s infinite both 0.4s',
-                        }} />
-                        思考中...
-                      </div>
-                    </div>
-                  )}
-                  <div ref={aiMessagesEndRef} />
-                </div>
-
-                <div style={{
-                  padding: '12px 16px',
-                  borderTop: '1px solid #e5e7eb',
-                  backgroundColor: '#fff',
-                }}>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <input
-                      type="text"
-                      value={aiInput}
-                      onChange={(e) => setAiInput(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAiSend() } }}
-                      placeholder="输入你的问题..."
-                      disabled={aiLoading}
-                      style={{
-                        flex: 1,
-                        padding: '10px 14px',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '8px',
-                        fontSize: '13px',
-                        outline: 'none',
-                        backgroundColor: aiLoading ? '#f8fafc' : '#fff',
-                      }}
-                    />
-                    <button
-                      onClick={handleAiSend}
-                      disabled={aiLoading || !aiInput.trim()}
-                      style={{
-                        padding: '10px 16px',
-                        backgroundColor: (!aiLoading && aiInput.trim()) ? '#3b82f6' : '#94a3b8',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '8px',
-                        cursor: (!aiLoading && aiInput.trim()) ? 'pointer' : 'not-allowed',
-                        fontSize: '13px',
-                        fontWeight: 500,
-                        transition: 'background-color 0.2s',
-                      }}
-                    >
-                      发送
-                    </button>
-                  </div>
-                  {currentVideo && (
-                    <p style={{ fontSize: '11px', color: '#94a3b8', margin: '6px 0 0', textAlign: 'center' }}>
-                      📹 当前视频：{currentVideo.title}
-                    </p>
-                  )}
-                </div>
+                <AITutorPanel
+                  courseId={parseInt(courseId)}
+                  videoId={currentVideo?.id}
+                  className="h-full"
+                />
               </div>
             ) : (
               <>

@@ -4,7 +4,7 @@
 global:
   # 全局 SMTP 配置
   smtp_smarthost: '${SMTP_HOST:localhost:587}'
-  smtp_from: '${SMTP_FROM:alert@eduai.com}'
+  smtp_from: '${SMTP_FROM:alert@zhijiaoxing.com}'
   smtp_auth_username: '${SMTP_USER:}'
   smtp_auth_password: '${SMTP_PASSWORD:}'
   smtp_require_tls: true
@@ -76,8 +76,8 @@ receivers:
   # 默认接收器
   - name: 'default'
     email_configs:
-      - to: '${DEFAULT_EMAIL:admin@eduai.com}'
-        subject: '[EduAI告警] {{ .GroupLabels.alertname }}'
+      - to: '${DEFAULT_EMAIL:admin@zhijiaoxing.com}'
+        subject: '[智教星告警] {{ .GroupLabels.alertname }}'
         body: |
           {{ range .Alerts }}
           告警名称: {{ .Annotations.summary }}
@@ -90,7 +90,7 @@ receivers:
   # 严重告警接收器
   - name: 'critical-alerts'
     email_configs:
-      - to: '${CRITICAL_EMAIL:oncall@eduai.com}'
+      - to: '${CRITICAL_EMAIL:oncall@zhijiaoxing.com}'
         subject: '[严重告警] {{ .GroupLabels.alertname }}'
         body: |
           🚨 严重告警 🚨
@@ -133,7 +133,7 @@ receivers:
   # 警告级别接收器
   - name: 'warning-alerts'
     email_configs:
-      - to: '${WARNING_EMAIL:devops@eduai.com}'
+      - to: '${WARNING_EMAIL:devops@zhijiaoxing.com}'
         subject: '[警告] {{ .GroupLabels.alertname }}'
         body: |
           {{ range .Alerts }}
@@ -158,7 +158,7 @@ receivers:
   # 信息级别接收器
   - name: 'info-alerts'
     email_configs:
-      - to: '${INFO_EMAIL:team@eduai.com}'
+      - to: '${INFO_EMAIL:team@zhijiaoxing.com}'
         subject: '[信息] {{ .GroupLabels.alertname }}'
         body: |
           {{ range .Alerts }}

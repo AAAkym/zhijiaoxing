@@ -38,7 +38,7 @@ def backup_database(self) -> Dict[str, Any]:
         
         # 生成备份文件名
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        backup_filename = f"eduai_backup_{timestamp}.sql"
+        backup_filename = f"zhijiaoxing_backup_{timestamp}.sql"
         
         # 确保备份目录存在
         backup_dir = os.path.join(BACKUP_PATH, datetime.now().strftime('%Y%m'))
@@ -50,7 +50,7 @@ def backup_database(self) -> Dict[str, Any]:
         
         # 实际项目中使用pg_dump或其他数据库备份工具
         # 这里模拟备份过程
-        # command = f"pg_dump -h localhost -U eduai_user eduai_db > {backup_path}"
+        # command = f"pg_dump -h localhost -U zhijiaoxing_user zhijiaoxing_db > {backup_path}"
         # os.system(command)
         
         # 模拟备份文件创建

@@ -212,9 +212,9 @@ export default function DataAnalytics() {
           <CardContent>
             {courseActivityData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={courseActivityData}>
+                <BarChart data={courseActivityData} margin={{ bottom: 40 }}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="course" />
+                  <XAxis dataKey="course" tick={{ fontSize: 11, angle: -30, textAnchor: 'end' }} interval={0} height={60} />
                   <YAxis />
                   <Tooltip />
                   <Bar dataKey="students" fill="#3B82F6" name="学生数" />

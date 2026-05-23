@@ -10,7 +10,7 @@ import { Progress } from '@/components/ui/progress'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   BookOpen,
-  MessageCircle,
+  GraduationCap,
   Target,
   TrendingUp,
   Clock,
@@ -40,7 +40,7 @@ import { useNavigate } from 'react-router-dom'
 import PracticeModule from './Practice'
 import LearningPlanSystem from './LearningPlanSystem'
 import StudentSettings from './StudentSettings'
-import { AIChatPanel } from './AIChatPanel'
+import { AITutorPanel } from '@/components/AITutor'
 import MistakeBook from './MistakeBook'
 import TargetedTherapy from './MistakeBook/TargetedTherapy'
 import StudyNotes from './StudyNotes'
@@ -123,7 +123,7 @@ export default function StudentDashboard({ user, onLogout }) {
     { id: 'overview', label: '学习概览', icon: BarChart3 },
     { id: 'courses', label: '我的课程', icon: BookOpen },
     { id: 'learningPlan', label: '学习规划', icon: Map },
-    { id: 'assistant', label: 'AI学习助手', icon: MessageCircle },
+    { id: 'aiTutor', label: 'AI助教', icon: GraduationCap },
     { id: 'practice', label: '练习评测', icon: Target },
     { id: 'mistakeBook', label: '错题本', icon: BookX },
     { id: 'profile', label: '学习画像', icon: Radar },
@@ -239,10 +239,11 @@ export default function StudentDashboard({ user, onLogout }) {
         notes.getStats(),
         notes.getNotes({ per_page: 5 })
       ])
+      const s = statsResponse?.stats || statsResponse || {}
       setNoteStats({
-        total: statsResponse?.total_notes || 0,
-        public: statsResponse?.public_notes || 0,
-        recentNotes: notesResponse?.notes || []
+        total: s.total_notes || 0,
+        public: s.public_notes || 0,
+        recentNotes: notesResponse?.notes || statsResponse?.recent_notes || []
       })
     } catch (error) {
       console.warn('获取笔记统计失败:', error)
@@ -1128,21 +1129,15 @@ export default function StudentDashboard({ user, onLogout }) {
           </div>
         )
 
-      case 'assistant':
+      case 'aiTutor':
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">AI学习助手</h2>
-              <p className="text-gray-600">智能问答，解决你的学习疑问</p>
+              <h2 className="text-2xl font-bold text-gray-900">AI助教</h2>
+              <p className="text-gray-600">智能答疑、知识讲解、学习引导与诊断</p>
             </div>
 
-            <AIChatPanel
-              title="智能对话"
-              placeholder="输入你的学习问题..."
-              context="student_learning"
-              showConnectionStatus={true}
-              className="h-[600px]"
-            />
+            <AITutorPanel className="h-[600px]" />
           </div>
         )
 
@@ -1276,9 +1271,9 @@ export default function StudentDashboard({ user, onLogout }) {
                 <CardContent>
                   {courseProgressData.length > 0 ? (
                     <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={courseProgressData}>
+                      <BarChart data={courseProgressData} margin={{ bottom: 40 }}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
+                        <XAxis dataKey="name" tick={{ fontSize: 11, angle: -30, textAnchor: 'end' }} interval={0} height={60} />
                         <YAxis />
                         <Tooltip />
                         <Bar dataKey="progress" fill="#82ca9d" />
@@ -1574,10 +1569,10 @@ export default function StudentDashboard({ user, onLogout }) {
                   </CardContent>
                 </Card>
 
-                <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setCurrentView('assistant')}>
+                <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setCurrentView('aiTutor')}>
                   <CardContent className="p-6 text-center">
-                    <MessageCircle className="h-12 w-12 text-orange-600 mx-auto mb-4" />
-                    <h4 className="font-semibold text-gray-900">AI学习助手</h4>
+                    <GraduationCap className="h-12 w-12 text-orange-600 mx-auto mb-4" />
+                    <h4 className="font-semibold text-gray-900">AI助教</h4>
                   </CardContent>
                 </Card>
 

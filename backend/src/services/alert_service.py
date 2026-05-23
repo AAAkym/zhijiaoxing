@@ -252,7 +252,7 @@ class AlertService:
                             "short": True
                         }
                     ],
-                    "footer": "EduAI Monitoring",
+                    "footer": "智教星 Monitoring",
                     "ts": int(datetime.now().timestamp())
                 }
             ]

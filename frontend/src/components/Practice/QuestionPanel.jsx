@@ -163,6 +163,7 @@ export default function QuestionPanel({ onSubmit }) {
     isSubmittingRef.current = true
     
     try {
+      const perQuestionScore = safeQuestions.length > 0 ? 100 / safeQuestions.length : 0
       const results = safeQuestions.map(q => {
         // 对每道题做空值保护，防止字段缺失导致崩溃
         if (!q || q.id === undefined) {
@@ -178,17 +179,17 @@ export default function QuestionPanel({ onSubmit }) {
           userAnswer: userAnswer !== undefined ? userAnswer : null,
           correctAnswer: q.correctAnswer !== undefined ? q.correctAnswer : null,
           isCorrect: isCorrect,
-          score: typeof q.score === 'number' ? q.score : 10,
+          score: perQuestionScore,
           explanation: q.explanation || '',
           options: Array.isArray(q.options) ? q.options : [],
           type: q.type || 'essay',
           code: q.type === 'programming' ? (typeof userAnswer === 'object' ? userAnswer.code : userAnswer) || '' : undefined,
           language: q.type === 'programming' ? (typeof userAnswer === 'object' ? userAnswer.language : q.language) || 'python' : undefined
         }
-      }).filter(Boolean) // 过滤掉 null 条目
+      }).filter(Boolean)
 
       const totalScore = results.reduce((sum, r) => sum + (r.isCorrect ? r.score : 0), 0)
-      const maxScore = safeQuestions.reduce((sum, q) => sum + (typeof q?.score === 'number' ? q.score : 10), 0)
+      const maxScore = 100
       
       console.log('QuestionPanel handleSubmit - results:', results)
       console.log('QuestionPanel handleSubmit - totalScore:', totalScore, 'maxScore:', maxScore)

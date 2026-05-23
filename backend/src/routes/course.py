@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, session
 from src.models.user import User, db
-from src.models.course import Course, TeachingContent, Assessment, PracticeEvaluation, VideoLesson, ProgrammingSubmission, MistakeRecord
+from src.models.course import Course, TeachingContent, Assessment, PracticeEvaluation, VideoLesson, ProgrammingSubmission, MistakeRecord, LearningProgress, CourseQuestion, CourseDiscussion, HandRaise, StudyNote, ContentBookmark
 from src.services.spark_service import spark_service
 from src.services.knowledge_base import knowledge_base_service
 from src.utils.auth import require_auth, require_role
@@ -243,9 +243,20 @@ def delete_course(course_id):
         if not course:
             return jsonify({'error': 'Course not found'}), 404
         
-        # 检查权限
         if session.get('user_role') == 'teacher' and course.teacher_id != session.get('user_id'):
             return jsonify({'error': 'Permission denied'}), 403
+        
+        TeachingContent.query.filter_by(course_id=course_id).delete()
+        Assessment.query.filter_by(course_id=course_id).delete()
+        LearningProgress.query.filter_by(course_id=course_id).delete()
+        VideoLesson.query.filter_by(course_id=course_id).delete()
+        CourseQuestion.query.filter_by(course_id=course_id).delete()
+        CourseDiscussion.query.filter_by(course_id=course_id).delete()
+        HandRaise.query.filter_by(course_id=course_id).delete()
+        StudyNote.query.filter_by(course_id=course_id).delete()
+        ContentBookmark.query.filter_by(course_id=course_id).delete()
+        MistakeRecord.query.filter_by(course_id=course_id).delete()
+        ProgrammingSubmission.query.filter_by(course_id=course_id).delete()
         
         db.session.delete(course)
         db.session.commit()

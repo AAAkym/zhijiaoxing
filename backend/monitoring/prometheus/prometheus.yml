@@ -3,7 +3,7 @@ global:
   scrape_interval: 15s      # 默认抓取间隔
   evaluation_interval: 15s  # 规则评估间隔
   external_labels:
-    monitor: 'eduai-monitor'
+    monitor: 'zhijiaoxing-monitor'
 
 # 告警规则文件
 rule_files:
@@ -18,7 +18,7 @@ scrape_configs:
     metrics_path: /metrics
 
   # Flask 应用监控
-  - job_name: 'eduai-backend'
+  - job_name: 'zhijiaoxing-backend'
     static_configs:
       - targets: ['backend:5000']
     metrics_path: /api/metrics/prometheus
