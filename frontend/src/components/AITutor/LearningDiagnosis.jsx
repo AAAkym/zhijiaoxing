@@ -166,6 +166,105 @@ function BloomTaxonomyBars({ bloomScores }) {
 }
 
 function DiagnosisReportSection({ reportContent, isStreaming, onGenerate, onExport, loading, exportLoading, hasReport }) {
+  const renderFormattedReport = (content) => {
+    if (!content) return null
+
+    const lines = content.split('\n')
+    const elements = []
+    let currentList = []
+    let listKey = ''
+
+    const flushList = () => {
+      if (currentList.length > 0) {
+        elements.push(
+          <ul key={`list-${listKey}`} className="space-y-1 mb-2 ml-4">
+            {currentList.map((item, i) => (
+              <li key={i} className="text-sm text-gray-700 flex items-start gap-1.5">
+                <span className="text-gray-400 mt-1 shrink-0">•</span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        )
+        currentList = []
+      }
+    }
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      const trimmed = line.trim()
+      if (!trimmed) {
+        flushList()
+        continue
+      }
+
+      if (/^#{1,3}\s/.test(trimmed)) {
+        flushList()
+        const level = trimmed.match(/^(#{1,3})/)[1].length
+        const text = trimmed.replace(/^#{1,3}\s+/, '')
+        const headingStyles = {
+          1: 'text-base font-bold text-gray-900 mt-4 mb-2 pb-1 border-b border-gray-200',
+          2: 'text-sm font-bold text-gray-800 mt-3 mb-1.5',
+          3: 'text-sm font-semibold text-gray-700 mt-2 mb-1',
+        }
+        elements.push(
+          <div key={`h-${i}`} className={headingStyles[level] || headingStyles[3]}>
+            {text}
+          </div>
+        )
+        continue
+      }
+
+      if (/^[-*•]\s/.test(trimmed)) {
+        const text = trimmed.replace(/^[-*•]\s+/, '')
+        currentList.push(text)
+        listKey = listKey || `ul-${i}`
+        continue
+      }
+
+      if (/^\d+[.、)]\s/.test(trimmed)) {
+        const text = trimmed.replace(/^\d+[.、)]\s+/, '')
+        currentList.push(text)
+        listKey = listKey || `ol-${i}`
+        continue
+      }
+
+      if (/^【.+?】/.test(trimmed)) {
+        flushList()
+        const match = trimmed.match(/^(【.+?】)(.*)/)
+        if (match) {
+          elements.push(
+            <div key={`tag-${i}`} className="text-sm text-gray-700 mb-1">
+              <span className="font-semibold text-indigo-700">{match[1]}</span>
+              {match[2]}
+            </div>
+          )
+        }
+        continue
+      }
+
+      if (/^[一二三四五六七八九十]+[、.]/.test(trimmed)) {
+        flushList()
+        elements.push(
+          <div key={`cn-${i}`} className="text-sm font-bold text-gray-800 mt-3 mb-1">
+            {trimmed}
+          </div>
+        )
+        continue
+      }
+
+      flushList()
+      elements.push(
+        <p key={`p-${i}`} className="text-sm text-gray-700 mb-1.5 leading-relaxed">
+          {trimmed}
+        </p>
+      )
+    }
+
+    flushList()
+    return elements
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
@@ -226,8 +325,8 @@ function DiagnosisReportSection({ reportContent, isStreaming, onGenerate, onExpo
 
       {reportContent && (
         <div className="rounded-lg border border-gray-200 bg-white p-4 animate-fade-in">
-          <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">
-            {reportContent}
+          <div className="prose prose-sm max-w-none">
+            {renderFormattedReport(reportContent)}
             {isStreaming && (
               <span className="inline-block w-1.5 h-4 ml-0.5 bg-gray-500 animate-pulse rounded-sm" />
             )}
@@ -249,7 +348,83 @@ function ImprovementPlanSection({ weakPoints, planData, onPractice }) {
 
   const plans = planData?.plans || weakPoints.map((point) => {
     const name = typeof point === 'string' ? point : point.name || point.topic
-    return { knowledge_point: name, questions: [], resources: [], methods: [] }
+    const mastery = typeof point === 'object' ? (point.mastery ?? point.score ?? 0) : 0
+    const bloomLevels = typeof point === 'object' ? (point.bloom_levels || point.bloom_taxonomy || {}) : {}
+    const tags = typeof point === 'object' ? (point.tags || []) : []
+
+    const bloomEntries = Object.entries(bloomLevels).filter(([, v]) => typeof v === 'number')
+    const lowestBloom = bloomEntries.length > 0
+      ? bloomEntries.sort((a, b) => a[1] - b[1])[0]
+      : null
+
+    const questions = []
+    if (mastery < 30) {
+      questions.push(
+        `重新学习${name}的基础概念，完成3道基础概念辨析题`,
+        `默写${name}的核心定义和关键特征`,
+        `对比${name}与相关概念的异同，完成1组对比分析题`,
+      )
+    } else if (mastery < 60) {
+      questions.push(
+        `完成3道${name}的理解应用题`,
+        `用自己的话解释${name}的核心原理`,
+        `完成1道${name}的综合分析题`,
+      )
+    } else {
+      questions.push(
+        `完成2道${name}的进阶应用题`,
+        `分析${name}在实际场景中的应用案例`,
+      )
+    }
+    if (lowestBloom) {
+      questions.push(`针对布鲁姆"${lowestBloom[0]}"层级(得分${lowestBloom[1]})，完成专项提升练习`)
+    }
+
+    const resources = []
+    if (tags.length > 0) {
+      resources.push({ title: `${tags[0]}专项讲解`, priority: 'high' })
+      if (tags.length > 1) {
+        resources.push({ title: `${tags[1]}拓展阅读`, priority: 'medium' })
+      }
+    }
+    resources.push({ title: `${name}知识点思维导图`, priority: mastery < 40 ? 'high' : 'medium' })
+    resources.push({ title: `${name}常见错误集锦`, priority: 'medium' })
+
+    const methods = []
+    if (mastery < 30) {
+      methods.push({
+        method: `从零开始系统学习${name}：先理解定义→记忆要点→做基础题巩固`,
+        time: '3-5天',
+      })
+    } else if (mastery < 60) {
+      methods.push({
+        method: `针对${name}薄弱环节重点突破：做错题分析→查漏补缺→强化练习`,
+        time: '2-3天',
+      })
+    } else {
+      methods.push({
+        method: `巩固${name}并拓展深度：做综合题→总结规律→教别人理解`,
+        time: '1-2天',
+      })
+    }
+    if (lowestBloom && lowestBloom[1] < 40) {
+      methods.push({
+        method: `提升布鲁姆"${lowestBloom[0]}"层级：使用费曼学习法，尝试向他人讲解${name}`,
+        time: '2-3天',
+      })
+    }
+    methods.push({
+      method: `每日复习${name}核心概念15分钟，连续7天形成长期记忆`,
+      time: '7天',
+    })
+
+    return {
+      knowledge_point: name,
+      mastery,
+      questions,
+      resources,
+      methods,
+    }
   })
 
   if (plans.length === 0) return null
@@ -268,11 +443,13 @@ function ImprovementPlanSection({ weakPoints, planData, onPractice }) {
           const questions = plan.questions || plan.practice_questions || []
           const resources = plan.resources || plan.recommended_resources || []
           const methods = plan.methods || plan.learning_methods || []
+          const mastery = plan.mastery
 
           return (
             <PlanCard
               key={idx}
               pointName={pointName}
+              mastery={mastery}
               questions={questions}
               resources={resources}
               methods={methods}
@@ -285,8 +462,12 @@ function ImprovementPlanSection({ weakPoints, planData, onPractice }) {
   )
 }
 
-function PlanCard({ pointName, questions, resources, methods, onPractice }) {
+function PlanCard({ pointName, mastery, questions, resources, methods, onPractice }) {
   const [expanded, setExpanded] = useState(false)
+
+  const masteryLabel = mastery !== undefined
+    ? mastery < 30 ? '严重薄弱' : mastery < 60 ? '需要加强' : mastery < 80 ? '基本掌握' : '掌握良好'
+    : ''
 
   return (
     <div className="rounded-lg border border-amber-200 bg-amber-50/50 overflow-hidden">
@@ -297,6 +478,13 @@ function PlanCard({ pointName, questions, resources, methods, onPractice }) {
         <div className="flex items-center gap-2">
           <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
           <span className="text-sm font-medium text-amber-800">{pointName}</span>
+          {masteryLabel && (
+            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+              mastery < 30 ? 'bg-red-100 text-red-700' : mastery < 60 ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
+            }`}>
+              {mastery !== undefined ? `${mastery}% ` : ''}{masteryLabel}
+            </span>
+          )}
         </div>
         {expanded ? (
           <ChevronDown className="w-4 h-4 text-amber-500" />
@@ -683,6 +871,7 @@ export default function LearningDiagnosis({
     setReportStreaming(true)
     setReportContent('')
     setHasReport(false)
+    setError(null)
 
     try {
       abortControllerRef.current = new AbortController()
@@ -693,14 +882,21 @@ export default function LearningDiagnosis({
       })
 
       if (!response.ok) {
-        throw new Error(`请求失败: ${response.status}`)
+        const errorText = await response.text().catch(() => '')
+        throw new Error(`请求失败(${response.status}): ${errorText || '服务器错误'}`)
       }
 
       const result = await parseSSEStream(response)
       setHasReport(true)
       setShowPlan(true)
     } catch (err) {
-      if (err.name === 'AbortError') return
+      if (err.name === 'AbortError' || err.message?.includes('abort') || err.message?.includes('ERR_ABORTED')) {
+        return
+      }
+      if (err.name === 'TypeError' && err.message?.includes('fetch')) {
+        setError('网络连接失败，请检查网络后重试')
+        return
+      }
       setError(err.message || '生成报告失败，请重试')
     } finally {
       setReportStreaming(false)

@@ -63,7 +63,7 @@ def api_ai_report():
         data = request.get_json() or {}
         course_id = data.get('course_id')
         report_type = data.get('report_type') or 'comprehensive'
-        result = generate_ai_learning_report(teacher_id, course_id, report_type)
+        result = generate_ai_learning_report(teacher_id, course_id, report_type, user_id=session.get('user_id'), user_role=session.get('user_role'))
         if 'error' in result:
             return jsonify({'error': result['error']}), 400
         return jsonify(result), 200

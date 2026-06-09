@@ -676,7 +676,7 @@ def generate_note():
 4. 总结
 """
         
-        generated_content = spark_service.chat(prompt)
+        generated_content = spark_service.chat(prompt, user_id=session.get('user_id'), user_role=session.get('user_role'))
         
         note = StudyNote(
             user_id=user_id,

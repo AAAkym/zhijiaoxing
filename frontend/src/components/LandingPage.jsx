@@ -1,1120 +1,1460 @@
+/* eslint-disable no-unused-vars */
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { motion, useScroll, useTransform, useInView } from 'framer-motion'
+import { motion, useInView, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import {
   Sparkles, Users, BookOpen, Brain, GraduationCap, BarChart3,
   MessageSquare, Shield, Clock, Star,
-  Play, ChevronDown, Menu, X, Globe,
-  LayoutDashboard, PenTool,
-  Share2, CheckCircle, ArrowRight, Target, Lightbulb,
-  Zap, Rocket, Eye, TrendingUp, Award, Cpu,
-  Heart, Coffee, Feather, Leaf, Sun, Moon
+  Play, Menu, X, ArrowRight, Target, Lightbulb,
+  Zap, CheckCircle, PenTool, LayoutDashboard,
+  FileText, Presentation, TrendingUp, Layers,
+  ChevronLeft, ChevronRight, Quote, Activity, Award
 } from 'lucide-react'
 
-// ============================================
-// 设计系统 - 人文温度色彩
-// ============================================
-const colors = {
-  // 主色调 - 温暖的深靛蓝，替代冷峻的纯黑
-  primary: {
-    bg: '#1a1a2e',
-    surface: '#16213e',
-    elevated: '#0f3460',
-  },
-  // 强调色 - 温暖的琥珀和珊瑚
-  accent: {
-    warm: '#e9c46a',
-    coral: '#f4a261',
-    rose: '#e76f51',
-    sage: '#2a9d8f',
-    sky: '#87ceeb',
-  },
-  // 文字色
-  text: {
-    primary: '#f8f9fa',
-    secondary: '#dee2e6',
-    muted: '#adb5bd',
-    subtle: '#6c757d',
-  }
+function ParticleBackground() {
+  const canvasRef = useRef(null)
+  const animRef = useRef(null)
+  const particlesRef = useRef([])
+  const mouseRef = useRef({ x: -1000, y: -1000 })
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    let width = 0
+    let height = 0
+
+    const resize = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      const rect = canvas.parentElement.getBoundingClientRect()
+      width = rect.width
+      height = rect.height
+      canvas.width = width * dpr
+      canvas.height = height * dpr
+      canvas.style.width = width + 'px'
+      canvas.style.height = height + 'px'
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    }
+
+    const count = Math.min(Math.floor((window.innerWidth * window.innerHeight) / 18000), 80)
+    const particles = []
+    for (let i = 0; i < count; i++) {
+      particles.push({
+        x: Math.random() * (width || window.innerWidth),
+        y: Math.random() * (height || window.innerHeight),
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+        r: Math.random() * 1.5 + 0.5,
+        opacity: Math.random() * 0.3 + 0.1,
+      })
+    }
+    particlesRef.current = particles
+
+    const handleMouse = (e) => {
+      const rect = canvas.getBoundingClientRect()
+      mouseRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top }
+    }
+
+    resize()
+    window.addEventListener('resize', resize)
+    canvas.addEventListener('mousemove', handleMouse)
+    canvas.addEventListener('mouseleave', () => { mouseRef.current = { x: -1000, y: -1000 } })
+
+    const draw = () => {
+      ctx.clearRect(0, 0, width, height)
+      const mouse = mouseRef.current
+      const maxDist = 120
+
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i]
+        p.x += p.vx
+        p.y += p.vy
+        if (p.x < 0 || p.x > width) p.vx *= -1
+        if (p.y < 0 || p.y > height) p.vy *= -1
+
+        const dx = mouse.x - p.x
+        const dy = mouse.y - p.y
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        let drawOpacity = p.opacity
+        if (dist < maxDist) {
+          drawOpacity = p.opacity + (1 - dist / maxDist) * 0.4
+          p.x += dx * 0.002
+          p.y += dy * 0.002
+        }
+
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(212, 168, 83, ${drawOpacity})`
+        ctx.fill()
+
+        for (let j = i + 1; j < particles.length; j++) {
+          const p2 = particles[j]
+          const ddx = p.x - p2.x
+          const ddy = p.y - p2.y
+          const d = Math.sqrt(ddx * ddx + ddy * ddy)
+          if (d < 100) {
+            ctx.beginPath()
+            ctx.moveTo(p.x, p.y)
+            ctx.lineTo(p2.x, p2.y)
+            ctx.strokeStyle = `rgba(212, 168, 83, ${0.06 * (1 - d / 100)})`
+            ctx.lineWidth = 0.5
+            ctx.stroke()
+          }
+        }
+      }
+      animRef.current = requestAnimationFrame(draw)
+    }
+
+    draw()
+
+    return () => {
+      cancelAnimationFrame(animRef.current)
+      window.removeEventListener('resize', resize)
+      canvas.removeEventListener('mousemove', handleMouse)
+    }
+  }, [])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="absolute inset-0 pointer-events-auto"
+      style={{ zIndex: 0 }}
+    />
+  )
 }
 
-// ============================================
-// 数据定义
-// ============================================
-const features = [
+const brandColors = {
+  primary: '#d4a853',
+  primaryDark: '#c49a4a',
+  primaryLight: '#e9c46a',
+  bg: '#faf8f5',
+  surface: '#ffffff',
+  elevated: '#f5f2ee',
+  textPrimary: '#2d2a26',
+  textSecondary: '#6b6560',
+  textMuted: '#9a9590',
+  border: '#e8e4df',
+  borderLight: '#f0ece7',
+}
+
+const useCaseCards = [
+  { id: 1, title: '教学方案', subtitle: '智能生成教案与课件', icon: FileText, gradient: 'from-amber-400 to-amber-500' },
+  { id: 2, title: '课堂演示', subtitle: '交互式课堂展示', icon: Presentation, gradient: 'from-yellow-500 to-amber-500' },
+  { id: 3, title: '学情报告', subtitle: '数据驱动教学分析', icon: BarChart3, gradient: 'from-amber-500 to-yellow-600' },
+  { id: 4, title: '研究课题', subtitle: 'AI辅助课题研究', icon: Lightbulb, gradient: 'from-yellow-400 to-amber-500' },
+  { id: 5, title: '课程展示', subtitle: '精品课程内容呈现', icon: BookOpen, gradient: 'from-amber-500 to-amber-600' },
+  { id: 6, title: '项目规划', subtitle: '教学项目智能规划', icon: Target, gradient: 'from-amber-400 to-yellow-500' },
+]
+
+const partnerLogos = [
+  '清华大学', '北京大学', '复旦大学', '浙江大学',
+  '上海交大', '南京大学', '武汉大学', '中山大学',
+  '华中科技', '四川大学', '同济大学', '厦门大学',
+]
+
+const coreFeatures = [
   {
+    tag: 'AI COURSE GENERATION',
+    title: 'AI 课程生成向导',
+    description: '三阶段智能生成：参数配置 → 内容生成（教学大纲/核心内容/配套习题/课件材料） → 审核优化，一键产出完整课程体系。',
+    icon: Sparkles,
+    mockupType: 'wizard',
+  },
+  {
+    tag: 'AI TUTOR SYSTEM',
+    title: 'AI 智能助教',
+    description: '四合一助教系统：答疑解惑、知识讲解、学习引导、学习诊断，基于 Spark4.0 Ultra 大模型实时响应，支持课程关联与话题记忆。',
     icon: Brain,
-    title: 'AI智能备课',
-    description: '基于大语言模型的智能内容生成，辅助教师快速创建高质量教学内容',
-    color: 'bg-[#e9c46a]/10',
-    borderColor: 'border-[#e9c46a]/20',
-    iconColor: 'text-[#e9c46a]',
-    glowColor: 'group-hover:shadow-[0_0_30px_rgba(233,196,106,0.15)]'
+    mockupType: 'tutor',
   },
   {
-    icon: GraduationCap,
-    title: '个性化学习',
-    description: '根据学生学习进度和能力水平，智能推荐个性化学习路径',
-    color: 'bg-[#f4a261]/10',
-    borderColor: 'border-[#f4a261]/20',
-    iconColor: 'text-[#f4a261]',
-    glowColor: 'group-hover:shadow-[0_0_30px_rgba(244,162,97,0.15)]'
+    tag: 'SMART MISTAKE BOOK',
+    title: '智能错题本',
+    description: 'AI 自动分析错因，生成知识图谱与错误类型统计，靶向治疗推送针对性练习，编程题支持代码 Diff 对比，支持导出与复习出题。',
+    icon: Target,
+    mockupType: 'mistake',
   },
+  {
+    tag: 'LEARNING PROFILE',
+    title: '学习画像构建',
+    description: 'AI 对话式采集知识基础、认知风格、学习节奏、兴趣领域等多维数据，生成雷达图画像，驱动个性化学习路径推荐。',
+    icon: GraduationCap,
+    mockupType: 'profile',
+  },
+]
+
+const enterpriseFeatures = [
   {
     icon: BarChart3,
-    title: '数据驱动决策',
-    description: '实时数据分析面板，为管理者提供全面的教学质量监控',
-    color: 'bg-[#2a9d8f]/10',
-    borderColor: 'border-[#2a9d8f]/20',
-    iconColor: 'text-[#2a9d8f]',
-    glowColor: 'group-hover:shadow-[0_0_30px_rgba(42,157,143,0.15)]'
-  },
-  {
-    icon: MessageSquare,
-    title: 'AI智能问答',
-    description: '24/7在线AI助教，随时解答学生疑问，提供个性化辅导',
-    color: 'bg-[#e76f51]/10',
-    borderColor: 'border-[#e76f51]/20',
-    iconColor: 'text-[#e76f51]',
-    glowColor: 'group-hover:shadow-[0_0_30px_rgba(231,111,81,0.15)]'
+    title: 'AI 智能分析',
+    description: '流失预测、内容趋势、教学归因、资源优化等多维洞察，支持生成周报/月报/季报。',
   },
   {
     icon: Shield,
-    title: '内容审核',
-    description: '三重审核机制确保教育内容合规、安全、高质量',
-    color: 'bg-[#87ceeb]/10',
-    borderColor: 'border-[#87ceeb]/20',
-    iconColor: 'text-[#87ceeb]',
-    glowColor: 'group-hover:shadow-[0_0_30px_rgba(135,206,235,0.15)]'
+    title: 'AI 内容审核',
+    description: '质量评分、版本对比、审核机制、操作日志，确保 AI 生成内容的质量与安全。',
+  },
+  {
+    icon: Users,
+    title: '实时课堂互动',
+    description: '基于 WebSocket 的举手提问、问答讨论，教师端与学生端实时双向通信。',
   },
   {
     icon: Clock,
-    title: '实时互动',
-    description: '支持课堂实时互动、在线答疑、作业提交与批改',
-    color: 'bg-[#e9c46a]/10',
-    borderColor: 'border-[#e9c46a]/20',
-    iconColor: 'text-[#e9c46a]',
-    glowColor: 'group-hover:shadow-[0_0_30px_rgba(233,196,106,0.15)]'
-  }
+    title: '视频笔记联动',
+    description: '视频播放器与笔记系统深度联动，时间轴标记笔记点，点击即跳转。',
+  },
+  {
+    icon: BookOpen,
+    title: '个性化学习路径',
+    description: 'AI 驱动学习规划，按优先级/类型/状态过滤，推荐资源与知识图谱节点展开。',
+  },
+  {
+    icon: Star,
+    title: '学习成就系统',
+    description: '多类别多等级成就徽章，学习时长/练习评测/答题正确率/错题攻克全面追踪。',
+  },
 ]
 
 const testimonials = [
   {
-    name: '张老师',
+    name: '张明华',
     role: '高中数学教师',
-    content: '智教星的AI备课功能让我的备课时间减少了60%，可以更专注于课堂教学！',
-    avatar: 'Z',
-    rating: 5,
-    accent: '#e9c46a'
+    content: '智教星的错题诊疗功能精准定位了学生的知识薄弱点，靶向练习让复习效率提升了3倍！',
+    avatar: '张',
+    accent: '#d4a853',
   },
   {
-    name: '李同学',
+    name: '李思远',
     role: '高三学生',
-    content: '个性化学习路径和AI问答功能帮我快速提升了数学成绩，太赞了！',
-    avatar: 'L',
-    rating: 5,
-    accent: '#f4a261'
+    content: '个性化学习路径和AI问答功能帮我快速提升了数学成绩。感觉就像有一个24小时在线的私人辅导老师。',
+    avatar: '李',
+    accent: '#c49a4a',
   },
   {
-    name: '王校长',
+    name: '王建国',
     role: '学校管理员',
-    content: '数据面板让我能够实时掌握全校教学情况，管理效率大幅提升。',
-    avatar: 'W',
-    rating: 5,
-    accent: '#2a9d8f'
-  }
+    content: '数据面板让我能够实时掌握全校教学情况，管理效率大幅提升。决策有了数据支撑，更有信心了。',
+    avatar: '王',
+    accent: '#e9c46a',
+  },
+  {
+    name: '陈晓琳',
+    role: '初中英语教师',
+    content: '多智能体协同的诊断报告比我自己分析还准确，每个学生都能得到真正个性化的学习方案。',
+    avatar: '陈',
+    accent: '#b8860b',
+  },
+  {
+    name: '赵伟',
+    role: '教育局教研员',
+    content: '智教星将我们零散的错题管理变成了系统化的诊疗流程，自适应推送让每个学生都在最合适的难度上练习。',
+    avatar: '赵',
+    accent: '#D97706',
+  },
 ]
-
-const stats = [
-  { number: 50000, suffix: '+', label: '注册用户', icon: Users, color: 'text-[#e9c46a]' },
-  { number: 2000, suffix: '+', label: '精品课程', icon: BookOpen, color: 'text-[#2a9d8f]' },
-  { number: 98.5, suffix: '%', label: '用户满意度', icon: Heart, color: 'text-[#e76f51]' },
-  { number: 1000000, suffix: '+', label: 'AI交互次数', icon: Brain, color: 'text-[#f4a261]' }
-]
-
-const useCases = [
-  {
-    role: '教师',
-    icon: PenTool,
-    color: 'bg-[#e9c46a]/10',
-    borderColor: 'border-[#e9c46a]/20',
-    iconColor: 'text-[#e9c46a]',
-    features: ['智能备课助手', '课程内容管理', '学情数据分析', '作业智能批改']
-  },
-  {
-    role: '学生',
-    icon: GraduationCap,
-    color: 'bg-[#2a9d8f]/10',
-    borderColor: 'border-[#2a9d8f]/20',
-    iconColor: 'text-[#2a9d8f]',
-    features: ['个性化学习路径', '智能练习推荐', 'AI助教答疑', '学习进度追踪']
-  },
-  {
-    role: '管理员',
-    icon: LayoutDashboard,
-    color: 'bg-[#f4a261]/10',
-    borderColor: 'border-[#f4a261]/20',
-    iconColor: 'text-[#f4a261]',
-    features: ['用户权限管理', '教学质量监控', '数据统计分析', '系统配置管理']
-  }
-]
-
-const howItWorks = [
-  {
-    step: '01',
-    title: '输入需求',
-    description: '教师输入教学目标、学生水平和课程要求',
-    icon: Target,
-    color: 'text-[#e9c46a]'
-  },
-  {
-    step: '02',
-    title: 'AI分析',
-    description: 'Spark4.0 Ultra大模型智能分析并生成个性化方案',
-    icon: Brain,
-    color: 'text-[#f4a261]'
-  },
-  {
-    step: '03',
-    title: '智能输出',
-    description: '自动生成教案、练习题、学情报告等完整教学材料',
-    icon: Lightbulb,
-    color: 'text-[#2a9d8f]'
-  }
-]
-
-const pricingPlans = [
-  {
-    name: '基础版',
-    nameEn: 'BASIC',
-    price: '免费',
-    period: '',
-    description: '适合个人教师体验',
-    features: ['AI智能备课（10次/月）', '基础学情分析', '在线答疑', '作业管理'],
-    cta: '免费开始',
-    highlighted: false
-  },
-  {
-    name: '专业版',
-    nameEn: 'PRO',
-    price: '¥299',
-    period: '/月',
-    description: '适合专业教师团队',
-    features: ['无限AI智能备课', '高级学情分析', '个性化学习路径', '班级管理', '数据导出', '优先技术支持'],
-    cta: '立即升级',
-    highlighted: true
-  },
-  {
-    name: '机构版',
-    nameEn: 'ENTERPRISE',
-    price: '定制',
-    period: '',
-    description: '适合学校和教育机构',
-    features: ['全功能访问', '多校区管理', 'API接口', '私有化部署', '专属客服', '定制开发'],
-    cta: '联系销售',
-    highlighted: false
-  }
-]
-
-// ============================================
-// 动画配置 - 有机、非机械感
-// ============================================
-const organicEase = [0.34, 1.56, 0.64, 1] // 弹性缓动
-
-const fadeInUp = {
-  hidden: { opacity: 0, y: 40 },
-  visible: { 
-    opacity: 1, 
-    y: 0, 
-    transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] } 
-  }
-}
 
 const staggerContainer = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.15, delayChildren: 0.1 }
-  }
+    transition: { staggerChildren: 0.1, delayChildren: 0.1 },
+  },
 }
 
 const staggerItem = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { 
-    opacity: 1, 
-    y: 0, 
-    transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] } 
-  }
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
+  },
 }
 
-// ============================================
-// 手工感装饰组件
-// ============================================
-function HandDrawnCircle({ className, color = '#e9c46a' }) {
-  return (
-    <svg className={className} viewBox="0 0 100 100" fill="none">
-      <path
-        d="M50 5 C75 5, 95 25, 95 50 C95 75, 75 95, 50 95 C25 95, 5 75, 5 50 C5 25, 25 5, 50 5"
-        stroke={color}
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeDasharray="4 6"
-        opacity="0.4"
-      />
-    </svg>
-  )
-}
-
-function OrganicBlob({ className, color = '#e9c46a' }) {
-  return (
-    <svg className={className} viewBox="0 0 200 200" fill="none">
-      <path
-        d="M45.7,-76.3C58.9,-69.3,69.1,-55.6,76.3,-41.2C83.5,-26.8,87.7,-11.7,85.8,2.3C83.9,16.3,75.9,29.2,66.3,40.1C56.7,51,45.5,59.9,33.1,66.3C20.7,72.7,7.1,76.6,-6.2,75.8C-19.5,75,-32.5,69.5,-44.3,61.8C-56.1,54.1,-66.7,44.2,-73.3,32.1C-79.9,20,-82.5,5.7,-79.6,-7.2C-76.7,-20.1,-68.3,-31.6,-58.1,-40.8C-47.9,-50,-35.9,-56.9,-23.3,-64.3C-10.7,-71.7,2.5,-79.6,16.3,-79.8C30.1,-80,44.5,-72.5,45.7,-76.3Z"
-        fill={color}
-        opacity="0.08"
-      />
-    </svg>
-  )
-}
-
-function WavyLine({ className, color = '#e9c46a' }) {
-  return (
-    <svg className={className} viewBox="0 0 200 20" fill="none" preserveAspectRatio="none">
-      <path
-        d="M0 10 Q25 0, 50 10 T100 10 T150 10 T200 10"
-        stroke={color}
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        fill="none"
-        opacity="0.5"
-      />
-    </svg>
-  )
-}
-
-// ============================================
-// 数字动画组件
-// ============================================
-function AnimatedCounter({ target, suffix = '' }) {
-  const [count, setCount] = useState(0)
-  const ref = useRef(null)
-  const isInView = useInView(ref, { once: true })
-
+function useScrollDirection() {
+  const [scrolled, setScrolled] = useState(false)
   useEffect(() => {
-    if (isInView) {
-      const duration = 2000
-      const startTime = Date.now()
-      const animate = () => {
-        const elapsed = Date.now() - startTime
-        const progress = Math.min(elapsed / duration, 1)
-        // 使用更自然的缓动
-        const eased = 1 - Math.pow(1 - progress, 4)
-        setCount(Math.floor(eased * target))
-        if (progress < 1) {
-          requestAnimationFrame(animate)
-        }
-      }
-      requestAnimationFrame(animate)
-    }
-  }, [isInView, target])
-
-  return (
-    <span ref={ref}>
-      {count.toLocaleString()}
-      {suffix}
-    </span>
-  )
-}
-
-// ============================================
-// 增强背景粒子 - 有机运动
-// ============================================
-function OrganicParticleBackground() {
-  const [particles, setParticles] = useState([])
-
-  useEffect(() => {
-    const newParticles = [...Array(40)].map((_, i) => ({
-      id: i,
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      size: Math.random() * 3 + 1,
-      duration: Math.random() * 25 + 15,
-      delay: Math.random() * 8,
-      opacity: Math.random() * 0.3 + 0.05,
-      drift: Math.random() * 20 - 10,
-    }))
-    setParticles(newParticles)
+    const handler = () => setScrolled(window.scrollY > 50)
+    window.addEventListener('scroll', handler, { passive: true })
+    return () => window.removeEventListener('scroll', handler)
   }, [])
+  return scrolled
+}
+
+function SectionWrapper({ children, id, className = '' }) {
+  const ref = useRef(null)
+  const isInView = useInView(ref, { once: true, margin: '-80px' })
+  return (
+    <motion.section
+      id={id}
+      ref={ref}
+      initial="hidden"
+      animate={isInView ? 'visible' : 'hidden'}
+      variants={staggerContainer}
+      className={className}
+    >
+      {children}
+    </motion.section>
+  )
+}
+
+function FeatureMockup({ type }) {
+  const base = { backgroundColor: brandColors.bg, borderColor: brandColors.borderLight }
+
+  if (type === 'wizard') {
+    return (
+      <div className="w-full h-full bg-gradient-to-br from-[#faf8f5] to-[#f5f2ee] p-5 flex flex-col">
+        <div className="flex items-center gap-3 mb-4">
+          {['参数配置', '内容生成', '审核优化'].map((step, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <div
+                className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold"
+                style={{
+                  backgroundColor: i <= 1 ? brandColors.primary : brandColors.elevated,
+                  color: i <= 1 ? '#fff' : brandColors.textMuted,
+                }}
+              >
+                {i + 1}
+              </div>
+              <span className="text-[11px] font-medium" style={{ color: i <= 1 ? brandColors.textPrimary : brandColors.textMuted }}>
+                {step}
+              </span>
+              {i < 2 && <ArrowRight className="w-3 h-3" style={{ color: brandColors.textMuted }} />}
+            </div>
+          ))}
+        </div>
+        <div className="flex-1 grid grid-cols-2 gap-3">
+          <div className="rounded-lg border p-3 space-y-2" style={base}>
+            <p className="text-[10px] font-semibold" style={{ color: brandColors.textMuted }}>课程信息</p>
+            <div className="h-2 rounded-full" style={{ backgroundColor: brandColors.textPrimary, width: '60%' }} />
+            <div className="h-1.5 rounded-full" style={{ backgroundColor: brandColors.border, width: '80%' }} />
+            <div className="h-1.5 rounded-full" style={{ backgroundColor: brandColors.border, width: '45%' }} />
+            <div className="flex gap-2 mt-2">
+              <div className="px-2 py-0.5 rounded text-[9px] font-medium" style={{ backgroundColor: brandColors.primary + '15', color: brandColors.primary }}>高中</div>
+              <div className="px-2 py-0.5 rounded text-[9px] font-medium" style={{ backgroundColor: brandColors.elevated, color: brandColors.textMuted }}>数学</div>
+            </div>
+          </div>
+          <div className="rounded-lg border p-3 space-y-2" style={base}>
+            <p className="text-[10px] font-semibold" style={{ color: brandColors.textMuted }}>生成内容</p>
+            {['教学大纲', '核心内容', '配套习题', '课件材料'].map((item, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <div className="w-3.5 h-3.5 rounded flex items-center justify-center" style={{ backgroundColor: i < 3 ? '#28c840' + '20' : brandColors.elevated }}>
+                  <CheckCircle className="w-2.5 h-2.5" style={{ color: i < 3 ? '#28c840' : brandColors.textMuted }} />
+                </div>
+                <span className="text-[10px]" style={{ color: i < 3 ? brandColors.textPrimary : brandColors.textMuted }}>{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="mt-3 flex justify-end">
+          <div className="px-4 py-1.5 rounded-lg text-[11px] font-semibold text-white" style={{ backgroundColor: brandColors.primary }}>
+            开始生成
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (type === 'tutor') {
+    return (
+      <div className="w-full h-full bg-gradient-to-br from-[#faf8f5] to-[#f5f2ee] flex flex-col">
+        <div className="flex border-b" style={{ borderColor: brandColors.border }}>
+          {['答疑解惑', '知识讲解', '学习引导', '学习诊断'].map((tab, i) => (
+            <div
+              key={i}
+              className="flex-1 py-2.5 text-center text-[11px] font-medium border-b-2"
+              style={{
+                borderColor: i === 0 ? brandColors.primary : 'transparent',
+                color: i === 0 ? brandColors.primary : brandColors.textMuted,
+                backgroundColor: i === 0 ? brandColors.surface : 'transparent',
+              }}
+            >
+              {tab}
+            </div>
+          ))}
+        </div>
+        <div className="flex-1 p-4 space-y-3 overflow-hidden">
+          <div className="flex justify-end">
+            <div className="max-w-[70%] rounded-xl rounded-tr-sm px-3 py-2 text-[11px]" style={{ backgroundColor: brandColors.primary + '15', color: brandColors.textPrimary }}>
+              函数 f(x)=x²+2x-3 的极值点怎么求？
+            </div>
+          </div>
+          <div className="flex justify-start">
+            <div className="max-w-[80%] rounded-xl rounded-tl-sm px-3 py-2 space-y-1.5" style={{ backgroundColor: brandColors.surface, border: `1px solid ${brandColors.borderLight}` }}>
+              <p className="text-[11px]" style={{ color: brandColors.textPrimary }}>求导得 f'(x)=2x+2</p>
+              <p className="text-[11px]" style={{ color: brandColors.textPrimary }}>令 f'(x)=0，解得 x=-1</p>
+              <div className="flex items-center gap-1 pt-1">
+                <Sparkles className="w-2.5 h-2.5" style={{ color: brandColors.primary }} />
+                <span className="text-[9px] font-medium" style={{ color: brandColors.primary }}>AI 解析中</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <div className="max-w-[65%] rounded-xl rounded-tr-sm px-3 py-2 text-[11px]" style={{ backgroundColor: brandColors.primary + '15', color: brandColors.textPrimary }}>
+              能画个图帮我理解吗？
+            </div>
+          </div>
+        </div>
+        <div className="px-4 py-2.5 border-t flex items-center gap-2" style={{ borderColor: brandColors.border }}>
+          <div className="flex-1 h-7 rounded-lg px-3 flex items-center text-[11px]" style={{ backgroundColor: brandColors.elevated, color: brandColors.textMuted }}>
+            输入你的问题...
+          </div>
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: brandColors.primary }}>
+            <ArrowRight className="w-3.5 h-3.5 text-white" />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (type === 'mistake') {
+    return (
+      <div className="w-full h-full bg-gradient-to-br from-[#faf8f5] to-[#f5f2ee] p-4 flex flex-col">
+        <div className="flex gap-3 mb-3">
+          <div className="flex-1 rounded-lg border p-2.5" style={base}>
+            <p className="text-[9px] font-semibold mb-1.5" style={{ color: brandColors.textMuted }}>错误类型分布</p>
+            <div className="space-y-1.5">
+              {[
+                { label: '概念理解', pct: 45, color: '#ef4444' },
+                { label: '计算失误', pct: 30, color: brandColors.primary },
+                { label: '审题不清', pct: 25, color: '#8b5cf6' },
+              ].map((bar, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <span className="text-[9px] w-12 text-right" style={{ color: brandColors.textMuted }}>{bar.label}</span>
+                  <div className="flex-1 h-1.5 rounded-full" style={{ backgroundColor: brandColors.elevated }}>
+                    <div className="h-full rounded-full" style={{ width: `${bar.pct}%`, backgroundColor: bar.color }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="flex-1 rounded-lg border p-2.5" style={base}>
+            <p className="text-[9px] font-semibold mb-1.5" style={{ color: brandColors.textMuted }}>知识图谱</p>
+            <div className="flex items-center justify-center h-[calc(100%-20px)]">
+              <div className="relative w-16 h-16">
+                <div className="absolute inset-0 rounded-full border-2" style={{ borderColor: brandColors.primary + '40' }} />
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full flex items-center justify-center text-[7px] font-bold text-white" style={{ backgroundColor: brandColors.primary }}>函</div>
+                <div className="absolute bottom-0 left-0 -translate-x-1/2 translate-y-1/2 w-4 h-4 rounded-full flex items-center justify-center text-[7px] font-bold text-white" style={{ backgroundColor: '#8b5cf6' }}>导</div>
+                <div className="absolute bottom-0 right-0 translate-x-1/2 translate-y-1/2 w-4 h-4 rounded-full flex items-center justify-center text-[7px] font-bold text-white" style={{ backgroundColor: '#ef4444' }}>积</div>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full" style={{ backgroundColor: brandColors.primary + '30' }} />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="flex-1 rounded-lg border p-2.5" style={base}>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[9px] font-semibold" style={{ color: brandColors.textMuted }}>靶向练习推荐</p>
+            <span className="text-[8px] px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: brandColors.primary + '12', color: brandColors.primary }}>AI 推荐</span>
+          </div>
+          <div className="space-y-1.5">
+            {['求函数极值的步骤', '导数几何意义', '定积分计算方法'].map((item, i) => (
+              <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md" style={{ backgroundColor: brandColors.elevated }}>
+                <div className="w-1 h-1 rounded-full" style={{ backgroundColor: brandColors.primary }} />
+                <span className="text-[10px]" style={{ color: brandColors.textPrimary }}>{item}</span>
+                <div className="flex-1" />
+                <span className="text-[8px]" style={{ color: brandColors.textMuted }}>优先级 {3 - i}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (type === 'profile') {
+    return (
+      <div className="w-full h-full bg-gradient-to-br from-[#faf8f5] to-[#f5f2ee] p-4 flex gap-3">
+        <div className="w-[45%] rounded-lg border p-3 flex flex-col" style={base}>
+          <p className="text-[9px] font-semibold mb-2" style={{ color: brandColors.textMuted }}>AI 对话采集</p>
+          <div className="flex-1 space-y-2 overflow-hidden">
+            <div className="rounded-lg px-2.5 py-1.5 text-[10px]" style={{ backgroundColor: brandColors.primary + '10', color: brandColors.textSecondary }}>
+              你更偏好哪种学习方式？
+            </div>
+            <div className="rounded-lg px-2.5 py-1.5 text-[10px] text-right" style={{ backgroundColor: brandColors.surface, color: brandColors.textPrimary, border: `1px solid ${brandColors.borderLight}` }}>
+              我喜欢看图和视频学习
+            </div>
+            <div className="rounded-lg px-2.5 py-1.5 text-[10px]" style={{ backgroundColor: brandColors.primary + '10', color: brandColors.textSecondary }}>
+              你的学习节奏偏好？
+            </div>
+            <div className="rounded-lg px-2.5 py-1.5 text-[10px] text-right" style={{ backgroundColor: brandColors.surface, color: brandColors.textPrimary, border: `1px solid ${brandColors.borderLight}` }}>
+              稳扎稳打，每天固定时间
+            </div>
+          </div>
+          <div className="mt-2 flex items-center gap-1">
+            <div className="flex-1 h-5 rounded px-2 flex items-center text-[9px]" style={{ backgroundColor: brandColors.elevated, color: brandColors.textMuted }}>
+              继续回答...
+            </div>
+          </div>
+        </div>
+        <div className="flex-1 rounded-lg border p-3 flex flex-col items-center justify-center" style={base}>
+          <p className="text-[9px] font-semibold mb-3" style={{ color: brandColors.textMuted }}>学习画像雷达图</p>
+          <div className="relative w-28 h-28">
+            <svg viewBox="0 0 100 100" className="w-full h-full">
+              <polygon
+                points="50,10 90,35 80,80 20,80 10,35"
+                fill="none"
+                stroke={brandColors.border}
+                strokeWidth="0.5"
+              />
+              <polygon
+                points="50,25 75,42 68,68 32,68 25,42"
+                fill="none"
+                stroke={brandColors.border}
+                strokeWidth="0.5"
+              />
+              <polygon
+                points="50,18 85,38 75,75 25,75 15,38"
+                fill={brandColors.primary + '20'}
+                stroke={brandColors.primary}
+                strokeWidth="1"
+              />
+              {[
+                { x: 50, y: 10, label: '知识' },
+                { x: 90, y: 35, label: '视觉' },
+                { x: 80, y: 80, label: '节奏' },
+                { x: 20, y: 80, label: '兴趣' },
+                { x: 10, y: 35, label: '目标' },
+              ].map((pt, i) => (
+                <g key={i}>
+                  <circle cx={pt.x} cy={pt.y} r="2" fill={brandColors.primary} />
+                  <text x={pt.x} y={pt.y - 5} textAnchor="middle" fontSize="5" fill={brandColors.textMuted}>{pt.label}</text>
+                </g>
+              ))}
+            </svg>
+          </div>
+          <div className="flex gap-2 mt-2">
+            <span className="text-[8px] px-1.5 py-0.5 rounded" style={{ backgroundColor: '#8b5cf6' + '15', color: '#8b5cf6' }}>视觉型</span>
+            <span className="text-[8px] px-1.5 py-0.5 rounded" style={{ backgroundColor: brandColors.primary + '15', color: brandColors.primary }}>稳扎稳打</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return null
+}
+
+function FeatureShowcase() {
+  const ref = useRef(null)
+  const isInView = useInView(ref, { once: true, margin: '-100px' })
 
   return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-      {particles.map((particle) => (
-        <motion.div
-          key={particle.id}
-          className="absolute rounded-full bg-[#e9c46a]"
-          style={{
-            left: `${particle.x}%`,
-            top: `${particle.y}%`,
-            width: particle.size,
-            height: particle.size,
-            opacity: particle.opacity,
-          }}
-          animate={{
-            y: [0, -30, 10, -20, 0],
-            x: [0, particle.drift, -particle.drift * 0.5, particle.drift * 0.8, 0],
-            opacity: [particle.opacity, particle.opacity * 0.3, particle.opacity * 0.6, particle.opacity * 0.2, particle.opacity],
-            scale: [1, 1.2, 0.8, 1.1, 1],
-          }}
-          transition={{
-            duration: particle.duration,
-            repeat: Infinity,
-            delay: particle.delay,
-            ease: 'easeInOut',
-          }}
-        />
-      ))}
+    <div ref={ref} className="space-y-0">
+      {coreFeatures.map((feature, index) => {
+        const Icon = feature.icon
+        const isReversed = index % 2 !== 0
+        return (
+          <motion.div
+            key={index}
+            initial={{ opacity: 0 }}
+            animate={isInView ? { opacity: 1 } : { opacity: 0 }}
+            transition={{ duration: 0.6, delay: index * 0.15 }}
+          >
+            <div
+              className={`flex flex-col ${
+                isReversed ? 'lg:flex-row-reverse' : 'lg:flex-row'
+              } items-center gap-12 lg:gap-20 py-20 lg:py-28`}
+            >
+              <div className={`flex-1 max-w-lg ${isReversed ? 'lg:text-right' : ''}`}>
+                <motion.p
+                  initial={{ opacity: 0, x: isReversed ? 30 : -30 }}
+                  animate={isInView ? { opacity: 1, x: 0 } : {}}
+                  transition={{ duration: 0.6, delay: index * 0.15 + 0.1 }}
+                  className="text-xs font-semibold tracking-[0.2em] uppercase mb-4"
+                  style={{ color: brandColors.primary }}
+                >
+                  {feature.tag}
+                </motion.p>
+                <motion.h3
+                  initial={{ opacity: 0, x: isReversed ? 30 : -30 }}
+                  animate={isInView ? { opacity: 1, x: 0 } : {}}
+                  transition={{ duration: 0.6, delay: index * 0.15 + 0.2 }}
+                  className="text-3xl lg:text-4xl font-bold mb-6"
+                  style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: brandColors.textPrimary }}
+                >
+                  {feature.title}
+                </motion.h3>
+                <motion.p
+                  initial={{ opacity: 0, x: isReversed ? 30 : -30 }}
+                  animate={isInView ? { opacity: 1, x: 0 } : {}}
+                  transition={{ duration: 0.6, delay: index * 0.15 + 0.3 }}
+                  className="text-base leading-relaxed"
+                  style={{ color: brandColors.textSecondary }}
+                >
+                  {feature.description}
+                </motion.p>
+              </div>
+              <motion.div
+                initial={{ opacity: 0, x: isReversed ? -40 : 40, scale: 0.95 }}
+                animate={isInView ? { opacity: 1, x: 0, scale: 1 } : {}}
+                transition={{ duration: 0.7, delay: index * 0.15 + 0.2 }}
+                className="flex-1 w-full max-w-xl"
+              >
+                <div
+                  className="relative rounded-2xl overflow-hidden shadow-2xl"
+                  style={{ aspectRatio: '16/10' }}
+                >
+                  <FeatureMockup type={feature.mockupType} />
+                </div>
+              </motion.div>
+            </div>
+            {index < coreFeatures.length - 1 && (
+              <div className="w-full h-px" style={{ backgroundColor: brandColors.border }} />
+            )}
+          </motion.div>
+        )
+      })}
     </div>
   )
 }
 
-// ============================================
-// 主组件
-// ============================================
-export default function LandingPage() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [scrolled, setScrolled] = useState(false)
-
-  const heroRef = useRef(null)
-  const { scrollY } = useScroll()
-  const heroY = useTransform(scrollY, [0, 500], [0, 150])
-  const heroOpacity = useTransform(scrollY, [0, 400], [1, 0])
+function TestimonialCarousel() {
+  const [current, setCurrent] = useState(0)
+  const ref = useRef(null)
 
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 50)
-    }
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
+    const timer = setInterval(() => {
+      setCurrent((prev) => (prev + 1) % testimonials.length)
+    }, 5000)
+    return () => clearInterval(timer)
   }, [])
 
+  const prev = () => setCurrent((c) => (c - 1 + testimonials.length) % testimonials.length)
+  const next = () => setCurrent((c) => (c + 1) % testimonials.length)
+
+  return (
+    <div ref={ref} className="relative max-w-3xl mx-auto">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={current}
+          initial={{ opacity: 0, x: 40 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -40 }}
+          transition={{ duration: 0.4, ease: 'easeOut' }}
+          className="rounded-2xl p-8 lg:p-12"
+          style={{ backgroundColor: brandColors.surface }}
+        >
+          <Quote className="w-8 h-8 mb-6" style={{ color: brandColors.primary + '40' }} />
+          <p
+            className="text-lg lg:text-xl leading-relaxed mb-8 italic"
+            style={{ color: brandColors.textPrimary, fontFamily: "'Inter', sans-serif" }}
+          >
+            "{testimonials[current].content}"
+          </p>
+          <div className="h-px mb-6" style={{ backgroundColor: brandColors.border }} />
+          <div className="flex items-center">
+            <div
+              className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-sm mr-4"
+              style={{ backgroundColor: testimonials[current].accent }}
+            >
+              {testimonials[current].avatar}
+            </div>
+            <div>
+              <p className="font-semibold text-sm" style={{ color: brandColors.textPrimary }}>
+                {testimonials[current].name}
+              </p>
+              <p className="text-xs" style={{ color: brandColors.textMuted }}>
+                {testimonials[current].role}
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      </AnimatePresence>
+
+      <div className="flex items-center justify-center gap-4 mt-8">
+        <button
+          onClick={prev}
+          className="w-10 h-10 rounded-full border flex items-center justify-center transition-colors duration-200 hover:bg-[#f5f2ee]"
+          style={{ borderColor: brandColors.border }}
+        >
+          <ChevronLeft className="w-4 h-4" style={{ color: brandColors.textSecondary }} />
+        </button>
+        <div className="flex gap-2">
+          {testimonials.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrent(i)}
+              className="w-2 h-2 rounded-full transition-all duration-300"
+              style={{
+                backgroundColor: i === current ? brandColors.primary : brandColors.border,
+                transform: i === current ? 'scale(1.3)' : 'scale(1)',
+              }}
+            />
+          ))}
+        </div>
+        <button
+          onClick={next}
+          className="w-10 h-10 rounded-full border flex items-center justify-center transition-colors duration-200 hover:bg-[#f5f2ee]"
+          style={{ borderColor: brandColors.border }}
+        >
+          <ChevronRight className="w-4 h-4" style={{ color: brandColors.textSecondary }} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+export default function LandingPage() {
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const scrolled = useScrollDirection()
+  const heroRef = useRef(null)
+
   const scrollToSection = (id) => {
-    const element = document.getElementById(id)
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' })
-    }
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
     setIsMenuOpen(false)
   }
 
   return (
-    <div className="min-h-screen bg-[#1a1a2e] text-[#f8f9fa] overflow-x-hidden font-light">
-      {/* 有机粒子背景 */}
-      <OrganicParticleBackground />
-      
-      {/* 有机光晕背景 */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <motion.div 
-          className="absolute top-1/4 left-1/4 w-[700px] h-[700px] bg-[#e9c46a]/5 rounded-full blur-[150px]"
-          animate={{
-            scale: [1, 1.4, 1],
-            x: [0, 30, -20, 0],
-            y: [0, -20, 30, 0],
-            opacity: [0.15, 0.35, 0.15]
-          }}
-          transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div 
-          className="absolute bottom-1/3 right-1/4 w-[500px] h-[500px] bg-[#f4a261]/5 rounded-full blur-[120px]"
-          animate={{
-            scale: [1.3, 1, 1.3],
-            x: [0, -40, 20, 0],
-            opacity: [0.2, 0.4, 0.2]
-          }}
-          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div 
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] bg-[#2a9d8f]/3 rounded-full blur-[180px]"
-          animate={{
-            rotate: 360,
-            scale: [1, 1.1, 1],
-          }}
-          transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
-        />
-      </div>
-
-      {/* 导航栏 */}
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-700 ${
-        scrolled ? 'bg-[#1a1a2e]/90 backdrop-blur-xl border-b border-white/5' : 'bg-transparent'
-      }`}>
-        <div className="max-w-7xl mx-auto px-6 py-5">
-          <div className="flex justify-between items-center">
-            {/* Logo - 有机排列 */}
-            <div className="flex items-center gap-3 cursor-pointer" onClick={() => scrollToSection('hero')}>
-              <div className="relative">
-                <div className="w-10 h-10 rounded-2xl bg-[#e9c46a]/10 backdrop-blur-sm border border-[#e9c46a]/20 flex items-center justify-center rotate-3 hover:rotate-0 transition-transform duration-500">
-                  <Sparkles className="w-5 h-5 text-[#e9c46a]" />
-                </div>
-                <HandDrawnCircle className="absolute -inset-2 w-14 h-14 animate-spin" style={{ animationDuration: '20s' }} />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-base font-normal tracking-wide text-[#f8f9fa]">智教星</span>
-                <span className="text-[10px] tracking-[0.2em] text-[#6c757d] -mt-0.5">EDUSTAR</span>
-              </div>
-            </div>
-
-            {/* 桌面导航 - 非对称间距 */}
-            <div className="hidden md:flex items-center gap-10">
-              {[
-                { id: 'features', label: '功能', offset: 0 },
-                { id: 'howitworks', label: '原理', offset: 4 },
-                { id: 'usecases', label: '场景', offset: -2 },
-                { id: 'testimonials', label: '评价', offset: 3 },
-                { id: 'pricing', label: '价格', offset: -1 },
-              ].map((item) => (
-                <button 
-                  key={item.id}
-                  onClick={() => scrollToSection(item.id)} 
-                  className="text-sm text-[#adb5bd] hover:text-[#f8f9fa] transition-colors duration-300 tracking-wider relative group"
-                  style={{ marginTop: item.offset }}
-                >
-                  {item.label}
-                  <span className="absolute -bottom-1 left-0 w-0 h-[1.5px] bg-[#e9c46a] group-hover:w-full transition-all duration-500" />
-                </button>
-              ))}
-            </div>
-
-            <div className="hidden md:flex items-center gap-4">
-              <Link to="/login">
-                <Button variant="ghost" className="text-[#adb5bd] hover:text-[#f8f9fa] hover:bg-white/5 text-sm tracking-wider">
-                  登录
-                </Button>
-              </Link>
-              <Link to="/welcome">
-                <Button className="bg-[#e9c46a] text-[#1a1a2e] hover:bg-[#f4a261] text-sm tracking-wider px-6 transition-all duration-500 hover:shadow-[0_0_25px_rgba(233,196,106,0.3)] font-normal">
-                  开始使用
-                </Button>
-              </Link>
-            </div>
-
-            {/* 移动端菜单按钮 */}
-            <button
-              className="md:hidden p-2 text-[#adb5bd] hover:text-[#f8f9fa]"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
+    <div
+      className="min-h-screen overflow-x-hidden"
+      style={{
+        backgroundColor: brandColors.bg,
+        color: brandColors.textPrimary,
+        fontFamily: "'Inter', sans-serif",
+      }}
+    >
+      {/* ==================== 导航栏 ==================== */}
+      <nav
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+          scrolled
+            ? 'bg-[#faf8f5]/90 backdrop-blur-xl border-b shadow-sm'
+            : 'bg-transparent'
+        }`}
+        style={{ borderColor: scrolled ? brandColors.border : 'transparent' }}
+      >
+        <div className="max-w-[1200px] mx-auto px-6 h-16 flex items-center justify-between">
+          <div
+              className="flex items-center gap-2.5 cursor-pointer"
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             >
-              {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{ backgroundColor: brandColors.primary }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2L14.5 9H22L16 13.5L18 21L12 17L6 21L8 13.5L2 9H9.5L12 2Z" fill="white" fillOpacity="0.9" />
+                  <path d="M4 19V14C4 12.5 5.5 11 7 11C8.5 11 9 12 9 12" stroke="white" strokeOpacity="0.5" strokeWidth="1.5" strokeLinecap="round" />
+                  <path d="M20 19V14C20 12.5 18.5 11 17 11C15.5 11 15 12 15 12" stroke="white" strokeOpacity="0.5" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              </div>
+              <span
+                className="text-lg font-bold tracking-tight"
+                style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+              >
+                智教星
+              </span>
+            </div>
+
+          <div className="hidden md:flex items-center gap-8">
+            {[
+              { id: 'features', label: '功能' },
+              { id: 'showcase', label: '产品' },
+              { id: 'enterprise', label: '企业' },
+              { id: 'testimonials', label: '评价' },
+            ].map((item) => (
+              <button
+                key={item.id}
+                onClick={() => scrollToSection(item.id)}
+                className="text-sm font-medium transition-colors duration-200 hover:text-amber-600"
+                style={{ color: brandColors.textSecondary }}
+              >
+                {item.label}
+              </button>
+            ))}
           </div>
+
+          <div className="hidden md:flex items-center gap-3">
+            <Link to="/login">
+              <Button
+                variant="ghost"
+                className="text-sm font-medium"
+                style={{ color: brandColors.textSecondary }}
+              >
+                登录
+              </Button>
+            </Link>
+            <Link to="/welcome">
+              <Button
+                className="text-sm font-medium text-white px-5 h-9 rounded-lg transition-all duration-200 hover:scale-[1.02]"
+                style={{ backgroundColor: brandColors.primary }}
+              >
+                开始使用
+              </Button>
+            </Link>
+          </div>
+
+          <button
+            className="md:hidden p-2"
+            style={{ color: brandColors.textPrimary }}
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+          >
+            {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
         </div>
 
-        {/* 移动端菜单 */}
-        {isMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-[#1a1a2e]/95 backdrop-blur-xl border-t border-white/5"
-          >
-            <div className="px-6 py-6 space-y-4">
-              {['features', 'howitworks', 'usecases', 'testimonials', 'pricing'].map((section) => (
-                <button 
-                  key={section}
-                  onClick={() => scrollToSection(section)} 
-                  className="block w-full text-left text-[#adb5bd] hover:text-[#f8f9fa] text-sm tracking-wider py-2"
-                >
-                  {section === 'features' && '功能特性'}
-                  {section === 'howitworks' && '工作原理'}
-                  {section === 'usecases' && '使用场景'}
-                  {section === 'testimonials' && '用户评价'}
-                  {section === 'pricing' && '价格方案'}
-                </button>
-              ))}
-              <div className="pt-4 border-t border-white/5 space-y-3">
-                <Link to="/login">
-                  <Button variant="outline" className="w-full border-white/10 text-[#f8f9fa] hover:bg-white/5">登录</Button>
-                </Link>
-                <Link to="/welcome">
-                  <Button className="w-full bg-[#e9c46a] text-[#1a1a2e] hover:bg-[#f4a261]">开始使用</Button>
-                </Link>
+        <AnimatePresence>
+          {isMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="md:hidden bg-[#faf8f5]/95 backdrop-blur-xl border-t"
+              style={{ borderColor: brandColors.border }}
+            >
+              <div className="px-6 py-6 space-y-4">
+                {[
+                  { id: 'features', label: '功能特性' },
+                  { id: 'showcase', label: '产品展示' },
+                  { id: 'enterprise', label: '企业功能' },
+                  { id: 'testimonials', label: '用户评价' },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => scrollToSection(item.id)}
+                    className="block w-full text-left text-sm py-2 font-medium"
+                    style={{ color: brandColors.textSecondary }}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+                <div className="pt-4 space-y-3" style={{ borderTopColor: brandColors.border, borderTopWidth: 1 }}>
+                  <Link to="/login">
+                    <Button variant="outline" className="w-full rounded-lg">登录</Button>
+                  </Link>
+                  <Link to="/welcome">
+                    <Button className="w-full text-white rounded-lg" style={{ backgroundColor: brandColors.primary }}>
+                      开始使用
+                    </Button>
+                  </Link>
+                </div>
               </div>
-            </div>
-          </motion.div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </nav>
 
-      {/* Hero Section - 非对称布局 */}
-      <section id="hero" ref={heroRef} className="relative min-h-screen flex items-center px-6 overflow-hidden pt-20">
-        <motion.div style={{ y: heroY, opacity: heroOpacity }} className="absolute inset-0 overflow-hidden pointer-events-none">
-          <OrganicBlob className="absolute top-1/4 right-1/4 w-96 h-96 opacity-60" color="#e9c46a" />
-          <OrganicBlob className="absolute bottom-1/4 left-1/6 w-80 h-80 opacity-40" color="#f4a261" />
-        </motion.div>
-
-        <div className="max-w-7xl mx-auto relative z-10 w-full">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            {/* 左侧内容 - 错位排列 */}
+      {/* ==================== Hero 首屏 ==================== */}
+      <section
+        id="hero"
+        ref={heroRef}
+        className="relative pt-16 overflow-hidden"
+        style={{ minHeight: 'calc(100vh - 64px)' }}
+      >
+        <ParticleBackground />
+        <div className="max-w-[1200px] mx-auto px-6 py-16 lg:py-24 relative" style={{ zIndex: 1 }}>
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+            {/* Left: Text Content */}
             <motion.div
-              variants={staggerContainer}
-              initial="hidden"
-              animate="visible"
-              className="relative"
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+              className="text-left"
             >
               <motion.div
-                variants={staggerItem}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#e9c46a]/5 border border-[#e9c46a]/10 text-xs tracking-[0.2em] text-[#e9c46a]/60 mb-8"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: 0.05 }}
+                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border mb-8 text-xs font-medium"
+                style={{
+                  borderColor: brandColors.primary + '20',
+                  backgroundColor: brandColors.primary + '08',
+                  color: brandColors.primary,
+                }}
               >
-                <Feather className="w-3 h-3" />
-                2026 · AI教学数字孪生
+                <Zap className="w-3 h-3" />
+                基于 Spark4.0 Ultra 大模型 · 多智能体协同
               </motion.div>
 
               <motion.h1
-                variants={staggerItem}
-                className="text-5xl sm:text-6xl md:text-7xl font-normal tracking-tight mb-4 leading-[1.1]"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
+                className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.1] tracking-tight mb-6"
+                style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: brandColors.textPrimary }}
               >
-                <span className="text-[#f8f9fa]">智教星</span>
+                自适应
+                <br />
+                <span style={{ color: brandColors.primary }}>错题诊疗系统</span>
               </motion.h1>
 
-              <motion.div variants={staggerItem} className="mb-6">
-                <WavyLine className="w-32 h-4 mb-4" color="#e9c46a" />
-              </motion.div>
-
               <motion.p
-                variants={staggerItem}
-                className="text-2xl sm:text-3xl font-light text-[#e9c46a]/80 mb-4 tracking-wide"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
+                className="text-base lg:text-lg max-w-[500px] mb-10 leading-relaxed"
+                style={{ color: brandColors.textSecondary }}
               >
-                让教育更智能
-              </motion.p>
-
-              <motion.p
-                variants={staggerItem}
-                className="text-base text-[#adb5bd] max-w-lg mb-10 leading-[1.8]"
-              >
-                基于Spark4.0 Ultra大模型的智能教学管理平台，
-                为每位教师创建AI数字孪生，让教学充满温度与创造力
+                智教星——基于多智能体的自适应错题诊疗系统，精准诊断错因，靶向推送练习，让每个学生获得个性化学习路径。
               </motion.p>
 
               <motion.div
-                variants={staggerItem}
-                className="flex flex-col sm:flex-row gap-4 items-start"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
+                className="flex flex-col sm:flex-row gap-4"
               >
                 <Link to="/welcome">
-                  <Button size="lg" className="bg-[#e9c46a] text-[#1a1a2e] hover:bg-[#f4a261] px-8 py-6 text-base tracking-wider transition-all duration-500 hover:shadow-[0_0_30px_rgba(233,196,106,0.25)] font-normal">
+                  <Button
+                    size="lg"
+                    className="text-base font-semibold text-white px-8 py-6 rounded-[10px] transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
+                    style={{ backgroundColor: brandColors.textPrimary }}
+                  >
                     开始使用 <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </Link>
-                <Button size="lg" variant="outline" className="border-[#e9c46a]/20 text-[#e9c46a] hover:bg-[#e9c46a]/5 px-8 py-6 text-base tracking-wider transition-all duration-500">
+                <Button
+                  size="lg"
+                  variant="ghost"
+                  className="text-base font-semibold px-8 py-6 rounded-[10px] transition-all duration-200 hover:scale-[1.02]"
+                  style={{ color: brandColors.textSecondary }}
+                >
                   <Play className="w-4 h-4 mr-2" />
                   观看演示
                 </Button>
               </motion.div>
             </motion.div>
 
-            {/* 右侧装饰 - 有机形状组合 */}
+            {/* Right: Product Demo */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.8, rotate: -5 }}
-              animate={{ opacity: 1, scale: 1, rotate: 0 }}
-              transition={{ duration: 1.2, ease: organicEase, delay: 0.3 }}
-              className="relative hidden lg:block"
+              initial={{ opacity: 0, x: 40, scale: 0.95 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.3 }}
+              className="relative"
             >
-              <div className="relative w-full aspect-square max-w-md mx-auto">
-                {/* 有机形状层叠 */}
-                <motion.div
-                  className="absolute inset-0 rounded-[40%_60%_70%_30%/40%_50%_60%_50%] bg-[#e9c46a]/10 backdrop-blur-sm border border-[#e9c46a]/10"
-                  animate={{ 
-                    borderRadius: ['40%_60%_70%_30%/40%_50%_60%_50%', '60%_40%_30%_70%/50%_60%_40%_50%', '40%_60%_70%_30%/40%_50%_60%_50%'],
-                    rotate: [0, 5, 0],
-                  }}
-                  transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
-                />
-                <motion.div
-                  className="absolute inset-8 rounded-[60%_40%_30%_70%/50%_60%_40%_50%] bg-[#f4a261]/5 backdrop-blur-sm border border-[#f4a261]/10"
-                  animate={{ 
-                    borderRadius: ['60%_40%_30%_70%/50%_60%_40%_50%', '30%_60%_70%_40%/50%_40%_60%_50%', '60%_40%_30%_70%/50%_60%_40%_50%'],
-                    rotate: [0, -5, 0],
-                  }}
-                  transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
-                />
-                <motion.div
-                  className="absolute inset-16 rounded-[50%] bg-[#2a9d8f]/5 backdrop-blur-sm border border-[#2a9d8f]/10 flex items-center justify-center"
-                  animate={{ 
-                    scale: [1, 1.05, 1],
-                  }}
-                  transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-                >
-                  <div className="text-center">
-                    <Sparkles className="w-16 h-16 text-[#e9c46a]/40 mx-auto mb-4" />
-                    <p className="text-[#e9c46a]/40 text-sm tracking-wider">AI-Powered</p>
-                    <p className="text-[#f8f9fa]/30 text-xs tracking-wider mt-1">Education</p>
+              <div
+                className="rounded-2xl overflow-hidden border"
+                style={{
+                  borderColor: brandColors.border,
+                  boxShadow: '0 20px 60px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.03)',
+                }}
+              >
+                {/* Main content */}
+                <div className="bg-white aspect-[4/3] overflow-hidden">
+                  <div className="flex h-full">
+                    {/* Signature Sidebar */}
+                    <div className="w-[170px] flex-shrink-0 flex flex-col border-r" style={{ borderColor: brandColors.borderLight, background: 'linear-gradient(180deg, #2d2a26 0%, #3d3a35 100%)' }}>
+                      {/* Brand header */}
+                      <div className="p-3 pb-3 border-b border-white/10">
+                        <div className="flex items-center gap-2.5 mb-2">
+                          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: brandColors.primary }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2L14.5 9H22L16 13.5L18 21L12 17L6 21L8 13.5L2 9H9.5L12 2Z" fill="white" /></svg>
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-bold text-white leading-tight">智教星</p>
+                            <p className="text-[6px] text-white/40 leading-tight">自适应错题诊疗系统</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md" style={{ backgroundColor: brandColors.primary + '20' }}>
+                          <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#28c840' }} />
+                          <span className="text-[8px] font-medium" style={{ color: brandColors.primary }}>多智能体协同在线</span>
+                        </div>
+                      </div>
+
+                      {/* Core modules */}
+                      <div className="flex-1 p-2 overflow-hidden">
+                        <p className="text-[7px] font-semibold text-white/25 uppercase tracking-wider px-2 mb-1.5">诊疗中心</p>
+                        {[
+                          { icon: Target, label: '错题诊疗', active: true, badge: null },
+                          { icon: Brain, label: '智能诊断', active: false, badge: 'AI' },
+                          { icon: Sparkles, label: '靶向练习', active: false, badge: null },
+                          { icon: BarChart3, label: '学情画像', active: false, badge: '新' },
+                        ].map((item, i) => {
+                          const Icon = item.icon
+                          return (
+                            <div
+                              key={i}
+                              className="flex items-center gap-2 px-2 py-2 rounded-lg mb-0.5 cursor-pointer transition-colors"
+                              style={{ backgroundColor: item.active ? brandColors.primary + '20' : 'transparent' }}
+                            >
+                              <div
+                                className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
+                                style={{ backgroundColor: item.active ? brandColors.primary : 'rgba(255,255,255,0.08)' }}
+                              >
+                                <Icon className="w-3 h-3" style={{ color: item.active ? '#fff' : 'rgba(255,255,255,0.5)' }} />
+                              </div>
+                              <span className="text-[9px] font-medium flex-1" style={{ color: item.active ? '#fff' : 'rgba(255,255,255,0.55)' }}>
+                                {item.label}
+                              </span>
+                              {item.badge && (
+                                <span
+                                  className="text-[7px] font-bold px-1.5 py-0.5 rounded-full"
+                                  style={{
+                                    backgroundColor: item.badge === 'AI' ? brandColors.primary + '30' : 'rgba(255,255,255,0.1)',
+                                    color: item.badge === 'AI' ? brandColors.primary : 'rgba(255,255,255,0.5)',
+                                  }}
+                                >
+                                  {item.badge}
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })}
+
+                        <p className="text-[7px] font-semibold text-white/25 uppercase tracking-wider px-2 mb-1.5 mt-3">学习工具</p>
+                        {[
+                          { icon: BookOpen, label: '课程学习' },
+                          { icon: GraduationCap, label: 'AI 助教' },
+                          { icon: FileText, label: '学习笔记' },
+                          { icon: Award, label: '学习成就' },
+                        ].map((item, i) => {
+                          const Icon = item.icon
+                          return (
+                            <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-lg mb-0.5">
+                              <Icon className="w-3 h-3 flex-shrink-0" style={{ color: 'rgba(255,255,255,0.35)' }} />
+                              <span className="text-[9px]" style={{ color: 'rgba(255,255,255,0.4)' }}>{item.label}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+
+                      {/* User section */}
+                      <div className="p-2.5 border-t border-white/10">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold" style={{ backgroundColor: brandColors.primary, color: '#fff' }}>李</div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[8px] font-medium text-white/80 truncate">李同学</p>
+                            <p className="text-[6px] text-white/30">高二 · 数学</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Main content area - Mistake Diagnosis Dashboard */}
+                    <div className="flex-1 p-4 overflow-hidden">
+                      {/* Header */}
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <p className="text-sm font-bold" style={{ color: brandColors.textPrimary }}>错题诊疗中心</p>
+                          <p className="text-[10px]" style={{ color: brandColors.textMuted }}>多智能体协同 · 精准诊断 · 靶向治疗</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="px-2 py-1 rounded-md text-[8px] font-medium flex items-center gap-1" style={{ backgroundColor: brandColors.primary + '10', color: brandColors.primary }}>
+                            <Brain className="w-2.5 h-2.5" />
+                            3 个智能体协作中
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Stats cards */}
+                      <div className="grid grid-cols-4 gap-2 mb-3">
+                        {[
+                          { icon: Target, label: '待诊疗错题', value: '23', color: '#dc2626' },
+                          { icon: CheckCircle, label: '已攻克', value: '156', color: '#16a34a' },
+                          { icon: Brain, label: '诊断准确率', value: '94%', color: brandColors.primary },
+                          { icon: TrendingUp, label: '掌握度提升', value: '+38%', color: '#8b5cf6' },
+                        ].map((stat, i) => {
+                          const Icon = stat.icon
+                          return (
+                            <motion.div
+                              key={i}
+                              initial={{ opacity: 0, y: 6 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.5 + i * 0.08, duration: 0.4 }}
+                              className="rounded-lg border p-2.5"
+                              style={{ backgroundColor: brandColors.surface, borderColor: brandColors.borderLight }}
+                            >
+                              <div className="flex items-center gap-2">
+                                <Icon className="w-4 h-4" style={{ color: stat.color }} />
+                                <div>
+                                  <p className="text-[8px]" style={{ color: brandColors.textMuted }}>{stat.label}</p>
+                                  <p className="text-sm font-bold leading-tight" style={{ color: brandColors.textPrimary }}>{stat.value}</p>
+                                </div>
+                              </div>
+                            </motion.div>
+                          )
+                        })}
+                      </div>
+
+                      {/* Two-column: Diagnosis + Targeted Practice */}
+                      <div className="grid grid-cols-5 gap-2 mb-2">
+                        {/* AI Diagnosis - core feature */}
+                        <div className="col-span-3 rounded-lg border p-3" style={{ backgroundColor: brandColors.surface, borderColor: brandColors.borderLight }}>
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-1.5">
+                              <Brain className="w-3 h-3" style={{ color: brandColors.primary }} />
+                              <p className="text-[9px] font-semibold" style={{ color: brandColors.textPrimary }}>AI 错因诊断</p>
+                            </div>
+                            <span className="text-[7px] px-1.5 py-0.5 rounded-full font-medium" style={{ backgroundColor: '#dc2626' + '12', color: '#dc2626' }}>3 题待诊</span>
+                          </div>
+                          <div className="space-y-1.5">
+                            {[
+                              { question: 'f(x)=x²+2x-3 极值', error: '概念理解偏差', agent: '诊断智能体', severity: 'high', color: '#dc2626' },
+                              { question: '∫sin²x dx 计算', error: '公式记忆错误', agent: '分析智能体', severity: 'medium', color: '#ea580c' },
+                              { question: 'P(A|B) 条件概率', error: '审题不清', agent: '归因智能体', severity: 'low', color: brandColors.primary },
+                            ].map((item, i) => (
+                              <div key={i} className="flex items-center gap-2 px-2 py-1.5 rounded-md" style={{ backgroundColor: brandColors.elevated }}>
+                                <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-[8px] font-medium truncate" style={{ color: brandColors.textPrimary }}>{item.question}</p>
+                                  <p className="text-[7px]" style={{ color: item.color }}>{item.error}</p>
+                                </div>
+                                <span className="text-[6px] px-1 py-0.5 rounded" style={{ backgroundColor: brandColors.primary + '12', color: brandColors.primary }}>{item.agent}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Targeted Practice */}
+                        <div className="col-span-2 rounded-lg border p-3" style={{ backgroundColor: brandColors.surface, borderColor: brandColors.borderLight }}>
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <Sparkles className="w-3 h-3" style={{ color: brandColors.primary }} />
+                            <p className="text-[9px] font-semibold" style={{ color: brandColors.textPrimary }}>靶向练习</p>
+                          </div>
+                          <div className="space-y-2">
+                            {[
+                              { topic: '函数极值求法', priority: '高', pct: 35, color: '#dc2626' },
+                              { topic: '积分公式应用', priority: '中', pct: 60, color: '#ea580c' },
+                              { topic: '条件概率计算', priority: '低', pct: 82, color: '#16a34a' },
+                            ].map((item, i) => (
+                              <div key={i}>
+                                <div className="flex items-center justify-between mb-0.5">
+                                  <span className="text-[8px]" style={{ color: brandColors.textSecondary }}>{item.topic}</span>
+                                  <span className="text-[7px] font-medium" style={{ color: item.color }}>{item.priority}</span>
+                                </div>
+                                <div className="h-1 rounded-full" style={{ backgroundColor: brandColors.elevated }}>
+                                  <div className="h-full rounded-full" style={{ width: `${item.pct}%`, backgroundColor: item.color }} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Bottom row: Knowledge Graph + Agent Status */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="rounded-lg border p-2.5" style={{ backgroundColor: brandColors.surface, borderColor: brandColors.borderLight }}>
+                          <p className="text-[9px] font-semibold mb-1.5" style={{ color: brandColors.textPrimary }}>知识图谱覆盖</p>
+                          <div className="flex items-center gap-3">
+                            <div className="relative w-12 h-12 flex-shrink-0">
+                              <svg viewBox="0 0 40 40" className="w-full h-full">
+                                <circle cx="20" cy="20" r="16" fill="none" stroke={brandColors.border} strokeWidth="3" />
+                                <circle cx="20" cy="20" r="16" fill="none" stroke={brandColors.primary} strokeWidth="3" strokeDasharray={`${16 * 2 * Math.PI * 0.72} ${16 * 2 * Math.PI}`} transform="rotate(-90 20 20)" />
+                              </svg>
+                              <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold" style={{ color: brandColors.primary }}>72%</span>
+                            </div>
+                            <div className="space-y-1">
+                              {['函数', '导数', '积分'].map((node, i) => (
+                                <div key={i} className="flex items-center gap-1.5">
+                                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: [brandColors.primary, '#8b5cf6', '#059669'][i] }} />
+                                  <span className="text-[7px]" style={{ color: brandColors.textMuted }}>{node}</span>
+                                  <span className="text-[7px] font-medium" style={{ color: brandColors.textSecondary }}>{[85, 68, 54][i]}%</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="rounded-lg border p-2.5" style={{ backgroundColor: brandColors.surface, borderColor: brandColors.borderLight }}>
+                          <p className="text-[9px] font-semibold mb-1.5" style={{ color: brandColors.textPrimary }}>智能体状态</p>
+                          <div className="space-y-1.5">
+                            {[
+                              { name: '诊断智能体', status: '分析中', color: '#16a34a' },
+                              { name: '归因智能体', status: '就绪', color: brandColors.primary },
+                              { name: '推荐智能体', status: '推送中', color: '#8b5cf6' },
+                            ].map((agent, i) => (
+                              <div key={i} className="flex items-center gap-1.5">
+                                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: agent.color }} />
+                                <span className="text-[8px] flex-1" style={{ color: brandColors.textSecondary }}>{agent.name}</span>
+                                <span className="text-[7px]" style={{ color: agent.color }}>{agent.status}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </motion.div>
-                
-                {/* 浮动装饰元素 */}
-                <motion.div
-                  className="absolute -top-4 -right-4 w-20 h-20 rounded-full bg-[#e76f51]/10 flex items-center justify-center"
-                  animate={{ y: [0, -15, 0], rotate: [0, 10, 0] }}
-                  transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-                >
-                  <Heart className="w-8 h-8 text-[#e76f51]/40" />
-                </motion.div>
-                <motion.div
-                  className="absolute -bottom-4 -left-4 w-16 h-16 rounded-full bg-[#2a9d8f]/10 flex items-center justify-center"
-                  animate={{ y: [0, 15, 0], rotate: [0, -10, 0] }}
-                  transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-                >
-                  <Leaf className="w-6 h-6 text-[#2a9d8f]/40" />
-                </motion.div>
+                </div>
               </div>
             </motion.div>
           </div>
-        </div>
 
-        {/* 滚动提示 */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 2, duration: 1 }}
-          className="absolute bottom-12 left-1/2 -translate-x-1/2"
-        >
-          <button onClick={() => scrollToSection('stats')}>
-            <motion.div
-              animate={{ y: [0, 8, 0] }}
-              transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+          {/* ==================== Horizontal Scroll Tabs ==================== */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.6 }}
+            className="mt-16 lg:mt-20"
+          >
+            <div
+              className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
-              <ChevronDown className="w-6 h-6 text-[#6c757d]" />
-            </motion.div>
-          </button>
-        </motion.div>
-      </section>
-
-      {/* 统计数据 - 有机卡片 */}
-      <section id="stats" className="py-24 px-6">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="grid grid-cols-2 lg:grid-cols-4 gap-6"
-          >
-            {stats.map((stat, index) => {
-              const Icon = stat.icon
-              return (
-                <motion.div
-                  key={index}
-                  variants={staggerItem}
-                  whileHover={{ y: -8, transition: { duration: 0.4, ease: organicEase } }}
-                  className="text-center p-8 rounded-[2rem_1rem_2rem_1rem] bg-white/[0.02] border border-white/5 hover:border-[#e9c46a]/20 transition-all duration-700 hover:shadow-[0_0_30px_rgba(233,196,106,0.08)]"
-                >
-                  <Icon className={`w-6 h-6 ${stat.color} mx-auto mb-4`} />
-                  <div className="text-4xl sm:text-5xl font-light text-[#f8f9fa] mb-2">
-                    <AnimatedCounter target={stat.number} suffix={stat.suffix} />
-                  </div>
-                  <div className="text-sm text-[#6c757d] tracking-wider">{stat.label}</div>
-                </motion.div>
-              )
-            })}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* 功能特性 - 错落网格 */}
-      <section id="features" className="py-24 px-6">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="mb-20"
-          >
-            <motion.p variants={staggerItem} className="text-xs tracking-[0.3em] text-[#6c757d] mb-4">
-              CORE FEATURES
-            </motion.p>
-            <motion.h2 variants={staggerItem} className="text-4xl md:text-5xl font-normal tracking-tight mb-6">
-              核心功能
-            </motion.h2>
-            <motion.p variants={staggerItem} className="text-lg text-[#adb5bd] max-w-xl">
-              智教星提供全方位的智能教育解决方案，覆盖教学、学习、管理全流程
-            </motion.p>
-          </motion.div>
-
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"
-          >
-            {features.map((feature, index) => {
-              const Icon = feature.icon
-              // 有机偏移 - 某些卡片稍微偏移
-              const offsetY = index === 1 || index === 4 ? 'lg:mt-8' : ''
-              return (
-                <motion.div
-                  key={index}
-                  variants={staggerItem}
-                  whileHover={{ y: -8, transition: { duration: 0.4, ease: organicEase } }}
-                  className={`group p-8 rounded-[1.5rem_1rem_2rem_1.5rem] ${feature.color} backdrop-blur-sm border ${feature.borderColor} hover:border-[#e9c46a]/20 transition-all duration-700 ${feature.glowColor} ${offsetY}`}
-                >
-                  <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500">
-                    <Icon className={`w-7 h-7 ${feature.iconColor}`} />
-                  </div>
-                  <h3 className="text-xl font-normal text-[#f8f9fa] mb-3">{feature.title}</h3>
-                  <p className="text-[#adb5bd] text-sm leading-[1.8]">{feature.description}</p>
-                </motion.div>
-              )
-            })}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* 工作原理 - 有机流程 */}
-      <section id="howitworks" className="py-24 px-6">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="mb-20"
-          >
-            <motion.p variants={staggerItem} className="text-xs tracking-[0.3em] text-[#6c757d] mb-4">
-              HOW IT WORKS
-            </motion.p>
-            <motion.h2 variants={staggerItem} className="text-4xl md:text-5xl font-normal tracking-tight mb-6">
-              工作原理
-            </motion.h2>
-            <motion.p variants={staggerItem} className="text-lg text-[#adb5bd] max-w-xl">
-              三步开启智能教学新时代
-            </motion.p>
-          </motion.div>
-
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="grid md:grid-cols-3 gap-8"
-          >
-            {howItWorks.map((step, index) => {
-              const Icon = step.icon
-              return (
-                <motion.div
-                  key={index}
-                  variants={staggerItem}
-                  className="relative"
-                >
-                  <div className="p-8 rounded-[2rem_1rem_2rem_1rem] bg-white/[0.02] border border-white/5 hover:border-[#e9c46a]/20 transition-all duration-700 hover:shadow-[0_0_30px_rgba(233,196,106,0.08)]">
-                    <div className="text-7xl font-light text-white/[0.03] mb-2 leading-none">{step.step}</div>
-                    <div className={`w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mb-6 ${step.color}`}>
-                      <Icon className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-xl font-normal text-[#f8f9fa] mb-3">{step.title}</h3>
-                    <p className="text-[#adb5bd] text-sm leading-[1.8]">{step.description}</p>
-                  </div>
-                  {index < howItWorks.length - 1 && (
-                    <div className="hidden md:block absolute top-1/2 -right-4 w-8">
-                      <WavyLine className="w-full h-4" color="#e9c46a" />
-                    </div>
-                  )}
-                </motion.div>
-              )
-            })}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* 使用场景 - 有机卡片 */}
-      <section id="usecases" className="py-24 px-6">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="mb-20"
-          >
-            <motion.p variants={staggerItem} className="text-xs tracking-[0.3em] text-[#6c757d] mb-4">
-              USE CASES
-            </motion.p>
-            <motion.h2 variants={staggerItem} className="text-4xl md:text-5xl font-normal tracking-tight mb-6">
-              适合每一位
-            </motion.h2>
-            <motion.p variants={staggerItem} className="text-lg text-[#adb5bd] max-w-xl">
-              无论您是教师、学生还是管理者，智教星都能为您提供专属的智能解决方案
-            </motion.p>
-          </motion.div>
-
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="grid lg:grid-cols-3 gap-6"
-          >
-            {useCases.map((useCase, index) => {
-              const Icon = useCase.icon
-              const offsetY = index === 1 ? 'lg:mt-12' : ''
-              return (
-                <motion.div
-                  key={index}
-                  variants={staggerItem}
-                  whileHover={{ y: -8, transition: { duration: 0.4, ease: organicEase } }}
-                  className={`group p-8 rounded-[1.5rem_2rem_1rem_2rem] ${useCase.color} backdrop-blur-sm border ${useCase.borderColor} hover:border-[#e9c46a]/20 transition-all duration-700 hover:shadow-[0_0_30px_rgba(233,196,106,0.08)] ${offsetY}`}
-                >
-                  <div className={`w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center mb-6 ${useCase.iconColor} group-hover:scale-110 group-hover:rotate-3 transition-all duration-500`}>
-                    <Icon className="w-7 h-7" />
-                  </div>
-                  <h3 className="text-2xl font-normal text-[#f8f9fa] mb-6">{useCase.role}</h3>
-                  <ul className="space-y-4">
-                    {useCase.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-center text-[#adb5bd] text-sm">
-                        <CheckCircle className="w-4 h-4 text-[#e9c46a]/60 mr-3 flex-shrink-0" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </motion.div>
-              )
-            })}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* 用户评价 - 有机卡片 */}
-      <section id="testimonials" className="py-24 px-6">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="mb-20"
-          >
-            <motion.p variants={staggerItem} className="text-xs tracking-[0.3em] text-[#6c757d] mb-4">
-              TESTIMONIALS
-            </motion.p>
-            <motion.h2 variants={staggerItem} className="text-4xl md:text-5xl font-normal tracking-tight mb-6">
-              用户心声
-            </motion.h2>
-            <motion.p variants={staggerItem} className="text-lg text-[#adb5bd] max-w-xl">
-              听听我们的用户怎么说
-            </motion.p>
-          </motion.div>
-
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="grid md:grid-cols-3 gap-6"
-          >
-            {testimonials.map((testimonial, index) => (
-              <motion.div
-                key={index}
-                variants={staggerItem}
-                whileHover={{ y: -8, transition: { duration: 0.4, ease: organicEase } }}
-                className="p-8 rounded-[1.5rem_1rem_2rem_1.5rem] bg-white/[0.02] border border-white/5 hover:border-[#e9c46a]/20 transition-all duration-700 hover:shadow-[0_0_30px_rgba(233,196,106,0.08)]"
-              >
-                <div className="flex items-center mb-6">
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 text-[#e9c46a]/60 fill-[#e9c46a]/60 mr-1" />
-                  ))}
-                </div>
-                <p className="text-[#adb5bd] text-sm leading-[1.8] mb-8 italic">
-                  "{testimonial.content}"
-                </p>
-                <div className="flex items-center">
-                  <div 
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-sm text-[#1a1a2e] mr-4"
-                    style={{ backgroundColor: testimonial.accent + '30', color: testimonial.accent }}
+              {useCaseCards.slice(0, 5).map((card, index) => {
+                const Icon = card.icon
+                return (
+                  <motion.div
+                    key={card.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.7 + index * 0.08, duration: 0.4 }}
+                    whileHover={{ y: -2, transition: { duration: 0.2 } }}
+                    className="flex-shrink-0 snap-start cursor-pointer group"
+                    style={{ flex: '1 1 0%', minWidth: '180px' }}
                   >
-                    {testimonial.avatar}
-                  </div>
-                  <div>
-                    <p className="text-[#f8f9fa] text-sm font-normal">{testimonial.name}</p>
-                    <p className="text-[#6c757d] text-xs">{testimonial.role}</p>
-                  </div>
+                    <div
+                      className="rounded-xl border px-6 py-5 flex items-center gap-4 transition-all duration-200 group-hover:shadow-md"
+                      style={{
+                        borderColor: brandColors.border,
+                        backgroundColor: brandColors.surface,
+                      }}
+                    >
+                      <div
+                        className="w-10 h-10 rounded-lg flex items-center justify-center"
+                        style={{ backgroundColor: brandColors.primary + '12' }}
+                      >
+                        <Icon className="w-5 h-5" style={{ color: brandColors.primary }} />
+                      </div>
+                      <div>
+                        <p className="text-base font-semibold" style={{ color: brandColors.textPrimary }}>
+                          {card.title}
+                        </p>
+                        <p className="text-sm" style={{ color: brandColors.textMuted }}>
+                          {card.subtitle}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )
+              })}
+            </div>
+          </motion.div>
+
+          {/* ==================== Stats ==================== */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: 0.9 }}
+            className="mt-12 lg:mt-16"
+          >
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {[
+                { value: '5,000+', label: '教学团队' },
+                { value: '120万+', label: '课件生成' },
+                { value: '98.6%', label: '用户满意度' },
+                { value: '60%', label: '备课时间节省' },
+              ].map((stat, i) => (
+                <div key={i} className="text-center">
+                  <p
+                    className="text-2xl lg:text-3xl font-bold mb-1"
+                    style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: brandColors.textPrimary }}
+                  >
+                    {stat.value}
+                  </p>
+                  <p className="text-sm" style={{ color: brandColors.textMuted }}>
+                    {stat.label}
+                  </p>
                 </div>
-              </motion.div>
-            ))}
+              ))}
+            </div>
           </motion.div>
         </div>
       </section>
 
-      {/* 定价 - 有机卡片 */}
-      <section id="pricing" className="py-24 px-6">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="mb-20"
-          >
-            <motion.p variants={staggerItem} className="text-xs tracking-[0.3em] text-[#6c757d] mb-4">
-              PRICING
-            </motion.p>
-            <motion.h2 variants={staggerItem} className="text-4xl md:text-5xl font-normal tracking-tight mb-6">
-              价格方案
-            </motion.h2>
-            <motion.p variants={staggerItem} className="text-lg text-[#adb5bd] max-w-xl">
-              选择适合您的方案，开启智能教学之旅
-            </motion.p>
-          </motion.div>
-
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto"
-          >
-            {pricingPlans.map((plan, index) => (
-              <motion.div
-                key={index}
-                variants={staggerItem}
-                whileHover={{ y: -8, transition: { duration: 0.4, ease: organicEase } }}
-                className={`relative p-8 rounded-[1.5rem_2rem_1.5rem_1rem] border transition-all duration-700 ${
-                  plan.highlighted
-                    ? 'bg-[#e9c46a]/5 border-[#e9c46a]/20 hover:border-[#e9c46a]/40 hover:shadow-[0_0_40px_rgba(233,196,106,0.12)]'
-                    : 'bg-white/[0.02] border-white/5 hover:border-white/10 hover:shadow-[0_0_30px_rgba(233,196,106,0.06)]'
-                }`}
+      {/* ==================== 核心功能展示 ==================== */}
+      <section id="showcase" className="py-0">
+        <div className="max-w-[1200px] mx-auto px-6">
+          <SectionWrapper id="features" className="pt-20 lg:pt-28 pb-0">
+            <motion.div variants={staggerItem} className="text-center mb-4">
+              <p
+                className="text-xs font-semibold tracking-[0.2em] uppercase mb-4"
+                style={{ color: brandColors.primary }}
               >
-                {plan.highlighted && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-[#e9c46a] text-[#1a1a2e] text-xs tracking-wider rounded-full font-normal">
-                    推荐
-                  </div>
-                )}
-                <div className="mb-8">
-                  <p className="text-xs tracking-[0.3em] text-[#6c757d] mb-2">{plan.nameEn}</p>
-                  <h3 className="text-xl font-normal text-[#f8f9fa] mb-2">{plan.name}</h3>
-                  <p className="text-[#6c757d] text-sm">{plan.description}</p>
-                </div>
-                <div className="mb-8">
-                  <span className="text-4xl font-light text-[#f8f9fa]">{plan.price}</span>
-                  <span className="text-[#6c757d] text-sm">{plan.period}</span>
-                </div>
-                <ul className="space-y-4 mb-8">
-                  {plan.features.map((feature, idx) => (
-                    <li key={idx} className="flex items-center text-[#adb5bd] text-sm">
-                      <CheckCircle className="w-4 h-4 text-[#e9c46a]/60 mr-3 flex-shrink-0" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  className={`w-full py-5 text-sm tracking-wider transition-all duration-500 ${
-                    plan.highlighted
-                      ? 'bg-[#e9c46a] text-[#1a1a2e] hover:bg-[#f4a261] hover:shadow-[0_0_20px_rgba(233,196,106,0.25)] font-normal'
-                      : 'bg-white/5 text-[#f8f9fa] hover:bg-white/10 border border-white/10'
-                  }`}
-                >
-                  {plan.cta}
-                </Button>
-              </motion.div>
-            ))}
-          </motion.div>
+                CORE FEATURES
+              </p>
+              <h2
+                className="text-3xl lg:text-4xl font-bold mb-4"
+                style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+              >
+                核心功能
+              </h2>
+              <p className="text-base max-w-lg mx-auto" style={{ color: brandColors.textSecondary }}>
+                从错因诊断到靶向练习，智教星覆盖学习诊疗全流程
+              </p>
+            </motion.div>
+          </SectionWrapper>
+          <FeatureShowcase />
         </div>
       </section>
 
-      {/* CTA Section - 有机背景 */}
-      <section className="py-24 px-6 relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none">
-          <OrganicBlob className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] opacity-30" color="#e9c46a" />
-        </div>
-        <div className="max-w-4xl mx-auto text-center relative z-10">
+      {/* ==================== 企业级特性网格 ==================== */}
+      <SectionWrapper
+        id="enterprise"
+        className="py-20 lg:py-28 px-6"
+      >
+        <div className="max-w-[1200px] mx-auto">
+          <motion.div variants={staggerItem} className="text-center mb-16">
+            <p
+              className="text-xs font-semibold tracking-[0.2em] uppercase mb-4"
+              style={{ color: brandColors.primary }}
+            >
+              BUILT FOR SERIOUS BUSINESS
+            </p>
+            <h2
+              className="text-3xl lg:text-4xl font-bold mb-4"
+              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+            >
+              为专业教学而建
+            </h2>
+            <p className="text-base max-w-lg mx-auto" style={{ color: brandColors.textSecondary }}>
+              智教星基于多智能体协同，提供企业级功能保障
+            </p>
+          </motion.div>
+
           <motion.div
             variants={staggerContainer}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
+            className="grid md:grid-cols-2 lg:grid-cols-3 gap-8"
           >
-            <motion.h2 variants={staggerItem} className="text-4xl md:text-5xl font-normal tracking-tight mb-6">
-              准备好开始了吗
-            </motion.h2>
-            <motion.p variants={staggerItem} className="text-lg text-[#adb5bd] mb-12">
-              加入数万名教育工作者，体验AI驱动的智能教学
-            </motion.p>
-            <motion.div variants={staggerItem} className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/welcome">
-                <Button size="lg" className="bg-[#e9c46a] text-[#1a1a2e] hover:bg-[#f4a261] px-10 py-6 text-base tracking-wider transition-all duration-500 hover:shadow-[0_0_30px_rgba(233,196,106,0.25)] font-normal">
-                  免费开始 <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
-              <Button size="lg" variant="outline" className="border-[#e9c46a]/20 text-[#e9c46a] hover:bg-[#e9c46a]/5 px-10 py-6 text-base tracking-wider transition-all duration-500">
-                联系销售
-              </Button>
-            </motion.div>
+            {enterpriseFeatures.map((feature, index) => {
+              const Icon = feature.icon
+              return (
+                <motion.div
+                  key={index}
+                  variants={staggerItem}
+                  whileHover={{ y: -4, transition: { duration: 0.3 } }}
+                  className="group p-8 rounded-2xl border transition-all duration-300 hover:shadow-lg cursor-pointer"
+                  style={{
+                    backgroundColor: brandColors.bg,
+                    borderColor: brandColors.border,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = brandColors.primary + '30'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = brandColors.border
+                  }}
+                >
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center mb-6 transition-transform duration-300 group-hover:scale-110"
+                    style={{ backgroundColor: brandColors.primary + '10' }}
+                  >
+                    <Icon className="w-6 h-6" style={{ color: brandColors.primary }} />
+                  </div>
+                  <h3
+                    className="text-lg font-semibold mb-3"
+                    style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                  >
+                    {feature.title}
+                  </h3>
+                  <p className="text-sm leading-relaxed" style={{ color: brandColors.textSecondary }}>
+                    {feature.description}
+                  </p>
+                </motion.div>
+              )
+            })}
           </motion.div>
         </div>
-      </section>
+      </SectionWrapper>
 
-      {/* 页脚 - 温暖风格 */}
-      <footer className="border-t border-white/5 py-16 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-4 gap-12 mb-12">
-            <div className="md:col-span-1">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-2xl bg-[#e9c46a]/10 border border-[#e9c46a]/20 flex items-center justify-center rotate-3">
-                  <Sparkles className="w-5 h-5 text-[#e9c46a]" />
-                </div>
-                <span className="text-lg font-normal tracking-wider">智教星</span>
+      {/* ==================== 用户评价区 ==================== */}
+      <SectionWrapper
+        id="testimonials"
+        className="py-20 lg:py-28 px-6"
+        style={{ backgroundColor: brandColors.surface }}
+      >
+        <div className="max-w-[1200px] mx-auto">
+          <motion.div variants={staggerItem} className="text-center mb-16">
+            <p
+              className="text-xs font-semibold tracking-[0.2em] uppercase mb-4"
+              style={{ color: brandColors.primary }}
+            >
+              TESTIMONIALS
+            </p>
+            <h2
+              className="text-3xl lg:text-[40px] font-bold mb-4"
+              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+            >
+              你的声誉，就在课件上
+            </h2>
+            <p className="text-base max-w-lg mx-auto" style={{ color: brandColors.textSecondary }}>
+              智教星将多智能体协同与自适应诊疗相结合，精准定位错因，靶向推送个性化练习
+            </p>
+          </motion.div>
+
+          <motion.div variants={staggerItem}>
+            <TestimonialCarousel />
+          </motion.div>
+        </div>
+      </SectionWrapper>
+
+      {/* ==================== CTA Section ==================== */}
+      <SectionWrapper className="py-20 lg:py-28 px-6">
+        <div className="max-w-[800px] mx-auto text-center">
+          <motion.h2
+            variants={staggerItem}
+            className="text-3xl lg:text-4xl font-bold mb-6"
+            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+          >
+            准备好开始了吗
+          </motion.h2>
+          <motion.p
+            variants={staggerItem}
+            className="text-lg mb-10"
+            style={{ color: brandColors.textSecondary }}
+          >
+            加入数万名教育工作者，体验AI驱动的智能教学
+          </motion.p>
+          <motion.div
+            variants={staggerItem}
+            className="flex flex-col sm:flex-row gap-4 justify-center"
+          >
+            <Link to="/welcome">
+              <Button
+                size="lg"
+                className="text-base font-semibold text-white px-10 py-6 rounded-[10px] transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
+                style={{ backgroundColor: brandColors.primary }}
+              >
+                免费开始 <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </Link>
+            <Button
+              size="lg"
+              variant="outline"
+              className="text-base font-semibold px-10 py-6 rounded-[10px] transition-all duration-200 hover:scale-[1.02]"
+              style={{ borderColor: brandColors.border, color: brandColors.textPrimary }}
+            >
+              了解更多
+            </Button>
+          </motion.div>
+        </div>
+      </SectionWrapper>
+
+      {/* ==================== Footer ==================== */}
+      <footer className="border-t py-12 px-6" style={{ borderColor: brandColors.border }}>
+        <div className="max-w-[1200px] mx-auto">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+            <div className="flex items-center gap-2">
+              <div
+                className="w-7 h-7 rounded-lg flex items-center justify-center"
+                style={{ backgroundColor: brandColors.primary }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2L14.5 9H22L16 13.5L18 21L12 17L6 21L8 13.5L2 9H9.5L12 2Z" fill="white" fillOpacity="0.9" />
+                  <path d="M4 19V14C4 12.5 5.5 11 7 11C8.5 11 9 12 9 12" stroke="white" strokeOpacity="0.5" strokeWidth="1.5" strokeLinecap="round" />
+                  <path d="M20 19V14C20 12.5 18.5 11 17 11C15.5 11 15 12 15 12" stroke="white" strokeOpacity="0.5" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
               </div>
-              <p className="text-[#6c757d] text-sm mb-6 leading-[1.8]">
-                智能教育平台，让学习更高效。<br />AI驱动的教育新时代。
-              </p>
-              <div className="flex gap-3">
-                <a href="#" className="w-9 h-9 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center hover:bg-[#e9c46a]/10 hover:border-[#e9c46a]/20 transition-all duration-500">
-                  <Globe className="w-4 h-4 text-[#6c757d]" />
-                </a>
-                <a href="#" className="w-9 h-9 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center hover:bg-[#e9c46a]/10 hover:border-[#e9c46a]/20 transition-all duration-500">
-                  <MessageSquare className="w-4 h-4 text-[#6c757d]" />
-                </a>
-                <a href="#" className="w-9 h-9 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center hover:bg-[#e9c46a]/10 hover:border-[#e9c46a]/20 transition-all duration-500">
-                  <Share2 className="w-4 h-4 text-[#6c757d]" />
-                </a>
-              </div>
+              <span
+                className="text-sm font-bold tracking-tight"
+                style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+              >
+                智教星
+              </span>
             </div>
-
-            <div>
-              <h3 className="text-sm font-normal text-[#adb5bd] mb-6 tracking-wider">产品</h3>
-              <ul className="space-y-4">
-                <li><a href="#features" className="text-[#6c757d] hover:text-[#e9c46a] text-sm transition-colors duration-300">功能特性</a></li>
-                <li><a href="#usecases" className="text-[#6c757d] hover:text-[#e9c46a] text-sm transition-colors duration-300">使用场景</a></li>
-                <li><a href="#pricing" className="text-[#6c757d] hover:text-[#e9c46a] text-sm transition-colors duration-300">价格方案</a></li>
-                <li><a href="#" className="text-[#6c757d] hover:text-[#e9c46a] text-sm transition-colors duration-300">更新日志</a></li>
-              </ul>
+            <div className="flex gap-8">
+              {['功能', '产品', '企业', '评价'].map((item) => (
+                <button
+                  key={item}
+                  className="text-xs font-medium transition-colors hover:text-amber-600"
+                  style={{ color: brandColors.textMuted }}
+                >
+                  {item}
+                </button>
+              ))}
             </div>
-
-            <div>
-              <h3 className="text-sm font-normal text-[#adb5bd] mb-6 tracking-wider">支持</h3>
-              <ul className="space-y-4">
-                <li><a href="#" className="text-[#6c757d] hover:text-[#e9c46a] text-sm transition-colors duration-300">帮助中心</a></li>
-                <li><a href="#" className="text-[#6c757d] hover:text-[#e9c46a] text-sm transition-colors duration-300">API文档</a></li>
-                <li><a href="#" className="text-[#6c757d] hover:text-[#e9c46a] text-sm transition-colors duration-300">社区论坛</a></li>
-                <li><a href="#" className="text-[#6c757d] hover:text-[#e9c46a] text-sm transition-colors duration-300">联系我们</a></li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-normal text-[#adb5bd] mb-6 tracking-wider">公司</h3>
-              <ul className="space-y-4">
-                <li><a href="#" className="text-[#6c757d] hover:text-[#e9c46a] text-sm transition-colors duration-300">关于我们</a></li>
-                <li><a href="#" className="text-[#6c757d] hover:text-[#e9c46a] text-sm transition-colors duration-300">团队介绍</a></li>
-                <li><a href="#" className="text-[#6c757d] hover:text-[#e9c46a] text-sm transition-colors duration-300">隐私政策</a></li>
-                <li><a href="#" className="text-[#6c757d] hover:text-[#e9c46a] text-sm transition-colors duration-300">服务条款</a></li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="border-t border-white/5 pt-8">
-            <div className="flex flex-col md:flex-row justify-between items-center">
-              <p className="text-[#6c757d] text-xs mb-4 md:mb-0">
-                © 2026 智教星. 保留所有权利。
-              </p>
-              <p className="text-[#6c757d] text-xs">
-                联系邮箱：<a href="mailto:3355299179@qq.com" className="text-[#adb5bd] hover:text-[#e9c46a] transition-colors">3355299179@qq.com</a>
-              </p>
-            </div>
+            <p className="text-xs" style={{ color: brandColors.textMuted }}>
+              © 2026 智教星——基于多智能体的自适应错题诊疗系统. All rights reserved.
+            </p>
           </div>
         </div>
       </footer>

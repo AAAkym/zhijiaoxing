@@ -331,7 +331,8 @@ def create_teaching_content():
             video_id=data.get('video_id'),
             title=data['title'],
             content=data['content'],
-            generated_by_llm=data.get('generated_by_llm', False)
+            generated_by_llm=data.get('generated_by_llm', False),
+            content_type=data.get('content_type', 'lecture')
         )
         
         db.session.add(teaching_content)
@@ -376,7 +377,9 @@ def generate_content():
         content = spark_service.generate_teaching_content(
             course_title=course.title,
             topic=data['topic'],
-            knowledge_base=knowledge_base
+            knowledge_base=knowledge_base,
+            user_id=session.get('user_id'),
+            user_role=session.get('user_role')
         )
         
         # 保存到数据库
@@ -431,7 +434,9 @@ def generate_assessment():
             course_title=course.title,
             topic=data['topic'],
             question_count=data.get('question_count', 5),
-            knowledge_base=knowledge_base
+            knowledge_base=knowledge_base,
+            user_id=session.get('user_id'),
+            user_role=session.get('user_role')
         )
 
         # 规范化：如果 LLM 返回的是 JSON 字符串则直接使用，否则尝试解析为结构化题目数组

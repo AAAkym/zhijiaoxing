@@ -332,7 +332,7 @@ class LearningPathService:
             return None
         return path.to_dict()
 
-    def generate_ai_plan(self, user_id):
+    def generate_ai_plan(self, user_id, user_role=None):
         profile = StudentProfile.query.filter_by(user_id=user_id).first()
         if not profile:
             return {"error": "请先完成学习画像构建"}
@@ -373,7 +373,7 @@ class LearningPathService:
             response = spark_service.chat([
                 {"role": "system", "content": "你是一位专业的学习规划师，擅长根据学生数据制定个性化学习方案。请严格按照JSON格式返回，不要包含任何其他文字或markdown标记。"},
                 {"role": "user", "content": prompt},
-            ])
+            ], user_id=user_id, user_role=user_role)
 
             if not response or not response.strip():
                 logger.warning("AI returned empty response, using fallback")

@@ -160,6 +160,15 @@ export default function CourseGenerationWizard({ myCourses = [], onBack }) {
       }
       if (step >= 4) {
         setPhase('review')
+      } else {
+        const nextStep = step + 1
+        setCurrentStep(nextStep)
+        if (stepContents[nextStep]) {
+          setEditingContent(stepContents[nextStep])
+        } else {
+          setEditingContent('')
+          handleGenerateStep(nextStep)
+        }
       }
     } catch (err) {
       console.error('Confirm step error:', err)

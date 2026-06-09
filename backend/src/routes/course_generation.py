@@ -88,7 +88,7 @@ def update_config(config_id):
 def generate_step(config_id, step):
     try:
         user_id = session["user_id"]
-        result = svc.generate_step_content(config_id, user_id, step)
+        result = svc.generate_step_content(config_id, user_id, step, user_role=session.get('user_role'))
         if "error" in result:
             return jsonify(result), 400
         return jsonify(result), 200

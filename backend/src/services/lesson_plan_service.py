@@ -27,6 +27,8 @@ def generate_lesson_plan(
     teaching_style: str = "lecture",
     student_level: str = "intermediate",
     custom_requirements: str = "",
+    user_id: int = None,
+    user_role: str = None,
 ) -> Dict:
     course = Course.query.get(course_id)
     if not course:
@@ -47,7 +49,7 @@ def generate_lesson_plan(
     )
 
     try:
-        raw = spark_service.chat(prompt)
+        raw = spark_service.chat(prompt, user_id=user_id, user_role=user_role)
         plan = _parse_lesson_plan(raw, topic)
     except Exception as e:
         logger.error("AI lesson plan generation failed: %s", e)
@@ -72,6 +74,8 @@ def generate_lesson_plan_section(
     existing_plan: Dict = None,
     duration: int = 45,
     difficulty: str = "medium",
+    user_id: int = None,
+    user_role: str = None,
 ) -> Dict:
     course = Course.query.get(course_id)
     if not course:
@@ -102,7 +106,7 @@ def generate_lesson_plan_section(
 只输出JSON，不要输出其他内容。"""
 
     try:
-        raw = spark_service.chat(prompt)
+        raw = spark_service.chat(prompt, user_id=user_id, user_role=user_role)
         cleaned = raw.strip()
         import re
         cleaned = re.sub(r'^```(?:json)?', '', cleaned, flags=re.IGNORECASE).strip()

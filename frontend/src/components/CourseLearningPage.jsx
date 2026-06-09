@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { courses, videos, notes, ai } from '../services/api'
+import { courses, videos, notes, ai, courseGeneration } from '../services/api'
 import VideoPlayer from './VideoPlayer'
 import StudentInteractionPanel from './StudentInteractionPanel'
 import VideoNotesPanel from './StudyNotes/VideoNotesPanel'
 import { AITutorPanel } from '@/components/AITutor'
+import InteractiveMindMap from './ui/InteractiveMindMap'
+import CodePlayground from './ui/CodePlayground'
 
 export default function CourseLearningPage({ user }) {
   const { courseId } = useParams()
@@ -38,6 +40,15 @@ export default function CourseLearningPage({ user }) {
   const [aiInput, setAiInput] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
   const aiMessagesEndRef = useRef(null)
+
+  const [courseResources, setCourseResources] = useState(null)
+  const [resourcesLoading, setResourcesLoading] = useState(false)
+  const [activeResourceModal, setActiveResourceModal] = useState(null)
+  const [selectedResourceItem, setSelectedResourceItem] = useState(null)
+
+  const [mindmapExpanded, setMindmapExpanded] = useState(false)
+  const [mindmapData, setMindmapData] = useState(null)
+  const [mindmapLoading, setMindmapLoading] = useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -169,6 +180,72 @@ export default function CourseLearningPage({ user }) {
   useEffect(() => {
     loadVideoNotes()
   }, [loadVideoNotes])
+
+  useEffect(() => {
+    if (!courseId) return
+    const loadResources = async () => {
+      setResourcesLoading(true)
+      try {
+        const res = await courseGeneration.getCourseResources(courseId)
+        setCourseResources(res)
+      } catch (e) {
+        console.warn('加载课程资源失败:', e.message)
+        setCourseResources(null)
+      } finally {
+        setResourcesLoading(false)
+      }
+    }
+    loadResources()
+  }, [courseId])
+
+  useEffect(() => {
+    if (!currentVideo || !mindmapExpanded) return
+    setMindmapLoading(true)
+    try {
+      if (courseResources?.resources?.mindmap?.items) {
+        const items = courseResources.resources.mindmap.items
+        const matched = items.find(item => {
+          if (currentVideo.chapter_id && item.chapter_id === currentVideo.chapter_id) return true
+          const videoTitle = (currentVideo.title || '').toLowerCase()
+          const chapterTitle = (item.chapter_title || '').toLowerCase()
+          return videoTitle.includes(chapterTitle) || chapterTitle.includes(videoTitle)
+        })
+        if (matched?.data) {
+          let mindmapRoot = matched.data
+          if (mindmapRoot.root) {
+            setMindmapData({ data: mindmapRoot })
+          } else if (mindmapRoot.mindmap?.root) {
+            setMindmapData({ data: mindmapRoot.mindmap })
+          } else {
+            setMindmapData(matched)
+          }
+        } else if (items.length > 0) {
+          const first = items[0]
+          if (first?.data) {
+            let mindmapRoot = first.data
+            if (mindmapRoot.root) {
+              setMindmapData({ data: mindmapRoot })
+            } else if (mindmapRoot.mindmap?.root) {
+              setMindmapData({ data: mindmapRoot.mindmap })
+            } else {
+              setMindmapData(first)
+            }
+          } else {
+            setMindmapData(first)
+          }
+        } else {
+          setMindmapData(null)
+        }
+      } else {
+        setMindmapData(null)
+      }
+    } catch (e) {
+      console.warn('加载思维导图数据失败:', e.message)
+      setMindmapData(null)
+    } finally {
+      setMindmapLoading(false)
+    }
+  }, [currentVideo, mindmapExpanded, courseResources])
 
   // 处理视频时间更新
   const handleTimeUpdate = useCallback((time) => {
@@ -490,6 +567,90 @@ export default function CourseLearningPage({ user }) {
               </div>
             )}
 
+            {currentVideo && (
+              <div style={{
+                backgroundColor: '#fff',
+                padding: '20px',
+                borderRadius: '8px',
+                border: '2px solid #8b5cf6',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#6d28d9', margin: 0 }}>
+                      🧠 知识点思维导图
+                    </h3>
+                    {course && (
+                      <span style={{
+                        fontSize: '11px',
+                        padding: '2px 8px',
+                        borderRadius: '10px',
+                        backgroundColor: '#f5f3ff',
+                        color: '#7c3aed',
+                        border: '1px solid #ddd6fe',
+                        fontWeight: 500,
+                      }}>
+                        {course.title}
+                      </span>
+                    )}
+                    {currentVideo && (
+                      <span style={{
+                        fontSize: '11px',
+                        padding: '2px 8px',
+                        borderRadius: '10px',
+                        backgroundColor: '#eff6ff',
+                        color: '#2563eb',
+                        border: '1px solid #bfdbfe',
+                        fontWeight: 500,
+                      }}>
+                        {currentVideo.title}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setMindmapExpanded(!mindmapExpanded)}
+                    style={{
+                      padding: '4px 12px',
+                      backgroundColor: mindmapExpanded ? '#f5f3ff' : '#8b5cf6',
+                      color: mindmapExpanded ? '#6d28d9' : '#fff',
+                      border: '1px solid #8b5cf6',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {mindmapExpanded ? '折叠' : '展开'}
+                  </button>
+                </div>
+                <div style={{
+                  maxHeight: mindmapExpanded ? '400px' : '0',
+                  opacity: mindmapExpanded ? 1 : 0,
+                  overflow: 'hidden',
+                  transition: 'max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease',
+                  marginTop: mindmapExpanded ? '16px' : '0'
+                }}>
+                  {mindmapLoading ? (
+                    <div style={{ textAlign: 'center', padding: '40px', color: '#9ca3af', fontSize: '14px' }}>
+                      加载中...
+                    </div>
+                  ) : mindmapData?.data ? (
+                    <div style={{ height: '350px' }}>
+                      <InteractiveMindMap data={mindmapData.data} height={350} />
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '40px', color: '#9ca3af', fontSize: '14px' }}>
+                      暂无思维导图数据，请教师在内容生成中创建
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* 课程目录 */}
             <div style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '8px' }}>
               <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '16px' }}>课程目录</h3>
@@ -636,6 +797,66 @@ export default function CourseLearningPage({ user }) {
               position: 'sticky',
               top: '24px'
             }}>
+              {/* 学习资源区域 */}
+              <div style={{
+                marginBottom: '20px',
+                padding: '16px',
+                backgroundColor: '#f0f9ff',
+                borderRadius: '8px',
+                border: '1px solid #bae6fd',
+              }}>
+                <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: '#0369a1', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  🎯 学习资源
+                </h3>
+                {resourcesLoading ? (
+                  <div style={{ textAlign: 'center', padding: '12px', color: '#94a3b8', fontSize: '12px' }}>加载中...</div>
+                ) : courseResources?.resources ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    {[
+                      { key: 'document', icon: '📄', label: '讲解文档' },
+                      { key: 'mindmap', icon: '🧠', label: '思维导图' },
+                      { key: 'recommendation', icon: '📚', label: '拓展阅读' },
+                      { key: 'project', icon: '💻', label: '代码实操' },
+                    ].map(rt => {
+                      const res = courseResources.resources[rt.key]
+                      const available = res?.available
+                      const count = res?.count || 0
+                      return (
+                        <button
+                          key={rt.key}
+                          onClick={() => {
+                            if (!available) return
+                            setActiveResourceModal(rt.key)
+                            setSelectedResourceItem(null)
+                          }}
+                          style={{
+                            padding: '10px 8px',
+                            border: available ? '1px solid #7dd3fc' : '1px solid #e2e8f0',
+                            borderRadius: '8px',
+                            backgroundColor: available ? '#fff' : '#f8fafc',
+                            cursor: available ? 'pointer' : 'default',
+                            textAlign: 'center',
+                            transition: 'all 0.2s',
+                          }}
+                          onMouseEnter={e => { if (available) e.currentTarget.style.boxShadow = '0 2px 8px rgba(14,165,233,0.2)' }}
+                          onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none' }}
+                        >
+                          <div style={{ fontSize: '20px', marginBottom: '4px' }}>{rt.icon}</div>
+                          <div style={{ fontSize: '11px', fontWeight: 500, color: available ? '#0369a1' : '#94a3b8' }}>{rt.label}</div>
+                          {available ? (
+                            <div style={{ fontSize: '10px', color: '#10b981', marginTop: '2px' }}>{count}项可用</div>
+                          ) : (
+                            <div style={{ fontSize: '10px', color: '#cbd5e1', marginTop: '2px' }}>暂无资源</div>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '12px', color: '#94a3b8', fontSize: '12px' }}>暂无学习资源</div>
+                )}
+              </div>
+
               <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '16px', color: '#111827' }}>
                 📑 讲义目录
               </h3>
@@ -968,6 +1189,372 @@ export default function CourseLearningPage({ user }) {
           </div>
         )}
       </div>
+
+      {/* 资源弹窗 */}
+      {activeResourceModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+          onClick={() => { setActiveResourceModal(null); setSelectedResourceItem(null) }}
+        >
+          <div
+            style={{
+              backgroundColor: '#fff',
+              borderRadius: '12px',
+              width: activeResourceModal === 'mindmap' ? '90vw' : activeResourceModal === 'project' ? '90vw' : '700px',
+              maxWidth: '1200px',
+              maxHeight: '85vh',
+              overflow: 'auto',
+              padding: '0',
+              boxShadow: '0 25px 50px rgba(0,0,0,0.25)',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* 弹窗头部 */}
+            <div style={{
+              padding: '16px 24px',
+              borderBottom: '1px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              position: 'sticky',
+              top: 0,
+              backgroundColor: '#fff',
+              zIndex: 1,
+            }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#111827' }}>
+                {{
+                  document: '📄 核心概念讲解文档',
+                  mindmap: '🧠 知识点思维导图',
+                  recommendation: '📚 拓展阅读材料',
+                  project: '💻 代码实操案例',
+                }[activeResourceModal]}
+              </h2>
+              <button
+                onClick={() => { setActiveResourceModal(null); setSelectedResourceItem(null) }}
+                style={{
+                  padding: '4px 12px',
+                  border: 'none',
+                  backgroundColor: '#f3f4f6',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 弹窗内容 */}
+            <div style={{ padding: '24px' }}>
+              {activeResourceModal === 'document' && courseResources?.resources?.document && (
+                <div>
+                  {!selectedResourceItem ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {courseResources.resources.document.items.map((item, idx) => (
+                        <button
+                          key={`doc_${item.id}_${idx}`}
+                          onClick={() => setSelectedResourceItem(item)}
+                          style={{
+                            padding: '12px 16px',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '8px',
+                            backgroundColor: '#fff',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            transition: 'all 0.2s',
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f0f9ff'}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = '#fff'}
+                        >
+                          <div style={{ fontSize: '14px', fontWeight: 500, color: '#111827' }}>{item.title}</div>
+                          <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>{item.chapter_title}</div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div>
+                      <button
+                        onClick={() => setSelectedResourceItem(null)}
+                        style={{ marginBottom: '12px', padding: '4px 12px', border: '1px solid #e5e7eb', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', color: '#6b7280' }}
+                      >
+                        ← 返回列表
+                      </button>
+                      <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '4px' }}>{selectedResourceItem.title}</h3>
+                      <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '16px' }}>{selectedResourceItem.chapter_title}</p>
+
+                      {/* 难度和重要性标签 */}
+                      <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
+                        {selectedResourceItem.difficulty_level && (
+                          <span style={{ padding: '2px 8px', backgroundColor: '#fef3c7', color: '#92400e', borderRadius: '4px', fontSize: '11px' }}>
+                            {selectedResourceItem.difficulty_level === 'beginner' ? '入门' : selectedResourceItem.difficulty_level === 'intermediate' ? '中级' : selectedResourceItem.difficulty_level === 'advanced' ? '高级' : selectedResourceItem.difficulty_level}
+                          </span>
+                        )}
+                        {selectedResourceItem.importance && (
+                          <span style={{ padding: '2px 8px', backgroundColor: '#dbeafe', color: '#1e40af', borderRadius: '4px', fontSize: '11px' }}>
+                            {selectedResourceItem.importance === 'core' ? '核心' : '补充'}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* 定义 */}
+                      {selectedResourceItem.definition && (
+                        <div style={{ padding: '12px 16px', backgroundColor: '#eff6ff', borderRadius: '8px', fontSize: '14px', lineHeight: '1.8', color: '#1e40af', marginBottom: '12px', borderLeft: '3px solid #3b82f6' }}>
+                          <strong>定义：</strong>{selectedResourceItem.definition}
+                        </div>
+                      )}
+
+                      {/* 详细内容 */}
+                      {selectedResourceItem.content && (
+                        <div style={{ padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px', fontSize: '14px', lineHeight: '1.8', color: '#374151', marginBottom: '12px', whiteSpace: 'pre-wrap' }}>
+                          {selectedResourceItem.content}
+                        </div>
+                      )}
+
+                      {/* 代码示例 */}
+                      {selectedResourceItem.examples && (() => {
+                        let examples = selectedResourceItem.examples
+                        if (typeof examples === 'string') { try { examples = JSON.parse(examples) } catch { examples = [] } }
+                        if (!Array.isArray(examples) || examples.length === 0) return null
+                        return (
+                          <div style={{ marginBottom: '12px' }}>
+                            <h4 style={{ fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>代码示例</h4>
+                            {examples.map((ex, i) => (
+                              <div key={i} style={{ marginBottom: '8px' }}>
+                                {ex.title && <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>{ex.title}</div>}
+                                <pre style={{ padding: '12px', backgroundColor: '#1e293b', color: '#e2e8f0', borderRadius: '8px', fontSize: '13px', lineHeight: '1.6', overflowX: 'auto', margin: 0 }}>
+                                  <code>{ex.code || ''}</code>
+                                </pre>
+                              </div>
+                            ))}
+                          </div>
+                        )
+                      })()}
+
+                      {/* 相关概念 */}
+                      {selectedResourceItem.related_concepts && (() => {
+                        let concepts = selectedResourceItem.related_concepts
+                        if (typeof concepts === 'string') { try { concepts = JSON.parse(concepts) } catch { concepts = [] } }
+                        if (!Array.isArray(concepts) || concepts.length === 0) return null
+                        return (
+                          <div style={{ marginBottom: '12px' }}>
+                            <span style={{ fontSize: '12px', color: '#6b7280' }}>相关概念：</span>
+                            {concepts.map((c, i) => (
+                              <span key={i} style={{ display: 'inline-block', padding: '2px 8px', backgroundColor: '#f3f4f6', borderRadius: '4px', fontSize: '12px', color: '#4b5563', marginRight: '4px', marginBottom: '4px' }}>{c}</span>
+                            ))}
+                          </div>
+                        )
+                      })()}
+
+                      {/* 标签 */}
+                      {selectedResourceItem.tags && (() => {
+                        let tags = selectedResourceItem.tags
+                        if (typeof tags === 'string') { try { tags = JSON.parse(tags) } catch { tags = [] } }
+                        if (!Array.isArray(tags) || tags.length === 0) return null
+                        return (
+                          <div>
+                            {tags.map((t, i) => (
+                              <span key={i} style={{ display: 'inline-block', padding: '2px 8px', backgroundColor: '#ecfdf5', color: '#065f46', borderRadius: '4px', fontSize: '11px', marginRight: '4px', marginBottom: '4px' }}>#{t}</span>
+                            ))}
+                          </div>
+                        )
+                      })()}
+
+                      {/* 子知识点 */}
+                      {selectedResourceItem.children && selectedResourceItem.children.length > 0 && (
+                        <div style={{ marginTop: '16px' }}>
+                          <h4 style={{ fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>子知识点</h4>
+                          {selectedResourceItem.children.map((child, i) => (
+                            <div key={i} style={{ padding: '10px 12px', backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '6px', marginBottom: '6px' }}>
+                              <div style={{ fontSize: '13px', fontWeight: 500, color: '#111827' }}>{child.title || child.name}</div>
+                              {child.definition && <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>{child.definition}</div>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeResourceModal === 'mindmap' && courseResources?.resources?.mindmap && (
+                <div>
+                  {!selectedResourceItem ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {courseResources.resources.mindmap.items.map((item, idx) => (
+                        <button
+                          key={`mm_${item.id}_${idx}`}
+                          onClick={() => setSelectedResourceItem(item)}
+                          style={{
+                            padding: '12px 16px',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '8px',
+                            backgroundColor: '#fff',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            transition: 'all 0.2s',
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f0f9ff'}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = '#fff'}
+                        >
+                          <div style={{ fontSize: '14px', fontWeight: 500, color: '#111827' }}>{item.title}</div>
+                          <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>{item.chapter_title}</div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div>
+                      <button
+                        onClick={() => setSelectedResourceItem(null)}
+                        style={{ marginBottom: '12px', padding: '4px 12px', border: '1px solid #e5e7eb', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', color: '#6b7280' }}
+                      >
+                        ← 返回列表
+                      </button>
+                      <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px' }}>{selectedResourceItem.title}</h3>
+                      {selectedResourceItem.data ? (
+                        <InteractiveMindMap data={selectedResourceItem.data} height={500} />
+                      ) : (
+                        <div style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>暂无思维导图数据</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeResourceModal === 'recommendation' && courseResources?.resources?.recommendation && (
+                <div>
+                  {courseResources.resources.recommendation.items.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {courseResources.resources.recommendation.items.map((item, idx) => {
+                        const priorityColors = { high: '#ef4444', medium: '#f59e0b', low: '#22c55e' }
+                        const priorityLabels = { high: '重要', medium: '一般', low: '可选' }
+                        const priority = item.priority || 'medium'
+                        return (
+                          <div
+                            key={`rec_${item.id}_${idx}`}
+                            style={{
+                              padding: '16px',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '8px',
+                              backgroundColor: '#fff',
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                              <div style={{ fontSize: '14px', fontWeight: 600, color: '#111827' }}>{item.title}</div>
+                              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                {item.priority && (
+                                  <span style={{ padding: '2px 8px', backgroundColor: priorityColors[priority] + '18', color: priorityColors[priority], borderRadius: '4px', fontSize: '11px', fontWeight: 500 }}>
+                                    {priorityLabels[priority] || priority}
+                                  </span>
+                                )}
+                                {(item.case_type || item.category) && (
+                                  <span style={{ padding: '2px 8px', backgroundColor: '#dbeafe', color: '#1e40af', borderRadius: '4px', fontSize: '11px' }}>
+                                    {item.category || item.case_type}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {item.background && (
+                              <div style={{ fontSize: '13px', color: '#4b5563', lineHeight: '1.6', marginBottom: '8px' }}>
+                                {item.background.length > 200 ? item.background.slice(0, 200) + '...' : item.background}
+                              </div>
+                            )}
+                            {item.key_points && item.key_points.length > 0 && (
+                              <div style={{ marginBottom: '8px' }}>
+                                {item.key_points.slice(0, 4).map((kp, i) => (
+                                  <div key={i} style={{ fontSize: '12px', color: '#374151', paddingLeft: '12px', position: 'relative', lineHeight: '1.8' }}>
+                                    <span style={{ position: 'absolute', left: 0, color: '#6366f1' }}>•</span>
+                                    {typeof kp === 'string' ? kp : kp.title || kp.content || JSON.stringify(kp)}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <div style={{ display: 'flex', gap: '12px', fontSize: '11px', color: '#9ca3af', flexWrap: 'wrap' }}>
+                              {item.chapter_title && <span>📖 {item.chapter_title}</span>}
+                              {item.author && <span>✍️ {item.author}</span>}
+                              {item.difficulty && <span>📊 {item.difficulty}</span>}
+                              {item.source_url && (
+                                <a href={item.source_url} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', textDecoration: 'none' }}>
+                                  🔗 查看资源
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>暂无拓展阅读资源</div>
+                  )}
+                </div>
+              )}
+
+              {activeResourceModal === 'project' && courseResources?.resources?.project && (
+                <div>
+                  {!selectedResourceItem ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {courseResources.resources.project.items.map((item, idx) => (
+                        <button
+                          key={`proj_${item.id}_${idx}`}
+                          onClick={() => setSelectedResourceItem(item)}
+                          style={{
+                            padding: '12px 16px',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '8px',
+                            backgroundColor: '#fff',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            transition: 'all 0.2s',
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f0f9ff'}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = '#fff'}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ fontSize: '14px', fontWeight: 500, color: '#111827' }}>{item.title}</div>
+                            <span style={{ padding: '2px 8px', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '4px', fontSize: '11px' }}>
+                              {item.language || 'Python'}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>{item.chapter_title}</div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div>
+                      <button
+                        onClick={() => setSelectedResourceItem(null)}
+                        style={{ marginBottom: '12px', padding: '4px 12px', border: '1px solid #e5e7eb', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', color: '#6b7280' }}
+                      >
+                        ← 返回列表
+                      </button>
+                      <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>{selectedResourceItem.title}</h3>
+                      {selectedResourceItem.content && (
+                        <div style={{ padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px', fontSize: '13px', lineHeight: '1.6', color: '#374151', marginBottom: '12px', whiteSpace: 'pre-wrap' }}>
+                          {selectedResourceItem.content}
+                        </div>
+                      )}
+                      <CodePlayground
+                        initialCode={selectedResourceItem.code_template || `# ${selectedResourceItem.title}\n# 请根据题目要求编写代码\n`}
+                        language={selectedResourceItem.language || 'python'}
+                        height="400px"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

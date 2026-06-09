@@ -665,7 +665,9 @@ def summarize_note(note_id):
         summary = spark_service.summarize_note(
             note_title=note.title,
             note_content=note.content,
-            course_title=course_title
+            course_title=course_title,
+            user_id=session.get('user_id'),
+            user_role=session.get('user_role')
         )
         
         return jsonify({
@@ -700,7 +702,9 @@ def summarize_note_stream(note_id):
                 for chunk in spark_service.summarize_note_stream(
                     note_title=note.title,
                     note_content=note.content,
-                    course_title=course_title
+                    course_title=course_title,
+                    user_id=session.get('user_id'),
+                    user_role=session.get('user_role')
                 ):
                     yield f"data: {json.dumps({'content': chunk}, ensure_ascii=False)}\n\n"
                 
@@ -759,7 +763,7 @@ def organize_notes():
                 'tags': tags_list
             })
 
-        organized = spark_service.organize_notes(notes_data)
+        organized = spark_service.organize_notes(notes_data, user_id=session.get('user_id'), user_role=session.get('user_role'))
 
         return jsonify({
             'message': 'Notes organized successfully',
@@ -864,7 +868,9 @@ def recommend_tags():
         recommended = spark_service.recommend_tags(
             note_title=title,
             note_content=content,
-            existing_tags=list(existing_tags)
+            existing_tags=list(existing_tags),
+            user_id=session.get('user_id'),
+            user_role=session.get('user_role')
         )
         
         recommended_tags = [tag.strip() for tag in recommended.split(',') if tag.strip()]
@@ -932,7 +938,9 @@ def generate_weekly_report():
             notes=notes_data,
             mistakes=mistakes_data,
             week_start=week_start,
-            week_end=week_end
+            week_end=week_end,
+            user_id=session.get('user_id'),
+            user_role=session.get('user_role')
         )
         
         return jsonify({
@@ -1003,7 +1011,9 @@ def generate_weekly_report_stream():
                     notes=notes_data,
                     mistakes=mistakes_data,
                     week_start=week_start,
-                    week_end=week_end
+                    week_end=week_end,
+                    user_id=session.get('user_id'),
+                    user_role=session.get('user_role')
                 ):
                     yield f"data: {json.dumps({'content': chunk}, ensure_ascii=False)}\n\n"
                 

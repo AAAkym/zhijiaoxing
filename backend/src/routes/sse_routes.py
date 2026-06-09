@@ -396,6 +396,8 @@ def stream_chat():
         
         last_event_id = request.headers.get('Last-Event-ID')
         
+        session_user_role = session.get('user_role')
+
         def generate():
             for chunk in sse_chat_service.stream_chat(
                 question=question,
@@ -404,7 +406,8 @@ def stream_chat():
                 context=context,
                 topic=topic,
                 temperature=temperature,
-                max_context_length=max_context_length
+                max_context_length=max_context_length,
+                user_role=session_user_role
             ):
                 yield chunk
         
@@ -463,11 +466,16 @@ def stream_chat_simple():
         context = data.get('context', '')
         topic = data.get('topic', '')
         
+        session_user_id = session.get('user_id')
+        session_user_role = session.get('user_role')
+
         def generate():
             for chunk in sse_chat_service.stream_chat_simple(
                 question=question,
                 context=context,
-                topic=topic
+                topic=topic,
+                user_id=session_user_id,
+                user_role=session_user_role
             ):
                 yield chunk
         

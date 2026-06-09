@@ -7,6 +7,7 @@ from src.services.multi_agent.shared_state import (
     message_bus,
     agent_monitor,
 )
+from src.services.knowledge_base_service import knowledge_base_service
 
 logger = logging.getLogger(__name__)
 
@@ -124,6 +125,10 @@ class MediaAgent(AgentBase):
         knowledge_points = task.get("knowledge_points", [])
         duration = task.get("duration_minutes", 5)
         video_type = task.get("video_type", "micro_lecture")
+        course_id = task.get("course_id")
+        chapter_ids = task.get("chapter_ids")
+        _user_id = task.get('user_id')
+        _user_role = task.get('user_role')
 
         cognitive_style = profile.get("cognitive_style", "mixed")
         learning_pace = profile.get("learning_pace", "moderate")
@@ -131,6 +136,7 @@ class MediaAgent(AgentBase):
         style_hint = self._get_video_style_hint(cognitive_style)
         pace_hint = self._get_pace_hint(learning_pace)
         type_instruction = self._get_video_type_instruction(video_type)
+        kb_context = self._build_kb_context(course_id, chapter_ids)
 
         prompt = f"""请生成一份教学视频脚本。
 
@@ -149,6 +155,7 @@ class MediaAgent(AgentBase):
 ## 学生画像适配
 {style_hint}
 {pace_hint}
+{kb_context}
 
 要求：
 1. 按场景分镜设计，每个场景包含画面描述、旁白、字幕
@@ -163,6 +170,8 @@ class MediaAgent(AgentBase):
                 prompt,
                 system_prompt=MEDIA_SYSTEM_PROMPT,
                 temperature=0.7,
+                user_id=_user_id,
+                user_role=_user_role,
             )
             parsed = self._parse_json_response(response)
             shared_state.set("last_media_result", parsed, self.agent_name)
@@ -175,6 +184,8 @@ class MediaAgent(AgentBase):
         topic = task.get("topic", "")
         concept = task.get("concept", topic)
         animation_style = task.get("animation_style", "whiteboard")
+        _user_id = task.get('user_id')
+        _user_role = task.get('user_role')
 
         prompt = f"""请生成一份教学动画脚本。
 
@@ -203,6 +214,8 @@ class MediaAgent(AgentBase):
                 prompt,
                 system_prompt=MEDIA_SYSTEM_PROMPT,
                 temperature=0.7,
+                user_id=_user_id,
+                user_role=_user_role,
             )
             return self._parse_json_response(response)
         except Exception as e:
@@ -212,6 +225,8 @@ class MediaAgent(AgentBase):
         topic = task.get("topic", "")
         data_points = task.get("data_points", [])
         layout = task.get("layout", "vertical")
+        _user_id = task.get('user_id')
+        _user_role = task.get('user_role')
 
         prompt = f"""请生成一份信息图设计规格。
 
@@ -254,7 +269,7 @@ class MediaAgent(AgentBase):
 }}"""
 
         try:
-            response = self._call_llm(prompt, temperature=0.6)
+            response = self._call_llm(prompt, temperature=0.6, user_id=_user_id, user_role=_user_role)
             return self._parse_json_response(response)
         except Exception as e:
             return {"error": str(e)}
@@ -262,6 +277,8 @@ class MediaAgent(AgentBase):
     def _generate_interactive_demo_spec(self, task):
         topic = task.get("topic", "")
         interaction_type = task.get("interaction_type", "simulation")
+        _user_id = task.get('user_id')
+        _user_role = task.get('user_role')
 
         prompt = f"""请生成交互式演示内容的设计规格。
 
@@ -302,7 +319,7 @@ class MediaAgent(AgentBase):
 }}"""
 
         try:
-            response = self._call_llm(prompt, temperature=0.6)
+            response = self._call_llm(prompt, temperature=0.6, user_id=_user_id, user_role=_user_role)
             return self._parse_json_response(response)
         except Exception as e:
             return {"error": str(e)}
@@ -334,6 +351,28 @@ class MediaAgent(AgentBase):
             "review": "复习总结视频，快速回顾核心知识点，强化记忆",
         }
         return instructions.get(video_type, instructions["micro_lecture"])
+
+    def _build_kb_context(self, course_id, chapter_ids=None):
+        if not course_id:
+            return ""
+        try:
+            ctx = knowledge_base_service.build_knowledge_context_for_prompt(
+                course_id, chapter_ids
+            )
+            if not ctx:
+                return ""
+            parts = []
+            parts.append(f"\n## 课程知识库内容（课程：{ctx['course_title']}）")
+            if ctx.get("chapter_list"):
+                parts.append(f"### 章节结构\n{ctx['chapter_list']}")
+            if ctx.get("knowledge_points_detail") and ctx["knowledge_points_detail"] != "暂无":
+                parts.append(f"### 知识点详情（视频内容应覆盖这些知识点）\n{ctx['knowledge_points_detail']}")
+            if ctx.get("teaching_cases_detail") and ctx["teaching_cases_detail"] != "暂无":
+                parts.append(f"### 教学案例（可作为视频演示场景）\n{ctx['teaching_cases_detail']}")
+            return "\n\n".join(parts)
+        except Exception as e:
+            logger.warning(f"Failed to build KB context for media agent: {e}")
+            return ""
 
     def _parse_json_response(self, response):
         text = response.strip()

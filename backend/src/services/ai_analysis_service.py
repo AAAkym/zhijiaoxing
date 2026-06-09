@@ -190,7 +190,7 @@ def _collect_quarterly_metrics() -> Dict:
     return monthly
 
 
-def _generate_ai_report(report_type: str, metrics: Dict) -> Dict:
+def _generate_ai_report(report_type: str, metrics: Dict, user_id: int = None, user_role: str = None) -> Dict:
     masked = _mask_sensitive(metrics)
 
     if report_type == 'weekly':
@@ -266,7 +266,7 @@ def _generate_ai_report(report_type: str, metrics: Dict) -> Dict:
         response = spark_service.chat([
             {"role": "system", "content": "你是一位专业的教育数据分析专家，擅长从数据中发现规律、识别异常、提供决策建议。请始终以JSON格式输出。"},
             {"role": "user", "content": prompt},
-        ])
+        ], user_id=user_id, user_role=user_role)
 
         cleaned = response.strip()
         if cleaned.startswith('```'):
@@ -289,7 +289,7 @@ def _generate_ai_report(report_type: str, metrics: Dict) -> Dict:
         }
 
 
-def generate_report(report_type: str, admin_id: int) -> Dict:
+def generate_report(report_type: str, admin_id: int, user_id: int = None, user_role: str = None) -> Dict:
     now = datetime.utcnow()
 
     if report_type == 'weekly':
@@ -304,7 +304,7 @@ def generate_report(report_type: str, admin_id: int) -> Dict:
     else:
         return {"error": "Invalid report type. Use: weekly, monthly, quarterly"}
 
-    ai_result = _generate_ai_report(report_type, metrics)
+    ai_result = _generate_ai_report(report_type, metrics, user_id=user_id, user_role=user_role)
 
     report = AIAnalysisReport(
         report_type=report_type,
@@ -455,7 +455,7 @@ def _analyze_content_trends() -> List[Dict]:
     return trends[:20]
 
 
-def _analyze_teaching_attribution() -> Dict:
+def _analyze_teaching_attribution(user_id: int = None, user_role: str = None) -> Dict:
     now = datetime.utcnow()
     month_ago = now - timedelta(days=30)
 
@@ -521,7 +521,7 @@ def _analyze_teaching_attribution() -> Dict:
         response = spark_service.chat([
             {"role": "system", "content": "你是教学效果分析专家，擅长量化分析各教学环节对学习成果的影响。请以JSON格式输出。"},
             {"role": "user", "content": factors_prompt},
-        ])
+        ], user_id=user_id, user_role=user_role)
 
         cleaned = response.strip()
         if cleaned.startswith('```'):
@@ -549,7 +549,7 @@ def _analyze_teaching_attribution() -> Dict:
     }
 
 
-def _optimize_resources() -> Dict:
+def _optimize_resources(user_id: int = None, user_role: str = None) -> Dict:
     now = datetime.utcnow()
     month_ago = now - timedelta(days=30)
 
@@ -611,7 +611,7 @@ def _optimize_resources() -> Dict:
         response = spark_service.chat([
             {"role": "system", "content": "你是教育资源配置优化专家，擅长基于数据分析提供最优资源配置方案。请以JSON格式输出。"},
             {"role": "user", "content": opt_prompt},
-        ])
+        ], user_id=user_id, user_role=user_role)
 
         cleaned = response.strip()
         if cleaned.startswith('```'):
@@ -645,7 +645,7 @@ def _optimize_resources() -> Dict:
     }
 
 
-def generate_insight(insight_type: str, admin_id: int) -> Dict:
+def generate_insight(insight_type: str, admin_id: int, user_id: int = None, user_role: str = None) -> Dict:
     now = datetime.utcnow()
 
     if insight_type == 'churn_prediction':
@@ -702,7 +702,7 @@ def generate_insight(insight_type: str, admin_id: int) -> Dict:
         )
 
     elif insight_type == 'teaching_attribution':
-        result = _analyze_teaching_attribution()
+        result = _analyze_teaching_attribution(user_id=user_id, user_role=user_role)
         factors = result.get('attribution', {}).get('factors', [])
 
         insight = AIInsight(
@@ -723,7 +723,7 @@ def generate_insight(insight_type: str, admin_id: int) -> Dict:
         )
 
     elif insight_type == 'resource_optimization':
-        result = _optimize_resources()
+        result = _optimize_resources(user_id=user_id, user_role=user_role)
         opt = result.get('optimization', {})
 
         insight = AIInsight(

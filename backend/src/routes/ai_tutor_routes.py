@@ -31,6 +31,7 @@ def answer_question():
             user_id=user_id,
             course_id=course_id,
             image_data=image_data,
+            user_role=session.get('user_role'),
         )
 
         return jsonify(result), 200
@@ -54,6 +55,8 @@ def answer_question_stream():
         course_id = data.get('course_id')
         image_data = data.get('image_data')
 
+        session_user_role = session.get('user_role')
+
         def generate():
             sse = SSEStream(retry=3000)
             try:
@@ -64,6 +67,7 @@ def answer_question_stream():
                     user_id=user_id,
                     course_id=course_id,
                     image_data=image_data,
+                    user_role=session_user_role,
                 ):
                     yield sse.send_message(chunk, event='message')
 
@@ -104,6 +108,7 @@ def explain_knowledge():
             user_id=user_id,
             course_id=course_id,
             mastery_level=mastery_level,
+            user_role=session.get('user_role'),
         )
 
         return jsonify(result), 200
@@ -127,6 +132,8 @@ def explain_knowledge_stream():
         course_id = data.get('course_id')
         mastery_level = data.get('mastery_level')
 
+        session_user_role = session.get('user_role')
+
         def generate():
             sse = SSEStream(retry=3000)
             try:
@@ -137,6 +144,7 @@ def explain_knowledge_stream():
                     user_id=user_id,
                     course_id=course_id,
                     mastery_level=mastery_level,
+                    user_role=session_user_role,
                 ):
                     yield sse.send_message(chunk, event='message')
 
@@ -173,6 +181,7 @@ def recommend_resources():
             topic=topic,
             user_id=user_id,
             course_id=course_id,
+            user_role=session.get('user_role'),
         )
 
         return jsonify({'resources': result}), 200
@@ -195,6 +204,7 @@ def suggest_learning_path():
             user_id=user_id,
             course_id=course_id,
             custom_goals=custom_goals,
+            user_role=session.get('user_role'),
         )
 
         return jsonify(result), 200
@@ -246,6 +256,8 @@ def diagnosis_report_stream():
         user_id = session['user_id']
         course_id = data.get('course_id')
 
+        session_user_role = session.get('user_role')
+
         def generate():
             sse = SSEStream(retry=3000)
             try:
@@ -254,6 +266,7 @@ def diagnosis_report_stream():
                 for chunk in ai_tutor_service.generate_diagnosis_report_stream(
                     user_id=user_id,
                     course_id=course_id,
+                    user_role=session_user_role,
                 ):
                     yield sse.send_message(chunk, event='message')
 

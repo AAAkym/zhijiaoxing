@@ -29,14 +29,19 @@ class AgentBase(ABC):
     def get_capabilities(self):
         return []
 
-    def _call_llm(self, prompt, system_prompt=None, temperature=0.7):
+    def _call_llm(self, prompt, system_prompt=None, temperature=0.7, user_id=None, user_role=None):
         if not self.spark_service:
-            raise RuntimeError("Spark service not configured")
+            raise RuntimeError("AI服务未配置，请在环境变量中设置SPARK_API_PASSWORD")
+        if hasattr(self.spark_service, 'is_configured') and not self.spark_service.is_configured():
+            raise RuntimeError("AI服务凭证未配置，请检查SPARK_API_PASSWORD环境变量")
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
-        return self.spark_service.chat(messages, temperature=temperature)
+        try:
+            return self.spark_service.chat(messages, user_id=user_id, user_role=user_role, call_type='multi_agent')
+        except TypeError:
+            return self.spark_service.chat(messages)
 
     def to_dict(self):
         return {

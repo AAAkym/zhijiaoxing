@@ -59,7 +59,7 @@ def api_optimize_prompt():
         prompt_type = data.get('prompt_type')
         if not prompt_type:
             return jsonify({'error': 'prompt_type is required'}), 400
-        result = optimize_ai_prompt(prompt_type, data.get('current_issues'))
+        result = optimize_ai_prompt(prompt_type, data.get('current_issues'), user_id=session.get('user_id'), user_role=session.get('user_role'))
         return jsonify(result), 200
     except Exception as e:
         logger.error('Prompt optimization error: %s', e)

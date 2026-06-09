@@ -113,9 +113,9 @@ export default function StudentDashboard({ user, onLogout }) {
     { day: '周日', hours: 2.8, completed: 3 }
   ])
   const [courseProgressData, setCourseProgressData] = useState([
-    { name: 'Python 基础', progress: 78, color: '#3B82F6' },
-    { name: 'TensorFlow.js', progress: 65, color: '#10B981' },
-    { name: '深度学习', progress: 45, color: '#F59E0B' }
+    { name: 'Python 基础', progress: 78, color: '#d4a853' },
+    { name: 'TensorFlow.js', progress: 65, color: '#5a9e6f' },
+    { name: '深度学习', progress: 45, color: '#c47a3a' }
   ])
   const [recentActivities, setRecentActivities] = useState([])
 
@@ -273,9 +273,9 @@ export default function StudentDashboard({ user, onLogout }) {
       } else {
         // 模拟数据：课程完成度
         setCourseProgressData([
-          { name: 'Python 基础', progress: 78, color: '#3B82F6' },
-          { name: 'TensorFlow.js', progress: 65, color: '#10B981' },
-          { name: '深度学习', progress: 45, color: '#F59E0B' }
+          { name: 'Python 基础', progress: 78, color: '#d4a853' },
+          { name: 'TensorFlow.js', progress: 65, color: '#5a9e6f' },
+          { name: '深度学习', progress: 45, color: '#c47a3a' }
         ])
       }
     } catch (error) {
@@ -291,9 +291,9 @@ export default function StudentDashboard({ user, onLogout }) {
         { day: '周日', hours: 2.8, completed: 3 }
       ])
       setCourseProgressData([
-        { name: 'Python 基础', progress: 78, color: '#3B82F6' },
-        { name: 'TensorFlow.js', progress: 65, color: '#10B981' },
-        { name: '深度学习', progress: 45, color: '#F59E0B' }
+        { name: 'Python 基础', progress: 78, color: '#d4a853' },
+        { name: 'TensorFlow.js', progress: 65, color: '#5a9e6f' },
+        { name: '深度学习', progress: 45, color: '#c47a3a' }
       ])
     }
   }, [])
@@ -1003,8 +1003,8 @@ export default function StudentDashboard({ user, onLogout }) {
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">我的课程</h2>
-                <p className="text-gray-600">查看和管理你的学习课程</p>
+                <h2 className="text-2xl font-bold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>我的课程</h2>
+                <p className="text-[#6b6560]">查看和管理你的学习课程</p>
               </div>
               <Button variant="outline" onClick={fetchMyCourses} disabled={coursesLoading}>
                 <RefreshCw className={`w-4 h-4 mr-2 ${coursesLoading ? 'animate-spin' : ''}`} />
@@ -1023,50 +1023,50 @@ export default function StudentDashboard({ user, onLogout }) {
 
             {coursesLoading ? (
               <div className="flex justify-center items-center py-12">
-                <RefreshCw className="w-8 h-8 animate-spin text-blue-600" />
-                <span className="ml-2 text-gray-600">加载中...</span>
+                <RefreshCw className="w-8 h-8 animate-spin text-[#d4a853]" />
+                <span className="ml-2 text-[#6b6560]">加载中...</span>
               </div>
             ) : myCourses.length === 0 ? (
-              <Card>
+              <Card className="rounded-xl">
                 <CardContent className="p-8 text-center">
-                  <BookOpen className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                  <p className="text-gray-600">暂无课程，请联系教师添加课程</p>
+                  <BookOpen className="w-12 h-12 mx-auto text-[#9a9590] mb-4" />
+                  <p className="text-[#6b6560]">暂无课程，请联系教师添加课程</p>
                 </CardContent>
               </Card>
             ) : (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Card>
+                  <Card className="rounded-xl">
                     <CardContent className="p-6">
                       <div className="flex items-center">
-                        <BookOpen className="h-8 w-8 text-blue-600" />
+                        <BookOpen className="h-8 w-8 text-[#d4a853]" />
                         <div className="ml-4">
-                          <p className="text-sm font-medium text-gray-600">已选课程</p>
-                          <p className="text-2xl font-bold text-gray-900">{myCourses.length}</p>
+                          <p className="text-sm font-medium text-[#6b6560]">已选课程</p>
+                          <p className="text-2xl font-bold text-[#2d2a26]">{myCourses.length}</p>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
-                  <Card>
+                  <Card className="rounded-xl">
                     <CardContent className="p-6">
                       <div className="flex items-center">
-                        <TrendingUp className="h-8 w-8 text-green-600" />
+                        <TrendingUp className="h-8 w-8 text-[#5a9e6f]" />
                         <div className="ml-4">
-                          <p className="text-sm font-medium text-gray-600">平均进度</p>
-                          <p className="text-2xl font-bold text-gray-900">
+                          <p className="text-sm font-medium text-[#6b6560]">平均进度</p>
+                          <p className="text-2xl font-bold text-[#2d2a26]">
                             {myCourses.length > 0 ? Math.round(myCourses.reduce((sum, course) => sum + course.progress, 0) / myCourses.length) : 0}%
                           </p>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
-                  <Card>
+                  <Card className="rounded-xl">
                     <CardContent className="p-6">
                       <div className="flex items-center">
-                        <CheckCircle className="h-8 w-8 text-purple-600" />
+                        <CheckCircle className="h-8 w-8 text-[#8b6fb0]" />
                         <div className="ml-4">
-                          <p className="text-sm font-medium text-gray-600">完成考核</p>
-                          <p className="text-2xl font-bold text-gray-900">{stats.completedExams}</p>
+                          <p className="text-sm font-medium text-[#6b6560]">完成考核</p>
+                          <p className="text-2xl font-bold text-[#2d2a26]">{stats.completedExams}</p>
                         </div>
                       </div>
                     </CardContent>
@@ -1075,15 +1075,15 @@ export default function StudentDashboard({ user, onLogout }) {
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                   {myCourses.map((course) => (
-                    <Card key={course.id} className="hover:shadow-lg transition-shadow">
+                    <Card key={course.id} className="hover:shadow-lg transition-shadow rounded-xl">
                       <CardHeader>
                         <div className="flex justify-between items-start">
                           <div>
-                            <CardTitle className="text-lg">{course.title}</CardTitle>
-                            {course.subtitle && <p className="text-sm text-gray-700">{course.subtitle}</p>}
-                            <p className="text-sm text-gray-600">讲师：{course.instructor}</p>
+                            <CardTitle className="text-lg" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{course.title}</CardTitle>
+                            {course.subtitle && <p className="text-sm text-[#6b6560]">{course.subtitle}</p>}
+                            <p className="text-sm text-[#6b6560]">讲师：{course.instructor}</p>
                           </div>
-                          <Badge className={course.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                          <Badge className={course.status === 'active' ? 'bg-[#5a9e6f18] text-[#5a9e6f]' : 'bg-[#f5f2ee] text-[#6b6560]'}>
                             {course.status === 'active' ? '进行中' : '已完成'}
                           </Badge>
                         </div>
@@ -1102,20 +1102,20 @@ export default function StudentDashboard({ user, onLogout }) {
                             <Progress value={course.progress} className="h-2" />
                           </div>
                           <div>
-                            {course.description && <p className="text-sm text-gray-700 line-clamp-2">{course.description}</p>}
-                            <p className="text-sm text-gray-600">下节课：{course.nextLesson} · {course.nextLessonDate || ''}</p>
+                            {course.description && <p className="text-sm text-[#6b6560] line-clamp-2">{course.description}</p>}
+                            <p className="text-sm text-[#6b6560]">下节课：{course.nextLesson} · {course.nextLessonDate || ''}</p>
                             <div className="mt-2 flex flex-wrap gap-2">
                               {(course.tags || []).slice(0,4).map((t, i) => (
-                            <Badge key={i} className="bg-gray-100 text-gray-800">{t}</Badge>
+                            <Badge key={i} className="bg-[#f5f2ee] text-[#6b6560]">{t}</Badge>
                           ))}
                         </div>
                       </div>
                       <div className="flex space-x-2">
-                        <Button size="sm" className="flex-1" onClick={() => navigate(`/student/course/${course.id}`)}>
+                        <Button size="sm" className="flex-1 rounded-[10px]" onClick={() => navigate(`/student/course/${course.id}`)}>
                           <Play className="w-4 h-4 mr-2" />
                           继续学习
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => navigate(`/student/course/${course.id}`)}>
+                        <Button variant="outline" size="sm" className="rounded-[10px]" onClick={() => navigate(`/student/course/${course.id}`)}>
                           查看详情
                         </Button>
                       </div>
@@ -1133,8 +1133,8 @@ export default function StudentDashboard({ user, onLogout }) {
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">AI助教</h2>
-              <p className="text-gray-600">智能答疑、知识讲解、学习引导与诊断</p>
+              <h2 className="text-2xl font-bold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>AI助教</h2>
+              <p className="text-[#6b6560]">智能答疑、知识讲解、学习引导与诊断</p>
             </div>
 
             <AITutorPanel className="h-[600px]" />
@@ -1173,8 +1173,8 @@ export default function StudentDashboard({ user, onLogout }) {
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">学习成就</h2>
-              <p className="text-gray-600">追踪你的学习里程碑，解锁更多成就</p>
+              <h2 className="text-2xl font-bold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>学习成就</h2>
+              <p className="text-[#6b6560]">追踪你的学习里程碑，解锁更多成就</p>
             </div>
             <AchievementPanel />
           </div>
@@ -1184,51 +1184,51 @@ export default function StudentDashboard({ user, onLogout }) {
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">学习进度</h2>
-              <p className="text-gray-600">你的学习时长和课程完成情况</p>
+              <h2 className="text-2xl font-bold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>学习进度</h2>
+              <p className="text-[#6b6560]">你的学习时长和课程完成情况</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card>
+              <Card className="rounded-xl">
                 <CardContent className="p-6">
                   <div className="flex items-center">
                     <BookX className="h-8 w-8 text-red-600" />
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">错题总数</p>
-                      <p className="text-2xl font-bold text-gray-900">{mistakeStats.total}</p>
+                      <p className="text-sm font-medium text-[#6b6560]">错题总数</p>
+                      <p className="text-2xl font-bold text-[#2d2a26]">{mistakeStats.total}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="rounded-xl">
                 <CardContent className="p-6">
                   <div className="flex items-center">
-                    <AlertTriangle className="h-8 w-8 text-orange-600" />
+                    <AlertTriangle className="h-8 w-8 text-[#c47a3a]" />
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">待复习</p>
-                      <p className="text-2xl font-bold text-gray-900">{mistakeStats.unmastered + mistakeStats.reviewing}</p>
+                      <p className="text-sm font-medium text-[#6b6560]">待复习</p>
+                      <p className="text-2xl font-bold text-[#2d2a26]">{mistakeStats.unmastered + mistakeStats.reviewing}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="rounded-xl">
                 <CardContent className="p-6">
                   <div className="flex items-center">
-                    <CheckCircle className="h-8 w-8 text-green-600" />
+                    <CheckCircle className="h-8 w-8 text-[#5a9e6f]" />
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">已掌握</p>
-                      <p className="text-2xl font-bold text-gray-900">{mistakeStats.mastered}</p>
+                      <p className="text-sm font-medium text-[#6b6560]">已掌握</p>
+                      <p className="text-2xl font-bold text-[#2d2a26]">{mistakeStats.mastered}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="rounded-xl">
                 <CardContent className="p-6">
                   <div className="flex items-center">
-                    <StickyNote className="h-8 w-8 text-purple-600" />
+                    <StickyNote className="h-8 w-8 text-[#8b6fb0]" />
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">学习笔记</p>
-                      <p className="text-2xl font-bold text-gray-900">{noteStats.total}</p>
+                      <p className="text-sm font-medium text-[#6b6560]">学习笔记</p>
+                      <p className="text-2xl font-bold text-[#2d2a26]">{noteStats.total}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -1236,9 +1236,9 @@ export default function StudentDashboard({ user, onLogout }) {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card>
+              <Card className="rounded-xl">
                 <CardHeader>
-                  <CardTitle>每周学习时长</CardTitle>
+                  <CardTitle style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>每周学习时长</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {weeklyProgressData.length > 0 ? (
@@ -1253,20 +1253,20 @@ export default function StudentDashboard({ user, onLogout }) {
                         <XAxis dataKey="day" />
                         <YAxis />
                         <Tooltip />
-                        <Area type="monotone" dataKey="hours" stroke="#8884d8" fill="#8884d8" />
+                        <Area type="monotone" dataKey="hours" stroke="#d4a853" fill="#d4a85320" />
                       </AreaChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex items-center justify-center h-[300px] text-gray-400">
+                    <div className="flex items-center justify-center h-[300px] text-[#9a9590]">
                       <p>暂无学习时长数据</p>
                     </div>
                   )}
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="rounded-xl">
                 <CardHeader>
-                  <CardTitle>课程完成度</CardTitle>
+                  <CardTitle style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>课程完成度</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {courseProgressData.length > 0 ? (
@@ -1276,11 +1276,11 @@ export default function StudentDashboard({ user, onLogout }) {
                         <XAxis dataKey="name" tick={{ fontSize: 11, angle: -30, textAnchor: 'end' }} interval={0} height={60} />
                         <YAxis />
                         <Tooltip />
-                        <Bar dataKey="progress" fill="#82ca9d" />
+                        <Bar dataKey="progress" fill="#d4a853" />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex items-center justify-center h-[300px] text-gray-400">
+                    <div className="flex items-center justify-center h-[300px] text-[#9a9590]">
                       <p>暂无课程进度数据</p>
                     </div>
                   )}
@@ -1289,9 +1289,9 @@ export default function StudentDashboard({ user, onLogout }) {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
+              <Card className="rounded-xl">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                     <BookX className="h-5 w-5 text-red-500" />
                     错题掌握情况
                   </CardTitle>
@@ -1311,31 +1311,31 @@ export default function StudentDashboard({ user, onLogout }) {
                     <div>
                       <div className="flex justify-between text-sm mb-2">
                         <span>复习中</span>
-                        <span className="text-orange-600">{mistakeStats.reviewing} 道</span>
+                        <span className="text-[#c47a3a]">{mistakeStats.reviewing} 道</span>
                       </div>
                       <Progress 
                         value={mistakeStats.total > 0 ? (mistakeStats.reviewing / mistakeStats.total) * 100 : 0} 
-                        className="h-2 bg-orange-100 [&>div]:bg-orange-500" 
+                        className="h-2 bg-[#c47a3a20] [&>div]:bg-[#c47a3a]" 
                       />
                     </div>
                     <div>
                       <div className="flex justify-between text-sm mb-2">
                         <span>已掌握</span>
-                        <span className="text-green-600">{mistakeStats.mastered} 道</span>
+                        <span className="text-[#5a9e6f]">{mistakeStats.mastered} 道</span>
                       </div>
                       <Progress 
                         value={mistakeStats.total > 0 ? (mistakeStats.mastered / mistakeStats.total) * 100 : 0} 
-                        className="h-2 bg-green-100 [&>div]:bg-green-500" 
+                        className="h-2 bg-[#5a9e6f20] [&>div]:bg-[#5a9e6f]" 
                       />
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="rounded-xl">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <StickyNote className="h-5 w-5 text-purple-500" />
+                  <CardTitle className="flex items-center gap-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                    <StickyNote className="h-5 w-5 text-[#8b6fb0]" />
                     笔记活动时间线
                   </CardTitle>
                 </CardHeader>
@@ -1345,16 +1345,16 @@ export default function StudentDashboard({ user, onLogout }) {
                       {noteStats.recentNotes.map((note, index) => (
                         <div key={note.id || index} className="flex gap-3">
                           <div className="flex flex-col items-center">
-                            <div className="w-3 h-3 rounded-full bg-purple-500" />
+                            <div className="w-3 h-3 rounded-full bg-[#8b6fb0]" />
                             {index < noteStats.recentNotes.length - 1 && (
-                              <div className="w-0.5 h-full bg-purple-200 mt-1" />
+                              <div className="w-0.5 h-full bg-[#8b6fb040] mt-1" />
                             )}
                           </div>
                           <div className="flex-1 pb-4">
-                            <p className="text-sm font-medium text-gray-800">
+                            <p className="text-sm font-medium text-[#2d2a26]">
                               {note.title || '无标题笔记'}
                             </p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-[#9a9590]">
                               {note.created_at ? new Date(note.created_at).toLocaleString('zh-CN') : ''}
                             </p>
                             {note.course_title && (
@@ -1367,8 +1367,8 @@ export default function StudentDashboard({ user, onLogout }) {
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-8 text-gray-500">
-                      <StickyNote className="h-10 w-10 mx-auto mb-2 text-gray-300" />
+                    <div className="text-center py-8 text-[#9a9590]">
+                      <StickyNote className="h-10 w-10 mx-auto mb-2 text-[#9a9590]" />
                       <p className="text-sm">暂无笔记记录</p>
                     </div>
                   )}
@@ -1376,11 +1376,11 @@ export default function StudentDashboard({ user, onLogout }) {
               </Card>
             </div>
 
-            <Card>
+            <Card className="rounded-xl">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle>学习成就</CardTitle>
-                  <Button variant="outline" size="sm" onClick={() => setCurrentView('achievements')}>
+                  <CardTitle style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>学习成就</CardTitle>
+                  <Button variant="outline" size="sm" className="rounded-[10px]" onClick={() => setCurrentView('achievements')}>
                     查看全部
                   </Button>
                 </div>
@@ -1392,41 +1392,41 @@ export default function StudentDashboard({ user, onLogout }) {
                       <BookX className="h-8 w-8 text-red-500" />
                       <div>
                         <p className="font-medium">错题克星</p>
-                        <p className="text-sm text-gray-600">掌握10道以上错题</p>
+                        <p className="text-sm text-[#6b6560]">掌握10道以上错题</p>
                       </div>
                     </div>
                   )}
                   {noteStats.total >= 10 && (
                     <div className="flex items-center space-x-3">
-                      <StickyNote className="h-8 w-8 text-purple-500" />
+                      <StickyNote className="h-8 w-8 text-[#8b6fb0]" />
                       <div>
                         <p className="font-medium">笔记达人</p>
-                        <p className="text-sm text-gray-600">创建10篇以上笔记</p>
+                        <p className="text-sm text-[#6b6560]">创建10篇以上笔记</p>
                       </div>
                     </div>
                   )}
                   {stats.completedExams >= 5 && (
                     <div className="flex items-center space-x-3">
-                      <Award className="h-8 w-8 text-yellow-500" />
+                      <Award className="h-8 w-8 text-[#d4a853]" />
                       <div>
                         <p className="font-medium">考核达人</p>
-                        <p className="text-sm text-gray-600">完成5次以上考核</p>
+                        <p className="text-sm text-[#6b6560]">完成5次以上考核</p>
                       </div>
                     </div>
                   )}
                   {stats.practiceCount >= 20 && (
                     <div className="flex items-center space-x-3">
-                      <Star className="h-8 w-8 text-blue-500" />
+                      <Star className="h-8 w-8 text-[#d4a853]" />
                       <div>
                         <p className="font-medium">练习之星</p>
-                        <p className="text-sm text-gray-600">累计练习20次以上</p>
+                        <p className="text-sm text-[#6b6560]">累计练习20次以上</p>
                       </div>
                     </div>
                   )}
                   {mistakeStats.mastered < 10 && noteStats.total < 10 && stats.completedExams < 5 && stats.practiceCount < 20 && (
-                    <div className="col-span-full flex items-center justify-center py-8 text-gray-400">
+                    <div className="col-span-full flex items-center justify-center py-8 text-[#9a9590]">
                       <div className="text-center">
-                        <Award className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                        <Award className="h-12 w-12 mx-auto mb-3 text-[#9a9590]" />
                         <p className="text-sm">继续学习，解锁更多成就</p>
                       </div>
                     </div>
@@ -1441,8 +1441,8 @@ export default function StudentDashboard({ user, onLogout }) {
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">学生设置</h2>
-              <p className="text-gray-600">管理你的个人信息和偏好设置</p>
+              <h2 className="text-2xl font-bold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>学生设置</h2>
+              <p className="text-[#6b6560]">管理你的个人信息和偏好设置</p>
             </div>
             <StudentSettings 
               onSettingsChange={handleSettingsChange} 
@@ -1455,102 +1455,101 @@ export default function StudentDashboard({ user, onLogout }) {
         return (
           <div className="space-y-6">
             {studentSettings?.learning_goal && (
-              <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+              <Card className="bg-gradient-to-r from-[#faf8f5] to-[#f5f2ee] border-[#e8e4df] rounded-xl">
                 <CardHeader className="pb-2">
                   <div className="flex items-center space-x-2">
-                    <Flag className="h-5 w-5 text-blue-600" />
-                    <CardTitle className="text-lg text-blue-800">我的学习目标</CardTitle>
+                    <Flag className="h-5 w-5 text-[#d4a853]" />
+                    <CardTitle className="text-lg text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>我的学习目标</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <pre className="whitespace-pre-wrap text-sm text-blue-900">
+                  <pre className="whitespace-pre-wrap text-sm text-[#2d2a26]">
                     {studentSettings.learning_goal}
                   </pre>
                 </CardContent>
               </Card>
             )}
             
-            {/* 概览标题 */}
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">学生概览</h2>
-              <p className="text-gray-600">欢迎回来！</p>
+              <h2 className="text-2xl font-bold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>学生概览</h2>
+              <p className="text-[#6b6560]">欢迎回来！</p>
             </div>
 
             {/* 统计卡片 */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-              <Card>
+              <Card className="rounded-xl">
                 <CardContent className="p-6">
                   <div className="flex items-center">
-                    <BookOpen className="h-8 w-8 text-blue-600" />
+                    <BookOpen className="h-8 w-8 text-[#d4a853]" />
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">已选课程</p>
-                      <p className="text-2xl font-bold text-gray-900">{stats.enrolledCourses}</p>
-                      <p className="text-xs text-gray-500">你正在学习的课程</p>
+                      <p className="text-sm font-medium text-[#6b6560]">已选课程</p>
+                      <p className="text-2xl font-bold text-[#2d2a26]">{stats.enrolledCourses}</p>
+                      <p className="text-xs text-[#9a9590]">你正在学习的课程</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="rounded-xl">
                 <CardContent className="p-6">
                   <div className="flex items-center">
-                    <Award className="h-8 w-8 text-green-600" />
+                    <Award className="h-8 w-8 text-[#5a9e6f]" />
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">完成考核</p>
-                      <p className="text-2xl font-bold text-gray-900">{stats.completedExams}</p>
-                      <p className="text-xs text-gray-500">已完成的考试和测验</p>
+                      <p className="text-sm font-medium text-[#6b6560]">完成考核</p>
+                      <p className="text-2xl font-bold text-[#2d2a26]">{stats.completedExams}</p>
+                      <p className="text-xs text-[#9a9590]">已完成的考试和测验</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="rounded-xl">
                 <CardContent className="p-6">
                   <div className="flex items-center">
-                    <Target className="h-8 w-8 text-purple-600" />
+                    <Target className="h-8 w-8 text-[#8b6fb0]" />
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">练习次数</p>
-                      <p className="text-2xl font-bold text-gray-900">{stats.practiceCount}</p>
-                      <p className="text-xs text-gray-500">累计练习次数</p>
+                      <p className="text-sm font-medium text-[#6b6560]">练习次数</p>
+                      <p className="text-2xl font-bold text-[#2d2a26]">{stats.practiceCount}</p>
+                      <p className="text-xs text-[#9a9590]">累计练习次数</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="rounded-xl">
                 <CardContent className="p-6">
                   <div className="flex items-center">
-                    <TrendingUp className="h-8 w-8 text-orange-600" />
+                    <TrendingUp className="h-8 w-8 text-[#c47a3a]" />
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">平均得分</p>
-                      <p className="text-2xl font-bold text-gray-900">{stats.averageScore}</p>
-                      <p className="text-xs text-gray-500">所有考核的平均分</p>
+                      <p className="text-sm font-medium text-[#6b6560]">平均得分</p>
+                      <p className="text-2xl font-bold text-[#2d2a26]">{stats.averageScore}</p>
+                      <p className="text-xs text-[#9a9590]">所有考核的平均分</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setCurrentView('mistakeBook')}>
+              <Card className="cursor-pointer hover:shadow-md transition-shadow rounded-xl" onClick={() => setCurrentView('mistakeBook')}>
                 <CardContent className="p-6">
                   <div className="flex items-center">
                     <BookX className="h-8 w-8 text-red-600" />
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">错题总数</p>
-                      <p className="text-2xl font-bold text-gray-900">{mistakeStats.total}</p>
-                      <p className="text-xs text-gray-500">待复习: {mistakeStats.unmastered + mistakeStats.reviewing}</p>
+                      <p className="text-sm font-medium text-[#6b6560]">错题总数</p>
+                      <p className="text-2xl font-bold text-[#2d2a26]">{mistakeStats.total}</p>
+                      <p className="text-xs text-[#9a9590]">待复习: {mistakeStats.unmastered + mistakeStats.reviewing}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setCurrentView('notes')}>
+              <Card className="cursor-pointer hover:shadow-md transition-shadow rounded-xl" onClick={() => setCurrentView('notes')}>
                 <CardContent className="p-6">
                   <div className="flex items-center">
-                    <StickyNote className="h-8 w-8 text-indigo-600" />
+                    <StickyNote className="h-8 w-8 text-[#8b6fb0]" />
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">学习笔记</p>
-                      <p className="text-2xl font-bold text-gray-900">{noteStats.total}</p>
-                      <p className="text-xs text-gray-500">公开: {noteStats.public}</p>
+                      <p className="text-sm font-medium text-[#6b6560]">学习笔记</p>
+                      <p className="text-2xl font-bold text-[#2d2a26]">{noteStats.total}</p>
+                      <p className="text-xs text-[#9a9590]">公开: {noteStats.public}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -1559,34 +1558,34 @@ export default function StudentDashboard({ user, onLogout }) {
 
             {/* 快速操作 */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">快速操作</h3>
-              <p className="text-gray-600 mb-6">常用学习功能快速入口</p>
+              <h3 className="text-lg font-semibold text-[#2d2a26] mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>快速操作</h3>
+              <p className="text-[#6b6560] mb-6">常用学习功能快速入口</p>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setCurrentView('courses')}>
+                <Card className="cursor-pointer hover:shadow-lg transition-shadow rounded-xl" onClick={() => setCurrentView('courses')}>
                   <CardContent className="p-6 text-center">
-                    <BookOpen className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-                    <h4 className="font-semibold text-gray-900">我的课程</h4>
+                    <BookOpen className="h-12 w-12 text-[#d4a853] mx-auto mb-4" />
+                    <h4 className="font-semibold text-[#2d2a26]">我的课程</h4>
                   </CardContent>
                 </Card>
 
-                <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setCurrentView('aiTutor')}>
+                <Card className="cursor-pointer hover:shadow-lg transition-shadow rounded-xl" onClick={() => setCurrentView('aiTutor')}>
                   <CardContent className="p-6 text-center">
-                    <GraduationCap className="h-12 w-12 text-orange-600 mx-auto mb-4" />
-                    <h4 className="font-semibold text-gray-900">AI助教</h4>
+                    <GraduationCap className="h-12 w-12 text-[#c47a3a] mx-auto mb-4" />
+                    <h4 className="font-semibold text-[#2d2a26]">AI助教</h4>
                   </CardContent>
                 </Card>
 
-                <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setCurrentView('practice')}>
+                <Card className="cursor-pointer hover:shadow-lg transition-shadow rounded-xl" onClick={() => setCurrentView('practice')}>
                   <CardContent className="p-6 text-center">
-                    <Target className="h-12 w-12 text-green-600 mx-auto mb-4" />
-                    <h4 className="font-semibold text-gray-900">练习评测</h4>
+                    <Target className="h-12 w-12 text-[#5a9e6f] mx-auto mb-4" />
+                    <h4 className="font-semibold text-[#2d2a26]">练习评测</h4>
                   </CardContent>
                 </Card>
 
-                <Card className="cursor-pointer hover:shadow-lg transition-shadow relative" onClick={() => setCurrentView('mistakeBook')}>
+                <Card className="cursor-pointer hover:shadow-lg transition-shadow relative rounded-xl" onClick={() => setCurrentView('mistakeBook')}>
                   <CardContent className="p-6 text-center">
                     <BookX className="h-12 w-12 text-red-600 mx-auto mb-4" />
-                    <h4 className="font-semibold text-gray-900">错题本</h4>
+                    <h4 className="font-semibold text-[#2d2a26]">错题本</h4>
                     {mistakeStats.todayReview > 0 && (
                       <Badge className="absolute -top-2 -right-2 bg-red-500 text-white">
                         {mistakeStats.todayReview}
@@ -1595,17 +1594,17 @@ export default function StudentDashboard({ user, onLogout }) {
                   </CardContent>
                 </Card>
 
-                <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setCurrentView('targetedTherapy')}>
+                <Card className="cursor-pointer hover:shadow-lg transition-shadow rounded-xl" onClick={() => setCurrentView('targetedTherapy')}>
                   <CardContent className="p-6 text-center">
-                    <Crosshair className="h-12 w-12 text-purple-600 mx-auto mb-4" />
-                    <h4 className="font-semibold text-gray-900">靶向治疗</h4>
+                    <Crosshair className="h-12 w-12 text-[#8b6fb0] mx-auto mb-4" />
+                    <h4 className="font-semibold text-[#2d2a26]">靶向治疗</h4>
                   </CardContent>
                 </Card>
 
-                <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setCurrentView('notes')}>
+                <Card className="cursor-pointer hover:shadow-lg transition-shadow rounded-xl" onClick={() => setCurrentView('notes')}>
                   <CardContent className="p-6 text-center">
-                    <StickyNote className="h-12 w-12 text-purple-600 mx-auto mb-4" />
-                    <h4 className="font-semibold text-gray-900">学习笔记</h4>
+                    <StickyNote className="h-12 w-12 text-[#8b6fb0] mx-auto mb-4" />
+                    <h4 className="font-semibold text-[#2d2a26]">学习笔记</h4>
                   </CardContent>
                 </Card>
               </div>
@@ -1613,22 +1612,22 @@ export default function StudentDashboard({ user, onLogout }) {
 
             {/* 最近活动和系统警告 */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card>
+              <Card className="rounded-xl">
                 <CardHeader>
-                  <CardTitle>最近活动</CardTitle>
-                  <p className="text-sm text-gray-600">你的学习活动记录</p>
+                  <CardTitle style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>最近活动</CardTitle>
+                  <p className="text-sm text-[#6b6560]">你的学习活动记录</p>
                 </CardHeader>
                 <CardContent>
                   {recentActivities.length > 0 ? (
                     <div className="space-y-4">
                       {recentActivities.map((activity, index) => (
                         <div key={index} className="flex items-center space-x-3">
-                          {activity.icon === 'check' ? <CheckCircle className="h-5 w-5 text-green-600" /> :
-                           activity.icon === 'message' ? <MessageCircle className="h-5 w-5 text-blue-600" /> :
-                           <BookOpen className="h-5 w-5 text-orange-600" />}
+                          {activity.icon === 'check' ? <CheckCircle className="h-5 w-5 text-[#5a9e6f]" /> :
+                           activity.icon === 'message' ? <MessageCircle className="h-5 w-5 text-[#d4a853]" /> :
+                           <BookOpen className="h-5 w-5 text-[#c47a3a]" />}
                           <div>
                             <p className="text-sm font-medium">{activity.description || activity.title}</p>
-                            <p className="text-xs text-gray-500">{activity.time || activity.created_at || ''}</p>
+                            <p className="text-xs text-[#9a9590]">{activity.time || activity.created_at || ''}</p>
                           </div>
                         </div>
                       ))}
@@ -1636,26 +1635,26 @@ export default function StudentDashboard({ user, onLogout }) {
                   ) : (
                     <div className="flex items-center justify-center py-8">
                       <div className="text-center">
-                        <CheckCircle className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                        <p className="text-sm text-gray-500">暂无活动记录</p>
+                        <CheckCircle className="h-16 w-16 text-[#9a9590] mx-auto mb-4" />
+                        <p className="text-sm text-[#9a9590]">暂无活动记录</p>
                       </div>
                     </div>
                   )}
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="rounded-xl">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                     <AlertTriangle className="h-5 w-5 text-amber-500" />
                     错题复习提醒
                   </CardTitle>
-                  <p className="text-sm text-gray-600">今日待复习的错题</p>
+                  <p className="text-sm text-[#6b6560]">今日待复习的错题</p>
                 </CardHeader>
                 <CardContent>
                   {mistakeStats.todayReview > 0 ? (
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                      <div className="flex items-center justify-between p-3 bg-red-50 rounded-xl">
                         <div className="flex items-center gap-2">
                           <BookX className="h-5 w-5 text-red-600" />
                           <span className="text-sm font-medium text-red-800">
@@ -1666,12 +1665,12 @@ export default function StudentDashboard({ user, onLogout }) {
                           size="sm" 
                           variant="outline"
                           onClick={() => setCurrentView('mistakeBook')}
-                          className="text-red-600 border-red-200 hover:bg-red-100"
+                          className="text-red-600 border-red-200 hover:bg-red-100 rounded-[10px]"
                         >
                           去复习
                         </Button>
                       </div>
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-[#6b6560]">
                         <p>未掌握: {mistakeStats.unmastered} 道</p>
                         <p>复习中: {mistakeStats.reviewing} 道</p>
                         <p>已掌握: {mistakeStats.mastered} 道</p>
@@ -1680,22 +1679,22 @@ export default function StudentDashboard({ user, onLogout }) {
                   ) : (
                     <div className="flex items-center justify-center py-6">
                       <div className="text-center">
-                        <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
-                        <p className="text-sm text-gray-600">今日错题已复习完毕</p>
-                        <p className="text-xs text-gray-400 mt-1">继续保持！</p>
+                        <CheckCircle className="h-12 w-12 text-[#5a9e6f] mx-auto mb-3" />
+                        <p className="text-sm text-[#6b6560]">今日错题已复习完毕</p>
+                        <p className="text-xs text-[#9a9590] mt-1">继续保持！</p>
                       </div>
                     </div>
                   )}
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="rounded-xl">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <StickyNote className="h-5 w-5 text-purple-500" />
+                  <CardTitle className="flex items-center gap-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                    <StickyNote className="h-5 w-5 text-[#8b6fb0]" />
                     最近笔记
                   </CardTitle>
-                  <p className="text-sm text-gray-600">你最近创建的学习笔记</p>
+                  <p className="text-sm text-[#6b6560]">你最近创建的学习笔记</p>
                 </CardHeader>
                 <CardContent>
                   {noteStats.recentNotes.length > 0 ? (
@@ -1703,15 +1702,15 @@ export default function StudentDashboard({ user, onLogout }) {
                       {noteStats.recentNotes.slice(0, 3).map((note, index) => (
                         <div 
                           key={note.id || index}
-                          className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer"
+                          className="flex items-center gap-3 p-2 hover:bg-[#f5f2ee] rounded-xl cursor-pointer"
                           onClick={() => setCurrentView('notes')}
                         >
-                          <FileText className="h-4 w-4 text-gray-400 shrink-0" />
+                          <FileText className="h-4 w-4 text-[#9a9590] shrink-0" />
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-800 truncate">
+                            <p className="text-sm font-medium text-[#2d2a26] truncate">
                               {note.title || '无标题笔记'}
                             </p>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-[#9a9590]">
                               {note.created_at ? new Date(note.created_at).toLocaleDateString('zh-CN') : ''}
                             </p>
                           </div>
@@ -1722,7 +1721,7 @@ export default function StudentDashboard({ user, onLogout }) {
                           variant="link" 
                           size="sm" 
                           onClick={() => setCurrentView('notes')}
-                          className="w-full text-purple-600"
+                          className="w-full text-[#8b6fb0]"
                         >
                           查看全部 {noteStats.total} 篇笔记
                         </Button>
@@ -1731,13 +1730,13 @@ export default function StudentDashboard({ user, onLogout }) {
                   ) : (
                     <div className="flex items-center justify-center py-6">
                       <div className="text-center">
-                        <StickyNote className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                        <p className="text-sm text-gray-500">暂无笔记</p>
+                        <StickyNote className="h-12 w-12 text-[#9a9590] mx-auto mb-3" />
+                        <p className="text-sm text-[#9a9590]">暂无笔记</p>
                         <Button 
                           size="sm" 
                           variant="outline"
                           onClick={() => setCurrentView('notes')}
-                          className="mt-2"
+                          className="mt-2 rounded-[10px]"
                         >
                           创建笔记
                         </Button>
@@ -1753,19 +1752,21 @@ export default function StudentDashboard({ user, onLogout }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* 顶部导航 */}
-      <div className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-[#faf8f5]">
+      <div className="bg-white shadow-sm border-b border-[#e8e4df]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">生</span>
+                <div className="w-8 h-8 bg-[#d4a853] rounded-[10px] flex items-center justify-center">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L14.09 8.26L20.18 8.63L15.54 12.74L16.91 19.02L12 15.77L7.09 19.02L8.46 12.74L3.82 8.63L9.91 8.26L12 2Z" fill="white" stroke="white" strokeWidth="1"/>
+                    <path d="M6 20V14L12 18L18 14V20L12 22L6 20Z" fill="white" stroke="white" strokeWidth="0.5"/>
+                  </svg>
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-gray-900">学生控台</h1>
-                  <p className="text-sm text-gray-600">欢迎回来</p>
+                  <h1 className="text-xl font-bold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>智教星</h1>
+                  <p className="text-xs text-[#9a9590]">自适应错题诊疗系统</p>
                 </div>
               </div>
             </div>
@@ -1778,16 +1779,16 @@ export default function StudentDashboard({ user, onLogout }) {
                   </AvatarFallback>
                 </Avatar>
                 <div className="text-right">
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-sm font-medium text-[#2d2a26]">
                     {studentSettings?.real_name || user?.username}
                   </p>
-                  <p className="text-xs text-gray-500">学生</p>
+                  <p className="text-xs text-[#9a9590]">学生</p>
                 </div>
               </div>
-              <Badge variant="outline" className="text-green-600 border-green-600">
+              <Badge variant="outline" className="text-[#5a9e6f] border-[#5a9e6f]">
                 在线
               </Badge>
-              <Button variant="outline" onClick={async () => {
+              <Button variant="outline" className="rounded-[10px]" onClick={async () => {
                 try {
                   await auth.logout()
                 } catch (err) {
@@ -1806,7 +1807,6 @@ export default function StudentDashboard({ user, onLogout }) {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex">
-          {/* 侧边栏 */}
           <div className="w-64 mr-8">
             <nav className="space-y-2">
               {menuItems.map((item) => {
@@ -1815,10 +1815,10 @@ export default function StudentDashboard({ user, onLogout }) {
                   <button
                     key={item.id}
                     onClick={() => setCurrentView(item.id)}
-                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
+                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-colors ${
                       currentView === item.id
-                        ? 'bg-blue-100 text-blue-700 border-l-4 border-blue-700'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        ? 'bg-[#d4a85312] text-[#d4a853] border-l-4 border-[#d4a853]'
+                        : 'text-[#6b6560] hover:bg-[#f5f2ee]'
                     }`}
                   >
                     <Icon className="h-5 w-5" />
@@ -1829,7 +1829,6 @@ export default function StudentDashboard({ user, onLogout }) {
             </nav>
           </div>
 
-          {/* 主内容区 */}
           <div className="flex-1">
             {renderContent()}
           </div>

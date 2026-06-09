@@ -96,15 +96,16 @@ function App() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const controller = new AbortController()
-    checkAuth(controller.signal)
-    return () => controller.abort()
+    let cancelled = false
+    checkAuth(cancelled)
+    return () => { cancelled = true }
   }, [])
 
-  const checkAuth = async (signal) => {
+  const checkAuth = async (cancelled) => {
     try {
       try {
-        const response = await getCurrentUser(signal)
+        const response = await getCurrentUser()
+        if (cancelled) return
         if (response && response.user) {
           setUser(response.user)
           localStorage.setItem('currentUser', JSON.stringify(response.user))
@@ -113,18 +114,23 @@ function App() {
           setUser(null)
         }
       } catch (sessionError) {
-        if (sessionError?.name === 'AbortError') return
-        console.warn('服务端会话验证失败，需要重新登录:', sessionError)
+        if (cancelled) return
+        if (sessionError?.isNetworkError) {
+          const cached = localStorage.getItem('currentUser')
+          if (cached) {
+            try { setUser(JSON.parse(cached)) } catch {}
+          }
+          return
+        }
         localStorage.removeItem('currentUser')
         setUser(null)
       }
     } catch (error) {
-      if (error?.name === 'AbortError') return
-      console.error('认证检查失败:', error)
+      if (cancelled) return
       localStorage.removeItem('currentUser')
       setUser(null)
     } finally {
-      if (!signal?.aborted) {
+      if (!cancelled) {
         setLoading(false)
       }
     }

@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5173,
       host: true,
-      // 修复：增加HTTP服务器超时配置
+      allowedHosts: ['.cpolar.top', '.ngrok.io', '.loca.lt'],
       hmr: {
         overlay: true,
       },
@@ -56,6 +56,13 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
           configure: (proxy) => {
+            proxy.on('error', (err, req, res) => {
+              console.log('[Uploads Proxy Error]', err.message, req.url)
+              if (res && !res.headersSent) {
+                res.writeHead(502, { 'Content-Type': 'application/json' })
+                res.end(JSON.stringify({ error: 'Proxy error: ' + err.message }))
+              }
+            })
             proxy.on('proxyReq', (proxyReq, req) => {
               if (req.url && req.url.includes('/videos/')) {
                 proxyReq.setHeader('Connection', 'keep-alive')
@@ -67,6 +74,7 @@ export default defineConfig(({ mode }) => {
                 proxyRes.headers['cache-control'] = 'public, max-age=3600'
                 delete proxyRes.headers['x-accel-buffering']
                 res.setTimeout(0)
+                res.flushHeaders()
               }
             })
           },

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -43,7 +43,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Trash2,
-  RotateCcw
+  RotateCcw,
+  RefreshCw,
+  Zap
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -53,76 +55,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-
-const mockContentData = [
-  {
-    id: 1,
-    title: 'Python函数基础教程',
-    type: 'tutorial',
-    source: 'teacher',
-    author: '张老师',
-    status: 'pending',
-    autoScore: 85,
-    createdAt: '2025-03-27 10:30',
-    content: '这是一篇关于Python函数基础的教程内容...',
-    versions: 3
-  },
-  {
-    id: 2,
-    title: '数据结构练习题解答',
-    type: 'exercise',
-    source: 'ai',
-    author: 'AI助手',
-    status: 'auto_reviewing',
-    autoScore: 92,
-    createdAt: '2025-03-27 09:15',
-    content: '以下是数据结构练习题的详细解答...',
-    versions: 1
-  },
-  {
-    id: 3,
-    title: '机器学习概念解释',
-    type: 'explanation',
-    source: 'student',
-    author: '李同学',
-    status: 'manual_reviewing',
-    autoScore: 78,
-    createdAt: '2025-03-27 08:45',
-    content: '机器学习是人工智能的一个分支...',
-    versions: 2
-  },
-  {
-    id: 4,
-    title: 'Web开发知识点总结',
-    type: 'summary',
-    source: 'ai',
-    author: 'AI助手',
-    status: 'spot_checking',
-    autoScore: 88,
-    createdAt: '2025-03-26 16:20',
-    content: 'Web开发涉及前端和后端技术...',
-    versions: 4
-  },
-  {
-    id: 5,
-    title: '算法复杂度分析',
-    type: 'tutorial',
-    source: 'teacher',
-    author: '王老师',
-    status: 'pending',
-    autoScore: 95,
-    createdAt: '2025-03-26 14:10',
-    content: '算法复杂度是衡量算法效率的重要指标...',
-    versions: 2
-  }
-]
+import { contentReview } from '@/services/api'
 
 const contentTypeMap = {
-  tutorial: { label: '教程', icon: BookOpen, color: 'bg-blue-100 text-blue-700' },
-  exercise: { label: '练习', icon: FileText, color: 'bg-green-100 text-green-700' },
-  explanation: { label: '解释', icon: MessageSquare, color: 'bg-purple-100 text-purple-700' },
-  summary: { label: '总结', icon: FileText, color: 'bg-orange-100 text-orange-700' },
-  qa: { label: '问答', icon: HelpCircle, color: 'bg-cyan-100 text-cyan-700' }
+  knowledge_point: { label: '知识点', icon: BookOpen, color: 'bg-blue-100 text-blue-700' },
+  teaching_case: { label: '教学案例', icon: FileText, color: 'bg-green-100 text-green-700' },
+  exercise: { label: '练习', icon: FileText, color: 'bg-purple-100 text-purple-700' },
+  teaching_content: { label: '教学内容', icon: MessageSquare, color: 'bg-orange-100 text-orange-700' },
 }
 
 const statusMap = {
@@ -141,7 +80,10 @@ const sourceMap = {
 }
 
 export default function ContentReviewList() {
-  const [contents, setContents] = useState(mockContentData)
+  const [contents, setContents] = useState([])
+  const [total, setTotal] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [loading, setLoading] = useState(false)
   const [selectedIds, setSelectedIds] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [filterType, setFilterType] = useState('all')
@@ -151,26 +93,41 @@ export default function ContentReviewList() {
   const [detailDialog, setDetailDialog] = useState({ open: false, content: null })
   const [reviewDialog, setReviewDialog] = useState({ open: false, content: null, action: null })
   const [reviewComment, setReviewComment] = useState('')
+  const [reviewScore, setReviewScore] = useState(3)
   const pageSize = 10
 
-  const filteredContents = contents.filter(content => {
-    const matchSearch = content.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                       content.author.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchType = filterType === 'all' || content.type === filterType
-    const matchStatus = filterStatus === 'all' || content.status === filterStatus
-    const matchSource = filterSource === 'all' || content.source === filterSource
-    return matchSearch && matchType && matchStatus && matchSource
-  })
+  const loadContents = useCallback(async () => {
+    setLoading(true)
+    try {
+      const params = {
+        page: currentPage,
+        per_page: pageSize,
+      }
+      if (filterStatus !== 'all') params.status = filterStatus
+      if (filterType !== 'all') params.content_type = filterType
+      if (filterSource !== 'all') params.source = filterSource
+      if (searchTerm) params.search = searchTerm
 
-  const totalPages = Math.ceil(filteredContents.length / pageSize)
-  const paginatedContents = filteredContents.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  )
+      const response = await contentReview.getReviewList(params)
+      if (response.success) {
+        setContents(response.data.items || [])
+        setTotal(response.data.total || 0)
+        setTotalPages(response.data.pages || 0)
+      }
+    } catch (error) {
+      console.error('加载审核列表失败:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [currentPage, filterStatus, filterType, filterSource, searchTerm])
+
+  useEffect(() => {
+    loadContents()
+  }, [loadContents])
 
   const handleSelectAll = (checked) => {
     if (checked) {
-      setSelectedIds(paginatedContents.map(c => c.id))
+      setSelectedIds(contents.map(c => c.id))
     } else {
       setSelectedIds([])
     }
@@ -184,26 +141,83 @@ export default function ContentReviewList() {
     }
   }
 
-  const handleBatchAction = (action) => {
-    console.log(`批量${action}:`, selectedIds)
-    setSelectedIds([])
+  const handleBatchAction = async (action) => {
+    try {
+      const response = await contentReview.batchReview({
+        review_ids: selectedIds,
+        action: action,
+        comment: `批量${action === 'approve' ? '通过' : '拒绝'}`,
+      })
+      if (response.success) {
+        setSelectedIds([])
+        loadContents()
+      }
+    } catch (error) {
+      console.error('批量操作失败:', error)
+    }
   }
 
   const handleReview = (content, action) => {
     setReviewDialog({ open: true, content, action })
   }
 
-  const submitReview = () => {
-    console.log(`审核${reviewDialog.action}:`, reviewDialog.content?.id, reviewComment)
-    setReviewDialog({ open: false, content: null, action: null })
-    setReviewComment('')
+  const submitReview = async () => {
+    if (!reviewDialog.content) return
+    try {
+      const status = reviewDialog.action === 'approve' ? 'passed' : 'rejected'
+      const response = await contentReview.manualReview(reviewDialog.content.id, {
+        status,
+        comment: reviewComment,
+        score: reviewScore,
+      })
+      if (response.success) {
+        setReviewDialog({ open: false, content: null, action: null })
+        setReviewComment('')
+        setReviewScore(3)
+        loadContents()
+      }
+    } catch (error) {
+      console.error('审核操作失败:', error)
+    }
+  }
+
+  const handleAutoReview = async (id) => {
+    try {
+      const response = await contentReview.autoReview(id)
+      if (response.success) {
+        loadContents()
+      }
+    } catch (error) {
+      console.error('触发自动审核失败:', error)
+    }
+  }
+
+  const handleViewDetail = async (item) => {
+    try {
+      const response = await contentReview.getReviewDetail(item.id)
+      if (response.success) {
+        setDetailDialog({ open: true, content: response.data })
+      }
+    } catch (error) {
+      console.error('获取详情失败:', error)
+    }
   }
 
   const getScoreColor = (score) => {
+    if (score === null || score === undefined) return 'text-gray-400'
     if (score >= 90) return 'text-green-600'
     if (score >= 70) return 'text-blue-600'
     if (score >= 50) return 'text-amber-600'
     return 'text-red-600'
+  }
+
+  const formatAutoReviewResult = (resultStr) => {
+    if (!resultStr) return null
+    try {
+      return JSON.parse(resultStr)
+    } catch {
+      return null
+    }
   }
 
   return (
@@ -215,28 +229,27 @@ export default function ContentReviewList() {
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="搜索标题或作者..."
+                placeholder="搜索标题..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }}
                 className="pl-10"
               />
             </div>
             
-            <Select value={filterType} onValueChange={setFilterType}>
+            <Select value={filterType} onValueChange={(v) => { setFilterType(v); setCurrentPage(1) }}>
               <SelectTrigger className="w-32">
                 <SelectValue placeholder="内容类型" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">全部类型</SelectItem>
-                <SelectItem value="tutorial">教程</SelectItem>
+                <SelectItem value="knowledge_point">知识点</SelectItem>
+                <SelectItem value="teaching_case">教学案例</SelectItem>
                 <SelectItem value="exercise">练习</SelectItem>
-                <SelectItem value="explanation">解释</SelectItem>
-                <SelectItem value="summary">总结</SelectItem>
-                <SelectItem value="qa">问答</SelectItem>
+                <SelectItem value="teaching_content">教学内容</SelectItem>
               </SelectContent>
             </Select>
 
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <Select value={filterStatus} onValueChange={(v) => { setFilterStatus(v); setCurrentPage(1) }}>
               <SelectTrigger className="w-32">
                 <SelectValue placeholder="审核状态" />
               </SelectTrigger>
@@ -251,7 +264,7 @@ export default function ContentReviewList() {
               </SelectContent>
             </Select>
 
-            <Select value={filterSource} onValueChange={setFilterSource}>
+            <Select value={filterSource} onValueChange={(v) => { setFilterSource(v); setCurrentPage(1) }}>
               <SelectTrigger className="w-32">
                 <SelectValue placeholder="内容来源" />
               </SelectTrigger>
@@ -263,9 +276,9 @@ export default function ContentReviewList() {
               </SelectContent>
             </Select>
 
-            <Button variant="outline" size="sm">
-              <Filter className="h-4 w-4 mr-2" />
-              更多筛选
+            <Button variant="outline" size="sm" onClick={loadContents} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              刷新
             </Button>
           </div>
         </CardContent>
@@ -322,7 +335,7 @@ export default function ContentReviewList() {
               <TableRow className="bg-gray-50">
                 <TableHead className="w-12">
                   <Checkbox 
-                    checked={selectedIds.length === paginatedContents.length && paginatedContents.length > 0}
+                    checked={selectedIds.length === contents.length && contents.length > 0}
                     onCheckedChange={handleSelectAll}
                   />
                 </TableHead>
@@ -330,108 +343,122 @@ export default function ContentReviewList() {
                 <TableHead>标题</TableHead>
                 <TableHead className="w-20">类型</TableHead>
                 <TableHead className="w-20">来源</TableHead>
-                <TableHead className="w-20">作者</TableHead>
                 <TableHead className="w-24">状态</TableHead>
                 <TableHead className="w-20">评分</TableHead>
                 <TableHead className="w-32">创建时间</TableHead>
-                <TableHead className="w-24">操作</TableHead>
+                <TableHead className="w-28">操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedContents.map((content) => {
-                const typeInfo = contentTypeMap[content.type]
-                const statusInfo = statusMap[content.status]
-                const sourceInfo = sourceMap[content.source]
-                const TypeIcon = typeInfo.icon
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                    <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2" />
+                    加载中...
+                  </TableCell>
+                </TableRow>
+              ) : contents.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                    暂无审核数据
+                  </TableCell>
+                </TableRow>
+              ) : (
+                contents.map((item) => {
+                  const typeInfo = contentTypeMap[item.content_type] || { label: item.content_type, icon: FileText, color: 'bg-gray-100 text-gray-700' }
+                  const statusInfo = statusMap[item.status] || { label: item.status, color: 'bg-gray-100 text-gray-700' }
+                  const sourceInfo = sourceMap[item.source] || { label: item.source, color: 'bg-gray-100 text-gray-700' }
+                  const TypeIcon = typeInfo.icon
 
-                return (
-                  <TableRow key={content.id} className="hover:bg-gray-50">
-                    <TableCell>
-                      <Checkbox 
-                        checked={selectedIds.includes(content.id)}
-                        onCheckedChange={(checked) => handleSelect(content.id, checked)}
-                      />
-                    </TableCell>
-                    <TableCell className="font-mono text-sm text-gray-500">
-                      #{content.id}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{content.title}</span>
-                        {content.versions > 1 && (
-                          <Badge variant="outline" className="text-xs">
-                            v{content.versions}
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={typeInfo.color}>
-                        <TypeIcon className="h-3 w-3 mr-1" />
-                        {typeInfo.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={sourceInfo.color}>
-                        {sourceInfo.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm">{content.author}</TableCell>
-                    <TableCell>
-                      <Badge className={statusInfo.color}>
-                        {statusInfo.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <span className={`font-bold ${getScoreColor(content.autoScore)}`}>
-                        {content.autoScore}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-sm text-gray-500">
-                      {content.createdAt}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => setDetailDialog({ open: true, content })}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreHorizontal className="h-4 w-4" />
+                  return (
+                    <TableRow key={item.id} className="hover:bg-gray-50">
+                      <TableCell>
+                        <Checkbox 
+                          checked={selectedIds.includes(item.id)}
+                          onCheckedChange={(checked) => handleSelect(item.id, checked)}
+                        />
+                      </TableCell>
+                      <TableCell className="font-mono text-sm text-gray-500">
+                        #{item.id}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{item.content_title}</span>
+                          {item.version > 1 && (
+                            <Badge variant="outline" className="text-xs">
+                              v{item.version}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={typeInfo.color}>
+                          <TypeIcon className="h-3 w-3 mr-1" />
+                          {typeInfo.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={sourceInfo.color}>
+                          {sourceInfo.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={statusInfo.color}>
+                          {statusInfo.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`font-bold ${getScoreColor(item.auto_score)}`}>
+                          {item.auto_score !== null && item.auto_score !== undefined ? item.auto_score : '-'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-sm text-gray-500">
+                        {item.created_at ? new Date(item.created_at).toLocaleString('zh-CN') : '-'}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleViewDetail(item)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          {(item.status === 'pending' || item.status === 'auto_reviewing') && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleAutoReview(item.id)}
+                              title="触发自动审核"
+                            >
+                              <Zap className="h-4 w-4 text-purple-600" />
                             </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>审核操作</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleReview(content, 'approve')}>
-                              <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
-                              通过审核
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleReview(content, 'reject')}>
-                              <XCircle className="h-4 w-4 mr-2 text-red-600" />
-                              拒绝内容
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleReview(content, 'return')}>
-                              <RotateCcw className="h-4 w-4 mr-2 text-amber-600" />
-                              退回修改
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600">
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              删除内容
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>审核操作</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => handleReview(item, 'approve')}>
+                                <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
+                                通过审核
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleReview(item, 'reject')}>
+                                <XCircle className="h-4 w-4 mr-2 text-red-600" />
+                                拒绝内容
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              )}
             </TableBody>
           </Table>
         </CardContent>
@@ -440,7 +467,7 @@ export default function ContentReviewList() {
       {/* 分页 */}
       <div className="flex items-center justify-between">
         <div className="text-sm text-gray-500">
-          共 {filteredContents.length} 条记录，第 {currentPage}/{totalPages} 页
+          共 {total} 条记录，第 {currentPage}/{totalPages || 1} 页
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -468,7 +495,7 @@ export default function ContentReviewList() {
           <Button
             variant="outline"
             size="sm"
-            disabled={currentPage === totalPages}
+            disabled={currentPage >= totalPages}
             onClick={() => setCurrentPage(currentPage + 1)}
           >
             <ChevronRight className="h-4 w-4" />
@@ -490,37 +517,69 @@ export default function ContentReviewList() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-500">标题</label>
-                  <p className="font-medium">{detailDialog.content.title}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">作者</label>
-                  <p>{detailDialog.content.author}</p>
+                  <p className="font-medium">{detailDialog.content.content_title}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">类型</label>
-                  <p>{contentTypeMap[detailDialog.content.type].label}</p>
+                  <p>{(contentTypeMap[detailDialog.content.content_type] || {}).label || detailDialog.content.content_type}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">来源</label>
-                  <p>{sourceMap[detailDialog.content.source].label}</p>
+                  <p>{(sourceMap[detailDialog.content.source] || {}).label || detailDialog.content.source}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">自动评分</label>
-                  <p className={`font-bold ${getScoreColor(detailDialog.content.autoScore)}`}>
-                    {detailDialog.content.autoScore} 分
+                  <p className={`font-bold ${getScoreColor(detailDialog.content.auto_score)}`}>
+                    {detailDialog.content.auto_score !== null && detailDialog.content.auto_score !== undefined ? `${detailDialog.content.auto_score} 分` : '未评分'}
                   </p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">版本数</label>
-                  <p>{detailDialog.content.versions} 个版本</p>
+                  <label className="text-sm font-medium text-gray-500">版本</label>
+                  <p>{detailDialog.content.version} 个版本</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">状态</label>
+                  <p>{(statusMap[detailDialog.content.status] || {}).label || detailDialog.content.status}</p>
                 </div>
               </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">内容预览</label>
-                <div className="mt-1 p-4 bg-gray-50 rounded-lg text-sm">
-                  {detailDialog.content.content}
+              {detailDialog.content.content_body && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500">内容预览</label>
+                  <div className="mt-1 p-4 bg-gray-50 rounded-lg text-sm max-h-60 overflow-y-auto whitespace-pre-wrap">
+                    {detailDialog.content.content_body}
+                  </div>
                 </div>
-              </div>
+              )}
+              {detailDialog.content.auto_review_result && (() => {
+                const result = formatAutoReviewResult(detailDialog.content.auto_review_result)
+                if (!result) return null
+                return (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">自动审核详情</label>
+                    <div className="mt-1 p-4 bg-purple-50 rounded-lg text-sm">
+                      <div className="grid grid-cols-4 gap-2 mb-2">
+                        <div>完整性: <span className="font-bold">{result.completeness}</span></div>
+                        <div>结构: <span className="font-bold">{result.structure}</span></div>
+                        <div>质量: <span className="font-bold">{result.quality}</span></div>
+                        <div>相关性: <span className="font-bold">{result.relevance}</span></div>
+                      </div>
+                      {result.details && result.details.length > 0 && (
+                        <div className="text-red-600">
+                          问题: {result.details.join('; ')}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })()}
+              {detailDialog.content.review_comment && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500">审核意见</label>
+                  <div className="mt-1 p-4 bg-orange-50 rounded-lg text-sm">
+                    {detailDialog.content.review_comment}
+                  </div>
+                </div>
+              )}
             </div>
           )}
           <DialogFooter>
@@ -528,8 +587,9 @@ export default function ContentReviewList() {
               关闭
             </Button>
             <Button onClick={() => {
+              const content = detailDialog.content
               setDetailDialog({ open: false, content: null })
-              handleReview(detailDialog.content, 'approve')
+              handleReview(content, 'approve')
             }}>
               开始审核
             </Button>
@@ -544,13 +604,28 @@ export default function ContentReviewList() {
             <DialogTitle>
               {reviewDialog.action === 'approve' && '通过审核'}
               {reviewDialog.action === 'reject' && '拒绝内容'}
-              {reviewDialog.action === 'return' && '退回修改'}
             </DialogTitle>
             <DialogDescription>
-              {reviewDialog.content?.title}
+              {reviewDialog.content?.content_title}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">审核评分 (1-5)</label>
+              <div className="flex items-center gap-2 mt-1">
+                {[1, 2, 3, 4, 5].map(score => (
+                  <Button
+                    key={score}
+                    variant={reviewScore === score ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setReviewScore(score)}
+                    className={reviewScore === score ? "bg-slate-900" : ""}
+                  >
+                    {score}
+                  </Button>
+                ))}
+              </div>
+            </div>
             <div>
               <label className="text-sm font-medium">审核意见</label>
               <Textarea
@@ -569,8 +644,7 @@ export default function ContentReviewList() {
               onClick={submitReview}
               className={
                 reviewDialog.action === 'approve' ? 'bg-green-600 hover:bg-green-700' :
-                reviewDialog.action === 'reject' ? 'bg-red-600 hover:bg-red-700' :
-                'bg-amber-600 hover:bg-amber-700'
+                'bg-red-600 hover:bg-red-700'
               }
             >
               确认

@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { Trash2, Edit, Plus, BookOpen, Users, Clock } from 'lucide-react'
 import { courses } from '../services/api'
+import { request } from '../services/api'
 
 export default function CourseManagement() {
   const [courseList, setCourseList] = useState([])
@@ -17,6 +18,7 @@ export default function CourseManagement() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingCourse, setEditingCourse] = useState(null)
+  const [teacherList, setTeacherList] = useState([])
   const [newCourse, setNewCourse] = useState({
     title: '',
     description: '',
@@ -24,10 +26,20 @@ export default function CourseManagement() {
     difficulty: 'beginner',
     duration: '',
     status: 'active',
-    teacher_id: 1
+    teacher_id: ''
   })
 
-  // 加载课程列表
+  const loadTeachers = async () => {
+    try {
+      const response = await request('/users?role=teacher')
+      const users = response.users || response || []
+      setTeacherList(Array.isArray(users) ? users.filter(u => u.role === 'teacher') : [])
+    } catch (error) {
+      console.error('加载教师列表失败:', error)
+      setTeacherList([])
+    }
+  }
+
   const loadCourses = async () => {
     setLoading(true)
     try {
@@ -35,33 +47,7 @@ export default function CourseManagement() {
       setCourseList(response.courses || [])
     } catch (error) {
       console.error('加载课程列表失败:', error)
-      // 使用模拟数据
-      setCourseList([
-        { 
-          id: 1, 
-          title: 'Python基础编程', 
-          description: '学习Python编程语言的基础知识',
-          category: 'programming',
-          difficulty: 'beginner',
-          duration: '40小时',
-          teacher_name: '示例教师',
-          student_count: 25,
-          status: 'active',
-          created_at: '2025-01-01'
-        },
-        { 
-          id: 2, 
-          title: 'TensorFlow.js应用开发', 
-          description: '使用TensorFlow.js开发机器学习应用',
-          category: 'ai',
-          difficulty: 'intermediate',
-          duration: '60小时',
-          teacher_name: '示例教师',
-          student_count: 18,
-          status: 'active',
-          created_at: '2025-01-02'
-        }
-      ])
+      setCourseList([])
     }
     setLoading(false)
   }
@@ -71,27 +57,21 @@ export default function CourseManagement() {
       alert('请输入课程标题')
       return
     }
+    if (!newCourse.teacher_id) {
+      alert('请选择授课教师')
+      return
+    }
     
     try {
       await courses.create(newCourse)
       setIsAddDialogOpen(false)
-      setNewCourse({ title: '', description: '', category: 'programming', difficulty: 'beginner', duration: '', status: 'active', teacher_id: 1 })
-      loadCourses()
+      setNewCourse({ title: '', description: '', category: 'programming', difficulty: 'beginner', duration: '', status: 'active', teacher_id: '' })
+      await loadCourses()
       alert('课程添加成功！')
     } catch (error) {
       console.error('添加课程失败:', error)
-      const newId = Math.max(...courseList.map(c => c.id), 0) + 1
-      setCourseList([...courseList, { 
-        ...newCourse, 
-        id: newId, 
-        teacher_name: '示例教师',
-        student_count: 0,
-        status: newCourse.status || 'active',
-        created_at: new Date().toISOString().split('T')[0] 
-      }])
-      setIsAddDialogOpen(false)
-      setNewCourse({ title: '', description: '', category: 'programming', difficulty: 'beginner', duration: '', status: 'active', teacher_id: 1 })
-      alert('课程添加成功！')
+      const errMsg = error?.message || error?.errorDetail || '添加课程失败，请检查网络或教师选择是否正确'
+      alert(errMsg)
     }
   }
 
@@ -105,44 +85,38 @@ export default function CourseManagement() {
       await courses.update(editingCourse.id, editingCourse)
       setIsEditDialogOpen(false)
       setEditingCourse(null)
-      loadCourses()
+      await loadCourses()
       alert('课程更新成功！')
     } catch (error) {
       console.error('更新课程失败:', error)
-      setCourseList(courseList.map(c => c.id === editingCourse.id ? editingCourse : c))
-      setIsEditDialogOpen(false)
-      setEditingCourse(null)
-      alert('课程更新成功！')
+      const errMsg = error?.message || error?.errorDetail || '更新课程失败，请重试'
+      alert(errMsg)
     }
   }
 
-  // 删除课程
   const handleDeleteCourse = async (courseId) => {
     if (!confirm('确定要删除这个课程吗？')) return
     
     try {
       await courses.delete(courseId)
-      loadCourses()
+      await loadCourses()
       alert('课程删除成功！')
     } catch (error) {
       console.error('删除课程失败:', error)
-      // 模拟删除成功
-      setCourseList(courseList.filter(c => c.id !== courseId))
-      alert('课程删除成功！')
+      const errMsg = error?.message || error?.errorDetail || '删除课程失败，请重试'
+      alert(errMsg)
     }
   }
 
-  // 难度标签颜色
   const getDifficultyBadgeColor = (difficulty) => {
     switch (difficulty) {
-      case 'beginner': return 'bg-green-100 text-green-800'
-      case 'intermediate': return 'bg-yellow-100 text-yellow-800'
-      case 'advanced': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
+      case 'beginner': return 'bg-[#5a9e6f12] text-[#5a9e6f]'
+      case 'intermediate': return 'bg-[#d4a85312] text-[#d4a853]'
+      case 'advanced': return 'bg-[#c45a5a12] text-[#c45a5a]'
+      default: return 'bg-[#f5f2ee] text-[#6b6560]'
     }
   }
 
-  // 难度中文名
   const getDifficultyName = (difficulty) => {
     switch (difficulty) {
       case 'beginner': return '初级'
@@ -152,7 +126,6 @@ export default function CourseManagement() {
     }
   }
 
-  // 分类中文名
   const getCategoryName = (category) => {
     switch (category) {
       case 'programming': return '编程'
@@ -165,19 +138,19 @@ export default function CourseManagement() {
 
   useEffect(() => {
     loadCourses()
+    loadTeachers()
   }, [])
 
   return (
     <div className="space-y-6">
-      {/* 页面标题和操作 */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">课程管理</h2>
-          <p className="text-gray-600">管理系统中的所有课程</p>
+          <h2 className="text-2xl font-bold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>课程管理</h2>
+          <p className="text-[#6b6560]">管理系统中的所有课程</p>
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-blue-600 hover:bg-blue-700">
+            <Button className="bg-[#d4a853] hover:bg-[#c49a48] text-white">
               <Plus className="w-4 h-4 mr-2" />
               添加课程
             </Button>
@@ -244,11 +217,26 @@ export default function CourseManagement() {
                   placeholder="例如：40小时"
                 />
               </div>
+              <div>
+                <Label htmlFor="teacher">授课教师</Label>
+                <Select value={newCourse.teacher_id ? String(newCourse.teacher_id) : ''} onValueChange={(value) => setNewCourse({ ...newCourse, teacher_id: Number(value) })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="选择授课教师" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teacherList.map((teacher) => (
+                      <SelectItem key={teacher.id} value={String(teacher.id)}>
+                        {teacher.real_name || teacher.username}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex justify-end space-x-2">
                 <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                   取消
                 </Button>
-                <Button onClick={handleAddCourse}>
+                <Button onClick={handleAddCourse} className="bg-[#d4a853] hover:bg-[#c49a48] text-white">
                   添加
                 </Button>
               </div>
@@ -257,52 +245,51 @@ export default function CourseManagement() {
         </Dialog>
       </div>
 
-      {/* 课程统计卡片 */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+        <Card className="rounded-xl border-[#f0ece7]">
           <CardContent className="p-6">
             <div className="flex items-center">
-              <BookOpen className="h-8 w-8 text-blue-600" />
+              <BookOpen className="h-8 w-8 text-[#d4a853]" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">总课程数</p>
-                <p className="text-2xl font-bold text-gray-900">{courseList.length}</p>
+                <p className="text-sm font-medium text-[#6b6560]">总课程数</p>
+                <p className="text-2xl font-bold text-[#2d2a26]">{courseList.length}</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="rounded-xl border-[#f0ece7]">
           <CardContent className="p-6">
             <div className="flex items-center">
-              <Users className="h-8 w-8 text-green-600" />
+              <Users className="h-8 w-8 text-[#5a9e6f]" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">总学生数</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-sm font-medium text-[#6b6560]">总学生数</p>
+                <p className="text-2xl font-bold text-[#2d2a26]">
                   {courseList.reduce((sum, course) => sum + (course.student_count || 0), 0)}
                 </p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="rounded-xl border-[#f0ece7]">
           <CardContent className="p-6">
             <div className="flex items-center">
-              <Clock className="h-8 w-8 text-orange-600" />
+              <Clock className="h-8 w-8 text-[#c47a3a]" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">活跃课程</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-sm font-medium text-[#6b6560]">活跃课程</p>
+                <p className="text-2xl font-bold text-[#2d2a26]">
                   {courseList.filter(c => c.status === 'active').length}
                 </p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="rounded-xl border-[#f0ece7]">
           <CardContent className="p-6">
             <div className="flex items-center">
-              <BookOpen className="h-8 w-8 text-purple-600" />
+              <BookOpen className="h-8 w-8 text-[#8b6fb0]" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">平均学生数</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-sm font-medium text-[#6b6560]">平均学生数</p>
+                <p className="text-2xl font-bold text-[#2d2a26]">
                   {courseList.length > 0 ? Math.round(courseList.reduce((sum, course) => sum + (course.student_count || 0), 0) / courseList.length) : 0}
                 </p>
               </div>
@@ -311,21 +298,20 @@ export default function CourseManagement() {
         </Card>
       </div>
 
-      {/* 课程列表 */}
-      <Card>
+      <Card className="rounded-xl border-[#f0ece7]">
         <CardHeader>
-          <CardTitle>课程列表</CardTitle>
+          <CardTitle className="text-[#2d2a26]">课程列表</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="text-center py-8">
-              <p>加载中...</p>
+              <p className="text-[#6b6560]">加载中...</p>
             </div>
           ) : courseList.length === 0 ? (
             <div className="text-center py-8">
-              <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">暂无课程</h3>
-              <p className="text-gray-500">点击上方按钮添加第一个课程</p>
+              <BookOpen className="h-16 w-16 text-[#c5c0bb] mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-[#2d2a26] mb-2">暂无课程</h3>
+              <p className="text-[#9a9590]">点击上方按钮添加第一个课程</p>
             </div>
           ) : (
             <Table>
@@ -347,25 +333,25 @@ export default function CourseManagement() {
                   <TableRow key={course.id}>
                     <TableCell className="font-medium">
                       <div>
-                        <p className="font-semibold">{course.title}</p>
-                        <p className="text-sm text-gray-500">{course.description}</p>
+                        <p className="font-semibold text-[#2d2a26]">{course.title}</p>
+                        <p className="text-sm text-[#9a9590]">{course.description}</p>
                       </div>
                     </TableCell>
-                    <TableCell>{getCategoryName(course.category)}</TableCell>
+                    <TableCell className="text-[#6b6560]">{getCategoryName(course.category)}</TableCell>
                     <TableCell>
                       <Badge className={getDifficultyBadgeColor(course.difficulty)}>
                         {getDifficultyName(course.difficulty)}
                       </Badge>
                     </TableCell>
-                    <TableCell>{course.duration}</TableCell>
-                    <TableCell>{course.teacher_name}</TableCell>
-                    <TableCell>{course.student_count || 0}</TableCell>
+                    <TableCell className="text-[#6b6560]">{course.duration}</TableCell>
+                    <TableCell className="text-[#6b6560]">{course.teacher_name}</TableCell>
+                    <TableCell className="text-[#2d2a26]">{course.student_count || 0}</TableCell>
                     <TableCell>
-                      <Badge className={course.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                      <Badge className={course.status === 'active' ? 'bg-[#5a9e6f12] text-[#5a9e6f]' : 'bg-[#f5f2ee] text-[#6b6560]'}>
                         {course.status === 'active' ? '活跃' : '停用'}
                       </Badge>
                     </TableCell>
-                    <TableCell>{course.created_at}</TableCell>
+                    <TableCell className="text-[#9a9590]">{course.created_at}</TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
                         <Button
@@ -382,7 +368,7 @@ export default function CourseManagement() {
                           variant="outline"
                           size="sm"
                           onClick={() => handleDeleteCourse(course.id)}
-                          className="text-red-600 hover:text-red-700"
+                          className="text-[#c45a5a] hover:text-[#b04a4a]"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -396,7 +382,6 @@ export default function CourseManagement() {
         </CardContent>
       </Card>
 
-      {/* 编辑课程对话框 */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -462,7 +447,7 @@ export default function CourseManagement() {
                 <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
                   取消
                 </Button>
-                <Button onClick={handleEditCourse}>
+                <Button onClick={handleEditCourse} className="bg-[#d4a853] hover:bg-[#c49a48] text-white">
                   保存
                 </Button>
               </div>
@@ -473,4 +458,3 @@ export default function CourseManagement() {
     </div>
   )
 }
-

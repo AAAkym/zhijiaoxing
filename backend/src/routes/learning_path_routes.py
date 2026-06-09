@@ -3,6 +3,7 @@ from flask import Blueprint, jsonify, request, session
 from src.utils.auth import require_auth
 from src.models.user import db
 from src.services.learning_path_service import learning_path_service, recommendation_engine
+from src.services.recommendation_engine_service import recommendation_engine_service
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +75,7 @@ def update_node_status(path_id, node_id):
 def generate_learning_plan():
     try:
         user_id = session['user_id']
-        result = learning_path_service.generate_ai_plan(user_id)
+        result = learning_path_service.generate_ai_plan(user_id, user_role=session.get('user_role'))
         if 'error' in result:
             return jsonify(result), 400
         return jsonify({'plan': result}), 200
@@ -164,4 +165,85 @@ def feedback_recommendation(rec_id):
         return jsonify({'recommendation': result}), 200
     except Exception as e:
         logger.error(f'Feedback recommendation error: {e}')
+        return jsonify({'error': str(e)}), 500
+
+
+@learning_path_bp.route('/recommendations/smart', methods=['POST'])
+@require_auth
+def generate_smart_recommendations():
+    try:
+        user_id = session['user_id']
+        data = request.get_json() or {}
+        filters = {}
+        if data.get('resource_type'):
+            filters['resource_type'] = data['resource_type']
+        if data.get('difficulty_level'):
+            filters['difficulty_level'] = data['difficulty_level']
+        if data.get('learning_objective'):
+            filters['learning_objective'] = data['learning_objective']
+        limit = data.get('limit', 20)
+        include_video_search = data.get('include_video_search', True)
+
+        result = recommendation_engine_service.generate_smart_recommendations(
+            user_id, filters=filters or None, limit=limit
+        )
+
+        if isinstance(result, dict) and 'error' in result:
+            return jsonify(result), 400
+
+        if include_video_search:
+            try:
+                video_result = recommendation_engine_service.generate_video_search_links(user_id)
+                if isinstance(video_result, list) and video_result:
+                    result.extend(video_result)
+            except Exception as ve:
+                logger.warning(f'Video search generation failed: {ve}')
+
+        return jsonify({'recommendations': result}), 200
+    except Exception as e:
+        logger.error(f'Smart recommendations error: {e}')
+        return jsonify({'error': str(e)}), 500
+
+
+@learning_path_bp.route('/recommendations/video-search', methods=['POST'])
+@require_auth
+def generate_video_search():
+    try:
+        user_id = session['user_id']
+        data = request.get_json() or {}
+        topic = data.get('topic', '')
+        knowledge_points = data.get('knowledge_points', [])
+
+        result = recommendation_engine_service.generate_video_search_links(
+            user_id, topic=topic, knowledge_points=knowledge_points
+        )
+        if isinstance(result, dict) and 'error' in result:
+            return jsonify(result), 400
+        return jsonify({'video_recommendations': result}), 200
+    except Exception as e:
+        logger.error(f'Video search error: {e}')
+        return jsonify({'error': str(e)}), 500
+
+
+@learning_path_bp.route('/recommendations/effectiveness', methods=['GET'])
+@require_auth
+def get_recommendation_effectiveness():
+    try:
+        user_id = session['user_id']
+        stats = recommendation_engine_service.get_effectiveness_stats(user_id)
+        return jsonify({'effectiveness': stats}), 200
+    except Exception as e:
+        logger.error(f'Get effectiveness error: {e}')
+        return jsonify({'error': str(e)}), 500
+
+
+@learning_path_bp.route('/recommendations/adjust-weights', methods=['POST'])
+@require_auth
+def adjust_recommendation_weights():
+    try:
+        user_id = session['user_id']
+        result = recommendation_engine_service.adjust_weights_from_feedback(user_id)
+        return jsonify({'result': result}), 200
+    except Exception as e:
+        logger.error(f'Adjust weights error: {e}')
         return jsonify({'error': str(e)}), 500

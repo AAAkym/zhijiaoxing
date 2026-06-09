@@ -91,7 +91,7 @@ def evaluate_ai_output_quality(content_type: str = "all", sample_size: int = 50)
     return results
 
 
-def optimize_ai_prompt(prompt_type: str, current_issues: List[str] = None) -> Dict:
+def optimize_ai_prompt(prompt_type: str, current_issues: List[str] = None, user_id: int = None, user_role: str = None) -> Dict:
     issues = current_issues or ["内容重复", "深度不足", "格式不规范"]
 
     optimization_prompt = f"""你是AI提示词优化专家。请分析以下AI生成内容的常见问题，并给出优化后的提示词建议。
@@ -110,7 +110,7 @@ def optimize_ai_prompt(prompt_type: str, current_issues: List[str] = None) -> Di
 只输出JSON。"""
 
     try:
-        raw = spark_service.chat(optimization_prompt)
+        raw = spark_service.chat(optimization_prompt, user_id=user_id, user_role=user_role)
         import re
         cleaned = re.sub(r'^```(?:json)?', '', raw.strip(), flags=re.IGNORECASE).strip()
         cleaned = re.sub(r'```$', '', cleaned).strip()

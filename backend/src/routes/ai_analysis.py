@@ -53,7 +53,7 @@ def generate_report():
         user_id = session['user_id']
         data = request.get_json() or {}
         report_type = data.get('report_type', 'weekly')
-        result = svc.generate_report(report_type=report_type, admin_id=user_id)
+        result = svc.generate_report(report_type=report_type, admin_id=user_id, user_id=session.get('user_id'), user_role=session.get('user_role'))
         if 'error' in result:
             return jsonify(result), 400
         svc.create_notification(
@@ -115,7 +115,7 @@ def generate_insight():
         user_id = session['user_id']
         data = request.get_json() or {}
         insight_type = data.get('insight_type', 'churn_prediction')
-        result = svc.generate_insight(insight_type=insight_type, admin_id=user_id)
+        result = svc.generate_insight(insight_type=insight_type, admin_id=user_id, user_id=session.get('user_id'), user_role=session.get('user_role'))
         if 'error' in result:
             return jsonify(result), 400
         if result.get('risk_level') in ('high', 'medium'):

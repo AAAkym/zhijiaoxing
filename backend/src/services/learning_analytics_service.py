@@ -143,7 +143,7 @@ def get_student_detail_analytics(teacher_id: int, student_id: int) -> Dict:
     }
 
 
-def generate_ai_learning_report(teacher_id: int, course_id: int = None, report_type: str = "comprehensive") -> Dict:
+def generate_ai_learning_report(teacher_id: int, course_id: int = None, report_type: str = "comprehensive", user_id: int = None, user_role: str = None) -> Dict:
     analytics = get_class_learning_analytics(teacher_id, course_id)
     if "error" in analytics:
         return analytics
@@ -151,7 +151,7 @@ def generate_ai_learning_report(teacher_id: int, course_id: int = None, report_t
     prompt = _build_analytics_prompt(analytics, report_type)
 
     try:
-        raw = spark_service.chat(prompt)
+        raw = spark_service.chat(prompt, user_id=user_id, user_role=user_role)
         import re
         cleaned = raw.strip()
         cleaned = re.sub(r'^```(?:json)?', '', cleaned, flags=re.IGNORECASE).strip()

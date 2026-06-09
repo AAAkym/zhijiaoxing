@@ -548,7 +548,7 @@ def analyze_mistake(mistake_id):
         if not m:
             return jsonify({"error": "Mistake record not found"}), 404
         sync = _sync_choice_answers_for_mistake(m)
-        analysis = spark_service.analyze_mistake(question_content=m.question_content, user_answer=sync["user"].display, correct_answer=sync["correct"].display, knowledge_tags=_safe_json_loads(m.knowledge_tags, []), course_title=m.course.title if m.course else None, explanation=sync.get("explanation"))
+        analysis = spark_service.analyze_mistake(question_content=m.question_content, user_answer=sync["user"].display, correct_answer=sync["correct"].display, knowledge_tags=_safe_json_loads(m.knowledge_tags, []), course_title=m.course.title if m.course else None, explanation=sync.get("explanation"), user_id=session.get('user_id'), user_role=session.get('user_role'))
         classify = classify_error_reason(question_content=m.question_content, user_answer_display=sync["user"].display, correct_answer_display=sync["correct"].display, ai_analysis=analysis, explanation=sync.get("explanation"))
         m.ai_analysis = analysis
         m.error_type_auto = classify["auto_type"]
@@ -578,6 +578,8 @@ def analyze_mistake_stream(mistake_id):
         knowledge_tags_value = _safe_json_loads(m.knowledge_tags, [])
         explanation_value = sync.get("explanation")
         mistake_id_value = m.id
+        session_user_id = session.get('user_id')
+        session_user_role = session.get('user_role')
         # 修复：在生成器外捕获实际app对象，current_app是LocalProxy，在生成器内无法解析
         app_ref = current_app._get_current_object()
 
@@ -586,7 +588,7 @@ def analyze_mistake_stream(mistake_id):
             # 修复：使用实际app对象创建应用上下文
             with app_ref.app_context():
                 try:
-                    for chunk in spark_service.analyze_mistake_stream(question_content=question_content_value, user_answer=sync["user"].display, correct_answer=sync["correct"].display, knowledge_tags=knowledge_tags_value, course_title=course_title_value, explanation=explanation_value):
+                    for chunk in spark_service.analyze_mistake_stream(question_content=question_content_value, user_answer=sync["user"].display, correct_answer=sync["correct"].display, knowledge_tags=knowledge_tags_value, course_title=course_title_value, explanation=explanation_value, user_id=session_user_id, user_role=session_user_role):
                         full_text += chunk
                         yield f"data: {json.dumps({'content': chunk}, ensure_ascii=False)}\n\n"
                     if _is_redundant_analysis_text(full_text):
@@ -597,6 +599,8 @@ def analyze_mistake_stream(mistake_id):
                             knowledge_tags=knowledge_tags_value,
                             course_title=course_title_value,
                             explanation=explanation_value,
+                            user_id=session_user_id,
+                            user_role=session_user_role,
                         )
                         if regenerated and regenerated.strip():
                             full_text = regenerated
@@ -779,6 +783,8 @@ def generate_targeted_practice_questions():
             knowledge_tags=sorted(all_tags),
             course_title=course_title_value,
             question_count=question_count,
+            user_id=session.get('user_id'),
+            user_role=session.get('user_role'),
         )
 
         try:
@@ -881,6 +887,9 @@ def generate_targeted_practice_stream():
 
 直接输出JSON数组，不要有任何其他文字。"""
 
+        session_user_id = session.get('user_id')
+        session_user_role = session.get('user_role')
+
         def _dedup_questions(generated, originals, threshold=0.6):
             import re as _re2
             def normalize(text):
@@ -907,7 +916,7 @@ def generate_targeted_practice_stream():
             full_text = ""
             logger.info(f"🚀 [靶向练习] 开始流式生成，题目数量: {question_count}")
             try:
-                for chunk in spark_service.chat_stream([{"role": "user", "content": prompt}]):
+                for chunk in spark_service.chat_stream([{"role": "user", "content": prompt}], user_id=session_user_id, user_role=session_user_role):
                     full_text += chunk
                     yield f"data: {json.dumps({'content': chunk}, ensure_ascii=False)}\n\n"
                 
@@ -1079,6 +1088,8 @@ def generate_adaptive_practice_plan():
             previous_results=data.get("previous_results", []),
             knowledge_tags=sorted(all_tags),
             course_title=course_title,
+            user_id=session.get('user_id'),
+            user_role=session.get('user_role'),
         )
         
         try:
@@ -1133,7 +1144,7 @@ def batch_analyze_mistakes():
         for m in mistakes:
             sync = _sync_choice_answers_for_mistake(m)
             payload.append({"id": m.id, "question_content": m.question_content, "user_answer": sync["user"].display, "correct_answer": sync["correct"].display, "knowledge_tags": _safe_json_loads(m.knowledge_tags, []), "course_title": m.course.title if m.course else None})
-        analysis = spark_service.analyze_mistakes_batch(payload)
+        analysis = spark_service.analyze_mistakes_batch(payload, user_id=session.get('user_id'), user_role=session.get('user_role'))
         return jsonify({"message": "Batch analysis completed successfully", "analysis": analysis, "analyzed_count": len(mistakes)}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -1159,9 +1170,12 @@ def batch_analyze_mistakes_stream():
             dataset.append({"id": m.id, "question_content": m.question_content, "user_answer": sync["user"].display, "correct_answer": sync["correct"].display, "knowledge_tags": _safe_json_loads(m.knowledge_tags, []), "course_title": m.course.title if m.course else None})
         prompt = "你是一位教育分析专家，请对错题给出错误模式、薄弱知识点与分阶段改进建议。\\n错题数据：" + json.dumps(dataset, ensure_ascii=False)
 
+        session_user_id = session.get('user_id')
+        session_user_role = session.get('user_role')
+
         def generate():
             try:
-                for chunk in spark_service.chat_stream([{"role": "user", "content": prompt}]):
+                for chunk in spark_service.chat_stream([{"role": "user", "content": prompt}], user_id=session_user_id, user_role=session_user_role):
                     yield f"data: {json.dumps({'content': chunk}, ensure_ascii=False)}\\n\\n"
                 yield f"data: {json.dumps({'done': True}, ensure_ascii=False)}\\n\\n"
             except Exception as e:

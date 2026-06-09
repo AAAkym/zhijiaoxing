@@ -63,6 +63,7 @@ class TeachingContent(db.Model):
     title = db.Column(db.String(200), nullable=False)
     content = db.Column(db.Text, nullable=False)
     generated_by_llm = db.Column(db.Boolean, default=False)
+    content_type = db.Column(db.String(50), nullable=True, default='lecture')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -78,6 +79,7 @@ class TeachingContent(db.Model):
             'title': self.title,
             'content': self.content,
             'generated_by_llm': self.generated_by_llm,
+            'content_type': self.content_type,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

@@ -76,7 +76,9 @@ def ai_chat():
             question=data['question'],
             context=context,
             knowledge_base=knowledge_base,
-            ai_style=ai_style
+            ai_style=ai_style,
+            user_id=session.get('user_id'),
+            user_role=session.get('user_role')
         )
         
         return jsonify({
@@ -120,7 +122,7 @@ def ai_chat_stream():
         ]
         
         def generate():
-            for chunk in spark_service.chat_stream(messages):
+            for chunk in spark_service.chat_stream(messages, user_id=session.get('user_id'), user_role=session.get('user_role')):
                 yield f"data: {json.dumps({'content': chunk}, ensure_ascii=False)}\n\n"
             yield f"data: {json.dumps({'done': True}, ensure_ascii=False)}\n\n"
         
@@ -153,7 +155,9 @@ def evaluate_practice():
                     evaluation_result = spark_service.evaluate_practice(
                         question=questions_json,
                         user_answer=json.dumps(data.get('answers', {}), ensure_ascii=False),
-                        correct_answer=""
+                        correct_answer="",
+                        user_id=session.get('user_id'),
+                        user_role=session.get('user_role')
                     )
                 except Exception as e:
                     evaluation_result = f"评测完成，得分: {score}%"
@@ -180,7 +184,9 @@ def evaluate_practice():
             evaluation_result = spark_service.evaluate_practice(
                 question=assessment.questions,
                 user_answer=data['user_answer'],
-                correct_answer=assessment.answers or ""
+                correct_answer=assessment.answers or "",
+                user_id=session.get('user_id'),
+                user_role=session.get('user_role')
             )
             
             score = data.get('score', 0)
@@ -317,6 +323,8 @@ def video_assistant_chat():
             context=context,
             knowledge_base=knowledge_base,
             ai_style=ai_style,
+            user_id=session.get('user_id'),
+            user_role=session.get('user_role')
         )
 
         return jsonify({'answer': answer}), 200
@@ -390,7 +398,7 @@ def video_assistant_stream():
         ]
 
         def generate():
-            for chunk in spark_service.chat_stream(messages):
+            for chunk in spark_service.chat_stream(messages, user_id=session.get('user_id'), user_role=session.get('user_role')):
                 yield f"data: {json.dumps({'content': chunk}, ensure_ascii=False)}\n\n"
             yield f"data: {json.dumps({'done': True}, ensure_ascii=False)}\n\n"
 

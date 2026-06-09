@@ -225,7 +225,7 @@ class ProfileSyncService:
 
         return results
 
-    def generate_ai_insight(self, user_id):
+    def generate_ai_insight(self, user_id, user_role=None):
         profile = StudentProfile.query.filter_by(user_id=user_id).first()
         if not profile:
             return {"insight": "暂无画像数据"}
@@ -253,7 +253,7 @@ class ProfileSyncService:
             insight = spark_service.chat([
                 {"role": "system", "content": "你是一位专业的学习分析师，擅长根据学生数据提供个性化洞察。"},
                 {"role": "user", "content": prompt},
-            ])
+            ], user_id=user_id, user_role=user_role)
             return {"insight": insight}
         except Exception as e:
             logger.error(f"Generate AI insight error: {e}")

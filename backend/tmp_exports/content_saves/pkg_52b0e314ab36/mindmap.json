@@ -1,0 +1,66 @@
+{
+  "root": {
+    "children": [
+      {
+        "children": [],
+        "description": "",
+        "is_core": false,
+        "name": "\"mindmap\": {",
+        "relationship_type": "并列"
+      },
+      {
+        "children": [],
+        "description": "",
+        "is_core": false,
+        "name": "\"root\": {",
+        "relationship_type": "并列"
+      },
+      {
+        "children": [],
+        "description": "",
+        "is_core": false,
+        "name": "\"name\": \"python变量与数据类型\",",
+        "relationship_type": "并列"
+      },
+      {
+        "children": [],
+        "description": "",
+        "is_core": false,
+        "name": "\"description\": \"主题概述，涵盖Python中变量和数据类型的基本概念和应用",
+        "relationship_type": "并列"
+      },
+      {
+        "children": [],
+        "description": "",
+        "is_core": false,
+        "name": "\"is_core\": true,",
+        "relationship_type": "并列"
+      },
+      {
+        "children": [],
+        "description": "",
+        "is_core": false,
+        "name": "\"relationship_type\": null,",
+        "relationship_type": "并列"
+      },
+      {
+        "children": [],
+        "description": "",
+        "is_core": false,
+        "name": "\"children\": [",
+        "relationship_type": "并列"
+      },
+      {
+        "children": [],
+        "description": "",
+        "is_core": false,
+        "name": "\"name\": \"第1节：python数据变量\",",
+        "relationship_type": "并列"
+      }
+    ],
+    "description": "python变量与数据类型的知识体系",
+    "is_core": true,
+    "name": "python变量与数据类型",
+    "relationship_type": null
+  }
+}

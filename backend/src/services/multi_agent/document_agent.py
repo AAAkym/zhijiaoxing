@@ -7,6 +7,7 @@ from src.services.multi_agent.shared_state import (
     message_bus,
     agent_monitor,
 )
+from src.services.knowledge_base_service import knowledge_base_service
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,14 @@ DOCUMENT_SYSTEM_PROMPT = """你是一位专业的课程文档撰写专家智能�
 4. 适配学生水平：根据知识基础调整内容深度
 5. 标注重点难点：标记关键知识点和常见误区
 
+## 知识库内容使用规则
+当提供了课程知识库内容时，必须：
+1. 文档结构必须与知识库中的章节体系一致
+2. 知识点讲解必须基于知识库中的定义和内容，不得随意编造
+3. 文档中的示例应参考知识库中的教学案例
+4. 术语使用必须与知识库中的定义保持一致
+5. 复习思考题应覆盖知识库中的核心知识点
+
 ## 学生画像适配
 - 视觉型：增加图表描述、流程图文字版、结构化展示
 - 动觉型：增加实操步骤、动手实验指导
@@ -30,7 +39,7 @@ DOCUMENT_SYSTEM_PROMPT = """你是一位专业的课程文档撰写专家智能�
 - 进阶者：增加深度分析、前沿拓展
 
 ## 输出格式
-严格返回以下JSON格式：
+严格返回以下JSON格式，不要添加任何markdown代码块标记：
 {
   "document": {
     "title": "文档标题",
@@ -42,7 +51,7 @@ DOCUMENT_SYSTEM_PROMPT = """你是一位专业的课程文档撰写专家智能�
         "section_id": "s1",
         "title": "章节标题",
         "key_points": ["要点1", "要点2"],
-        "content": "章节正文内容（Markdown格式）",
+        "content": "章节正文内容，至少200字，包含概念定义、核心要素、相关原理的详细讲解",
         "examples": [
           {
             "title": "示例标题",
@@ -59,7 +68,72 @@ DOCUMENT_SYSTEM_PROMPT = """你是一位专业的课程文档撰写专家智能�
     ],
     "review_questions": ["复习思考题1"]
   }
-}"""
+}
+
+## 重要提醒
+- content字段不得为空，每个章节至少200字的详细讲解
+- 至少生成3个章节，每个章节包含至少2个key_points和1个example
+- glossary至少包含5个术语
+- review_questions至少包含3道题
+- 直接输出纯JSON，不要用```json```包裹"""
+
+
+MINDMAP_SYSTEM_PROMPT = """你是一位专业的知识结构化专家智能体，负责将课程知识点组织为层次分明、逻辑清晰的思维导图结构。
+
+## 你的职责
+根据给定主题和知识点，生成结构完整、内容丰富的思维导图，确保涵盖核心概念、主要分支、子分支及关键细节。
+
+## 思维导图生成原则
+1. 根节点为核心主题，必须清晰明确
+2. 第一层为主要知识领域（至少3个分支，建议4-6个）
+3. 第二层为各领域下的核心概念（每个分支至少2个子节点）
+4. 第三层为具体知识点、应用场景或细节（尽可能展开）
+5. 每个节点必须有name和description
+6. 核心节点标记is_core为true
+7. 关系类型必须准确：包含、并列、因果、递进
+
+## 节点内容要求
+- name：简洁准确，5-15字
+- description：简要说明该节点的核心含义，10-50字
+- is_core：核心概念标true，辅助概念标false
+- relationship_type：与父节点的关系类型
+
+## 输出格式
+严格返回以下JSON格式，不要添加任何markdown代码块标记：
+{
+  "mindmap": {
+    "root": {
+      "name": "根节点名称",
+      "description": "整体概述",
+      "is_core": true,
+      "relationship_type": null,
+      "children": [
+        {
+          "name": "主要分支1",
+          "description": "分支概述",
+          "is_core": true,
+          "relationship_type": "包含",
+          "children": [
+            {
+              "name": "子概念1",
+              "description": "概念说明",
+              "is_core": false,
+              "relationship_type": "并列",
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
+
+## 重要提醒
+- 至少生成4个一级分支
+- 每个一级分支至少2个二级子节点
+- 二级节点下尽可能有三级节点
+- 所有节点的description不得为空
+- 直接输出纯JSON，不要用```json```包裹"""
 
 
 class DocumentAgent(AgentBase):
@@ -118,6 +192,10 @@ class DocumentAgent(AgentBase):
         topic = task.get("topic", "")
         knowledge_points = task.get("knowledge_points", [])
         depth = task.get("depth", "intermediate")
+        course_id = task.get("course_id")
+        chapter_ids = task.get("chapter_ids")
+        _user_id = task.get('user_id')
+        _user_role = task.get('user_role')
 
         cognitive_style = profile.get("cognitive_style", "mixed")
         knowledge_base = profile.get("knowledge_base", {})
@@ -126,8 +204,9 @@ class DocumentAgent(AgentBase):
         style_instruction = self._get_style_instruction(cognitive_style)
         depth_instruction = self._get_depth_instruction(depth, knowledge_base)
         goal_instruction = self._get_goal_instruction(goal)
+        kb_context = self._build_kb_context(course_id, chapter_ids)
 
-        prompt = f"""请生成一份专业的课程讲解文档。
+        prompt = f"""请生成一份专业的课程核心概念讲解文档。
 
 ## 主题
 {topic}
@@ -141,20 +220,31 @@ class DocumentAgent(AgentBase):
 ## 学生画像适配
 {style_instruction}
 {goal_instruction}
+{kb_context}
 
-要求：
+## 文档内容要求
 1. 文档结构清晰，至少包含3个章节
-2. 每个章节包含核心知识点讲解、实际示例、常见误区
-3. 内容深度适配学生当前水平
-4. 包含术语表和复习思考题
+2. 每个章节的content字段必须包含：
+   - 概念定义：清晰定义该章节涉及的核心概念
+   - 核心要素：列出并解释关键要素和组成部分
+   - 相关原理：阐述背后的原理和机制
+   - 应用场景：说明在实际中的应用
+3. 每个章节至少2个key_points和1个example
+4. examples中每个示例必须有title、description和content
+5. common_mistakes至少列出1个常见误区
+6. 术语表glossary至少包含5个核心术语及其定义
+7. 复习思考题review_questions至少3道
+8. 所有content字段不得为空，每段至少200字
 
-请严格按照JSON格式输出。"""
+请严格按照JSON格式输出，不要用```json```包裹。"""
 
         try:
             response = self._call_llm(
                 prompt,
                 system_prompt=DOCUMENT_SYSTEM_PROMPT,
                 temperature=0.7,
+                user_id=_user_id,
+                user_role=_user_role,
             )
             parsed = self._parse_json_response(response)
             shared_state.set(
@@ -169,6 +259,12 @@ class DocumentAgent(AgentBase):
         profile = task.get("student_profile", {})
         topic = task.get("topic", "")
         key_concepts = task.get("key_concepts", [])
+        course_id = task.get("course_id")
+        chapter_ids = task.get("chapter_ids")
+        _user_id = task.get('user_id')
+        _user_role = task.get('user_role')
+
+        kb_context = self._build_kb_context(course_id, chapter_ids)
 
         prompt = f"""请生成一份精简的知识点笔记。
 
@@ -180,6 +276,7 @@ class DocumentAgent(AgentBase):
 
 ## 学生画像
 {json.dumps(profile, ensure_ascii=False)}
+{kb_context}
 
 要求：
 1. 每个知识点用1-3句话概括核心内容
@@ -194,6 +291,8 @@ class DocumentAgent(AgentBase):
                 prompt,
                 system_prompt=DOCUMENT_SYSTEM_PROMPT,
                 temperature=0.5,
+                user_id=_user_id,
+                user_role=_user_role,
             )
             return self._parse_json_response(response)
         except Exception as e:
@@ -203,6 +302,8 @@ class DocumentAgent(AgentBase):
         profile = task.get("student_profile", {})
         course_content = task.get("course_content", "")
         topics = task.get("topics", [])
+        _user_id = task.get('user_id')
+        _user_role = task.get('user_role')
 
         prompt = f"""请根据课程内容生成复习总结文档。
 
@@ -228,6 +329,8 @@ class DocumentAgent(AgentBase):
                 prompt,
                 system_prompt=DOCUMENT_SYSTEM_PROMPT,
                 temperature=0.5,
+                user_id=_user_id,
+                user_role=_user_role,
             )
             return self._parse_json_response(response)
         except Exception as e:
@@ -237,45 +340,45 @@ class DocumentAgent(AgentBase):
         topic = task.get("topic", "")
         knowledge_points = task.get("knowledge_points", [])
         depth = task.get("depth", 3)
+        course_id = task.get("course_id")
+        chapter_ids = task.get("chapter_ids")
+        _user_id = task.get('user_id')
+        _user_role = task.get('user_role')
 
-        prompt = f"""请生成知识点思维导图的结构化内容。
+        kb_context = self._build_kb_context(course_id, chapter_ids)
+
+        prompt = f"""请为主题"{topic}"生成一个完整的知识结构思维导图。
 
 ## 主题
 {topic}
 
-## 知识点
-{json.dumps(knowledge_points, ensure_ascii=False) if knowledge_points else '自动提取'}
+## 参考知识点
+{json.dumps(knowledge_points, ensure_ascii=False) if knowledge_points else '请根据主题自动规划知识体系'}
 
-## 层级深度
-{depth}层
+## 层级深度要求
+{depth}层（建议：根节点→主要领域→核心概念→具体细节）
 
-要求：
-1. 以树状结构组织知识点
-2. 每个节点包含：名称、简要说明、关联知识点
-3. 标注核心节点和扩展节点
-4. 适合可视化展示
+{kb_context}
 
-返回JSON格式：
-{{
-  "mindmap": {{
-    "root": {{
-      "name": "根节点",
-      "description": "描述",
-      "is_core": true,
-      "children": [
-        {{
-          "name": "子节点",
-          "description": "描述",
-          "is_core": false,
-          "children": []
-        }}
-      ]
-    }}
-  }}
-}}"""
+## 生成要求
+1. 根节点为"{topic}"，description为该主题的整体概述
+2. 第一层分支覆盖该主题的4-6个主要知识领域
+3. 每个第一层分支下至少2个核心概念（第二层）
+4. 核心概念下展开具体知识点或应用场景（第三层）
+5. 每个节点必须有有意义的description（10-50字）
+6. 标记核心节点is_core=true
+7. 准确标注relationship_type（包含/并列/因果/递进）
+
+请严格按照JSON格式输出，不要用```json```包裹。"""
 
         try:
-            response = self._call_llm(prompt, temperature=0.5)
+            response = self._call_llm(
+                prompt,
+                system_prompt=MINDMAP_SYSTEM_PROMPT,
+                temperature=0.5,
+                user_id=_user_id,
+                user_role=_user_role,
+            )
             return self._parse_json_response(response)
         except Exception as e:
             return {"error": str(e)}
@@ -318,19 +421,141 @@ class DocumentAgent(AgentBase):
         }
         return instructions.get(goal, "")
 
+    def _build_kb_context(self, course_id, chapter_ids=None):
+        if not course_id:
+            return ""
+        try:
+            ctx = knowledge_base_service.build_knowledge_context_for_prompt(
+                course_id, chapter_ids
+            )
+            if not ctx:
+                return ""
+            parts = []
+            parts.append(f"\n## 课程知识库内容（课程：{ctx['course_title']}）")
+            if ctx.get("syllabus_text"):
+                parts.append(f"### 课程大纲\n{ctx['syllabus_text']}")
+            if ctx.get("chapter_list"):
+                parts.append(f"### 章节结构（文档结构应与此一致）\n{ctx['chapter_list']}")
+            if ctx.get("knowledge_points_detail") and ctx["knowledge_points_detail"] != "暂无":
+                parts.append(f"### 知识点详情（讲解必须基于这些内容）\n{ctx['knowledge_points_detail']}")
+            if ctx.get("teaching_cases_detail") and ctx["teaching_cases_detail"] != "暂无":
+                parts.append(f"### 教学案例（可作为文档示例）\n{ctx['teaching_cases_detail']}")
+            return "\n\n".join(parts)
+        except Exception as e:
+            logger.warning(f"Failed to build KB context for document agent: {e}")
+            return ""
+
     def _parse_json_response(self, response):
         text = response.strip()
         if text.startswith("```"):
             lines = text.split("\n")
-            text = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
+            first_line = lines[0].strip()
+            if first_line.startswith("```") and len(first_line) > 3:
+                lines = lines[1:]
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            text = "\n".join(lines)
         try:
             return json.loads(text)
         except json.JSONDecodeError:
-            start = text.find("{")
-            end = text.rfind("}") + 1
-            if start >= 0 and end > start:
-                try:
-                    return json.loads(text[start:end])
-                except json.JSONDecodeError:
-                    pass
-            return {"raw_response": text, "parse_error": True}
+            pass
+        start = text.find("{")
+        end = text.rfind("}") + 1
+        if start >= 0 and end > start:
+            candidate = text[start:end]
+            try:
+                return json.loads(candidate)
+            except json.JSONDecodeError:
+                repaired = self._repair_mismatched_brackets(candidate)
+                if repaired:
+                    try:
+                        return json.loads(repaired)
+                    except (json.JSONDecodeError, ValueError):
+                        pass
+        start = text.find("[")
+        end = text.rfind("]") + 1
+        if start >= 0 and end > start:
+            candidate = text[start:end]
+            try:
+                return json.loads(candidate)
+            except json.JSONDecodeError:
+                repaired = self._repair_mismatched_brackets(candidate)
+                if repaired:
+                    try:
+                        return json.loads(repaired)
+                    except (json.JSONDecodeError, ValueError):
+                        pass
+        repaired_full = self._repair_mismatched_brackets(text)
+        if repaired_full:
+            try:
+                return json.loads(repaired_full)
+            except (json.JSONDecodeError, ValueError):
+                pass
+        return {"raw_response": text, "parse_error": True}
+
+    @staticmethod
+    def _repair_mismatched_brackets(text):
+        if not text or not isinstance(text, str):
+            return None
+
+        chars = list(text)
+        stack = []
+        in_str = False
+        esc = False
+
+        for i, ch in enumerate(chars):
+            if esc:
+                esc = False
+                continue
+            if ch == '\\' and in_str:
+                esc = True
+                continue
+            if ch == '"':
+                in_str = not in_str
+                continue
+            if in_str:
+                continue
+            if ch in '{[':
+                stack.append(ch)
+            elif ch in '}]':
+                if stack:
+                    last_ch = stack[-1]
+                    if (ch == '}' and last_ch == '{') or (ch == ']' and last_ch == '['):
+                        stack.pop()
+                    else:
+                        expected = '}' if last_ch == '{' else ']'
+                        chars[i] = expected
+                        stack.pop()
+                else:
+                    chars[i] = ''
+
+        result = ''.join(chars).rstrip()
+        while stack:
+            last_ch = stack.pop()
+            expected = '}' if last_ch == '{' else ']'
+            result += expected
+
+        try:
+            json.loads(result)
+            return result
+        except json.JSONDecodeError:
+            pass
+
+        brace_count = 0
+        json_start = None
+        for i, ch in enumerate(result):
+            if ch == '{':
+                if brace_count == 0:
+                    json_start = i
+                brace_count += 1
+            elif ch == '}':
+                brace_count -= 1
+                if brace_count == 0 and json_start is not None:
+                    candidate = result[json_start:i + 1]
+                    try:
+                        json.loads(candidate)
+                        return candidate
+                    except (json.JSONDecodeError, ValueError):
+                        json_start = None
+
+        return None

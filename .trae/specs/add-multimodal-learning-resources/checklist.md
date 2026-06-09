@@ -1,0 +1,21 @@
+- [x] 后端代码执行API端点 `/code-execution/run` 可正常接收并执行Python代码，返回结构化结果
+- [x] 代码执行API具有10秒超时保护，超时后返回错误信息
+- [x] 代码执行API过滤危险操作（文件写入、网络请求、子进程），拒绝执行并返回安全警告
+- [x] InteractiveMindMap组件能将树状JSON数据渲染为SVG可视化思维导图
+- [x] InteractiveMindMap支持节点展开/折叠交互，带动画过渡
+- [x] InteractiveMindMap支持鼠标滚轮缩放（0.5x-2x）和工具栏缩放按钮
+- [x] InteractiveMindMap支持画布拖拽平移和节点拖拽调整位置
+- [x] InteractiveMindMap支持Markdown/图形视图双模式切换
+- [x] CodePlayground组件基于CodeEditor展示代码，支持语法高亮
+- [x] CodePlayground点击运行按钮可调用后端API执行代码，展示输出结果
+- [x] CodePlayground展示错误信息时以红色标注，含行号和错误类型
+- [x] CodePlayground支持代码重置功能
+- [x] CourseLearningPage课程讲义标签页中展示4种学习资源卡片
+- [x] 资源卡片展示正确状态（已生成=绿色可用，未生成=灰色待生成）
+- [x] 点击讲解文档卡片可展开文档内容
+- [x] 点击思维导图卡片可打开InteractiveMindMap弹窗
+- [x] 点击拓展阅读卡片可展示推荐资源列表
+- [x] 点击代码实操卡片可打开CodePlayground弹窗
+- [x] 切换章节时资源区域自动刷新
+- [x] CourseGenerationWizard个性化模式中包含document/mindmap/recommendation/project 4种资源类型选项
+- [x] 生成结果面板中mindmap和project类型有对应预览展示

@@ -335,7 +335,7 @@ def generate_programming_assessment():
         parsed = []
         raw = ''
         try:
-            raw = spark_service.chat(prompt)
+            raw = spark_service.chat(prompt, user_id=session.get('user_id'), user_role=session.get('user_role'))
             parsed = _extract_json_array(raw)
             logger.info('AI returned %d items for request of %d questions', len(parsed), question_count)
         except Exception as exc:
@@ -529,7 +529,7 @@ def _static_code_metrics(code: str, standard: str) -> Dict[str, float]:
     }
 
 
-def _score_submission(question: Dict[str, Any], code: str, language: str) -> Dict[str, Any]:
+def _score_submission(question: Dict[str, Any], code: str, language: str, user_id=None, user_role=None) -> Dict[str, Any]:
     standard = question.get('standard_answer') or ''
     test_cases = question.get('test_cases') or question.get('samples') or []
     run_results, runtime_summary = _run_code(language, code, test_cases if isinstance(test_cases, list) else [])
@@ -575,7 +575,7 @@ def _score_submission(question: Dict[str, Any], code: str, language: str) -> Dic
         'metrics': metrics,
     }
 
-    ai_analysis = _ai_code_analysis(question, code, standard, language, run_results, total)
+    ai_analysis = _ai_code_analysis(question, code, standard, language, run_results, total, user_id=user_id, user_role=user_role)
     if ai_analysis:
         feedback['ai_detailed_analysis'] = ai_analysis
 
@@ -592,7 +592,7 @@ def _score_submission(question: Dict[str, Any], code: str, language: str) -> Dic
     }
 
 
-def _ai_code_analysis(question: Dict[str, Any], code: str, standard: str, language: str, run_results: list, score: float) -> Optional[Dict[str, Any]]:
+def _ai_code_analysis(question: Dict[str, Any], code: str, standard: str, language: str, run_results: list, score: float, user_id=None, user_role=None) -> Optional[Dict[str, Any]]:
     if not code.strip():
         return None
     try:
@@ -645,7 +645,7 @@ def _ai_code_analysis(question: Dict[str, Any], code: str, standard: str, langua
 
 只输出JSON，不要输出其他内容。"""
 
-        raw = spark_service.chat(prompt)
+        raw = spark_service.chat(prompt, user_id=user_id, user_role=user_role)
         cleaned = raw.strip()
         cleaned = re.sub(r'^```(?:json)?', '', cleaned, flags=re.IGNORECASE).strip()
         cleaned = re.sub(r'```$', '', cleaned).strip()
@@ -729,7 +729,7 @@ def submit_programming_solution():
             return jsonify({'error': 'Assessment not found'}), 404
         question = _get_programming_question(assessment, question_index)
         standard = question.get('standard_answer') or ''
-        result = _score_submission(question, code, language)
+        result = _score_submission(question, code, language, user_id=session.get('user_id'), user_role=session.get('user_role'))
 
         submission = ProgrammingSubmission(
             user_id=session['user_id'],

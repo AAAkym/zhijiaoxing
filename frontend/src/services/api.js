@@ -26,7 +26,7 @@ function fetchWithTimeout(url, options = {}, timeout = SSE_TIMEOUT) {
 }
 
 // 通用请求函数
-async function request(url, options = {}) {
+export async function request(url, options = {}) {
   const { signal, ...restOptions } = options
   const config = {
     headers: {
@@ -48,6 +48,7 @@ async function request(url, options = {}) {
   try {
     response = await fetch(`${API_BASE_URL}${url}`, config)
   } catch (err) {
+    if (err.name === 'AbortError') throw err
     const networkError = new Error('网络连接失败，请检查网络后重试')
     networkError.isNetworkError = true
     networkError.originalError = err
@@ -229,6 +230,67 @@ export const courseGeneration = {
   }),
 
   getSteps: () => request('/course-generation/steps'),
+
+  getResourceTypes: () => request('/resource-generation/resource-types'),
+
+  getKBCourses: () => request('/resource-generation/knowledge-base/courses'),
+
+  getKBChapters: (courseId) => request(`/resource-generation/knowledge-base/courses/${courseId}/chapters`),
+
+  generatePersonalizedResources: (data) => request('/resource-generation/personalized', {
+    method: 'POST',
+    body: data,
+  }),
+
+  generateResourcePackage: (data) => request('/resource-generation/package', {
+    method: 'POST',
+    body: data,
+  }),
+
+  generateSingleResource: (data) => request('/resource-generation/single', {
+    method: 'POST',
+    body: data,
+  }),
+
+  getGenerationStatus: (packageId) => request(`/resource-generation/status/${packageId}`),
+
+  getAgentsStatus: () => request('/resource-generation/agents/status'),
+
+  getSystemSummary: () => request('/resource-generation/system/summary'),
+
+  getCourseResources: (courseId, chapterId) => {
+    const params = chapterId ? `?chapter_id=${chapterId}` : ''
+    return request(`/resource-generation/course-resources/${courseId}${params}`)
+  },
+
+  convertContent: (data) => request('/resource-generation/convert', {
+    method: 'POST',
+    body: data,
+  }),
+
+  saveAndSync: (data) => request('/resource-generation/save-and-sync', {
+    method: 'POST',
+    body: data,
+  }),
+
+  batchSaveAndSync: (data) => request('/resource-generation/batch-save-and-sync', {
+    method: 'POST',
+    body: data,
+  }),
+
+  getSyncStatus: (params) => {
+    const query = new URLSearchParams()
+    if (params.package_id) query.set('package_id', params.package_id)
+    if (params.record_id) query.set('record_id', params.record_id)
+    if (params.course_id) query.set('course_id', params.course_id)
+    return request(`/resource-generation/sync-status?${query.toString()}`)
+  },
+
+  getPackageSyncSummary: (packageId) => request(`/resource-generation/sync-status/${packageId}/summary`),
+
+  retrySync: (recordId) => request(`/resource-generation/sync-retry/${recordId}`, {
+    method: 'POST',
+  }),
 }
 
 export const classManagement = {
@@ -376,6 +438,26 @@ export const admin = {
   getUserActivity: () => request('/dashboard/user_activity'),
   
   getCourseStats: () => request('/dashboard/course_stats'),
+
+  getTokenUsageSummary: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString()
+    return request(`/token-usage/summary${queryString ? `?${queryString}` : ''}`)
+  },
+
+  getTokenUsageTrend: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString()
+    return request(`/token-usage/trend${queryString ? `?${queryString}` : ''}`)
+  },
+
+  getTokenUsageRecords: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString()
+    return request(`/token-usage/records${queryString ? `?${queryString}` : ''}`)
+  },
+
+  getTokenUsageUserRanking: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString()
+    return request(`/token-usage/user-ranking${queryString ? `?${queryString}` : ''}`)
+  },
 }
 
 // 学生API
@@ -932,6 +1014,21 @@ export const teacher = {
     const queryString = new URLSearchParams(params).toString()
     return request(`/teacher/recent-activities${queryString ? `?${queryString}` : ''}`)
   },
+
+  getTokenUsageSummary: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString()
+    return request(`/teacher/token-usage/summary${queryString ? `?${queryString}` : ''}`)
+  },
+
+  getTokenUsageTrend: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString()
+    return request(`/teacher/token-usage/trend${queryString ? `?${queryString}` : ''}`)
+  },
+
+  getTokenUsageRecent: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString()
+    return request(`/teacher/token-usage/recent${queryString ? `?${queryString}` : ''}`)
+  },
 }
 
 export const programming = {
@@ -1042,6 +1139,16 @@ export const learningPathApi = {
   dismissRecommendation: (recId) => request(`/recommendations/${recId}/dismiss`, { method: 'POST' }),
 
   feedbackRecommendation: (recId, score) => request(`/recommendations/${recId}/feedback`, { method: 'POST', body: { score } }),
+
+  generateSmartRecommendations: (filters = {}, limit = 20, includeVideoSearch = true) =>
+    request('/recommendations/smart', { method: 'POST', body: { ...filters, limit, include_video_search: includeVideoSearch } }),
+
+  generateVideoSearch: (topic = '', knowledgePoints = []) =>
+    request('/recommendations/video-search', { method: 'POST', body: { topic, knowledge_points: knowledgePoints } }),
+
+  getEffectiveness: () => request('/recommendations/effectiveness'),
+
+  adjustWeights: () => request('/recommendations/adjust-weights', { method: 'POST' }),
 }
 
 export const aiAnalysis = {
@@ -1091,6 +1198,68 @@ export const aiAnalysis = {
   customAnalysis: (data) => request('/ai-analysis/custom', {
     method: 'POST',
     body: data,
+  }),
+}
+
+export const codeExecution = {
+  runCode: (code, language) => request('/code-execution/run', {
+    method: 'POST',
+    body: { code, language },
+  }),
+}
+
+export const contentReview = {
+  getReviewList: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString()
+    return request(`/content-review/list${queryString ? `?${queryString}` : ''}`)
+  },
+
+  getReviewStats: () => request('/content-review/stats'),
+
+  getReviewDetail: (id) => request(`/content-review/${id}`),
+
+  submitForReview: (data) => request('/content-review/submit', {
+    method: 'POST',
+    body: data,
+  }),
+
+  autoReview: (id) => request(`/content-review/${id}/auto-review`, {
+    method: 'POST',
+  }),
+
+  manualReview: (id, data) => request(`/content-review/${id}/manual-review`, {
+    method: 'POST',
+    body: data,
+  }),
+
+  batchReview: (data) => request('/content-review/batch', {
+    method: 'POST',
+    body: data,
+  }),
+
+  assignReviewer: (id, reviewerId) => request(`/content-review/${id}/assign`, {
+    method: 'POST',
+    body: { reviewer_id: reviewerId },
+  }),
+
+  getReviewRules: () => request('/content-review/rules'),
+
+  updateReviewRule: (ruleId, data) => request(`/content-review/rules/${ruleId}`, {
+    method: 'PUT',
+    body: data,
+  }),
+
+  getOperationLogs: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString()
+    return request(`/content-review/logs${queryString ? `?${queryString}` : ''}`)
+  },
+
+  getAnalytics: () => request('/content-review/analytics'),
+
+  getVersions: (contentId, contentType) => request(`/content-review/versions/${contentId}/${contentType}`),
+
+  autoSubmitCourse: (courseId) => request(`/content-review/auto-submit/${courseId}`, {
+    method: 'POST',
   }),
 }
 

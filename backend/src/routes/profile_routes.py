@@ -208,7 +208,7 @@ def sync_profile():
 def get_profile_insight():
     try:
         user_id = session["user_id"]
-        result = profile_sync_service.generate_ai_insight(user_id)
+        result = profile_sync_service.generate_ai_insight(user_id, user_role=session.get('user_role'))
         return jsonify(result), 200
     except Exception as e:
         logger.error(f"Get profile insight error: {e}")
@@ -232,7 +232,7 @@ def get_student_profile_by_teacher(user_id):
             return jsonify({"profile": None, "user": user.to_dict()}), 200
 
         summary = profile_agent.generate_profile_summary({"profile": profile.to_dict()})
-        insight = profile_sync_service.generate_ai_insight(user_id)
+        insight = profile_sync_service.generate_ai_insight(user_id, user_role=session.get('user_role'))
 
         return jsonify({
             "user": user.to_dict(),

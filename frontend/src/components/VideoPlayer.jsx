@@ -1,15 +1,14 @@
 import React, { useRef, useState, useEffect, forwardRef, useImperativeHandle } from 'react'
 import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, AlertCircle, Bookmark } from 'lucide-react'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'
+const BACKEND_URL = 'http://localhost:5000'
 
 function getFullVideoUrl(videoUrl) {
   if (!videoUrl) return null
   if (videoUrl.startsWith('http://') || videoUrl.startsWith('https://') || videoUrl.startsWith('blob:')) {
     return videoUrl
   }
-  const baseUrl = API_BASE_URL.replace('/api', '')
-  return `${baseUrl}${videoUrl.startsWith('/') ? '' : '/'}${videoUrl}`
+  return `${BACKEND_URL}${videoUrl.startsWith('/') ? '' : '/'}${videoUrl}`
 }
 
 const VideoPlayer = forwardRef(({ 

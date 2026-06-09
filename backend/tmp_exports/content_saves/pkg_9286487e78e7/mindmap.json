@@ -1,0 +1,66 @@
+{
+  "root": {
+    "children": [
+      {
+        "children": [],
+        "description": "",
+        "is_core": false,
+        "name": "\"mindmap\": {",
+        "relationship_type": "并列"
+      },
+      {
+        "children": [],
+        "description": "",
+        "is_core": false,
+        "name": "\"root\": {",
+        "relationship_type": "并列"
+      },
+      {
+        "children": [],
+        "description": "",
+        "is_core": false,
+        "name": "\"name\": \"机器学习基础知识\",",
+        "relationship_type": "并列"
+      },
+      {
+        "children": [],
+        "description": "",
+        "is_core": false,
+        "name": "\"description\": \"机器学习领域的基本概念与方法",
+        "relationship_type": "并列"
+      },
+      {
+        "children": [],
+        "description": "",
+        "is_core": false,
+        "name": "\"is_core\": true,",
+        "relationship_type": "并列"
+      },
+      {
+        "children": [],
+        "description": "",
+        "is_core": false,
+        "name": "\"relationship_type\": null,",
+        "relationship_type": "并列"
+      },
+      {
+        "children": [],
+        "description": "",
+        "is_core": false,
+        "name": "\"children\": [",
+        "relationship_type": "并列"
+      },
+      {
+        "children": [],
+        "description": "",
+        "is_core": false,
+        "name": "\"name\": \"机器学习定义\",",
+        "relationship_type": "并列"
+      }
+    ],
+    "description": "机器学习基础知识的知识体系",
+    "is_core": true,
+    "name": "机器学习基础知识",
+    "relationship_type": null
+  }
+}

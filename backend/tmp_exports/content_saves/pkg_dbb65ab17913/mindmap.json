@@ -1,0 +1,123 @@
+{
+  "root": {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [],
+                "description": "Python内置的整型变量。",
+                "is_core": false,
+                "name": "int",
+                "relationship_type": "包含"
+              }
+            ],
+            "description": "用于存储整数的变量类型。",
+            "is_core": false,
+            "name": "整型",
+            "relationship_type": "包含"
+          },
+          {
+            "children": [
+              {
+                "children": [],
+                "description": "Python内置的浮点型变量。",
+                "is_core": false,
+                "name": "float",
+                "relationship_type": "包含"
+              }
+            ],
+            "description": "用于存储浮点数的变量类型。",
+            "is_core": false,
+            "name": "浮点型",
+            "relationship_type": "包含"
+          },
+          {
+            "children": [
+              {
+                "children": [],
+                "description": "Python内置的字符串变量。",
+                "is_core": false,
+                "name": "str",
+                "relationship_type": "包含"
+              }
+            ],
+            "description": "用于存储字符串的变量类型。",
+            "is_core": false,
+            "name": "字符串",
+            "relationship_type": "包含"
+          }
+        ],
+        "description": "Python中的基本数据类型，如整数（int）、浮点数（float）、字符串（str）等。",
+        "is_core": false,
+        "name": "变量类型",
+        "relationship_type": "包含"
+      },
+      {
+        "children": [
+          {
+            "children": [],
+            "description": "Python中用于存储多个相同类型元素的数据结构。",
+            "is_core": false,
+            "name": "元组",
+            "relationship_type": "包含"
+          }
+        ],
+        "description": "Python中用于存储多个相同类型元素的序列。",
+        "is_core": false,
+        "name": "列表",
+        "relationship_type": "包含"
+      },
+      {
+        "children": [
+          {
+            "children": [],
+            "description": "Python中的字典实现方式，基于哈希表。",
+            "is_core": false,
+            "name": "哈希表",
+            "relationship_type": "包含"
+          }
+        ],
+        "description": "Python中用于存储键值对的无序数据结构。",
+        "is_core": false,
+        "name": "字典",
+        "relationship_type": "包含"
+      },
+      {
+        "children": [
+          {
+            "children": [],
+            "description": "Python中的集合实现方式，保持元素的排序。",
+            "is_core": false,
+            "name": "有序集合",
+            "relationship_type": "包含"
+          }
+        ],
+        "description": "Python中用于存储唯一元素的无序数据结构。",
+        "is_core": false,
+        "name": "集合",
+        "relationship_type": "包含"
+      },
+      {
+        "children": [
+          {
+            "children": [],
+            "description": "Python内置的各种函数。",
+            "is_core": false,
+            "name": "内置函数",
+            "relationship_type": "包含"
+          }
+        ],
+        "description": "Python中用于定义可调用代码块的函数。",
+        "is_core": false,
+        "name": "函数",
+        "relationship_type": "包含"
+      }
+    ],
+    "description": "Python中用于存储和管理数据的变量，包括基本类型和复杂数据结构。",
+    "is_core": true,
+    "name": "python数据变量",
+    "relationship_type": null
+  }
+}

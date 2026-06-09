@@ -40,6 +40,8 @@ def api_generate_lesson_plan():
             teaching_style=data.get('teaching_style') or 'hybrid',
             student_level=data.get('student_level') or 'intermediate',
             custom_requirements=data.get('custom_requirements') or '',
+            user_id=session.get('user_id'),
+            user_role=session.get('user_role'),
         )
         if 'error' in result:
             return jsonify({'error': result['error']}), 400
@@ -68,6 +70,8 @@ def api_generate_lesson_plan_section():
             existing_plan=data.get('existing_plan'),
             duration=int(data.get('duration') or 45),
             difficulty=data.get('difficulty') or 'medium',
+            user_id=session.get('user_id'),
+            user_role=session.get('user_role'),
         )
         if 'error' in result:
             return jsonify({'error': result['error']}), 400

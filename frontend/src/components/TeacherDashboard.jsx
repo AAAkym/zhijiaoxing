@@ -25,15 +25,20 @@ import {
   Award,
   Activity,
   Video,
-  MessageCircle
+  MessageCircle,
+  Zap
 } from 'lucide-react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts'
-import { courses, content, ai, auth, videos, teacher as teacherApi, programming } from '../services/api'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area } from 'recharts'
+import { courses, content, ai, auth, videos, teacher as teacherApi, programming, courseGeneration } from '../services/api'
 import ErrorBoundary from './ErrorBoundary'
 import VideoLessonManager from './VideoLessonManager'
 import CourseGenerationWizard from './CourseGenerationWizard'
 import ClassManagement from './ClassManagement'
 import TeacherInteractionPanel from './TeacherInteractionPanel'
+import InteractiveMindMap from './ui/InteractiveMindMap'
+import CodePlayground from './ui/CodePlayground'
+import ContentSaveSyncPanel from './ui/ContentSaveSyncPanel'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useNavigate } from 'react-router-dom'
 
 export default function TeacherDashboard({ user, onLogout }) {
@@ -62,6 +67,28 @@ export default function TeacherDashboard({ user, onLogout }) {
   const [videosLoading, setVideosLoading] = useState(false)
   const [saveStatus, setSaveStatus] = useState(null) // 'saving' | 'success' | 'error' | null
 
+  const [multimodalResults, setMultimodalResults] = useState(null)
+  const [isGeneratingMultimodal, setIsGeneratingMultimodal] = useState(false)
+  const [activeMultimodalTab, setActiveMultimodalTab] = useState('document')
+  const [selectedResourceTypes, setSelectedResourceTypes] = useState(['document', 'mindmap', 'project', 'recommendation'])
+
+  const RESOURCE_TYPE_OPTIONS = [
+    { value: 'document', label: '核心概念文档', icon: FileText, description: '结构化讲解文档，含概念定义、核心要素、应用场景' },
+    { value: 'mindmap', label: '知识点思维导图', icon: Brain, description: '可视化知识结构，含层级关系和概念连接' },
+    { value: 'project', label: '代码实操案例', icon: Target, description: '可执行的代码演示，含语法注释和实现细节' },
+    { value: 'recommendation', label: '拓展阅读推荐', icon: BookOpen, description: '相关学习资源和延伸材料推荐' },
+  ]
+
+  const toggleResourceType = (type) => {
+    setSelectedResourceTypes(prev => {
+      if (prev.includes(type)) {
+        if (prev.length <= 1) return prev
+        return prev.filter(t => t !== type)
+      }
+      return [...prev, type]
+    })
+  }
+
   // 考核管理状态
   const [examList, setExamList] = useState([])
   const [isAddExamOpen, setIsAddExamOpen] = useState(false)
@@ -80,6 +107,13 @@ export default function TeacherDashboard({ user, onLogout }) {
   const [courseDetailOpen, setCourseDetailOpen] = useState(false)
   const [courseDetail, setCourseDetail] = useState(null)
   const [courseDetailLoading, setCourseDetailLoading] = useState(false)
+
+  const [tokenSummary, setTokenSummary] = useState(null)
+  const [tokenTrend, setTokenTrend] = useState([])
+  const [tokenRecent, setTokenRecent] = useState([])
+  const [tokenLoading, setTokenLoading] = useState(false)
+  const [tokenPeriod, setTokenPeriod] = useState('daily')
+  const [tokenDays, setTokenDays] = useState(30)
 
   // 题目编辑器辅助方法
   const updateQuestionText = (index, text) => {
@@ -349,7 +383,8 @@ export default function TeacherDashboard({ user, onLogout }) {
     { id: 'interaction', label: '互动管理', icon: MessageCircle },
     { id: 'content', label: '内容生成', icon: FileText },
     { id: 'exams', label: '考核管理', icon: Target },
-    { id: 'analytics', label: '学情分析', icon: BarChart3 }
+    { id: 'analytics', label: '学情分析', icon: BarChart3 },
+    { id: 'token-usage', label: 'Token用量', icon: Zap }
   ]
 
   // 初始加载：从后端拉取课程列表以保证与服务器同步
@@ -597,6 +632,34 @@ export default function TeacherDashboard({ user, onLogout }) {
     }
   }, [selectedCourse, currentView])
 
+  useEffect(() => {
+    if (currentView !== 'token-usage') return
+    const loadTokenData = async () => {
+      setTokenLoading(true)
+      try {
+        const [summaryRes, trendRes, recentRes] = await Promise.all([
+          teacherApi.getTokenUsageSummary({ days: tokenDays }),
+          teacherApi.getTokenUsageTrend({ days: tokenDays, period: tokenPeriod }),
+          teacherApi.getTokenUsageRecent({ limit: 20 }),
+        ])
+        setTokenSummary(summaryRes?.summary || null)
+        const raw = trendRes?.trend || []
+        setTokenTrend(raw.map(item => ({
+          ...item,
+          date: typeof item.date === 'string' ? item.date : String(item.date ?? ''),
+          tokens: Number(item.tokens || item.total_tokens || 0),
+          calls: Number(item.calls || item.count || 0),
+        })).filter(item => item.date))
+        setTokenRecent(recentRes?.records || [])
+      } catch (err) {
+        console.error('加载Token数据失败:', err)
+      } finally {
+        setTokenLoading(false)
+      }
+    }
+    loadTokenData()
+  }, [currentView, tokenDays, tokenPeriod])
+
   // 生成教学内容
   const generateContent = async () => {
     if (!selectedCourse || !contentTopic) {
@@ -653,6 +716,85 @@ export default function TeacherDashboard({ user, onLogout }) {
       setTimeout(() => setSaveStatus(null), 3000)
     } catch (error) {
       console.error('保存内容失败:', error)
+      setSaveStatus('error')
+      setTimeout(() => setSaveStatus(null), 3000)
+    }
+  }
+
+  const generatePersonalizedContent = async () => {
+    if (!selectedCourse || !contentTopic) {
+      alert('请选择课程并输入教学主题')
+      return
+    }
+    if (selectedResourceTypes.length === 0) {
+      alert('请至少选择一种内容类型')
+      return
+    }
+
+    setIsGeneratingMultimodal(true)
+    setMultimodalResults(null)
+    try {
+      const res = await courseGeneration.generatePersonalizedResources({
+        course_id: parseInt(selectedCourse, 10),
+        topic: contentTopic,
+        student_profile: { major: '', weaknesses: [], learning_needs: [] },
+        resource_types: selectedResourceTypes,
+      })
+      const resources = res.resources || res
+      setMultimodalResults(resources)
+      const firstAvailable = selectedResourceTypes.find(t => resources[t])
+      if (firstAvailable) setActiveMultimodalTab(firstAvailable)
+    } catch (error) {
+      console.error('多模态内容生成失败:', error)
+      alert('生成失败: ' + (error.message || '请重试'))
+    } finally {
+      setIsGeneratingMultimodal(false)
+    }
+  }
+
+  const [syncStatus, setSyncStatus] = useState(null)
+  const [versionHistory, setVersionHistory] = useState([])
+
+  const saveMultimodalContent = async (type, data) => {
+    if (!selectedCourse) return
+    setSaveStatus('saving')
+    try {
+      const typeLabels = { document: '核心概念文档', mindmap: '知识点思维导图', project: '代码实操案例', recommendation: '拓展阅读材料' }
+      const label = typeLabels[type] || type
+      await content.create({
+        course_id: parseInt(selectedCourse, 10),
+        title: `${contentTopic || '教学内容'} - ${label}`,
+        content: JSON.stringify({ metadata: { type, topic: contentTopic, course_id: parseInt(selectedCourse, 10) }, content: data }, null, 2),
+        content_type: type,
+      })
+      setSaveStatus('success')
+
+      setVersionHistory(prev => [{
+        id: Date.now(),
+        type,
+        topic: contentTopic,
+        timestamp: new Date().toLocaleString('zh-CN'),
+        action: '保存',
+      }, ...prev].slice(0, 20))
+
+      setSyncStatus('syncing')
+      try {
+        await courseGeneration.saveAndSync({
+          course_id: parseInt(selectedCourse, 10),
+          content_type: type,
+          content_data: data,
+          topic: contentTopic,
+          save_format: 'json',
+        })
+        setSyncStatus('synced')
+      } catch (syncErr) {
+        console.warn('自动同步失败:', syncErr)
+        setSyncStatus('sync_failed')
+      }
+
+      setTimeout(() => { setSaveStatus(null); setSyncStatus(null) }, 5000)
+    } catch (error) {
+      console.error('保存失败:', error)
       setSaveStatus('error')
       setTimeout(() => setSaveStatus(null), 3000)
     }
@@ -1115,12 +1257,12 @@ export default function TeacherDashboard({ user, onLogout }) {
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">课程管理</h2>
-                <p className="text-gray-600">管理您的教学课程</p>
+                <h2 className="text-2xl font-bold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>课程管理</h2>
+                <p className="text-[#6b6560]">管理您的教学课程</p>
               </div>
               <Dialog open={isAddCourseOpen} onOpenChange={setIsAddCourseOpen}>
                 <DialogTrigger asChild>
-                  <Button className="bg-blue-600 hover:bg-blue-700">
+                  <Button className="bg-[#d4a853] hover:bg-[#c49a48]">
                     <Plus className="w-4 h-4 mr-2" />
                     添加课程
                   </Button>
@@ -1166,10 +1308,10 @@ export default function TeacherDashboard({ user, onLogout }) {
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center">
-                    <BookOpen className="h-8 w-8 text-blue-600" />
+                    <BookOpen className="h-8 w-8 text-[#d4a853]" />
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">我的课程</p>
-                      <p className="text-2xl font-bold text-gray-900">{courseList.length}</p>
+                      <p className="text-sm font-medium text-[#6b6560]">我的课程</p>
+                      <p className="text-2xl font-bold text-[#2d2a26]">{courseList.length}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -1177,10 +1319,10 @@ export default function TeacherDashboard({ user, onLogout }) {
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center">
-                    <Users className="h-8 w-8 text-green-600" />
+                    <Users className="h-8 w-8 text-[#5a9e6f]" />
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">总学生数</p>
-                      <p className="text-2xl font-bold text-gray-900">
+                      <p className="text-sm font-medium text-[#6b6560]">总学生数</p>
+                      <p className="text-2xl font-bold text-[#2d2a26]">
                         {stats.totalStudents || courseList.reduce((sum, course) => sum + course.students, 0)}
                       </p>
                     </div>
@@ -1190,10 +1332,10 @@ export default function TeacherDashboard({ user, onLogout }) {
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center">
-                    <TrendingUp className="h-8 w-8 text-purple-600" />
+                    <TrendingUp className="h-8 w-8 text-[#8b6fb0]" />
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">平均进度</p>
-                      <p className="text-2xl font-bold text-gray-900">
+                      <p className="text-sm font-medium text-[#6b6560]">平均进度</p>
+                      <p className="text-2xl font-bold text-[#2d2a26]">
                         {courseList.length > 0 ? Math.round(courseList.reduce((sum, course) => sum + course.progress, 0) / courseList.length) : 0}%
                       </p>
                     </div>
@@ -1225,7 +1367,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                   <TableBody>
                     {courseList.map((course, idx) => (
                       <TableRow key={`course-${String(course.id ?? idx)}`}>
-                        <TableCell className="font-medium">{course.title}<div className="text-sm text-gray-600">{course.subtitle}</div></TableCell>
+                        <TableCell className="font-medium">{course.title}<div className="text-sm text-[#6b6560]">{course.subtitle}</div></TableCell>
                         <TableCell>{course.category || '-'}</TableCell>
                         <TableCell>{course.level || '-'}</TableCell>
                         <TableCell>{course.students}</TableCell>
@@ -1233,7 +1375,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                         <TableCell>{course.lessonsCount ?? (course.modules ? course.modules.reduce((s,m)=>s+(m.lessons||0),0):'-')}</TableCell>
                         <TableCell>{course.durationHours ?? '-'}</TableCell>
                         <TableCell>
-                          <Badge className={course.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                          <Badge className={course.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-[#f5f2ee] text-[#2d2a26]'}>
                             {course.status === 'active' ? '活跃' : '停用'}
                           </Badge>
                         </TableCell>
@@ -1266,8 +1408,8 @@ export default function TeacherDashboard({ user, onLogout }) {
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">内容生成</h2>
-              <p className="text-gray-600">使用AI生成教学内容</p>
+              <h2 className="text-2xl font-bold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>内容生成</h2>
+              <p className="text-[#6b6560]">使用AI生成教学内容</p>
             </div>
 
             <Card>
@@ -1344,12 +1486,420 @@ export default function TeacherDashboard({ user, onLogout }) {
                         {saveStatus === 'saving' ? '保存中...' : '保存内容'}
                       </Button>
                       {saveStatus === 'success' && (
-                        <span className="text-green-600 text-sm">✓ 保存成功</span>
+                        <span className="text-[#5a9e6f] text-sm">✓ 保存成功</span>
                       )}
                       {saveStatus === 'error' && (
                         <span className="text-red-600 text-sm">✗ 保存失败，请重试</span>
                       )}
                     </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Brain className="h-5 w-5 mr-2" />
+                  多模态教学内容生成
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-gray-500">选择需要生成的内容类型，AI将为您生成个性化教学资源</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {RESOURCE_TYPE_OPTIONS.map(opt => {
+                    const isSelected = selectedResourceTypes.includes(opt.value)
+                    const IconComp = opt.icon
+                    return (
+                      <button
+                        key={opt.value}
+                        onClick={() => toggleResourceType(opt.value)}
+                        className={`flex items-start gap-2.5 p-3 rounded-lg border-2 transition-all text-left ${
+                          isSelected
+                            ? 'border-indigo-400 bg-indigo-50 shadow-sm'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                        }`}
+                      >
+                        <div className={`mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                          isSelected ? 'bg-indigo-500 border-indigo-500' : 'border-gray-300 bg-white'
+                        }`}>
+                          {isSelected && (
+                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <IconComp className={`w-3.5 h-3.5 ${isSelected ? 'text-indigo-600' : 'text-gray-400'}`} />
+                            <span className={`text-sm font-medium ${isSelected ? 'text-indigo-900' : 'text-gray-600'}`}>{opt.label}</span>
+                          </div>
+                          <p className={`text-xs mt-0.5 ${isSelected ? 'text-indigo-600/70' : 'text-gray-400'}`}>{opt.description}</p>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+                <Button
+                  onClick={generatePersonalizedContent}
+                  disabled={isGeneratingMultimodal || !selectedCourse || !contentTopic || selectedResourceTypes.length === 0}
+                  className="w-full"
+                  variant="outline"
+                >
+                  {isGeneratingMultimodal ? '正在生成...' : `生成 ${selectedResourceTypes.length} 种教学内容`}
+                </Button>
+
+                {isGeneratingMultimodal && !multimodalResults && (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mr-3" />
+                    <span className="text-sm text-gray-500">AI正在生成文档、思维导图、代码实操和拓展推荐...</span>
+                  </div>
+                )}
+
+                {multimodalResults && (
+                  <div className="space-y-4 mt-4">
+                    <Tabs value={activeMultimodalTab} onValueChange={setActiveMultimodalTab}>
+                      <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${Object.keys(multimodalResults).filter(k => multimodalResults[k]).length}, 1fr)` }}>
+                        {multimodalResults.document && <TabsTrigger value="document">文档</TabsTrigger>}
+                        {multimodalResults.mindmap && <TabsTrigger value="mindmap">思维导图</TabsTrigger>}
+                        {multimodalResults.project && <TabsTrigger value="project">代码实操</TabsTrigger>}
+                        {multimodalResults.recommendation && <TabsTrigger value="recommendation">拓展推荐</TabsTrigger>}
+                      </TabsList>
+                    </Tabs>
+
+                    {multimodalResults.document && (() => {
+                      const doc = multimodalResults.document
+                      return (
+                        <div className={activeMultimodalTab === 'document' ? '' : 'hidden'}>
+                          {doc && typeof doc === 'object' && (doc.sections || doc.title) ? (
+                            <div className="border rounded-lg p-4 bg-white space-y-4">
+                              {doc.title && <h3 className="text-lg font-bold">{doc.title}</h3>}
+                              {doc.summary && <p className="text-sm text-gray-600">{doc.summary}</p>}
+                              {(doc.sections || []).map((sec, i) => (
+                                <div key={i} className="border-l-2 border-indigo-300 pl-3">
+                                  <h4 className="font-semibold text-sm">{sec.title || `第${i+1}节`}</h4>
+                                  {sec.key_points?.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {sec.key_points.map((kp, j) => (
+                                        <span key={j} className="text-xs px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded">{kp}</span>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {sec.content && <p className="text-sm text-gray-700 mt-1">{sec.content}</p>}
+                                  {sec.examples?.length > 0 && sec.examples.map((ex, j) => (
+                                    <div key={j} className="mt-2 p-2 bg-gray-50 rounded text-xs">
+                                      <span className="font-medium">{ex.title || `示例${j+1}`}</span>
+                                      {ex.description && <p className="text-gray-500 mt-0.5">{ex.description}</p>}
+                                    </div>
+                                  ))}
+                                </div>
+                              ))}
+                              {doc.glossary?.length > 0 && (
+                                <div className="mt-3">
+                                  <h4 className="font-semibold text-sm mb-1">术语表</h4>
+                                  <div className="grid grid-cols-2 gap-1">
+                                    {doc.glossary.map((g, i) => (
+                                      <span key={i} className="text-xs"><strong>{g.term}</strong>: {g.definition}</span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              <div className="flex items-center gap-2 pt-2">
+                                <Button size="sm" onClick={() => saveMultimodalContent('document', doc)} disabled={saveStatus === 'saving'}>
+                                  {saveStatus === 'saving' ? '保存中...' : '保存到课程'}
+                                </Button>
+                                {saveStatus === 'success' && <span className="text-green-600 text-xs">✓ 已保存</span>}
+                              </div>
+                            </div>
+                          ) : (
+                            <pre className="whitespace-pre-wrap text-sm p-4 border rounded-lg bg-gray-50">{typeof doc === 'string' ? doc : JSON.stringify(doc, null, 2)}</pre>
+                          )}
+                        </div>
+                      )
+                    })()}
+
+                    {multimodalResults.mindmap && (() => {
+                      const mindmapData = multimodalResults.mindmap
+                      let data = null
+                      if (mindmapData?.root) {
+                        data = mindmapData
+                      } else if (mindmapData?.mindmap?.root) {
+                        data = mindmapData.mindmap
+                      } else if (Array.isArray(mindmapData?.children)) {
+                        data = { root: { name: contentTopic || '知识结构', description: '', is_core: true, relationship_type: null, children: mindmapData.children } }
+                      } else if (mindmapData?.nodes) {
+                        data = { root: mindmapData }
+                      }
+                      return (
+                        <div className={activeMultimodalTab === 'mindmap' ? '' : 'hidden'}>
+                          {data?.root ? (
+                            <div>
+                              <div className="border rounded-lg bg-white" style={{ height: 400 }}>
+                                <InteractiveMindMap data={data} />
+                              </div>
+                              <div className="flex items-center gap-2 mt-2">
+                                <Button size="sm" onClick={() => saveMultimodalContent('mindmap', mindmapData)} disabled={saveStatus === 'saving'}>
+                                  {saveStatus === 'saving' ? '保存中...' : '保存到课程'}
+                                </Button>
+                                {saveStatus === 'success' && <span className="text-green-600 text-xs">✓ 已保存</span>}
+                              </div>
+                            </div>
+                          ) : (
+                            <pre className="whitespace-pre-wrap text-sm p-4 border rounded-lg bg-gray-50">{typeof mindmapData === 'string' ? mindmapData : JSON.stringify(mindmapData, null, 2)}</pre>
+                          )}
+                        </div>
+                      )
+                    })()}
+
+                    {multimodalResults.project && (() => {
+                      const proj = multimodalResults.project
+                      const hasStructuredData = proj && typeof proj === 'object' && (proj.tasks?.length > 0 || proj.project_title || proj.full_code || proj.code_template || proj.reference_solution)
+                      const displayTitle = proj.project_title || proj.title || `${contentTopic || ''} 代码实操案例`
+                      const displayLang = proj.programming_language || proj.language || 'python'
+                      const displayCode = proj.full_code || proj.reference_solution || proj.code_template || ''
+                      const tasks = proj.tasks || []
+                      const prerequisites = proj.prerequisites || proj.knowledge_points_covered || []
+                      const scoringCriteria = proj.scoring_criteria || proj.rubric || []
+                      return (
+                        <div className={activeMultimodalTab === 'project' ? '' : 'hidden'}>
+                          {hasStructuredData ? (
+                            <div className="border rounded-lg p-4 bg-white space-y-4">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className="text-lg font-bold">{displayTitle}</h3>
+                                <span className="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 rounded">{displayLang}</span>
+                                {proj.difficulty && <span className="text-xs px-2 py-0.5 bg-green-50 text-green-700 rounded">{proj.difficulty}</span>}
+                                {proj.estimated_time && <span className="text-xs px-2 py-0.5 bg-purple-50 text-purple-700 rounded">{proj.estimated_time}</span>}
+                              </div>
+                              {proj.project_description && <p className="text-sm text-gray-600">{proj.project_description}</p>}
+                              {prerequisites.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                  <span className="text-xs text-gray-500 mr-1">前置知识:</span>
+                                  {prerequisites.map((p, i) => (
+                                    <span key={i} className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">{typeof p === 'string' ? p : p.title || p.name || ''}</span>
+                                  ))}
+                                </div>
+                              )}
+                              {tasks.length > 0 && (
+                                <div className="space-y-3">
+                                  <h4 className="font-semibold text-sm text-gray-800">任务分解</h4>
+                                  {tasks.map((task, i) => (
+                                    <div key={i} className="border rounded-lg p-3 bg-gray-50 space-y-2">
+                                      <div className="flex items-center gap-2">
+                                        <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold">{task.task_id || i + 1}</span>
+                                        <span className="font-medium text-sm">{task.title || `任务${i + 1}`}</span>
+                                      </div>
+                                      {task.description && <p className="text-xs text-gray-600 ml-8">{task.description}</p>}
+                                      {task.steps?.length > 0 && (
+                                        <div className="ml-8 space-y-1">
+                                          {task.steps.map((step, j) => (
+                                            <div key={j} className="text-xs text-gray-500 flex items-start gap-1">
+                                              <span className="text-gray-300 mt-0.5">•</span>
+                                              <span>{typeof step === 'string' ? step : step.instruction || step.step || ''}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                      {task.code_template && (
+                                        <div className="ml-8 mt-2">
+                                          <p className="text-xs text-gray-500 mb-1">代码模板:</p>
+                                          <pre className="text-xs bg-gray-800 text-green-300 p-2 rounded overflow-x-auto max-h-40">{task.code_template}</pre>
+                                        </div>
+                                      )}
+                                      {task.reference_solution && (
+                                        <details className="ml-8 mt-1">
+                                          <summary className="text-xs text-indigo-600 cursor-pointer hover:text-indigo-800">查看参考实现</summary>
+                                          <pre className="text-xs bg-gray-800 text-green-300 p-2 rounded overflow-x-auto max-h-60 mt-1">{task.reference_solution}</pre>
+                                        </details>
+                                      )}
+                                      {task.hints?.length > 0 && (
+                                        <div className="ml-8 mt-1">
+                                          <span className="text-xs text-amber-600">💡 提示: {task.hints.join(' | ')}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              {displayCode && (
+                                <div className="space-y-2">
+                                  <h4 className="font-semibold text-sm text-gray-800">完整代码</h4>
+                                  <CodePlayground
+                                    initialCode={displayCode}
+                                    language={displayLang}
+                                    readOnly={false}
+                                  />
+                                </div>
+                              )}
+                              {!displayCode && tasks.length === 0 && (
+                                <div className="text-center py-8 text-gray-400">
+                                  <Target className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                                  <p className="text-sm">代码内容生成中，请稍候或重新生成</p>
+                                </div>
+                              )}
+                              {scoringCriteria.length > 0 && (
+                                <div className="space-y-2">
+                                  <h4 className="font-semibold text-sm text-gray-800">评分标准</h4>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    {scoringCriteria.map((c, i) => (
+                                      <div key={i} className="flex items-center justify-between text-xs p-2 bg-gray-50 rounded">
+                                        <span>{typeof c === 'string' ? c : c.item || c.description || ''}</span>
+                                        {c.points && <span className="font-medium text-indigo-600">{c.points}分</span>}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              <div className="flex items-center gap-2 pt-2">
+                                <Button size="sm" onClick={() => saveMultimodalContent('project', proj)} disabled={saveStatus === 'saving'}>
+                                  {saveStatus === 'saving' ? '保存中...' : '保存到课程'}
+                                </Button>
+                                {saveStatus === 'success' && <span className="text-green-600 text-xs">✓ 已保存</span>}
+                              </div>
+                            </div>
+                          ) : (
+                            <pre className="whitespace-pre-wrap text-sm p-4 border rounded-lg bg-gray-50">{typeof proj === 'string' ? proj : JSON.stringify(proj, null, 2)}</pre>
+                          )}
+                        </div>
+                      )
+                    })()}
+
+                    {multimodalResults.recommendation && (() => {
+                      const rec = multimodalResults.recommendation
+                      const items = rec?.items || (Array.isArray(rec) ? rec : [])
+                      const categories = rec?.categories || {}
+                      const hasCategories = Object.keys(categories).length > 0
+                      const catLabels = {
+                        textbook: '📚 教材与书籍', tutorial: '📖 教程与指南', video: '🎬 视频课程',
+                        paper: '📄 学术论文', practice: '💻 练习与实训', tool: '🔧 工具与平台',
+                        reference: '📋 参考文档', general: '📌 综合资源',
+                      }
+                      const priorityCfg = {
+                        high: { label: '高优先', cls: 'bg-red-100 text-red-700 border-red-200' },
+                        medium: { label: '中优先', cls: 'bg-amber-100 text-amber-700 border-amber-200' },
+                        low: { label: '低优先', cls: 'bg-gray-100 text-gray-600 border-gray-200' },
+                      }
+                      return (
+                        <div className={activeMultimodalTab === 'recommendation' ? '' : 'hidden'}>
+                          {items.length > 0 ? (
+                            <div className="border rounded-lg p-4 bg-white space-y-4">
+                              <div className="flex items-center justify-between">
+                                <h4 className="font-semibold text-sm">{rec?.title || '拓展学习推荐'}</h4>
+                                {rec?.summary && <span className="text-xs text-gray-500">{rec.summary}</span>}
+                              </div>
+                              {hasCategories ? (
+                                Object.entries(categories).map(([cat, catItems]) => (
+                                  <div key={cat} className="space-y-2">
+                                    <h5 className="text-xs font-semibold text-gray-500 uppercase tracking-wide border-b pb-1">
+                                      {catLabels[cat] || cat}
+                                    </h5>
+                                    {catItems.map((item, i) => {
+                                      const pri = priorityCfg[item.priority] || priorityCfg.medium
+                                      return (
+                                        <div key={i} className="p-3 border rounded-lg bg-gray-50 space-y-1.5">
+                                          <div className="flex items-start justify-between gap-2">
+                                            <span className="text-sm font-medium">{item.title}</span>
+                                            <span className={`text-[10px] px-1.5 py-0.5 rounded border shrink-0 ${pri.cls}`}>{pri.label}</span>
+                                          </div>
+                                          {item.description && <p className="text-xs text-gray-600">{item.description}</p>}
+                                          {item.key_points?.length > 0 && (
+                                            <ul className="space-y-0.5">
+                                              {item.key_points.map((kp, j) => (
+                                                <li key={j} className="text-xs text-gray-500 flex items-start gap-1">
+                                                  <span className="text-gray-300 mt-0.5">•</span>
+                                                  <span>{kp}</span>
+                                                </li>
+                                              ))}
+                                            </ul>
+                                          )}
+                                          <div className="flex items-center gap-3 text-[10px] text-gray-400">
+                                            {item.author && <span>👤 {item.author}</span>}
+                                            {item.difficulty && <span>📊 {item.difficulty}</span>}
+                                            {item.url && <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">🔗 链接</a>}
+                                          </div>
+                                        </div>
+                                      )
+                                    })}
+                                  </div>
+                                ))
+                              ) : (
+                                items.map((item, i) => {
+                                  const pri = priorityCfg[item.priority] || priorityCfg.medium
+                                  return (
+                                    <div key={i} className="p-3 border rounded-lg bg-gray-50 space-y-1.5">
+                                      <div className="flex items-start justify-between gap-2">
+                                        <span className="text-sm font-medium">{typeof item === 'string' ? item : item.title}</span>
+                                        {typeof item === 'object' && <span className={`text-[10px] px-1.5 py-0.5 rounded border shrink-0 ${pri.cls}`}>{pri.label}</span>}
+                                      </div>
+                                      {typeof item === 'object' && item.description && <p className="text-xs text-gray-600">{item.description}</p>}
+                                    </div>
+                                  )
+                                })
+                              )}
+                              <div className="flex items-center gap-2 pt-2">
+                                <Button size="sm" onClick={() => saveMultimodalContent('recommendation', rec)} disabled={saveStatus === 'saving'}>
+                                  {saveStatus === 'saving' ? '保存中...' : '保存到课程'}
+                                </Button>
+                                {saveStatus === 'success' && <span className="text-green-600 text-xs">✓ 已保存</span>}
+                              </div>
+                            </div>
+                          ) : (
+                            <pre className="whitespace-pre-wrap text-sm p-4 border rounded-lg bg-gray-50">{typeof rec === 'string' ? rec : JSON.stringify(rec, null, 2)}</pre>
+                          )}
+                        </div>
+                      )
+                    })()}
+
+                    <ContentSaveSyncPanel
+                      courseId={selectedCourse ? parseInt(selectedCourse) : null}
+                      resources={multimodalResults}
+                      topic={contentTopic}
+                    />
+
+                    {syncStatus && (
+                      <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
+                        syncStatus === 'syncing' ? 'bg-blue-50 text-blue-700' :
+                        syncStatus === 'synced' ? 'bg-green-50 text-green-700' :
+                        'bg-red-50 text-red-700'
+                      }`}>
+                        {syncStatus === 'syncing' && (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
+                            <span>正在同步到学生端资源库...</span>
+                          </>
+                        )}
+                        {syncStatus === 'synced' && (
+                          <>
+                            <CheckCircle className="w-4 h-4" />
+                            <span>已同步到学生端资源库</span>
+                          </>
+                        )}
+                        {syncStatus === 'sync_failed' && (
+                          <>
+                            <span>⚠ 同步失败，内容已保存到本地，可通过同步面板重试</span>
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    {versionHistory.length > 0 && (
+                      <div className="border rounded-lg p-3 bg-gray-50">
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <Clock className="w-3.5 h-3.5 text-gray-500" />
+                          <span className="text-xs font-semibold text-gray-600">版本历史</span>
+                          <Badge variant="outline" className="text-[10px] ml-1">{versionHistory.length}</Badge>
+                        </div>
+                        <div className="space-y-1 max-h-32 overflow-y-auto">
+                          {versionHistory.map(v => (
+                            <div key={v.id} className="flex items-center gap-2 text-xs text-gray-500">
+                              <span className="text-gray-400 shrink-0">{v.timestamp}</span>
+                              <Badge variant="outline" className="text-[10px] py-0">{v.type}</Badge>
+                              <span className="truncate">{v.topic}</span>
+                              <span className="text-green-600 shrink-0">{v.action}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -1361,15 +1911,15 @@ export default function TeacherDashboard({ user, onLogout }) {
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">视频管理</h2>
-              <p className="text-gray-600">管理课程视频内容</p>
+              <h2 className="text-2xl font-bold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>视频管理</h2>
+              <p className="text-[#6b6560]">管理课程视频内容</p>
             </div>
             
             {courseList.length === 0 ? (
               <Card>
                 <CardContent className="text-center py-12">
-                  <Video className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                  <p className="text-gray-500">请先创建课程后再管理视频</p>
+                  <Video className="w-12 h-12 mx-auto text-[#b5b0ab] mb-4" />
+                  <p className="text-[#9a9590]">请先创建课程后再管理视频</p>
                 </CardContent>
               </Card>
             ) : (
@@ -1402,15 +1952,15 @@ export default function TeacherDashboard({ user, onLogout }) {
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">互动管理</h2>
-              <p className="text-gray-600">管理学生问答、讨论和举手</p>
+              <h2 className="text-2xl font-bold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>互动管理</h2>
+              <p className="text-[#6b6560]">管理学生问答、讨论和举手</p>
             </div>
             
             {courseList.length === 0 ? (
               <Card>
                 <CardContent className="text-center py-12">
-                  <MessageCircle className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                  <p className="text-gray-500">请先创建课程</p>
+                  <MessageCircle className="w-12 h-12 mx-auto text-[#b5b0ab] mb-4" />
+                  <p className="text-[#9a9590]">请先创建课程</p>
                 </CardContent>
               </Card>
             ) : (
@@ -1457,8 +2007,8 @@ export default function TeacherDashboard({ user, onLogout }) {
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">考核管理</h2>
-                <p className="text-gray-600">管理考试和生成题目</p>
+                <h2 className="text-2xl font-bold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>考核管理</h2>
+                <p className="text-[#6b6560]">管理考试和生成题目</p>
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={loadProgrammingSubmissions}>
@@ -1475,7 +2025,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                 }
               }}>
                 <DialogTrigger asChild>
-                  <Button className="bg-blue-600 hover:bg-blue-700">
+                  <Button className="bg-[#d4a853] hover:bg-[#c49a48]">
                     <Brain className="w-4 h-4 mr-2" />
                     AI生成题目
                   </Button>
@@ -1503,7 +2053,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                     <div>
                       <div className="flex justify-between items-center">
                         <Label htmlFor="exam-topic" className="text-sm">考试主题</Label>
-                        <span className="text-xs text-gray-500">{examTopic.length}/50字</span>
+                        <span className="text-xs text-[#9a9590]">{examTopic.length}/50字</span>
                       </div>
                       <Input
                         id="exam-topic"
@@ -1572,7 +2122,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                             <Label className="text-base font-semibold">题目编辑器</Label>
                             <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">{generatedQuestions.length} 道题目</span>
+                              <span className="text-xs text-[#9a9590] bg-[#f5f2ee] px-2 py-1 rounded">{generatedQuestions.length} 道题目</span>
                               <Button size="sm" variant="outline" onClick={addQuestion} className="gap-1">
                                 <span>+</span> 添加题目
                               </Button>
@@ -1580,7 +2130,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                           </div>
                           
                           {generatedQuestions.length === 0 && (
-                            <div className="text-center py-8 sm:py-12 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                            <div className="text-center py-8 sm:py-12 text-[#9a9590] bg-[#f5f2ee] rounded-xl border-2 border-dashed border-[#f0ece7]">
                               <p>暂无题目，请点击"添加题目"或"生成题目"</p>
                             </div>
                           )}
@@ -1588,7 +2138,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                           {generatedQuestions.length > 0 && (
                             <div className="relative">
                               <div 
-                                className="max-h-[60vh] sm:max-h-[500px] overflow-y-auto overflow-x-hidden pr-1 space-y-4 border-2 border-gray-200 rounded-lg p-2 sm:p-4 bg-gray-50 scroll-smooth"
+                                className="max-h-[60vh] sm:max-h-[500px] overflow-y-auto overflow-x-hidden pr-1 space-y-4 border-2 border-[#e8e4df] rounded-xl p-2 sm:p-4 bg-[#f5f2ee] scroll-smooth"
                                 style={{ 
                                   WebkitOverflowScrolling: 'touch',
                                   scrollBehavior: 'smooth'
@@ -1597,9 +2147,9 @@ export default function TeacherDashboard({ user, onLogout }) {
                                 {generatedQuestions.map((q, qi) => (
                                   <div 
                                     key={`q-${qi}`} 
-                                    className="border-2 rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow duration-200"
+                                    className="border-2 rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow duration-200"
                                   >
-                                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-3 sm:px-4 py-2 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                                    <div className="bg-gradient-to-r from-[#d4a853] to-[#c49a48] text-white px-3 sm:px-4 py-2 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                                       <div className="flex items-center gap-2 sm:gap-3">
                                         <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/20 flex items-center justify-center font-bold text-sm sm:text-base shrink-0">
                                           {qi + 1}
@@ -1610,7 +2160,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                                         <select 
                                           value={q.type || 'choice'} 
                                           onChange={(e) => setQuestionType(qi, e.target.value)} 
-                                          className="border rounded px-1.5 sm:px-2 py-0.5 sm:py-1 text-xs bg-white text-gray-700"
+                                          className="border rounded px-1.5 sm:px-2 py-0.5 sm:py-1 text-xs bg-white text-[#6b6560]"
                                         >
                                           <option value="choice">选择题</option>
                                           <option value="fill">填空题</option>
@@ -1626,8 +2176,8 @@ export default function TeacherDashboard({ user, onLogout }) {
                                     <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
                                       <div>
                                         <div className="flex justify-between items-center mb-1">
-                                          <Label className="text-xs sm:text-sm font-medium text-gray-700">题干</Label>
-                                          <span className="text-xs text-gray-400">{(q.question || '').length}/200字</span>
+                                          <Label className="text-xs sm:text-sm font-medium text-[#6b6560]">题干</Label>
+                                          <span className="text-xs text-[#b5b0ab]">{(q.question || '').length}/200字</span>
                                         </div>
                                         <Textarea 
                                           value={q.question || ''} 
@@ -1641,8 +2191,8 @@ export default function TeacherDashboard({ user, onLogout }) {
                                       {q.type === 'choice' && (
                                         <div>
                                           <div className="flex justify-between items-center mb-2">
-                                            <Label className="text-xs sm:text-sm font-medium text-gray-700">选项</Label>
-                                            <Button size="sm" variant="ghost" className="h-6 text-xs text-blue-600" onClick={() => addOption(qi)}>+ 添加选项</Button>
+                                            <Label className="text-xs sm:text-sm font-medium text-[#6b6560]">选项</Label>
+                                            <Button size="sm" variant="ghost" className="h-6 text-xs text-[#d4a853]" onClick={() => addOption(qi)}>+ 添加选项</Button>
                                           </div>
                                           <div className="space-y-2">
                                             {(Array.isArray(q.options) ? q.options : []).map((opt, oi) => {
@@ -1651,17 +2201,17 @@ export default function TeacherDashboard({ user, onLogout }) {
                                               return (
                                                 <div 
                                                   key={`q-${qi}-o-${oi}`} 
-                                                  className={`flex flex-col sm:flex-row sm:items-center gap-2 p-2 rounded-lg border-2 transition-all ${
+                                                  className={`flex flex-col sm:flex-row sm:items-center gap-2 p-2 rounded-xl border-2 transition-all ${
                                                     isCorrect 
                                                       ? 'border-green-500 bg-green-50' 
-                                                      : 'border-gray-200 hover:border-gray-300'
+                                                      : 'border-[#e8e4df] hover:border-[#f0ece7]'
                                                   }`}
                                                 >
                                                   <div className="flex items-center gap-2 flex-1">
                                                     <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm shrink-0 ${
                                                       isCorrect 
                                                         ? 'bg-green-500 text-white' 
-                                                        : 'bg-gray-200 text-gray-600'
+                                                        : 'bg-[#e8e4df] text-[#6b6560]'
                                                     }`}>
                                                       {optionLabel}
                                                     </div>
@@ -1682,13 +2232,13 @@ export default function TeacherDashboard({ user, onLogout }) {
                                                     >
                                                       {isCorrect ? '✓ 正确' : '设为答案'}
                                                     </Button>
-                                                    <Button variant="ghost" size="sm" className="h-6 w-6 sm:h-7 sm:w-7 p-0 text-gray-400 hover:text-red-500" onClick={() => removeOption(qi, oi)}>×</Button>
+                                                    <Button variant="ghost" size="sm" className="h-6 w-6 sm:h-7 sm:w-7 p-0 text-[#b5b0ab] hover:text-red-500" onClick={() => removeOption(qi, oi)}>×</Button>
                                                   </div>
                                                 </div>
                                               )
                                             })}
                                             {(!Array.isArray(q.options) || q.options.length === 0) && (
-                                              <div className="text-center py-3 sm:py-4 text-gray-400 bg-gray-50 rounded-lg text-xs sm:text-sm">
+                                              <div className="text-center py-3 sm:py-4 text-[#b5b0ab] bg-[#f5f2ee] rounded-xl text-xs sm:text-sm">
                                                 请添加选项
                                               </div>
                                             )}
@@ -1697,10 +2247,10 @@ export default function TeacherDashboard({ user, onLogout }) {
                                       )}
 
                                       {q.type === 'programming' && (
-                                        <div className="space-y-3 border border-indigo-200 rounded-lg p-3 bg-indigo-50/30">
-                                          <div className="text-xs font-semibold text-indigo-700 mb-2">编程题详细配置</div>
+                                        <div className="space-y-3 border border-[#e8e4df] rounded-xl p-3 bg-[#f5f2ee]/30">
+                                          <div className="text-xs font-semibold text-[#d4a853] mb-2">编程题详细配置</div>
                                           <div>
-                                            <Label className="text-xs font-medium text-gray-700">题目描述</Label>
+                                            <Label className="text-xs font-medium text-[#6b6560]">题目描述</Label>
                                             <Textarea
                                               value={q.description || ''}
                                               onChange={(e) => {
@@ -1716,7 +2266,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                                           </div>
                                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                             <div>
-                                              <Label className="text-xs font-medium text-gray-700">输入格式</Label>
+                                              <Label className="text-xs font-medium text-[#6b6560]">输入格式</Label>
                                               <Input
                                                 value={q.input_format || ''}
                                                 onChange={(e) => {
@@ -1731,7 +2281,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                                               />
                                             </div>
                                             <div>
-                                              <Label className="text-xs font-medium text-gray-700">输出格式</Label>
+                                              <Label className="text-xs font-medium text-[#6b6560]">输出格式</Label>
                                               <Input
                                                 value={q.output_format || ''}
                                                 onChange={(e) => {
@@ -1747,7 +2297,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                                             </div>
                                           </div>
                                           <div>
-                                            <Label className="text-xs font-medium text-gray-700">约束条件</Label>
+                                            <Label className="text-xs font-medium text-[#6b6560]">约束条件</Label>
                                             <Input
                                               value={q.constraints || ''}
                                               onChange={(e) => {
@@ -1763,8 +2313,8 @@ export default function TeacherDashboard({ user, onLogout }) {
                                           </div>
                                           <div>
                                             <div className="flex justify-between items-center mb-1">
-                                              <Label className="text-xs font-medium text-gray-700">样例 (JSON)</Label>
-                                              <Button size="sm" variant="ghost" className="h-5 text-xs text-blue-600" onClick={() => {
+                                              <Label className="text-xs font-medium text-[#6b6560]">样例 (JSON)</Label>
+                                              <Button size="sm" variant="ghost" className="h-5 text-xs text-[#d4a853]" onClick={() => {
                                                 setGeneratedQuestions(prev => {
                                                   const copy = [...prev]
                                                   const q = { ...(copy[qi] || {}) }
@@ -1807,7 +2357,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                                                       return copy
                                                     })
                                                   }} placeholder="样例说明" className="h-7 text-xs flex-1" />
-                                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-gray-400 hover:text-red-500" onClick={() => {
+                                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#b5b0ab] hover:text-red-500" onClick={() => {
                                                     setGeneratedQuestions(prev => {
                                                       const copy = [...prev]
                                                       const q = { ...(copy[qi] || {}) }
@@ -1822,8 +2372,8 @@ export default function TeacherDashboard({ user, onLogout }) {
                                           </div>
                                           <div>
                                             <div className="flex justify-between items-center mb-1">
-                                              <Label className="text-xs font-medium text-gray-700">测试用例 (JSON)</Label>
-                                              <Button size="sm" variant="ghost" className="h-5 text-xs text-blue-600" onClick={() => {
+                                              <Label className="text-xs font-medium text-[#6b6560]">测试用例 (JSON)</Label>
+                                              <Button size="sm" variant="ghost" className="h-5 text-xs text-[#d4a853]" onClick={() => {
                                                 setGeneratedQuestions(prev => {
                                                   const copy = [...prev]
                                                   const q = { ...(copy[qi] || {}) }
@@ -1855,7 +2405,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                                                     return copy
                                                   })
                                                 }} placeholder="期望输出" className="h-7 text-xs" />
-                                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-gray-400 hover:text-red-500" onClick={() => {
+                                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-[#b5b0ab] hover:text-red-500" onClick={() => {
                                                   setGeneratedQuestions(prev => {
                                                     const copy = [...prev]
                                                     const q = { ...(copy[qi] || {}) }
@@ -1868,7 +2418,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                                             ))}
                                           </div>
                                           <div>
-                                            <Label className="text-xs font-medium text-gray-700">参考答案</Label>
+                                            <Label className="text-xs font-medium text-[#6b6560]">参考答案</Label>
                                             <Textarea
                                               value={q.standard_answer || ''}
                                               onChange={(e) => {
@@ -1884,7 +2434,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                                           </div>
                                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                             <div>
-                                              <Label className="text-xs font-medium text-gray-700">编程语言</Label>
+                                              <Label className="text-xs font-medium text-[#6b6560]">编程语言</Label>
                                               <select
                                                 value={q.language || 'python'}
                                                 onChange={(e) => {
@@ -1904,7 +2454,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                                               </select>
                                             </div>
                                             <div>
-                                              <Label className="text-xs font-medium text-gray-700">知识点标签 (逗号分隔)</Label>
+                                              <Label className="text-xs font-medium text-[#6b6560]">知识点标签 (逗号分隔)</Label>
                                               <Input
                                                 value={Array.isArray(q.knowledge_tags) ? q.knowledge_tags.join(', ') : ''}
                                                 onChange={(e) => {
@@ -1924,8 +2474,8 @@ export default function TeacherDashboard({ user, onLogout }) {
 
                                       <div>
                                         <div className="flex justify-between items-center mb-1">
-                                          <Label className="text-xs sm:text-sm font-medium text-gray-700">解析</Label>
-                                          <span className="text-xs text-gray-400">{(q.explanation || '').length}/200字</span>
+                                          <Label className="text-xs sm:text-sm font-medium text-[#6b6560]">解析</Label>
+                                          <span className="text-xs text-[#b5b0ab]">{(q.explanation || '').length}/200字</span>
                                         </div>
                                         <Textarea 
                                           value={q.explanation || ''} 
@@ -1975,26 +2525,26 @@ export default function TeacherDashboard({ user, onLogout }) {
                 </CardHeader>
                 <CardContent>
                   {programmingSubmissionsLoading ? (
-                    <div className="py-6 text-sm text-gray-500">正在加载...</div>
+                    <div className="py-6 text-sm text-[#9a9590]">正在加载...</div>
                   ) : (
                     <div className="space-y-3">
                       {programmingSubmissions.map((item) => (
-                        <div key={item.id} className="border rounded-lg p-4 bg-white">
+                        <div key={item.id} className="border rounded-xl p-4 bg-white">
                           <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-3">
                             <div>
                               <div className="font-semibold">{item.assessment_title} · 第 {item.question_index + 1} 题</div>
-                              <div className="text-sm text-gray-500">{item.user_name || `学生${item.user_id}`} · {item.language} · {item.created_at}</div>
+                              <div className="text-sm text-[#9a9590]">{item.user_name || `学生${item.user_id}`} · {item.language} · {item.created_at}</div>
                             </div>
                             <Badge className={item.score >= 90 ? 'bg-green-100 text-green-700' : item.score >= 60 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}>
                               {item.score}/{item.max_score}
                             </Badge>
                           </div>
                           <div className="grid md:grid-cols-5 gap-2 text-xs">
-                            <div className="bg-gray-50 rounded p-2">编译 {item.compile_result?.score ?? '-'}</div>
-                            <div className="bg-gray-50 rounded p-2">运行 {item.runtime_result?.score ?? '-'}</div>
-                            <div className="bg-gray-50 rounded p-2">IO {item.io_match_result?.score ?? '-'}</div>
-                            <div className="bg-gray-50 rounded p-2">逻辑 {item.logic_result?.score ?? '-'}</div>
-                            <div className="bg-gray-50 rounded p-2">效率 {item.efficiency_result?.score ?? '-'}</div>
+                            <div className="bg-[#f5f2ee] rounded p-2">编译 {item.compile_result?.score ?? '-'}</div>
+                            <div className="bg-[#f5f2ee] rounded p-2">运行 {item.runtime_result?.score ?? '-'}</div>
+                            <div className="bg-[#f5f2ee] rounded p-2">IO {item.io_match_result?.score ?? '-'}</div>
+                            <div className="bg-[#f5f2ee] rounded p-2">逻辑 {item.logic_result?.score ?? '-'}</div>
+                            <div className="bg-[#f5f2ee] rounded p-2">效率 {item.efficiency_result?.score ?? '-'}</div>
                           </div>
                           <pre className="mt-3 bg-slate-950 text-slate-100 rounded p-3 overflow-auto text-xs max-h-48">{item.code}</pre>
                         </div>
@@ -2011,30 +2561,30 @@ export default function TeacherDashboard({ user, onLogout }) {
                   <DialogTitle>{statsAssessmentTitle || '考核统计'}</DialogTitle>
                 </DialogHeader>
                 {statsLoading ? (
-                  <div className="py-6 text-sm text-gray-600">加载统计中...</div>
+                  <div className="py-6 text-sm text-[#6b6560]">加载统计中...</div>
                 ) : assessmentStats?.error ? (
                   <div className="py-6 text-sm text-red-600">统计加载失败，请稍后重试。</div>
                 ) : assessmentStats ? (
                   <div className="space-y-4 overflow-y-auto flex-1 pr-2 -mr-2" style={{ minHeight: '200px', maxHeight: 'calc(85vh - 120px)' }}>
-                    <div className="bg-blue-50 rounded-lg p-4 flex items-center justify-between flex-shrink-0">
+                    <div className="bg-[#d4a85312] rounded-xl p-4 flex items-center justify-between flex-shrink-0">
                       <div>
-                        <span className="text-sm text-gray-600">总提交数</span>
-                        <p className="text-2xl font-bold text-blue-600">{assessmentStats.total_submissions || 0}</p>
+                        <span className="text-sm text-[#6b6560]">总提交数</span>
+                        <p className="text-2xl font-bold text-[#d4a853]">{assessmentStats.total_submissions || 0}</p>
                       </div>
                       <div className="text-right">
-                        <span className="text-sm text-gray-600">整体正确率</span>
-                        <p className="text-2xl font-bold text-green-600">{assessmentStats.overall_correct_rate || 0}%</p>
+                        <span className="text-sm text-[#6b6560]">整体正确率</span>
+                        <p className="text-2xl font-bold text-[#5a9e6f]">{assessmentStats.overall_correct_rate || 0}%</p>
                       </div>
                     </div>
                     <div className="space-y-3">
                       {(assessmentStats.questions || []).map((q) => (
-                        <div key={`stat-q-${q.index}`} className="border-2 rounded-lg overflow-hidden flex-shrink-0">
+                        <div key={`stat-q-${q.index}`} className="border-2 rounded-xl overflow-hidden flex-shrink-0">
                           <div className="bg-gradient-to-r from-gray-100 to-gray-50 px-4 py-2 flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <div className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm">
+                              <div className="w-7 h-7 rounded-full bg-[#d4a853] text-white flex items-center justify-center font-bold text-sm">
                                 {q.index + 1}
                               </div>
-                              <span className="font-medium text-gray-800 line-clamp-1">{q.question}</span>
+                              <span className="font-medium text-[#2d2a26] line-clamp-1">{q.question}</span>
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
                               <Badge className={`${(q.correctRate || 0) >= 70 ? 'bg-green-100 text-green-700' : (q.correctRate || 0) >= 40 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
@@ -2043,7 +2593,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                             </div>
                           </div>
                           <div className="px-4 py-3 bg-white">
-                            <div className="text-xs text-gray-500 mb-2">
+                            <div className="text-xs text-[#9a9590] mb-2">
                               答对 {q.correctCount || 0} 人 / 共 {q.attempts || 0} 人作答
                             </div>
                             {Array.isArray(q.optionCounts) && q.optionCounts.length > 0 && (
@@ -2054,14 +2604,14 @@ export default function TeacherDashboard({ user, onLogout }) {
                                   const label = String.fromCharCode(65 + i)
                                   return (
                                     <div key={i} className="flex items-center gap-2">
-                                      <span className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold flex-shrink-0">{label}</span>
-                                      <div className="flex-1 h-4 bg-gray-100 rounded-full overflow-hidden min-w-[100px]">
+                                      <span className="w-5 h-5 rounded-full bg-[#e8e4df] flex items-center justify-center text-xs font-bold flex-shrink-0">{label}</span>
+                                      <div className="flex-1 h-4 bg-[#f5f2ee] rounded-full overflow-hidden min-w-[100px]">
                                         <div 
-                                          className="h-full bg-blue-500 rounded-full transition-all" 
+                                          className="h-full bg-[#d4a85312]0 rounded-full transition-all" 
                                           style={{ width: `${percent}%` }}
                                         />
                                       </div>
-                                      <span className="text-xs text-gray-600 w-16 text-right flex-shrink-0">{c}人 ({percent}%)</span>
+                                      <span className="text-xs text-[#6b6560] w-16 text-right flex-shrink-0">{c}人 ({percent}%)</span>
                                     </div>
                                   )
                                 })}
@@ -2073,7 +2623,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                     </div>
                   </div>
                 ) : (
-                  <div className="py-6 text-sm text-gray-600">暂无统计数据。</div>
+                  <div className="py-6 text-sm text-[#6b6560]">暂无统计数据。</div>
                 )}
               </DialogContent>
             </Dialog>
@@ -2141,12 +2691,191 @@ export default function TeacherDashboard({ user, onLogout }) {
           </div>
         )
 
+      case 'token-usage':
+        const s = tokenSummary || {}
+        const byType = s.by_type || {}
+        const typeEntries = Object.entries(byType).sort((a, b) => b[1].tokens - a[1].tokens)
+        const typeLabels = {
+          teaching_content: '教学内容生成', assessment: '考核题目生成', ai_tutor_chat: 'AI辅导对话',
+          analyze_mistake: '错题分析', analyze_mistake_stream: '错题流式分析', summarize_note: '笔记摘要',
+          organize_notes: '笔记整理', chat: '通用对话', chat_stream: '流式对话',
+          generate_practice: '练习生成', generate_study_plan: '学习计划', other: '其他'
+        }
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Token 用量监控</h2>
+                <p className="text-[#6b6560]">实时监测您的AI调用Token消耗情况</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <Select value={String(tokenDays)} onValueChange={v => setTokenDays(Number(v))}>
+                  <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="7">近7天</SelectItem>
+                    <SelectItem value="30">近30天</SelectItem>
+                    <SelectItem value="90">近90天</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={tokenPeriod} onValueChange={setTokenPeriod}>
+                  <SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">按天</SelectItem>
+                    <SelectItem value="weekly">按周</SelectItem>
+                    <SelectItem value="monthly">按月</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {tokenLoading && !tokenSummary ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d4a853] mr-3" />
+                <span className="text-[#6b6560]">加载Token数据...</span>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center">
+                        <Zap className="h-8 w-8 text-[#d4a853]" />
+                        <div className="ml-4">
+                          <p className="text-sm font-medium text-[#6b6560]">总消耗Token</p>
+                          <p className="text-2xl font-bold text-[#2d2a26]">{(s.total_tokens || 0).toLocaleString()}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center">
+                        <Activity className="h-8 w-8 text-[#5a9e6f]" />
+                        <div className="ml-4">
+                          <p className="text-sm font-medium text-[#6b6560]">调用次数</p>
+                          <p className="text-2xl font-bold text-[#2d2a26]">{s.call_count || 0}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center">
+                        <TrendingUp className="h-8 w-8 text-[#8b6fb0]" />
+                        <div className="ml-4">
+                          <p className="text-sm font-medium text-[#6b6560]">次均消耗</p>
+                          <p className="text-2xl font-bold text-[#2d2a26]">{s.avg_per_call || 0}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center">
+                        <FileText className="h-8 w-8 text-[#c47a3a]" />
+                        <div className="ml-4">
+                          <p className="text-sm font-medium text-[#6b6560]">输入/输出比</p>
+                          <p className="text-2xl font-bold text-[#2d2a26]">
+                            {s.completion_tokens ? ((s.prompt_tokens || 0) / s.completion_tokens).toFixed(1) : '-'}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  <Card className="lg:col-span-2">
+                    <CardHeader><CardTitle>Token消耗趋势</CardTitle></CardHeader>
+                    <CardContent>
+                      {tokenTrend.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={300}>
+                          <AreaChart data={tokenTrend}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                            <YAxis tick={{ fontSize: 11 }} />
+                            <Tooltip />
+                            <Area type="monotone" dataKey="tokens" stroke="#d4a853" fill="#d4a85320" name="Token数" />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="flex items-center justify-center h-[300px] text-[#b5b0ab]">暂无趋势数据</div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader><CardTitle>按类型分布</CardTitle></CardHeader>
+                    <CardContent>
+                      {typeEntries.length > 0 ? (
+                        <div className="space-y-3">
+                          {typeEntries.slice(0, 8).map(([type, data]) => (
+                            <div key={type} className="flex items-center justify-between">
+                              <span className="text-sm text-[#6b6560] truncate mr-2">{typeLabels[type] || type}</span>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="text-sm font-semibold text-[#2d2a26]">{data.tokens.toLocaleString()}</span>
+                                <span className="text-xs text-[#9a9590]">({data.calls}次)</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center h-[200px] text-[#b5b0ab]">暂无数据</div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card>
+                  <CardHeader><CardTitle>最近调用记录</CardTitle></CardHeader>
+                  <CardContent>
+                    {tokenRecent.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b text-[#6b6560]">
+                              <th className="text-left py-2 px-3">时间</th>
+                              <th className="text-left py-2 px-3">类型</th>
+                              <th className="text-right py-2 px-3">Token</th>
+                              <th className="text-right py-2 px-3">输入</th>
+                              <th className="text-right py-2 px-3">输出</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {tokenRecent.map((r, i) => (
+                              <tr key={i} className="border-b last:border-0 hover:bg-gray-50">
+                                <td className="py-2 px-3 text-[#6b6560] whitespace-nowrap">
+                                  {r.created_at ? new Date(r.created_at).toLocaleString('zh-CN') : '-'}
+                                </td>
+                                <td className="py-2 px-3">
+                                  <Badge variant="outline" className="text-[10px]">
+                                    {typeLabels[r.call_type] || r.call_type || 'other'}
+                                  </Badge>
+                                </td>
+                                <td className="py-2 px-3 text-right font-medium">{(r.total_tokens || 0).toLocaleString()}</td>
+                                <td className="py-2 px-3 text-right text-[#6b6560]">{(r.prompt_tokens || 0).toLocaleString()}</td>
+                                <td className="py-2 px-3 text-right text-[#6b6560]">{(r.completion_tokens || 0).toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center py-12 text-[#b5b0ab]">暂无调用记录</div>
+                    )}
+                  </CardContent>
+                </Card>
+              </>
+            )}
+          </div>
+        )
+
       case 'analytics':
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">学情分析</h2>
-              <p className="text-gray-600">学生学习情况和趋势分析</p>
+              <h2 className="text-2xl font-bold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>学情分析</h2>
+              <p className="text-[#6b6560]">学生学习情况和趋势分析</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2176,7 +2905,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                       </PieChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex items-center justify-center h-[300px] text-gray-400">
+                    <div className="flex items-center justify-center h-[300px] text-[#b5b0ab]">
                       <p>暂无进度分布数据</p>
                     </div>
                   )}
@@ -2199,7 +2928,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex items-center justify-center h-[300px] text-gray-400">
+                    <div className="flex items-center justify-center h-[300px] text-[#b5b0ab]">
                       <p>暂无活动数据</p>
                     </div>
                   )}
@@ -2229,7 +2958,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                     </LineChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex items-center justify-center h-[300px] text-gray-400">
+                  <div className="flex items-center justify-center h-[300px] text-[#b5b0ab]">
                     <p>暂无趋势数据</p>
                   </div>
                 )}
@@ -2243,8 +2972,8 @@ export default function TeacherDashboard({ user, onLogout }) {
           <div className="space-y-6">
             {/* 概览标题 */}
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">教师概览</h2>
-              <p className="text-gray-600">欢迎回来，教师！</p>
+              <h2 className="text-2xl font-bold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>教师概览</h2>
+              <p className="text-[#6b6560]">欢迎回来，教师！</p>
             </div>
 
             {/* 统计卡片 */}
@@ -2252,11 +2981,11 @@ export default function TeacherDashboard({ user, onLogout }) {
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center">
-                    <BookOpen className="h-8 w-8 text-blue-600" />
+                    <BookOpen className="h-8 w-8 text-[#d4a853]" />
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">我的课程</p>
-                      <p className="text-2xl font-bold text-gray-900">{stats.myCourses}</p>
-                      <p className="text-xs text-gray-500">您创建的课程</p>
+                      <p className="text-sm font-medium text-[#6b6560]">我的课程</p>
+                      <p className="text-2xl font-bold text-[#2d2a26]">{stats.myCourses}</p>
+                      <p className="text-xs text-[#9a9590]">您创建的课程</p>
                     </div>
                   </div>
                 </CardContent>
@@ -2265,11 +2994,11 @@ export default function TeacherDashboard({ user, onLogout }) {
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center">
-                    <Users className="h-8 w-8 text-green-600" />
+                    <Users className="h-8 w-8 text-[#5a9e6f]" />
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">学生总数</p>
-                      <p className="text-2xl font-bold text-gray-900">{stats.totalStudents}</p>
-                      <p className="text-xs text-gray-500">所有课程的学生</p>
+                      <p className="text-sm font-medium text-[#6b6560]">学生总数</p>
+                      <p className="text-2xl font-bold text-[#2d2a26]">{stats.totalStudents}</p>
+                      <p className="text-xs text-[#9a9590]">所有课程的学生</p>
                     </div>
                   </div>
                 </CardContent>
@@ -2278,11 +3007,11 @@ export default function TeacherDashboard({ user, onLogout }) {
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center">
-                    <Award className="h-8 w-8 text-purple-600" />
+                    <Award className="h-8 w-8 text-[#8b6fb0]" />
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">已完成考核</p>
-                      <p className="text-2xl font-bold text-gray-900">{stats.completedExams}</p>
-                      <p className="text-xs text-gray-500">学生完成的考核</p>
+                      <p className="text-sm font-medium text-[#6b6560]">已完成考核</p>
+                      <p className="text-2xl font-bold text-[#2d2a26]">{stats.completedExams}</p>
+                      <p className="text-xs text-[#9a9590]">学生完成的考核</p>
                     </div>
                   </div>
                 </CardContent>
@@ -2291,11 +3020,11 @@ export default function TeacherDashboard({ user, onLogout }) {
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center">
-                    <Sparkles className="h-8 w-8 text-orange-600" />
+                    <Sparkles className="h-8 w-8 text-[#c47a3a]" />
                     <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">AI生成内容</p>
-                      <p className="text-2xl font-bold text-gray-900">{stats.aiGeneratedContent}</p>
-                      <p className="text-xs text-gray-500">已生成教学内容</p>
+                      <p className="text-sm font-medium text-[#6b6560]">AI生成内容</p>
+                      <p className="text-2xl font-bold text-[#2d2a26]">{stats.aiGeneratedContent}</p>
+                      <p className="text-xs text-[#9a9590]">已生成教学内容</p>
                     </div>
                   </div>
                 </CardContent>
@@ -2304,34 +3033,34 @@ export default function TeacherDashboard({ user, onLogout }) {
 
             {/* 快速操作 */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">快速操作</h3>
-              <p className="text-gray-600 mb-6">常用教学功能快速入口</p>
+              <h3 className="text-lg font-semibold text-[#2d2a26] mb-4" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>快速操作</h3>
+              <p className="text-[#6b6560] mb-6">常用教学功能快速入口</p>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setCurrentView('courses')}>
                   <CardContent className="p-6 text-center">
-                    <BookOpen className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-                    <h4 className="font-semibold text-gray-900">课程管理</h4>
+                    <BookOpen className="h-12 w-12 text-[#d4a853] mx-auto mb-4" />
+                    <h4 className="font-semibold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>课程管理</h4>
                   </CardContent>
                 </Card>
 
                 <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setCurrentView('content')}>
                   <CardContent className="p-6 text-center">
-                    <Sparkles className="h-12 w-12 text-orange-600 mx-auto mb-4" />
-                    <h4 className="font-semibold text-gray-900">AI内容生成</h4>
+                    <Sparkles className="h-12 w-12 text-[#c47a3a] mx-auto mb-4" />
+                    <h4 className="font-semibold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>AI内容生成</h4>
                   </CardContent>
                 </Card>
 
                 <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setCurrentView('exams')}>
                   <CardContent className="p-6 text-center">
-                    <Target className="h-12 w-12 text-green-600 mx-auto mb-4" />
-                    <h4 className="font-semibold text-gray-900">考核管理</h4>
+                    <Target className="h-12 w-12 text-[#5a9e6f] mx-auto mb-4" />
+                    <h4 className="font-semibold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>考核管理</h4>
                   </CardContent>
                 </Card>
 
                 <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setCurrentView('analytics')}>
                   <CardContent className="p-6 text-center">
-                    <BarChart3 className="h-12 w-12 text-purple-600 mx-auto mb-4" />
-                    <h4 className="font-semibold text-gray-900">学情分析</h4>
+                    <BarChart3 className="h-12 w-12 text-[#8b6fb0] mx-auto mb-4" />
+                    <h4 className="font-semibold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>学情分析</h4>
                   </CardContent>
                 </Card>
               </div>
@@ -2342,19 +3071,19 @@ export default function TeacherDashboard({ user, onLogout }) {
               <Card>
                 <CardHeader>
                   <CardTitle>最近活动</CardTitle>
-                  <p className="text-sm text-gray-600">您的教学活动记录</p>
+                  <p className="text-sm text-[#6b6560]">您的教学活动记录</p>
                 </CardHeader>
                 <CardContent>
                   {recentActivities.length > 0 ? (
                     <div className="space-y-4">
                       {recentActivities.map((activity, index) => (
                         <div key={index} className="flex items-center space-x-3">
-                          {activity.icon === 'check' ? <CheckCircle className="h-5 w-5 text-green-600" /> :
-                           activity.icon === 'activity' ? <Activity className="h-5 w-5 text-blue-600" /> :
-                           <BookOpen className="h-5 w-5 text-orange-600" />}
+                          {activity.icon === 'check' ? <CheckCircle className="h-5 w-5 text-[#5a9e6f]" /> :
+                           activity.icon === 'activity' ? <Activity className="h-5 w-5 text-[#d4a853]" /> :
+                           <BookOpen className="h-5 w-5 text-[#c47a3a]" />}
                           <div>
                             <p className="text-sm font-medium">{activity.description || activity.title}</p>
-                            <p className="text-xs text-gray-500">{activity.time || activity.created_at || ''}</p>
+                            <p className="text-xs text-[#9a9590]">{activity.time || activity.created_at || ''}</p>
                           </div>
                         </div>
                       ))}
@@ -2362,8 +3091,8 @@ export default function TeacherDashboard({ user, onLogout }) {
                   ) : (
                     <div className="flex items-center justify-center py-8">
                       <div className="text-center">
-                        <CheckCircle className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                        <p className="text-sm text-gray-500">暂无活动记录</p>
+                        <CheckCircle className="h-16 w-16 text-[#c5c0bb] mx-auto mb-4" />
+                        <p className="text-sm text-[#9a9590]">暂无活动记录</p>
                       </div>
                     </div>
                   )}
@@ -2373,14 +3102,14 @@ export default function TeacherDashboard({ user, onLogout }) {
               <Card>
                 <CardHeader>
                   <CardTitle>学生反馈</CardTitle>
-                  <p className="text-sm text-gray-600">学生对您的课程和教学的反馈</p>
+                  <p className="text-sm text-[#6b6560]">学生对您的课程和教学的反馈</p>
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-center py-8">
                     <div className="text-center">
-                      <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
-                      <h4 className="text-lg font-semibold text-green-600">暂无新反馈</h4>
-                      <p className="text-sm text-gray-500">所有反馈已处理</p>
+                      <CheckCircle className="h-16 w-16 text-[#5a9e6f] mx-auto mb-4" />
+                      <h4 className="text-lg font-semibold text-[#5a9e6f]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>暂无新反馈</h4>
+                      <p className="text-sm text-[#9a9590]">所有反馈已处理</p>
                     </div>
                   </div>
                 </CardContent>
@@ -2392,24 +3121,27 @@ export default function TeacherDashboard({ user, onLogout }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#faf8f5]">
       {/* 顶部导航 */}
-      <div className="bg-white shadow-sm border-b">
+      <div className="bg-white shadow-sm border-b border-[#e8e4df]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">师</span>
+                <div className="w-8 h-8 bg-[#d4a853] rounded-xl flex items-center justify-center">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z" fill="white" stroke="white" strokeWidth="0.5"/>
+                    <path d="M6 6V18C6 18 8 16 12 16C16 16 18 18 18 18V6C18 6 16 8 12 8C8 8 6 6 6 6Z" fill="rgba(255,255,255,0.4)" stroke="white" strokeWidth="0.8"/>
+                  </svg>
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-gray-900">教师控台</h1>
-                  <p className="text-sm text-gray-600">欢迎回来，教师</p>
+                  <h1 className="text-xl font-bold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>智教星</h1>
+                  <p className="text-xs text-[#9a9590]">自适应错题诊疗系统</p>
                 </div>
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <Badge variant="outline" className="text-green-600 border-green-600">
+              <Badge variant="outline" className="text-[#5a9e6f] border-[#5a9e6f]">
                 在线
               </Badge>
               <Button variant="outline" onClick={async () => {
@@ -2431,7 +3163,6 @@ export default function TeacherDashboard({ user, onLogout }) {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex">
-          {/* 侧边栏 */}
           <div className="w-64 mr-8">
             <nav className="space-y-2">
               {menuItems.map((item) => {
@@ -2440,10 +3171,10 @@ export default function TeacherDashboard({ user, onLogout }) {
                   <button
                     key={item.id}
                     onClick={() => setCurrentView(item.id)}
-                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
+                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-[10px] text-left transition-colors ${
                       currentView === item.id
-                        ? 'bg-blue-100 text-blue-700 border-l-4 border-blue-700'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        ? 'bg-[#d4a85312] text-[#d4a853] border-l-4 border-[#d4a853]'
+                        : 'text-[#6b6560] hover:bg-[#f5f2ee]'
                     }`}
                   >
                     <Icon className="h-5 w-5" />
@@ -2467,87 +3198,87 @@ export default function TeacherDashboard({ user, onLogout }) {
         <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-blue-600" />
+              <BookOpen className="h-5 w-5 text-[#d4a853]" />
               课程详情
             </DialogTitle>
           </DialogHeader>
           {courseDetail ? (
             <div className="space-y-5 overflow-y-auto flex-1 pr-1" style={{ maxHeight: 'calc(85vh - 80px)' }}>
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4">
-                <h3 className="text-xl font-bold text-gray-900 mb-1">{courseDetail.title}</h3>
+              <div className="bg-gradient-to-r from-[#d4a85312] to-[#d4a85308] rounded-xl p-4">
+                <h3 className="text-xl font-bold text-[#2d2a26] mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{courseDetail.title}</h3>
                 {courseDetail.description && (
-                  <p className="text-sm text-gray-600">{courseDetail.description}</p>
+                  <p className="text-sm text-[#6b6560]">{courseDetail.description}</p>
                 )}
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="bg-blue-50 rounded-lg p-3 text-center">
-                  <Users className="h-5 w-5 text-blue-600 mx-auto mb-1" />
-                  <p className="text-lg font-bold text-gray-900">{courseDetail.students}</p>
-                  <p className="text-xs text-gray-500">学生数</p>
+                <div className="bg-[#d4a85312] rounded-xl p-3 text-center">
+                  <Users className="h-5 w-5 text-[#d4a853] mx-auto mb-1" />
+                  <p className="text-lg font-bold text-[#2d2a26]">{courseDetail.students}</p>
+                  <p className="text-xs text-[#9a9590]">学生数</p>
                 </div>
-                <div className="bg-green-50 rounded-lg p-3 text-center">
-                  <Video className="h-5 w-5 text-green-600 mx-auto mb-1" />
-                  <p className="text-lg font-bold text-gray-900">{courseDetail.videoCount ?? '-'}</p>
-                  <p className="text-xs text-gray-500">视频数</p>
+                <div className="bg-green-50 rounded-xl p-3 text-center">
+                  <Video className="h-5 w-5 text-[#5a9e6f] mx-auto mb-1" />
+                  <p className="text-lg font-bold text-[#2d2a26]">{courseDetail.videoCount ?? '-'}</p>
+                  <p className="text-xs text-[#9a9590]">视频数</p>
                 </div>
-                <div className="bg-purple-50 rounded-lg p-3 text-center">
-                  <FileText className="h-5 w-5 text-purple-600 mx-auto mb-1" />
-                  <p className="text-lg font-bold text-gray-900">{courseDetail.contentCount ?? '-'}</p>
-                  <p className="text-xs text-gray-500">讲义数</p>
+                <div className="bg-purple-50 rounded-xl p-3 text-center">
+                  <FileText className="h-5 w-5 text-[#8b6fb0] mx-auto mb-1" />
+                  <p className="text-lg font-bold text-[#2d2a26]">{courseDetail.contentCount ?? '-'}</p>
+                  <p className="text-xs text-[#9a9590]">讲义数</p>
                 </div>
-                <div className="bg-orange-50 rounded-lg p-3 text-center">
-                  <Target className="h-5 w-5 text-orange-600 mx-auto mb-1" />
-                  <p className="text-lg font-bold text-gray-900">{courseDetail.assessmentCount ?? '-'}</p>
-                  <p className="text-xs text-gray-500">考核数</p>
+                <div className="bg-orange-50 rounded-xl p-3 text-center">
+                  <Target className="h-5 w-5 text-[#c47a3a] mx-auto mb-1" />
+                  <p className="text-lg font-bold text-[#2d2a26]">{courseDetail.assessmentCount ?? '-'}</p>
+                  <p className="text-xs text-[#9a9590]">考核数</p>
                 </div>
               </div>
 
               {courseDetailLoading && (
-                <div className="text-center py-4 text-sm text-gray-500">加载详细数据中...</div>
+                <div className="text-center py-4 text-sm text-[#9a9590]">加载详细数据中...</div>
               )}
 
               {!courseDetailLoading && (
                 <>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <span className="text-gray-500">分类：</span>
+                      <span className="text-[#9a9590]">分类：</span>
                       <span className="font-medium">{courseDetail.category || '-'}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">难度：</span>
+                      <span className="text-[#9a9590]">难度：</span>
                       <span className="font-medium">{courseDetail.difficulty || '-'}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">时长：</span>
+                      <span className="text-[#9a9590]">时长：</span>
                       <span className="font-medium">{courseDetail.duration || '-'}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">状态：</span>
-                      <Badge className={courseDetail.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                      <span className="text-[#9a9590]">状态：</span>
+                      <Badge className={courseDetail.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-[#f5f2ee] text-[#2d2a26]'}>
                         {courseDetail.status === 'active' ? '活跃' : '停用'}
                       </Badge>
                     </div>
                     <div>
-                      <span className="text-gray-500">创建时间：</span>
+                      <span className="text-[#9a9590]">创建时间：</span>
                       <span className="font-medium">{courseDetail.created_at || '-'}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">教师：</span>
+                      <span className="text-[#9a9590]">教师：</span>
                       <span className="font-medium">{courseDetail.teacher_name || '-'}</span>
                     </div>
                   </div>
 
                   {courseDetail.videoList && courseDetail.videoList.length > 0 && (
                     <div>
-                      <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-1">
+                      <h4 className="font-semibold text-[#2d2a26] mb-2 flex items-center gap-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                         <Video className="h-4 w-4" /> 视频列表
                       </h4>
                       <div className="space-y-1">
                         {courseDetail.videoList.map((v, i) => (
-                          <div key={v.id} className="flex items-center justify-between bg-gray-50 rounded px-3 py-2 text-sm">
+                          <div key={v.id} className="flex items-center justify-between bg-[#f5f2ee] rounded px-3 py-2 text-sm">
                             <span>{i + 1}. {v.title}</span>
-                            {v.duration && <span className="text-gray-400">{Math.floor(v.duration / 60)}:{(v.duration % 60).toString().padStart(2, '0')}</span>}
+                            {v.duration && <span className="text-[#b5b0ab]">{Math.floor(v.duration / 60)}:{(v.duration % 60).toString().padStart(2, '0')}</span>}
                           </div>
                         ))}
                       </div>
@@ -2556,16 +3287,16 @@ export default function TeacherDashboard({ user, onLogout }) {
 
                   {courseDetail.assessments && courseDetail.assessments.length > 0 && (
                     <div>
-                      <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-1">
+                      <h4 className="font-semibold text-[#2d2a26] mb-2 flex items-center gap-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                         <Target className="h-4 w-4" /> 考核列表
                       </h4>
                       <div className="space-y-1">
                         {courseDetail.assessments.map((a, i) => (
-                          <div key={a.id} className="flex items-center justify-between bg-gray-50 rounded px-3 py-2 text-sm">
+                          <div key={a.id} className="flex items-center justify-between bg-[#f5f2ee] rounded px-3 py-2 text-sm">
                             <span>{i + 1}. {a.title}</span>
                             <div className="flex items-center gap-2">
                               {a.is_recommended && <Badge className="bg-yellow-100 text-yellow-700 text-xs">推荐</Badge>}
-                              <Badge className={a.generated_by_llm ? 'bg-blue-100 text-blue-700 text-xs' : 'bg-gray-100 text-gray-600 text-xs'}>
+                              <Badge className={a.generated_by_llm ? 'bg-[#d4a85312] text-[#d4a853] text-xs' : 'bg-[#f5f2ee] text-[#6b6560] text-xs'}>
                                 {a.generated_by_llm ? 'AI生成' : '手动'}
                               </Badge>
                             </div>
@@ -2577,15 +3308,15 @@ export default function TeacherDashboard({ user, onLogout }) {
 
                   {courseDetail.contents && courseDetail.contents.length > 0 && (
                     <div>
-                      <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-1">
+                      <h4 className="font-semibold text-[#2d2a26] mb-2 flex items-center gap-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                         <FileText className="h-4 w-4" /> 讲义列表
                       </h4>
                       <div className="space-y-1">
                         {courseDetail.contents.map((c, i) => (
-                          <div key={c.id} className="flex items-center justify-between bg-gray-50 rounded px-3 py-2 text-sm">
+                          <div key={c.id} className="flex items-center justify-between bg-[#f5f2ee] rounded px-3 py-2 text-sm">
                             <span>{i + 1}. {c.title}</span>
                             {c.generated_by_llm && (
-                              <Badge className="bg-blue-100 text-blue-700 text-xs">AI生成</Badge>
+                              <Badge className="bg-[#d4a85312] text-[#d4a853] text-xs">AI生成</Badge>
                             )}
                           </div>
                         ))}
@@ -2596,7 +3327,7 @@ export default function TeacherDashboard({ user, onLogout }) {
               )}
             </div>
           ) : (
-            <div className="py-6 text-sm text-gray-500">暂无课程数据</div>
+            <div className="py-6 text-sm text-[#9a9590]">暂无课程数据</div>
           )}
         </DialogContent>
       </Dialog>

@@ -50,7 +50,8 @@ class SSEChatService:
         context: str = "",
         topic: str = "",
         temperature: float = 0.7,
-        max_context_length: int = 10
+        max_context_length: int = 10,
+        user_role: str = None,
     ) -> Generator[str, None, None]:
         """
         流式问答
@@ -123,7 +124,7 @@ class SSEChatService:
             full_response = ""
             chunk_count = 0
             
-            for chunk in spark_service.chat_stream(messages):
+            for chunk in spark_service.chat_stream(messages, user_id=user_id, user_role=user_role):
                 chunk_count += 1
                 full_response += chunk
                 
@@ -166,7 +167,9 @@ class SSEChatService:
         self,
         question: str,
         context: str = "",
-        topic: str = ""
+        topic: str = "",
+        user_id: int = None,
+        user_role: str = None,
     ) -> Generator[str, None, None]:
         """
         简单流式问答（无会话管理）
@@ -202,7 +205,7 @@ class SSEChatService:
             full_response = ""
             chunk_count = 0
             
-            for chunk in spark_service.chat_stream(messages):
+            for chunk in spark_service.chat_stream(messages, user_id=user_id, user_role=user_role):
                 chunk_count += 1
                 full_response += chunk
                 

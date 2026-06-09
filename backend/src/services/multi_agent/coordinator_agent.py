@@ -22,6 +22,8 @@ from src.services.multi_agent.document_agent import DocumentAgent
 from src.services.multi_agent.media_agent import MediaAgent
 from src.services.multi_agent.recommendation_agent import RecommendationAgent
 from src.services.multi_agent.project_agent import ProjectAgent
+from src.services.knowledge_base_service import knowledge_base_service
+from src.services.content_converter_service import content_converter_service
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +82,8 @@ RESOURCE_TYPE_AGENT_MAP = {
     "media": "media_agent",
     "recommendation": "recommendation_agent",
     "project": "project_agent",
+    "mindmap": "document_agent",
+    "layered_exercise": "exercise_agent",
 }
 
 RESOURCE_TYPE_TASK_MAP = {
@@ -88,6 +92,8 @@ RESOURCE_TYPE_TASK_MAP = {
     "media": "generate_video_script",
     "recommendation": "generate_recommendations",
     "project": "generate_coding_project",
+    "mindmap": "generate_mindmap_content",
+    "layered_exercise": "generate_layered_exercises",
 }
 
 
@@ -170,11 +176,28 @@ class CoordinatorAgent(AgentBase):
             ["exercise", "document", "media", "recommendation", "project"],
         )
         options = task.get("options", {})
+        course_id = task.get("course_id")
+        chapter_ids = task.get("chapter_ids")
+        _user_id = task.get("user_id")
+        _user_role = task.get("user_role")
+
+        if course_id:
+            kb_context = self._load_knowledge_base(course_id, chapter_ids)
+            if kb_context:
+                if not topic:
+                    topic = kb_context.get("course_title", topic)
+                if not knowledge_points and kb_context.get("knowledge_points_detail"):
+                    knowledge_points = self._extract_kp_titles_from_context(kb_context)
+                options["course_id"] = course_id
+                options["chapter_ids"] = chapter_ids
+        else:
+            kb_context = None
 
         shared_state.update({
             f"{package_id}_topic": topic,
             f"{package_id}_profile": profile,
             f"{package_id}_status": "generating",
+            f"{package_id}_kb_context": kb_context,
         }, self.agent_name)
 
         strategy = self._plan_generation_strategy(
@@ -184,19 +207,32 @@ class CoordinatorAgent(AgentBase):
             f"{package_id}_strategy", strategy, self.agent_name
         )
 
-        futures = {}
+        agent_task_groups = {}
         for rtype in resource_types:
             agent_name = RESOURCE_TYPE_AGENT_MAP.get(rtype)
             if not agent_name or agent_name not in self._agents:
                 continue
+            if agent_name not in agent_task_groups:
+                agent_task_groups[agent_name] = []
+            agent_task_groups[agent_name].append(rtype)
 
-            agent_task = self._build_agent_task(
-                rtype, profile, topic, knowledge_points, options
-            )
+        futures = {}
+        for agent_name, rtypes in agent_task_groups.items():
             agent = self._agents[agent_name]
-
-            future = self._executor.submit(self._safe_process, agent, agent_task)
-            futures[rtype] = future
+            if len(rtypes) == 1:
+                rtype = rtypes[0]
+                agent_task = self._build_agent_task(
+                    rtype, profile, topic, knowledge_points, options, user_id=_user_id, user_role=_user_role
+                )
+                future = self._executor.submit(self._safe_process, agent, agent_task)
+                futures[rtype] = future
+            else:
+                for rtype in rtypes:
+                    agent_task = self._build_agent_task(
+                        rtype, profile, topic, knowledge_points, options, user_id=_user_id, user_role=_user_role
+                    )
+                    future = self._executor.submit(self._safe_process, agent, agent_task)
+                    futures[rtype] = future
 
         results = {}
         errors = {}
@@ -211,6 +247,16 @@ class CoordinatorAgent(AgentBase):
                 errors[rtype] = str(e)
                 logger.error(f"Agent failed for {rtype}: {e}")
 
+        convertible_types = {"mindmap", "project", "document", "recommendation"}
+        for rtype in convertible_types:
+            if rtype in results:
+                try:
+                    results[rtype] = content_converter_service.convert(
+                        rtype, results[rtype], topic=topic, options=options
+                    )
+                except Exception as e:
+                    logger.warning(f"Auto-conversion failed for {rtype}: {e}")
+
         consistency_report = self._check_consistency(
             results, knowledge_points, profile
         )
@@ -222,8 +268,18 @@ class CoordinatorAgent(AgentBase):
             "topic": topic,
             "student_profile_summary": self._summarize_profile(profile),
             "generation_strategy": strategy,
+            "knowledge_base_used": bool(kb_context),
             "resources": results,
             "errors": errors if errors else None,
+            "completeness_report": {
+                "requested_types": resource_types,
+                "generated_types": list(results.keys()),
+                "failed_types": list(errors.keys()) if errors else [],
+                "missing_types": [rt for rt in resource_types if rt not in results and rt not in errors],
+                "skipped_types": [rt for rt in resource_types if RESOURCE_TYPE_AGENT_MAP.get(rt) is None],
+                "completeness_rate": round(len(results) / len(resource_types) * 100, 1) if resource_types else 0,
+                "is_complete": len(results) == len(resource_types),
+            },
             "consistency_report": consistency_report,
             "metadata": {
                 "total_generation_time_seconds": elapsed,
@@ -231,6 +287,8 @@ class CoordinatorAgent(AgentBase):
                 "failed_agents": list(errors.keys()) if errors else [],
                 "resource_types_requested": resource_types,
                 "resource_types_generated": list(results.keys()),
+                "course_id": course_id,
+                "chapter_ids": chapter_ids,
                 "created_at": datetime.utcnow().isoformat(),
             },
         }
@@ -252,12 +310,24 @@ class CoordinatorAgent(AgentBase):
         topic = task.get("topic", "")
         knowledge_points = task.get("knowledge_points", [])
         options = task.get("options", {})
+        _user_id = task.get("user_id")
+        _user_role = task.get("user_role")
 
         agent_task = self._build_agent_task(
-            resource_type, profile, topic, knowledge_points, options
+            resource_type, profile, topic, knowledge_points, options, user_id=_user_id, user_role=_user_role
         )
         agent = self._agents[agent_name]
-        return self._safe_process(agent, agent_task)
+        result = self._safe_process(agent, agent_task)
+
+        if "error" not in result and resource_type in ("mindmap", "project", "document"):
+            try:
+                result = content_converter_service.convert(
+                    resource_type, result, topic=topic, options=options
+                )
+            except Exception as e:
+                logger.warning(f"Auto-conversion failed for {resource_type}: {e}")
+
+        return result
 
     def _consistency_check(self, task):
         resources = task.get("resources", {})
@@ -319,7 +389,7 @@ class CoordinatorAgent(AgentBase):
         return "；".join(strategy_parts)
 
     def _build_agent_task(
-        self, resource_type, profile, topic, knowledge_points, options
+        self, resource_type, profile, topic, knowledge_points, options, user_id=None, user_role=None
     ):
         task_type = RESOURCE_TYPE_TASK_MAP.get(resource_type, "")
         base_task = {
@@ -327,7 +397,14 @@ class CoordinatorAgent(AgentBase):
             "student_profile": profile,
             "topic": topic,
             "knowledge_points": knowledge_points,
+            "user_id": user_id,
+            "user_role": user_role,
         }
+
+        if options.get("course_id"):
+            base_task["course_id"] = options["course_id"]
+        if options.get("chapter_ids"):
+            base_task["chapter_ids"] = options["chapter_ids"]
 
         if resource_type == "exercise":
             base_task.update({
@@ -355,6 +432,14 @@ class CoordinatorAgent(AgentBase):
             base_task.update({
                 "language": options.get("programming_language", "Python"),
                 "difficulty": options.get("project_difficulty", "intermediate"),
+            })
+        elif resource_type == "mindmap":
+            base_task.update({
+                "depth": options.get("mindmap_depth", 3),
+            })
+        elif resource_type == "layered_exercise":
+            base_task.update({
+                "count": options.get("exercise_count", 12),
             })
 
         return base_task
@@ -452,3 +537,29 @@ class CoordinatorAgent(AgentBase):
 
     def get_shared_state_snapshot(self):
         return shared_state.snapshot()
+
+    def _load_knowledge_base(self, course_id, chapter_ids=None):
+        try:
+            ctx = knowledge_base_service.build_knowledge_context_for_prompt(
+                course_id, chapter_ids
+            )
+            if ctx:
+                logger.info(
+                    f"Loaded KB context for course {course_id}: "
+                    f"{ctx.get('statistics', {})}"
+                )
+            return ctx
+        except Exception as e:
+            logger.warning(f"Failed to load knowledge base for course {course_id}: {e}")
+            return None
+
+    def _extract_kp_titles_from_context(self, kb_context):
+        titles = []
+        kp_detail = kb_context.get("knowledge_points_detail", "")
+        if kp_detail and kp_detail != "暂无":
+            for line in kp_detail.split("\n"):
+                line = line.strip()
+                if line.startswith("【") and "】" in line:
+                    title = line[1:line.index("】")]
+                    titles.append(title)
+        return titles

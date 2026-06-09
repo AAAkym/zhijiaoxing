@@ -15,6 +15,7 @@ except ImportError:
 
 from src.config import get_config
 from src.models.user import db
+from src.models.token_usage import TokenUsage
 from src.routes.admin import admin_bp
 from src.routes.ai_assistant import ai_bp
 from src.routes.analytics import analytics_bp
@@ -41,6 +42,9 @@ from src.routes.lesson_plan import lesson_plan_bp
 from src.routes.learning_analytics import learning_analytics_bp
 from src.routes.ai_optimization import ai_optimization_bp
 from src.routes.ai_tutor_routes import ai_tutor_bp
+from src.routes.knowledge_base_routes import kb_bp
+from src.routes.code_execution import code_execution_bp
+from src.routes.content_review import content_review_bp
 from src.services.websocket_service import init_socketio
 
 config = get_config()
@@ -110,6 +114,9 @@ app.register_blueprint(lesson_plan_bp, url_prefix='/api')
 app.register_blueprint(learning_analytics_bp, url_prefix='/api')
 app.register_blueprint(ai_optimization_bp, url_prefix='/api')
 app.register_blueprint(ai_tutor_bp, url_prefix='/api/ai-tutor')
+app.register_blueprint(kb_bp, url_prefix='/api')
+app.register_blueprint(code_execution_bp, url_prefix='/api')
+app.register_blueprint(content_review_bp, url_prefix='/api/content-review')
 
 db.init_app(app)
 
@@ -267,6 +274,19 @@ with app.app_context():
                         print(f'[DB Migration] [OK] Added column: mistake_records.{col_name} ({col_type})')
                     except Exception as e:
                         print(f'[DB Migration] [WARN] Failed to add mistake_records.{col_name}: {e}')
+
+            cursor.execute('PRAGMA table_info(teaching_contents)')
+            existing_tc_columns = {row[1] for row in cursor.fetchall()}
+            tc_columns = {
+                'content_type': 'VARCHAR(50) DEFAULT "lecture"',
+            }
+            for col_name, col_type in tc_columns.items():
+                if col_name not in existing_tc_columns:
+                    try:
+                        cursor.execute(f'ALTER TABLE teaching_contents ADD COLUMN {col_name} {col_type}')
+                        print(f'[DB Migration] [OK] Added column: teaching_contents.{col_name} ({col_type})')
+                    except Exception as e:
+                        print(f'[DB Migration] [WARN] Failed to add teaching_contents.{col_name}: {e}')
 
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='programming_submissions'")
             if not cursor.fetchone():
@@ -615,6 +635,193 @@ with app.app_context():
                     )
                 ''')
                 print('[DB Migration] [OK] Created table: targeted_question_groups')
+
+            conn.commit()
+
+            knowledge_base_tables = {
+                'course_syllabuses': '''
+                    CREATE TABLE IF NOT EXISTS course_syllabuses (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        course_id INTEGER NOT NULL UNIQUE REFERENCES courses(id),
+                        course_code VARCHAR(30),
+                        credit FLOAT DEFAULT 3.0,
+                        total_hours INTEGER DEFAULT 48,
+                        theory_hours INTEGER DEFAULT 32,
+                        practice_hours INTEGER DEFAULT 16,
+                        semester VARCHAR(20),
+                        prerequisite_courses TEXT DEFAULT '[]',
+                        course_objectives TEXT DEFAULT '[]',
+                        assessment_methods TEXT DEFAULT '{}',
+                        textbook TEXT DEFAULT '{}',
+                        references TEXT DEFAULT '[]',
+                        description TEXT,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''',
+                'course_chapters': '''
+                    CREATE TABLE IF NOT EXISTS course_chapters (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        course_id INTEGER NOT NULL REFERENCES courses(id),
+                        parent_id INTEGER REFERENCES course_chapters(id),
+                        title VARCHAR(200) NOT NULL,
+                        description TEXT,
+                        order_index INTEGER DEFAULT 0,
+                        teaching_hours INTEGER DEFAULT 0,
+                        chapter_type VARCHAR(20) DEFAULT 'theory',
+                        objectives TEXT DEFAULT '[]',
+                        key_points TEXT DEFAULT '[]',
+                        difficulties TEXT DEFAULT '[]',
+                        teaching_methods TEXT DEFAULT '[]',
+                        status VARCHAR(20) DEFAULT 'published',
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''',
+                'knowledge_points': '''
+                    CREATE TABLE IF NOT EXISTS knowledge_points (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        course_id INTEGER NOT NULL REFERENCES courses(id),
+                        chapter_id INTEGER NOT NULL REFERENCES course_chapters(id),
+                        parent_id INTEGER REFERENCES knowledge_points(id),
+                        title VARCHAR(200) NOT NULL,
+                        definition TEXT,
+                        content TEXT,
+                        order_index INTEGER DEFAULT 0,
+                        difficulty_level VARCHAR(20) DEFAULT 'intermediate',
+                        importance VARCHAR(20) DEFAULT 'core',
+                        prerequisites TEXT DEFAULT '[]',
+                        related_concepts TEXT DEFAULT '[]',
+                        formulas TEXT DEFAULT '[]',
+                        examples TEXT DEFAULT '[]',
+                        tags TEXT DEFAULT '[]',
+                        source VARCHAR(100),
+                        source_url VARCHAR(500),
+                        status VARCHAR(20) DEFAULT 'published',
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''',
+                'teaching_cases': '''
+                    CREATE TABLE IF NOT EXISTS teaching_cases (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        course_id INTEGER NOT NULL REFERENCES courses(id),
+                        chapter_id INTEGER NOT NULL REFERENCES course_chapters(id),
+                        knowledge_point_id INTEGER REFERENCES knowledge_points(id),
+                        title VARCHAR(200) NOT NULL,
+                        case_type VARCHAR(30) DEFAULT 'application',
+                        background TEXT,
+                        problem_description TEXT,
+                        analysis TEXT,
+                        solution TEXT,
+                        conclusion TEXT,
+                        dataset_description TEXT,
+                        code_example TEXT,
+                        visualization TEXT DEFAULT '{}',
+                        difficulty_level VARCHAR(20) DEFAULT 'intermediate',
+                        tags TEXT DEFAULT '[]',
+                        source VARCHAR(100),
+                        source_url VARCHAR(500),
+                        status VARCHAR(20) DEFAULT 'published',
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''',
+                'course_exercises': '''
+                    CREATE TABLE IF NOT EXISTS course_exercises (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        course_id INTEGER NOT NULL REFERENCES courses(id),
+                        chapter_id INTEGER NOT NULL REFERENCES course_chapters(id),
+                        knowledge_point_id INTEGER REFERENCES knowledge_points(id),
+                        title VARCHAR(200) NOT NULL,
+                        exercise_type VARCHAR(30) DEFAULT 'choice',
+                        difficulty_level VARCHAR(20) DEFAULT 'intermediate',
+                        content TEXT NOT NULL,
+                        options TEXT DEFAULT '[]',
+                        correct_answer TEXT NOT NULL,
+                        answer_analysis TEXT,
+                        hints TEXT DEFAULT '[]',
+                        knowledge_tags TEXT DEFAULT '[]',
+                        score FLOAT DEFAULT 5.0,
+                        estimated_minutes INTEGER DEFAULT 5,
+                        source VARCHAR(100),
+                        source_url VARCHAR(500),
+                        status VARCHAR(20) DEFAULT 'published',
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''',
+            }
+            for table_name, create_sql in knowledge_base_tables.items():
+                cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}'")
+                if not cursor.fetchone():
+                    cursor.execute(create_sql)
+                    print(f'[DB Migration] [OK] Created table: {table_name}')
+
+            kb_indexes = {
+                'idx_syllabuses_course': ('course_syllabuses', 'course_id'),
+                'idx_chapters_course_order': ('course_chapters', 'course_id, order_index'),
+                'idx_chapters_parent': ('course_chapters', 'parent_id'),
+                'idx_kp_chapter': ('knowledge_points', 'chapter_id'),
+                'idx_kp_course': ('knowledge_points', 'course_id'),
+                'idx_kp_parent': ('knowledge_points', 'parent_id'),
+                'idx_kp_difficulty': ('knowledge_points', 'difficulty_level'),
+                'idx_cases_chapter': ('teaching_cases', 'chapter_id'),
+                'idx_cases_course': ('teaching_cases', 'course_id'),
+                'idx_cases_kp': ('teaching_cases', 'knowledge_point_id'),
+                'idx_cases_type': ('teaching_cases', 'case_type'),
+                'idx_exercises_chapter': ('course_exercises', 'chapter_id'),
+                'idx_exercises_course': ('course_exercises', 'course_id'),
+                'idx_exercises_kp': ('course_exercises', 'knowledge_point_id'),
+                'idx_exercises_type_difficulty': ('course_exercises', 'exercise_type, difficulty_level'),
+            }
+            for index_name, (table_name, columns) in kb_indexes.items():
+                try:
+                    cursor.execute(
+                        f'CREATE INDEX IF NOT EXISTS {index_name} ON {table_name} ({columns})'
+                    )
+                except Exception as e:
+                    print(f'[DB Migration] [WARN] Failed to create index {index_name}: {e}')
+
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='content_sync_records'")
+            if not cursor.fetchone():
+                cursor.execute('''
+                    CREATE TABLE content_sync_records (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        package_id VARCHAR(64) NOT NULL,
+                        course_id INTEGER NOT NULL REFERENCES courses(id),
+                        teacher_id INTEGER NOT NULL REFERENCES users(id),
+                        topic VARCHAR(200) DEFAULT '',
+                        content_type VARCHAR(50) NOT NULL,
+                        save_format VARCHAR(20) DEFAULT 'json',
+                        content_snapshot TEXT,
+                        teaching_content_id INTEGER REFERENCES teaching_contents(id),
+                        markdown_content TEXT,
+                        json_content TEXT,
+                        sync_status VARCHAR(20) DEFAULT 'pending',
+                        sync_progress INTEGER DEFAULT 0,
+                        sync_error TEXT,
+                        retry_count INTEGER DEFAULT 0,
+                        max_retries INTEGER DEFAULT 3,
+                        synced_at DATETIME,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+                print('[DB Migration] [OK] Created table: content_sync_records')
+
+            sync_indexes = {
+                'idx_sync_records_package': ('content_sync_records', 'package_id'),
+                'idx_sync_records_course': ('content_sync_records', 'course_id'),
+                'idx_sync_records_status': ('content_sync_records', 'sync_status'),
+            }
+            for index_name, (table_name, columns) in sync_indexes.items():
+                try:
+                    cursor.execute(
+                        f'CREATE INDEX IF NOT EXISTS {index_name} ON {table_name} ({columns})'
+                    )
+                except Exception as e:
+                    print(f'[DB Migration] [WARN] Failed to create index {index_name}: {e}')
 
             conn.commit()
             conn.close()

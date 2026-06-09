@@ -9,6 +9,7 @@ from src.services.multi_agent.shared_state import (
     message_bus,
     agent_monitor,
 )
+from src.services.knowledge_base_service import knowledge_base_service
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,14 @@ EXERCISE_SYSTEM_PROMPT = """你是一位专业的习题设计专家智能体，�
 3. 每题必须包含：题干、选项(选择题)、答案、详细解析、知识点标签、难度等级
 4. 针对学生易错点设计陷阱选项和干扰项
 5. 解析必须包含：正确答案推理过程、常见错误分析、知识点关联
+
+## 知识库内容使用规则
+当提供了课程知识库内容时，必须：
+1. 严格基于知识库中的知识点生成题目，确保题目内容与课程教学一致
+2. 参考已有教学案例的背景和场景设计应用题
+3. 参考已有习题的风格和难度，生成同类型或互补型题目
+4. 新题目不得与已有习题重复，但可以延伸和拓展
+5. 题目的知识点标签必须与知识库中的知识点对应
 
 ## 学生画像适配
 - 视觉型学习者：题目中增加图表描述、流程图题
@@ -71,6 +80,7 @@ class ExerciseAgent(AgentBase):
             "generate_exercises",
             "generate_targeted_exercises",
             "generate_adaptive_quiz",
+            "generate_layered_exercises",
             "analyze_exercise_quality",
         ]
 
@@ -86,6 +96,8 @@ class ExerciseAgent(AgentBase):
                 result = self._generate_targeted_exercises(task)
             elif task_type == "generate_adaptive_quiz":
                 result = self._generate_adaptive_quiz(task)
+            elif task_type == "generate_layered_exercises":
+                result = self._generate_layered_exercises(task)
             elif task_type == "analyze_exercise_quality":
                 result = self._analyze_quality(task)
             else:
@@ -111,6 +123,10 @@ class ExerciseAgent(AgentBase):
         knowledge_points = task.get("knowledge_points", [])
         count = task.get("count", 10)
         difficulty = task.get("difficulty", 3)
+        course_id = task.get("course_id")
+        chapter_ids = task.get("chapter_ids")
+        _user_id = task.get('user_id')
+        _user_role = task.get('user_role')
 
         cognitive_style = profile.get("cognitive_style", "mixed")
         error_patterns = profile.get("error_patterns", [])
@@ -119,6 +135,8 @@ class ExerciseAgent(AgentBase):
         style_hint = self._get_style_hint(cognitive_style)
         error_hint = self._get_error_hint(error_patterns)
         weakness_hint = self._get_weakness_hint(knowledge_base)
+
+        kb_context = self._build_kb_context(course_id, chapter_ids)
 
         prompt = f"""请为以下学习场景生成{count}道练习题目。
 
@@ -135,6 +153,7 @@ class ExerciseAgent(AgentBase):
 {style_hint}
 {error_hint}
 {weakness_hint}
+{kb_context}
 
 请严格按照JSON格式输出，包含{count}道题目。"""
 
@@ -143,6 +162,8 @@ class ExerciseAgent(AgentBase):
                 prompt,
                 system_prompt=EXERCISE_SYSTEM_PROMPT,
                 temperature=0.7,
+                user_id=_user_id,
+                user_role=_user_role,
             )
             parsed = self._parse_json_response(response)
             shared_state.set(
@@ -157,9 +178,15 @@ class ExerciseAgent(AgentBase):
         profile = task.get("student_profile", {})
         weak_points = task.get("weak_points", [])
         error_types = task.get("error_types", [])
+        course_id = task.get("course_id")
+        chapter_ids = task.get("chapter_ids")
+        _user_id = task.get('user_id')
+        _user_role = task.get('user_role')
 
         if not weak_points:
             weak_points = self._extract_weak_points(profile)
+
+        kb_context = self._build_kb_context(course_id, chapter_ids)
 
         prompt = f"""请针对学生的薄弱知识点生成专项练习。
 
@@ -171,6 +198,7 @@ class ExerciseAgent(AgentBase):
 
 ## 学生画像
 {json.dumps(profile, ensure_ascii=False)}
+{kb_context}
 
 要求：
 1. 每个薄弱知识点至少2道题
@@ -185,6 +213,8 @@ class ExerciseAgent(AgentBase):
                 prompt,
                 system_prompt=EXERCISE_SYSTEM_PROMPT,
                 temperature=0.6,
+                user_id=_user_id,
+                user_role=_user_role,
             )
             return self._parse_json_response(response)
         except Exception as e:
@@ -194,6 +224,8 @@ class ExerciseAgent(AgentBase):
         profile = task.get("student_profile", {})
         topic = task.get("topic", "")
         previous_performance = task.get("previous_performance", {})
+        _user_id = task.get('user_id')
+        _user_role = task.get('user_role')
 
         correct_rate = previous_performance.get("correct_rate", 0.5)
         if correct_rate >= 0.8:
@@ -232,13 +264,90 @@ class ExerciseAgent(AgentBase):
                 prompt,
                 system_prompt=EXERCISE_SYSTEM_PROMPT,
                 temperature=0.6,
+                user_id=_user_id,
+                user_role=_user_role,
             )
             return self._parse_json_response(response)
         except Exception as e:
             return {"error": str(e)}
 
+    def _generate_layered_exercises(self, task):
+        profile = task.get("student_profile", {})
+        topic = task.get("topic", "")
+        knowledge_points = task.get("knowledge_points", [])
+        course_id = task.get("course_id")
+        chapter_ids = task.get("chapter_ids")
+        _user_id = task.get('user_id')
+        _user_role = task.get('user_role')
+
+        kb_context = self._build_kb_context(course_id, chapter_ids)
+
+        prompt = f"""请生成分层次练习题目，包含三个难度层级。
+
+## 学习主题
+{topic}
+
+## 知识点
+{json.dumps(knowledge_points, ensure_ascii=False) if knowledge_points else '根据主题自动提取'}
+
+## 学生画像
+{json.dumps(profile, ensure_ascii=False)}
+{kb_context}
+
+要求：
+1. 基础巩固题（5道）：考查基本概念和定义，难度1-2级，确保学生掌握核心概念
+2. 能力提升题（4道）：考查原理理解和应用，难度3级，要求学生能运用知识解决问题
+3. 综合应用题（3道）：考查综合分析和创新应用，难度4-5级，要求跨知识点综合运用
+
+每题必须包含：
+- 题干、选项(选择题)、答案、详细解析
+- 知识点标签、难度等级、所属层级
+- 常见错误分析
+
+请严格按照JSON格式输出：
+{{
+  "layered_exercises": {{
+    "basic": {{
+      "label": "基础巩固",
+      "description": "考查基本概念和定义",
+      "exercises": [...]
+    }},
+    "intermediate": {{
+      "label": "能力提升",
+      "description": "考查原理理解和应用",
+      "exercises": [...]
+    }},
+    "advanced": {{
+      "label": "综合应用",
+      "description": "考查综合分析和创新应用",
+      "exercises": [...]
+    }}
+  }},
+  "total_count": 12,
+  "coverage_summary": "知识点覆盖说明"
+}}"""
+
+        try:
+            response = self._call_llm(
+                prompt,
+                system_prompt=EXERCISE_SYSTEM_PROMPT,
+                temperature=0.7,
+                user_id=_user_id,
+                user_role=_user_role,
+            )
+            parsed = self._parse_json_response(response)
+            shared_state.set(
+                "last_layered_exercise_result", parsed, self.agent_name
+            )
+            return parsed
+        except Exception as e:
+            logger.error(f"Layered exercise generation failed: {e}")
+            return {"error": str(e)}
+
     def _analyze_quality(self, task):
         exercises = task.get("exercises", [])
+        _user_id = task.get('user_id')
+        _user_role = task.get('user_role')
         prompt = f"""请分析以下习题集的质量：
 
 {json.dumps(exercises, ensure_ascii=False)[:3000]}
@@ -260,7 +369,7 @@ class ExerciseAgent(AgentBase):
 }}"""
 
         try:
-            response = self._call_llm(prompt, temperature=0.3)
+            response = self._call_llm(prompt, temperature=0.3, user_id=_user_id, user_role=_user_role)
             return self._parse_json_response(response)
         except Exception as e:
             return {"error": str(e)}
@@ -316,6 +425,32 @@ class ExerciseAgent(AgentBase):
             except (json.JSONDecodeError, TypeError):
                 kb = {}
         return [k for k, v in kb.items() if isinstance(v, (int, float)) and v < 50] if isinstance(kb, dict) else []
+
+    def _build_kb_context(self, course_id, chapter_ids=None):
+        if not course_id:
+            return ""
+        try:
+            ctx = knowledge_base_service.build_knowledge_context_for_prompt(
+                course_id, chapter_ids
+            )
+            if not ctx:
+                return ""
+            parts = []
+            parts.append(f"\n## 课程知识库内容（课程：{ctx['course_title']}）")
+            if ctx.get("syllabus_text"):
+                parts.append(f"### 课程大纲\n{ctx['syllabus_text']}")
+            if ctx.get("chapter_list"):
+                parts.append(f"### 章节结构\n{ctx['chapter_list']}")
+            if ctx.get("knowledge_points_detail") and ctx["knowledge_points_detail"] != "暂无":
+                parts.append(f"### 知识点详情\n{ctx['knowledge_points_detail']}")
+            if ctx.get("teaching_cases_detail") and ctx["teaching_cases_detail"] != "暂无":
+                parts.append(f"### 已有教学案例（可参考场景设计应用题）\n{ctx['teaching_cases_detail']}")
+            if ctx.get("exercises_detail") and ctx["exercises_detail"] != "暂无":
+                parts.append(f"### 已有习题（请勿重复，可延伸拓展）\n{ctx['exercises_detail']}")
+            return "\n\n".join(parts)
+        except Exception as e:
+            logger.warning(f"Failed to build KB context for exercise agent: {e}")
+            return ""
 
     def _parse_json_response(self, response):
         text = response.strip()

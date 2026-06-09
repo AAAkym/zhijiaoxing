@@ -134,6 +134,7 @@ class AITutorService:
         user_id: int,
         course_id: int = None,
         image_data: str = None,
+        user_role: str = None,
     ) -> Dict[str, Any]:
         try:
             profile = StudentProfile.query.filter_by(user_id=user_id).first()
@@ -162,7 +163,7 @@ class AITutorService:
                 cognitive_style, interaction_pref, learning_pace, image_note,
             )
 
-            result = spark_service.chat(prompt)
+            result = spark_service.chat(prompt, user_id=user_id, user_role=user_role)
 
             is_out_of_scope = False
             clarification_options = []
@@ -208,6 +209,7 @@ class AITutorService:
         user_id: int,
         course_id: int = None,
         image_data: str = None,
+        user_role: str = None,
     ) -> Generator[str, None, None]:
         try:
             profile = StudentProfile.query.filter_by(user_id=user_id).first()
@@ -236,7 +238,7 @@ class AITutorService:
                 cognitive_style, interaction_pref, learning_pace, image_note,
             )
 
-            for chunk in spark_service.chat_stream(prompt):
+            for chunk in spark_service.chat_stream(prompt, user_id=user_id, user_role=user_role):
                 yield chunk
         except Exception as e:
             logger.error("answer_question_stream failed: %s", e, exc_info=True)
@@ -325,6 +327,7 @@ class AITutorService:
         user_id: int,
         course_id: int = None,
         mastery_level: float = None,
+        user_role: str = None,
     ) -> Dict[str, Any]:
         try:
             profile = StudentProfile.query.filter_by(user_id=user_id).first()
@@ -343,7 +346,7 @@ class AITutorService:
 
             prompt = self._build_explain_prompt(topic, mastery_level, knowledge_base, standard_category, standard_category_info)
 
-            raw = spark_service.chat(prompt)
+            raw = spark_service.chat(prompt, user_id=user_id, user_role=user_role)
             cleaned = _clean_ai_json(raw)
 
             try:
@@ -387,6 +390,7 @@ class AITutorService:
         user_id: int,
         course_id: int = None,
         mastery_level: float = None,
+        user_role: str = None,
     ) -> Generator[str, None, None]:
         try:
             if mastery_level is None:
@@ -402,7 +406,7 @@ class AITutorService:
             standard_category_info = self.STANDARD_CATEGORIES.get(standard_category, {})
             prompt = self._build_explain_prompt(topic, mastery_level, knowledge_base, standard_category, standard_category_info)
 
-            for chunk in spark_service.chat_stream(prompt):
+            for chunk in spark_service.chat_stream(prompt, user_id=user_id, user_role=user_role):
                 yield chunk
         except Exception as e:
             logger.error("explain_knowledge_stream failed: %s", e, exc_info=True)
@@ -466,6 +470,7 @@ class AITutorService:
         topic: str,
         user_id: int,
         course_id: int = None,
+        user_role: str = None,
     ) -> List[Dict[str, Any]]:
         try:
             resources = []
@@ -602,7 +607,7 @@ class AITutorService:
   }}
 ]
 只输出JSON，不要输出其他内容。"""
-                paper_raw = spark_service.chat(paper_prompt)
+                paper_raw = spark_service.chat(paper_prompt, user_id=user_id, user_role=user_role)
                 paper_cleaned = _clean_ai_json(paper_raw)
                 paper_list = json.loads(paper_cleaned)
                 if isinstance(paper_list, list):
@@ -656,6 +661,7 @@ class AITutorService:
         user_id: int,
         course_id: int = None,
         custom_goals: List[str] = None,
+        user_role: str = None,
     ) -> Dict[str, Any]:
         try:
             profile = StudentProfile.query.filter_by(user_id=user_id).first()
@@ -711,7 +717,7 @@ class AITutorService:
 3. 每步给出具体的知识点和预计用时
 4. 只输出JSON，不要输出其他内容"""
 
-            raw = spark_service.chat(prompt)
+            raw = spark_service.chat(prompt, user_id=user_id, user_role=user_role)
             cleaned = _clean_ai_json(raw)
 
             try:
@@ -1153,6 +1159,7 @@ class AITutorService:
         self,
         user_id: int,
         course_id: int = None,
+        user_role: str = None,
     ) -> Generator[str, None, None]:
         try:
             diagnosis = self.diagnose_knowledge_mastery(user_id, course_id)
@@ -1255,7 +1262,7 @@ class AITutorService:
 ## 六、热力图数据
 - 以JSON格式输出各知识点掌握度热力图数据，格式为：{{"heatmap": [{{"name": "知识点", "value": 掌握度}}]}}"""
 
-            for chunk in spark_service.chat_stream(prompt):
+            for chunk in spark_service.chat_stream(prompt, user_id=user_id, user_role=user_role):
                 yield chunk
         except Exception as e:
             logger.error("generate_diagnosis_report_stream failed: %s", e, exc_info=True)

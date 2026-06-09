@@ -136,7 +136,7 @@ def _build_generation_prompt(config: CourseGenerationConfig, step_name: str, cou
     return step_prompts.get(step_name, base)
 
 
-def generate_step_content(config_id: int, teacher_id: int, step: int) -> Dict:
+def generate_step_content(config_id: int, teacher_id: int, step: int, user_id: int = None, user_role: str = None) -> Dict:
     config = CourseGenerationConfig.query.filter_by(id=config_id, teacher_id=teacher_id).first()
     if not config:
         return {"error": "Configuration not found"}
@@ -157,11 +157,15 @@ def generate_step_content(config_id: int, teacher_id: int, step: int) -> Dict:
                 course_title=course.title if course else "通用课程",
                 topic=prompt[:500],
                 question_count=5,
+                user_id=user_id,
+                user_role=user_role,
             )
         else:
             content = spark_service.generate_teaching_content(
                 course_title=course.title if course else "通用课程",
                 topic=prompt[:800],
+                user_id=user_id,
+                user_role=user_role,
             )
     except Exception as e:
         logger.error(f"AI generation error for step {step}: {e}")

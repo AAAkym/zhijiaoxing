@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -29,6 +29,7 @@ import {
   Filter,
   ArrowRight
 } from 'lucide-react'
+import { contentReview } from '@/services/api'
 
 const reviewMechanisms = {
   auto: {
@@ -69,26 +70,17 @@ const reviewMechanisms = {
   }
 }
 
-const autoRules = [
-  { id: 1, name: '敏感词过滤', enabled: true, threshold: 0, description: '检测并过滤敏感词汇' },
-  { id: 2, name: '内容长度检查', enabled: true, threshold: 50, description: '最小内容长度限制' },
-  { id: 3, name: '合规性评分', enabled: true, threshold: 60, description: '内容合规性最低分数' },
-  { id: 4, name: '教育价值评估', enabled: true, threshold: 50, description: '教育适用性最低分数' },
-  { id: 5, name: 'AI模型评分', enabled: true, threshold: 70, description: 'AI综合评分最低要求' },
-  { id: 6, name: '格式规范检查', enabled: false, threshold: 0, description: '检查内容格式规范性' }
-]
-
-const spotCheckSettings = {
-  sampleRate: 10,
-  priorityKeywords: ['重要', '核心', '考试', '评分'],
-  recheckThreshold: 80,
-  maxRecheckAttempts: 3
-}
-
 export default function ReviewMechanism() {
   const [activeMechanism, setActiveMechanism] = useState('auto')
-  const [rules, setRules] = useState(autoRules)
-  const [spotSettings, setSpotSettings] = useState(spotCheckSettings)
+  const [rules, setRules] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [spotSettings, setSpotSettings] = useState({
+    sampleRate: 10,
+    priorityKeywords: ['重要', '核心', '考试', '评分'],
+    recheckThreshold: 80,
+    maxRecheckAttempts: 3
+  })
   const [workflowConfig, setWorkflowConfig] = useState({
     autoFirst: true,
     manualAfterAuto: true,
@@ -96,40 +88,67 @@ export default function ReviewMechanism() {
     spotCheckRate: 10
   })
 
-  const mechanismStats = {
-    auto: {
-      total: 156,
-      passed: 142,
-      rejected: 14,
-      avgTime: '2.3s',
-      accuracy: 94.2
-    },
-    manual: {
-      total: 45,
-      passed: 38,
-      rejected: 7,
-      avgTime: '5.2min',
-      accuracy: 98.5
-    },
-    spotCheck: {
-      total: 23,
-      passed: 21,
-      rejected: 2,
-      avgTime: '3.8min',
-      accuracy: 96.8
+  const loadRules = useCallback(async () => {
+    setLoading(true)
+    try {
+      const response = await contentReview.getReviewRules()
+      if (response.success) {
+        setRules(response.data || [])
+      }
+    } catch (error) {
+      console.error('加载审核规则失败:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadRules()
+  }, [loadRules])
+
+  const toggleRule = async (ruleId, enabled) => {
+    try {
+      await contentReview.updateReviewRule(ruleId, { enabled: !enabled })
+      setRules(rules.map(rule => 
+        rule.id === ruleId ? { ...rule, enabled: !enabled } : rule
+      ))
+    } catch (error) {
+      console.error('更新规则失败:', error)
     }
   }
 
-  const toggleRule = (ruleId) => {
-    setRules(rules.map(rule => 
-      rule.id === ruleId ? { ...rule, enabled: !rule.enabled } : rule
+  const updateRuleThreshold = async (ruleId, threshold) => {
+    const newThreshold = parseInt(threshold) || 0
+    setRules(rules.map(rule =>
+      rule.id === ruleId ? { ...rule, threshold: newThreshold } : rule
     ))
   }
 
-  const updateRuleThreshold = (ruleId, threshold) => {
-    setRules(rules.map(rule =>
-      rule.id === ruleId ? { ...rule, threshold: parseInt(threshold) || 0 } : rule
-    ))
+  const saveRuleThreshold = async (ruleId) => {
+    const rule = rules.find(r => r.id === ruleId)
+    if (rule) {
+      try {
+        await contentReview.updateReviewRule(ruleId, { threshold: rule.threshold })
+      } catch (error) {
+        console.error('保存规则阈值失败:', error)
+      }
+    }
+  }
+
+  const handleSaveRules = async () => {
+    setSaving(true)
+    try {
+      for (const rule of rules) {
+        await contentReview.updateReviewRule(rule.id, {
+          enabled: rule.enabled,
+          threshold: rule.threshold,
+        })
+      }
+    } catch (error) {
+      console.error('保存规则配置失败:', error)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const getColorClasses = (color) => {
@@ -141,6 +160,10 @@ export default function ReviewMechanism() {
     return colors[color] || colors.purple
   }
 
+  const autoRules = rules.filter(r => r.rule_type === 'auto')
+  const manualRules = rules.filter(r => r.rule_type === 'manual')
+  const spotCheckRules = rules.filter(r => r.rule_type === 'spot_check')
+
   return (
     <div className="space-y-6">
       {/* 三重审核机制概览 */}
@@ -148,7 +171,6 @@ export default function ReviewMechanism() {
         {Object.entries(reviewMechanisms).map(([key, mechanism]) => {
           const Icon = mechanism.icon
           const colors = getColorClasses(mechanism.color)
-          const stats = mechanismStats[key]
 
           return (
             <Card 
@@ -166,25 +188,6 @@ export default function ReviewMechanism() {
                   <div>
                     <h3 className="font-semibold">{mechanism.title}</h3>
                     <p className="text-xs text-gray-500">{mechanism.description}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className={`p-2 rounded ${colors.bg}`}>
-                    <p className="text-xs text-gray-500">已处理</p>
-                    <p className="text-lg font-bold">{stats.total}</p>
-                  </div>
-                  <div className={`p-2 rounded ${colors.bg}`}>
-                    <p className="text-xs text-gray-500">通过率</p>
-                    <p className="text-lg font-bold">{((stats.passed / stats.total) * 100).toFixed(1)}%</p>
-                  </div>
-                  <div className={`p-2 rounded ${colors.bg}`}>
-                    <p className="text-xs text-gray-500">平均耗时</p>
-                    <p className="text-lg font-bold">{stats.avgTime}</p>
-                  </div>
-                  <div className={`p-2 rounded ${colors.bg}`}>
-                    <p className="text-xs text-gray-500">准确率</p>
-                    <p className="text-lg font-bold">{stats.accuracy}%</p>
                   </div>
                 </div>
 
@@ -232,9 +235,6 @@ export default function ReviewMechanism() {
                 <span className="font-medium">抽查审核</span>
               </div>
             </div>
-            <Button variant="outline" size="sm">
-              编辑流程
-            </Button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -297,36 +297,39 @@ export default function ReviewMechanism() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {rules.map(rule => (
-                <div key={rule.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
-                  <div className="flex items-center gap-4">
-                    <Switch
-                      checked={rule.enabled}
-                      onCheckedChange={() => toggleRule(rule.id)}
-                    />
-                    <div>
-                      <p className="font-medium">{rule.name}</p>
-                      <p className="text-sm text-gray-500">{rule.description}</p>
+            {loading ? (
+              <div className="text-center py-8 text-gray-500">加载中...</div>
+            ) : (
+              <div className="space-y-4">
+                {autoRules.map(rule => (
+                  <div key={rule.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+                    <div className="flex items-center gap-4">
+                      <Switch
+                        checked={rule.enabled}
+                        onCheckedChange={() => toggleRule(rule.id, rule.enabled)}
+                      />
+                      <div>
+                        <p className="font-medium">{rule.name}</p>
+                        <p className="text-sm text-gray-500">{rule.description}</p>
+                      </div>
                     </div>
-                  </div>
-                  {rule.threshold > 0 && (
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-gray-500">阈值:</span>
                       <Input
                         type="number"
                         value={rule.threshold}
                         onChange={(e) => updateRuleThreshold(rule.id, e.target.value)}
+                        onBlur={() => saveRuleThreshold(rule.id)}
                         className="w-20"
                         disabled={!rule.enabled}
                       />
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="flex justify-end mt-4">
-              <Button className="bg-slate-900 hover:bg-slate-800">
+              <Button className="bg-slate-900 hover:bg-slate-800" onClick={handleSaveRules} disabled={saving}>
                 保存规则配置
               </Button>
             </div>
@@ -510,10 +513,10 @@ export default function ReviewMechanism() {
               </div>
               <div className="flex items-center gap-4">
                 <div>
-                  <p className="text-2xl font-bold text-purple-700">8</p>
-                  <p className="text-xs text-purple-600">待处理</p>
+                  <p className="text-2xl font-bold text-purple-700">{autoRules.filter(r => r.enabled).length}</p>
+                  <p className="text-xs text-purple-600">活跃规则</p>
                 </div>
-                <Progress value={67} className="flex-1" />
+                <Progress value={autoRules.length > 0 ? (autoRules.filter(r => r.enabled).length / autoRules.length) * 100 : 0} className="flex-1" />
               </div>
             </div>
             <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
@@ -523,10 +526,10 @@ export default function ReviewMechanism() {
               </div>
               <div className="flex items-center gap-4">
                 <div>
-                  <p className="text-2xl font-bold text-orange-700">12</p>
-                  <p className="text-xs text-orange-600">待处理</p>
+                  <p className="text-2xl font-bold text-orange-700">{manualRules.filter(r => r.enabled).length}</p>
+                  <p className="text-xs text-orange-600">活跃规则</p>
                 </div>
-                <Progress value={45} className="flex-1" />
+                <Progress value={manualRules.length > 0 ? (manualRules.filter(r => r.enabled).length / manualRules.length) * 100 : 0} className="flex-1" />
               </div>
             </div>
             <div className="p-4 bg-cyan-50 rounded-lg border border-cyan-200">
@@ -536,10 +539,10 @@ export default function ReviewMechanism() {
               </div>
               <div className="flex items-center gap-4">
                 <div>
-                  <p className="text-2xl font-bold text-cyan-700">4</p>
-                  <p className="text-xs text-cyan-600">待处理</p>
+                  <p className="text-2xl font-bold text-cyan-700">{spotCheckRules.filter(r => r.enabled).length}</p>
+                  <p className="text-xs text-cyan-600">活跃规则</p>
                 </div>
-                <Progress value={30} className="flex-1" />
+                <Progress value={spotCheckRules.length > 0 ? (spotCheckRules.filter(r => r.enabled).length / spotCheckRules.length) * 100 : 0} className="flex-1" />
               </div>
             </div>
           </div>

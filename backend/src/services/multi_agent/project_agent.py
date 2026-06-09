@@ -7,6 +7,7 @@ from src.services.multi_agent.shared_state import (
     message_bus,
     agent_monitor,
 )
+from src.services.knowledge_base_service import knowledge_base_service
 
 logger = logging.getLogger(__name__)
 
@@ -138,13 +139,18 @@ class ProjectAgent(AgentBase):
         language = task.get("language", "Python")
         difficulty = task.get("difficulty", "intermediate")
         knowledge_points = task.get("knowledge_points", [])
+        course_id = task.get("course_id")
+        chapter_ids = task.get("chapter_ids")
+        _user_id = task.get('user_id')
+        _user_role = task.get('user_role')
 
         knowledge_base = profile.get("knowledge_base", {})
         goal = profile.get("goal_orientation", "exam")
         level_hint = self._determine_difficulty(difficulty, knowledge_base)
         goal_hint = self._get_goal_project_hint(goal)
+        kb_context = self._build_kb_context(course_id, chapter_ids)
 
-        prompt = f"""请设计一个代码实操项目。
+        prompt = f"""请设计一个与课程主题紧密相关的代码实操项目。
 
 ## 项目主题
 {topic}
@@ -160,21 +166,61 @@ class ProjectAgent(AgentBase):
 
 ## 学生画像适配
 {goal_hint}
+{kb_context}
 
-要求：
-1. 项目具有实际应用场景
-2. 分解为3-5个子任务
-3. 每个子任务包含详细步骤指导
-4. 提供代码模板和参考方案
-5. 包含评分标准
+## 关键要求
+1. 代码必须是与主题直接相关的真实实现，禁止生成"Hello World"等入门级示例
+   - 机器学习主题：必须包含数据加载与预处理、特征工程、模型构建与训练、交叉验证、性能评估（准确率/F1/AUC等）、结果可视化
+   - 深度学习主题：必须包含数据集加载、网络架构定义、训练循环（含loss计算和反向传播）、验证与早停、测试评估
+   - 数据分析主题：必须包含数据清洗、探索性分析（EDA）、统计检验、可视化图表、结论总结
+   - 算法实现主题：必须包含算法核心逻辑、时间/空间复杂度分析、与基准方法的对比实验、性能测试
+2. 例如：如果主题是机器学习，代码应包含真实的数据加载、模型训练、评估流程；如果主题是数据结构，代码应包含完整的算法实现和性能对比
+3. 代码必须完整可运行，包含所有必要的import语句、数据准备、核心逻辑和输出展示
+4. 代码中必须有详细的中文注释，解释每个关键步骤的原理和目的
+5. 项目分解为3-5个子任务，从基础实现到进阶优化逐步递进
+6. 每个子任务包含完整代码、运行说明和预期输出
+7. 包含评分标准
 
-请严格按照JSON格式输出。"""
+请严格按照以下JSON格式输出：
+{{
+  "project_title": "项目标题",
+  "project_description": "项目描述和应用场景",
+  "difficulty": "{level_hint}",
+  "programming_language": "{language}",
+  "estimated_time": "预计完成时间",
+  "prerequisites": ["前置知识1", "前置知识2"],
+  "tasks": [
+    {{
+      "task_id": 1,
+      "title": "子任务标题",
+      "description": "任务描述",
+      "steps": ["步骤1", "步骤2"],
+      "code_template": "代码模板（含注释和TODO标记）",
+      "reference_solution": "参考实现代码（完整可运行）",
+      "expected_output": "预期输出说明",
+      "hints": ["提示1", "提示2"]
+    }}
+  ],
+  "full_code": "完整可运行的代码（包含所有import、数据处理、核心逻辑、输出展示）",
+  "scoring_criteria": [
+    {{"item": "评分项", "points": 分值, "description": "评分标准描述"}}
+  ]
+}}
+
+注意：full_code 必须是一个完整的、可直接运行的Python脚本，长度不少于50行，包含：
+- 所有必要的import语句（numpy, pandas, sklearn, matplotlib等）
+- 数据加载/生成代码（使用sklearn内置数据集或生成模拟数据）
+- 完整的模型训练/算法实现流程
+- 结果输出和可视化
+- 详细的中文注释解释每一步的原理"""
 
         try:
             response = self._call_llm(
                 prompt,
                 system_prompt=PROJECT_SYSTEM_PROMPT,
                 temperature=0.7,
+                user_id=_user_id,
+                user_role=_user_role,
             )
             parsed = self._parse_json_response(response)
             shared_state.set(
@@ -188,6 +234,8 @@ class ProjectAgent(AgentBase):
         profile = task.get("student_profile", {})
         topic = task.get("topic", "")
         experiment_type = task.get("experiment_type", "data_analysis")
+        _user_id = task.get('user_id')
+        _user_role = task.get('user_role')
 
         prompt = f"""请设计一个实验/数据分析项目。
 
@@ -213,6 +261,8 @@ class ProjectAgent(AgentBase):
                 prompt,
                 system_prompt=PROJECT_SYSTEM_PROMPT,
                 temperature=0.7,
+                user_id=_user_id,
+                user_role=_user_role,
             )
             return self._parse_json_response(response)
         except Exception as e:
@@ -222,6 +272,8 @@ class ProjectAgent(AgentBase):
         profile = task.get("student_profile", {})
         topic = task.get("topic", "")
         case_type = task.get("case_type", "business")
+        _user_id = task.get('user_id')
+        _user_role = task.get('user_role')
 
         prompt = f"""请设计一个案例分析项目。
 
@@ -247,6 +299,8 @@ class ProjectAgent(AgentBase):
                 prompt,
                 system_prompt=PROJECT_SYSTEM_PROMPT,
                 temperature=0.7,
+                user_id=_user_id,
+                user_role=_user_role,
             )
             return self._parse_json_response(response)
         except Exception as e:
@@ -257,6 +311,8 @@ class ProjectAgent(AgentBase):
         topic = task.get("topic", "")
         duration_weeks = task.get("duration_weeks", 2)
         team_size = task.get("team_size", 1)
+        _user_id = task.get('user_id')
+        _user_role = task.get('user_role')
 
         prompt = f"""请设计一个综合实践项目。
 
@@ -286,6 +342,8 @@ class ProjectAgent(AgentBase):
                 prompt,
                 system_prompt=PROJECT_SYSTEM_PROMPT,
                 temperature=0.7,
+                user_id=_user_id,
+                user_role=_user_role,
             )
             return self._parse_json_response(response)
         except Exception as e:
@@ -317,6 +375,30 @@ class ProjectAgent(AgentBase):
             "research": "学生目标为学术研究，请设计研究型项目，培养科研能力",
         }
         return hints.get(goal, "")
+
+    def _build_kb_context(self, course_id, chapter_ids=None):
+        if not course_id:
+            return ""
+        try:
+            ctx = knowledge_base_service.build_knowledge_context_for_prompt(
+                course_id, chapter_ids
+            )
+            if not ctx:
+                return ""
+            parts = []
+            parts.append(f"\n## 课程知识库内容（课程：{ctx['course_title']}）")
+            if ctx.get("chapter_list"):
+                parts.append(f"### 章节结构\n{ctx['chapter_list']}")
+            if ctx.get("knowledge_points_detail") and ctx["knowledge_points_detail"] != "暂无":
+                parts.append(f"### 知识点详情（项目应覆盖这些知识点）\n{ctx['knowledge_points_detail']}")
+            if ctx.get("teaching_cases_detail") and ctx["teaching_cases_detail"] != "暂无":
+                parts.append(f"### 教学案例（可参考案例设计项目场景）\n{ctx['teaching_cases_detail']}")
+            if ctx.get("exercises_detail") and ctx["exercises_detail"] != "暂无":
+                parts.append(f"### 已有习题（项目可延伸这些习题内容）\n{ctx['exercises_detail']}")
+            return "\n\n".join(parts)
+        except Exception as e:
+            logger.warning(f"Failed to build KB context for project agent: {e}")
+            return ""
 
     def _parse_json_response(self, response):
         text = response.strip()

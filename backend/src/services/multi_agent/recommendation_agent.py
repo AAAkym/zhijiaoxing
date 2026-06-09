@@ -7,6 +7,7 @@ from src.services.multi_agent.shared_state import (
     message_bus,
     agent_monitor,
 )
+from src.services.knowledge_base_service import knowledge_base_service
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,16 @@ RECOMMENDATION_SYSTEM_PROMPT = """你是一位专业的学习资源推荐专家�
 - 职业导向：推荐行业案例、职业技能资源、面试准备
 - 兴趣导向：推荐趣味性资源、跨学科内容
 - 研究导向：推荐学术论文、研究方法、前沿进展
+
+## 视频资源搜索
+当需要推荐视频学习资源时，你应该为学生生成实际的搜索URL，方便学生直接访问：
+- YouTube搜索：https://www.youtube.com/results?search_query=（关键词用+连接）
+- Bilibili搜索：https://search.bilibili.com/all?keyword=（使用中文关键词）
+搜索关键词的构建原则：
+1. YouTube搜索使用英文关键词，应包含主题核心术语，必要时加上"tutorial"、"explained"、"lecture"等后缀
+2. Bilibili搜索使用中文关键词，应包含主题中文名称，必要时加上"教程"、"讲解"、"入门"等后缀
+3. 搜索关键词应精准、简洁，避免过于宽泛或过于具体
+4. 根据学生水平调整搜索难度关键词（如入门用"beginner"/"入门"，进阶用"advanced"/"进阶"）
 
 ## 输出格式
 严格返回以下JSON格式：
@@ -82,6 +93,7 @@ class RecommendationAgent(AgentBase):
             "generate_reading_list",
             "generate_project_recommendations",
             "generate_resource_ranking",
+            "generate_video_search",
         ]
 
     def process(self, task):
@@ -98,6 +110,8 @@ class RecommendationAgent(AgentBase):
                 result = self._generate_project_recommendations(task)
             elif task_type == "generate_resource_ranking":
                 result = self._generate_resource_ranking(task)
+            elif task_type == "generate_video_search":
+                result = self._generate_video_search(task)
             else:
                 result = {"error": f"Unknown task type: {task_type}"}
 
@@ -124,6 +138,10 @@ class RecommendationAgent(AgentBase):
             ["paper", "blog", "project", "tutorial", "video", "book"],
         )
         count = task.get("count", 8)
+        course_id = task.get("course_id")
+        chapter_ids = task.get("chapter_ids")
+        _user_id = task.get('user_id')
+        _user_role = task.get('user_role')
 
         cognitive_style = profile.get("cognitive_style", "mixed")
         interest_areas = profile.get("interest_areas", [])
@@ -134,6 +152,7 @@ class RecommendationAgent(AgentBase):
         goal_hint = self._get_goal_resource_hint(goal)
         interest_hint = self._get_interest_hint(interest_areas)
         level_hint = self._determine_level(knowledge_base)
+        kb_context = self._build_kb_context(course_id, chapter_ids)
 
         prompt = f"""请根据学生画像推荐个性化学习资源。
 
@@ -154,6 +173,7 @@ class RecommendationAgent(AgentBase):
 - 学习目标：{goal_hint}
 - 兴趣领域：{interest_hint}
 - 当前水平：{level_hint}
+{kb_context}
 
 要求：
 1. 每种资源类型至少推荐1个
@@ -168,6 +188,8 @@ class RecommendationAgent(AgentBase):
                 prompt,
                 system_prompt=RECOMMENDATION_SYSTEM_PROMPT,
                 temperature=0.7,
+                user_id=_user_id,
+                user_role=_user_role,
             )
             parsed = self._parse_json_response(response)
             shared_state.set(
@@ -181,6 +203,8 @@ class RecommendationAgent(AgentBase):
         profile = task.get("student_profile", {})
         topic = task.get("topic", "")
         depth = task.get("depth", "intermediate")
+        _user_id = task.get('user_id')
+        _user_role = task.get('user_role')
 
         prompt = f"""请生成一份拓展阅读清单。
 
@@ -206,6 +230,8 @@ class RecommendationAgent(AgentBase):
                 prompt,
                 system_prompt=RECOMMENDATION_SYSTEM_PROMPT,
                 temperature=0.6,
+                user_id=_user_id,
+                user_role=_user_role,
             )
             return self._parse_json_response(response)
         except Exception as e:
@@ -215,6 +241,8 @@ class RecommendationAgent(AgentBase):
         profile = task.get("student_profile", {})
         topic = task.get("topic", "")
         skill_level = task.get("skill_level", "intermediate")
+        _user_id = task.get('user_id')
+        _user_role = task.get('user_role')
 
         prompt = f"""请推荐适合学生实践的编程/实操项目。
 
@@ -240,6 +268,8 @@ class RecommendationAgent(AgentBase):
                 prompt,
                 system_prompt=RECOMMENDATION_SYSTEM_PROMPT,
                 temperature=0.7,
+                user_id=_user_id,
+                user_role=_user_role,
             )
             return self._parse_json_response(response)
         except Exception as e:
@@ -249,6 +279,8 @@ class RecommendationAgent(AgentBase):
         topic = task.get("topic", "")
         resources = task.get("resources", [])
         profile = task.get("student_profile", {})
+        _user_id = task.get('user_id')
+        _user_role = task.get('user_role')
 
         prompt = f"""请对以下学习资源进行个性化排序。
 
@@ -280,8 +312,85 @@ class RecommendationAgent(AgentBase):
 }}"""
 
         try:
-            response = self._call_llm(prompt, temperature=0.3)
+            response = self._call_llm(prompt, temperature=0.3, user_id=_user_id, user_role=_user_role)
             return self._parse_json_response(response)
+        except Exception as e:
+            return {"error": str(e)}
+
+    def _build_video_search_prompt(self, topic, knowledge_points, profile):
+        cognitive_style = profile.get("cognitive_style", "mixed")
+        interest_areas = profile.get("interest_areas", [])
+        goal = profile.get("goal_orientation", "exam")
+        knowledge_base = profile.get("knowledge_base", {})
+
+        style_hint = self._get_style_resource_hint(cognitive_style)
+        goal_hint = self._get_goal_resource_hint(goal)
+        interest_hint = self._get_interest_hint(interest_areas)
+        level_hint = self._determine_level(knowledge_base)
+
+        prompt = f"""请根据学生的学习主题和薄弱知识点，生成视频搜索推荐。
+
+## 学习主题
+{topic}
+
+## 薄弱知识点
+{json.dumps(knowledge_points, ensure_ascii=False) if knowledge_points else '根据主题自动匹配'}
+
+## 学生画像适配
+- 认知风格：{style_hint}
+- 学习目标：{goal_hint}
+- 兴趣领域：{interest_hint}
+- 当前水平：{level_hint}
+
+要求：
+1. 为每个薄弱知识点或子主题生成对应的视频搜索推荐
+2. YouTube搜索使用英文关键词，Bilibili搜索使用中文关键词
+3. 生成可直接访问的搜索URL（YouTube关键词用+连接，Bilibili使用中文关键词）
+4. 搜索关键词应精准、简洁，根据学生水平调整难度关键词
+5. 每个搜索推荐需说明推荐理由
+6. 推荐数量为3-6个视频搜索
+
+请严格按照以下JSON格式输出：
+{{
+  "video_searches": [
+    {{
+      "topic": "搜索主题",
+      "youtube_query": "英文搜索关键词",
+      "bilibili_query": "中文搜索关键词",
+      "youtube_url": "https://www.youtube.com/results?search_query=...",
+      "bilibili_url": "https://search.bilibili.com/all?keyword=...",
+      "description": "为什么推荐搜索这个主题的视频",
+      "difficulty": "beginner|intermediate|advanced",
+      "estimated_minutes": 30,
+      "tags": ["标签1", "标签2"]
+    }}
+  ]
+}}"""
+
+        return prompt
+
+    def _generate_video_search(self, task):
+        topic = task.get("topic", "")
+        knowledge_points = task.get("knowledge_points", [])
+        profile = task.get("student_profile", {})
+        _user_id = task.get('user_id')
+        _user_role = task.get('user_role')
+
+        prompt = self._build_video_search_prompt(topic, knowledge_points, profile)
+
+        try:
+            response = self._call_llm(
+                prompt,
+                system_prompt=RECOMMENDATION_SYSTEM_PROMPT,
+                temperature=0.5,
+                user_id=_user_id,
+                user_role=_user_role,
+            )
+            parsed = self._parse_json_response(response)
+            shared_state.set(
+                "last_video_search_result", parsed, self.agent_name
+            )
+            return parsed
         except Exception as e:
             return {"error": str(e)}
 
@@ -341,6 +450,30 @@ class RecommendationAgent(AgentBase):
                 else:
                     return "初级"
         return "中级"
+
+    def _build_kb_context(self, course_id, chapter_ids=None):
+        if not course_id:
+            return ""
+        try:
+            ctx = knowledge_base_service.build_knowledge_context_for_prompt(
+                course_id, chapter_ids
+            )
+            if not ctx:
+                return ""
+            parts = []
+            parts.append(f"\n## 课程知识库内容（课程：{ctx['course_title']}）")
+            if ctx.get("syllabus_text"):
+                parts.append(f"### 课程大纲\n{ctx['syllabus_text']}")
+            if ctx.get("chapter_list"):
+                parts.append(f"### 章节结构\n{ctx['chapter_list']}")
+            if ctx.get("knowledge_points_detail") and ctx["knowledge_points_detail"] != "暂无":
+                parts.append(f"### 知识点详情（推荐资源应覆盖这些知识点）\n{ctx['knowledge_points_detail']}")
+            if ctx.get("teaching_cases_detail") and ctx["teaching_cases_detail"] != "暂无":
+                parts.append(f"### 教学案例（推荐相关实践资源）\n{ctx['teaching_cases_detail']}")
+            return "\n\n".join(parts)
+        except Exception as e:
+            logger.warning(f"Failed to build KB context for recommendation agent: {e}")
+            return ""
 
     def _parse_json_response(self, response):
         text = response.strip()

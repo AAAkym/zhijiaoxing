@@ -17,6 +17,7 @@ import {
   Clock,
   Filter
 } from 'lucide-react'
+import { contentReview } from '@/services/api'
 import ContentReviewList from './ContentReviewList'
 import QualityScoring from './QualityScoring'
 import VersionCompare from './VersionCompare'
@@ -27,22 +28,23 @@ import OperationLog from './OperationLog'
 export default function AIContentReview() {
   const [activeTab, setActiveTab] = useState('pending')
   const [stats, setStats] = useState({
-    pending: 24,
-    autoReviewing: 8,
-    manualReviewing: 12,
-    spotChecking: 4,
-    passed: 156,
-    rejected: 23,
-    todayReviewed: 45
+    pending: 0,
+    auto_reviewing: 0,
+    manual_reviewing: 0,
+    spot_checking: 0,
+    passed: 0,
+    rejected: 0,
+    today_reviewed: 0
   })
   const [loading, setLoading] = useState(false)
 
   const loadStats = async () => {
     setLoading(true)
     try {
-      // API调用将在这里实现
-      // const response = await admin.getReviewStats()
-      // setStats(response.stats)
+      const response = await contentReview.getReviewStats()
+      if (response.success) {
+        setStats(response.data)
+      }
     } catch (error) {
       console.error('加载统计数据失败:', error)
     } finally {
@@ -59,7 +61,6 @@ export default function AIContentReview() {
   }
 
   const handleExportData = () => {
-    // 导出数据功能
     console.log('导出审核数据...')
   }
 
@@ -82,9 +83,10 @@ export default function AIContentReview() {
               variant="outline" 
               size="sm"
               onClick={handleRefresh}
+              disabled={loading}
               className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white"
             >
-              <RefreshCw className="h-4 w-4 mr-2" />
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
               刷新数据
             </Button>
             <Button 
@@ -120,10 +122,10 @@ export default function AIContentReview() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-purple-600 mb-1">自动审核中</p>
-                <p className="text-2xl font-bold text-purple-700">{stats.autoReviewing}</p>
+                <p className="text-2xl font-bold text-purple-700">{stats.auto_reviewing}</p>
               </div>
               <div className="p-2 bg-purple-500/20 rounded-lg">
-                <RefreshCw className="h-5 w-5 text-purple-600 animate-spin" />
+                <RefreshCw className="h-5 w-5 text-purple-600" />
               </div>
             </div>
           </CardContent>
@@ -134,7 +136,7 @@ export default function AIContentReview() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-orange-600 mb-1">人工审核中</p>
-                <p className="text-2xl font-bold text-orange-700">{stats.manualReviewing}</p>
+                <p className="text-2xl font-bold text-orange-700">{stats.manual_reviewing}</p>
               </div>
               <div className="p-2 bg-orange-500/20 rounded-lg">
                 <FileSearch className="h-5 w-5 text-orange-600" />
@@ -148,7 +150,7 @@ export default function AIContentReview() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-cyan-600 mb-1">抽查审核</p>
-                <p className="text-2xl font-bold text-cyan-700">{stats.spotChecking}</p>
+                <p className="text-2xl font-bold text-cyan-700">{stats.spot_checking}</p>
               </div>
               <div className="p-2 bg-cyan-500/20 rounded-lg">
                 <Filter className="h-5 w-5 text-cyan-600" />
@@ -190,7 +192,7 @@ export default function AIContentReview() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-amber-600 mb-1">今日审核</p>
-                <p className="text-2xl font-bold text-amber-700">{stats.todayReviewed}</p>
+                <p className="text-2xl font-bold text-amber-700">{stats.today_reviewed}</p>
               </div>
               <div className="p-2 bg-amber-500/20 rounded-lg">
                 <History className="h-5 w-5 text-amber-600" />

@@ -20,7 +20,7 @@ from src.services.spark_service import spark_service
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
-def generate_ai_content(self, prompt: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def generate_ai_content(self, prompt: str, params: Optional[Dict[str, Any]] = None, user_id: int = None, user_role: str = None) -> Dict[str, Any]:
     """
     生成AI内容任务
     
@@ -43,7 +43,7 @@ def generate_ai_content(self, prompt: str, params: Optional[Dict[str, Any]] = No
         
         # 调用真实 AI 模型生成内容（Spark）
         self.update_state(state='PROGRESS', meta={'progress': 50, 'message': '正在生成内容'})
-        content = spark_service.chat(prompt)
+        content = spark_service.chat(prompt, user_id=user_id, user_role=user_role)
         
         self.update_state(state='PROGRESS', meta={'progress': 90, 'message': '处理生成结果'})
         
@@ -141,8 +141,8 @@ def batch_generate_content(self, prompts: List[str], params: Optional[Dict[str, 
 
 
 @shared_task(bind=True, max_retries=3)
-def generate_course_outline(self, course_title: str, course_description: str, 
-                           num_chapters: int = 5) -> Dict[str, Any]:
+def generate_course_outline(self, course_title: str, course_description: str,
+                           num_chapters: int = 5, user_id: int = None, user_role: str = None) -> Dict[str, Any]:
     """
     生成课程大纲任务
     
@@ -184,7 +184,7 @@ def generate_course_outline(self, course_title: str, course_description: str,
 2. chapters 为数组，每项包含 chapter_num、title、objectives、key_points、duration
 3. objectives、key_points 为字符串数组
 """
-        outline_text = spark_service.chat(outline_prompt)
+        outline_text = spark_service.chat(outline_prompt, user_id=user_id, user_role=user_role)
         try:
             outline = json.loads(outline_text)
         except Exception:
@@ -215,7 +215,8 @@ def generate_course_outline(self, course_title: str, course_description: str,
 
 @shared_task(bind=True, max_retries=3)
 def generate_exercise_questions(self, topic: str, question_type: str = 'multiple_choice',
-                               num_questions: int = 5, difficulty: str = 'medium') -> Dict[str, Any]:
+                               num_questions: int = 5, difficulty: str = 'medium',
+                               user_id: int = None, user_role: str = None) -> Dict[str, Any]:
     """
     生成练习题任务
     
@@ -242,7 +243,7 @@ def generate_exercise_questions(self, topic: str, question_type: str = 'multiple
 1. 返回 JSON 数组
 2. 每题字段包含：id, type, difficulty, question, options(如适用), answer, explanation
 """
-        questions_text = spark_service.chat(q_prompt)
+        questions_text = spark_service.chat(q_prompt, user_id=user_id, user_role=user_role)
         try:
             questions = json.loads(questions_text)
         except Exception:

@@ -1,10 +1,13 @@
+/* eslint-disable no-unused-vars */
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Sparkles, ArrowLeft, User, Mail, Lock, UserCheck, Shield, Users, GraduationCap, Eye, EyeOff } from 'lucide-react'
+import { Sparkles, ArrowLeft, User, Mail, Lock, UserCheck, Shield, Users, GraduationCap, Eye, EyeOff, BookOpen, Brain, BarChart3 } from 'lucide-react'
 import { auth } from '../services/api'
+
+const easeOut = [0.22, 1, 0.36, 1]
 
 export default function LoginPage({ onLogin }) {
   const navigate = useNavigate()
@@ -15,20 +18,9 @@ export default function LoginPage({ onLogin }) {
   const [showPassword, setShowPassword] = useState(false)
   const [focusedField, setFocusedField] = useState(null)
 
-  // 登录表单状态
-  const [loginForm, setLoginForm] = useState({
-    username: '',
-    password: ''
-  })
-
-  // 注册表单状态
+  const [loginForm, setLoginForm] = useState({ username: '', password: '' })
   const [registerForm, setRegisterForm] = useState({
-    username: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    role: 'student',
-    real_name: ''
+    username: '', email: '', password: '', confirmPassword: '', role: 'student', real_name: ''
   })
 
   const handleLogin = async (e) => {
@@ -83,14 +75,7 @@ export default function LoginPage({ onLogin }) {
       })
       setSuccess('注册成功！请登录。')
       setActiveTab('login')
-      setRegisterForm({
-        username: '',
-        email: '',
-        password: '',
-        confirmPassword: '',
-        role: 'student',
-        real_name: ''
-      })
+      setRegisterForm({ username: '', email: '', password: '', confirmPassword: '', role: 'student', real_name: '' })
     } catch (err) {
       setError(err.message)
     } finally {
@@ -119,78 +104,150 @@ export default function LoginPage({ onLogin }) {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white overflow-hidden relative">
-      {/* 量子网格背景 */}
-      <QuantumGridBackground />
-      
-      {/* 动态光晕 */}
-      <div className="fixed inset-0 pointer-events-none">
-        <motion.div 
-          className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-cyan-500/5 rounded-full blur-[120px]"
-          animate={{ scale: [1, 1.3, 1], opacity: [0.2, 0.5, 0.2] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+    <div className="min-h-screen bg-[#faf8f5] text-[#2d2a26] flex" style={{ fontFamily: "'Inter', sans-serif" }}>
+      {/* 左栏 - 品牌展示区 55% */}
+      <div
+        className="hidden lg:flex w-[55%] relative overflow-hidden flex-col items-center justify-center px-12"
+        style={{ background: '#faf8f5' }}
+      >
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: 'radial-gradient(ellipse 60% 50% at 50% 45%, rgba(212,168,83,0.12) 0%, rgba(212,168,83,0.04) 40%, transparent 70%)',
+          }}
         />
-        <motion.div 
-          className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-[100px]"
-          animate={{ scale: [1.3, 1, 1.3], opacity: [0.3, 0.6, 0.3] }}
-          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: 'radial-gradient(circle at 30% 70%, rgba(196,154,74,0.08) 0%, transparent 50%)',
+          }}
         />
+
+        <motion.div
+          className="relative z-10 flex flex-col items-center text-center max-w-lg"
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: easeOut }}
+        >
+          <motion.div
+            className="flex items-center justify-center mb-8"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.2, duration: 0.6, ease: easeOut }}
+          >
+            <div className="w-16 h-16 rounded-2xl bg-[#d4a853] flex items-center justify-center shadow-lg shadow-[#d4a853]/20">
+              <Sparkles className="w-8 h-8 text-white" />
+            </div>
+          </motion.div>
+
+          <h1
+            className="text-[36px] font-bold tracking-tight text-[#2d2a26] mb-2"
+            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+          >
+            智教星
+          </h1>
+          <p className="text-[11px] text-[#9a9590] tracking-[0.3em] uppercase mb-8">
+            ZHIJIAOXING
+          </p>
+
+          <p
+            className="text-lg font-semibold text-[#2d2a26] mb-3"
+            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+          >
+            让教育更智能
+          </p>
+          <p className="text-sm text-[#6b6560] leading-relaxed mb-12">
+            基于Spark4.0 Ultra大模型的智能教学管理平台
+          </p>
+
+          <div className="flex items-center gap-8">
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-10 h-10 rounded-xl bg-[#d4a853]/10 flex items-center justify-center">
+                <BookOpen className="w-5 h-5 text-[#d4a853]" />
+              </div>
+              <span className="text-xs text-[#6b6560] font-medium">AI智能备课</span>
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-10 h-10 rounded-xl bg-[#d4a853]/10 flex items-center justify-center">
+                <Brain className="w-5 h-5 text-[#d4a853]" />
+              </div>
+              <span className="text-xs text-[#6b6560] font-medium">个性化学习</span>
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-10 h-10 rounded-xl bg-[#d4a853]/10 flex items-center justify-center">
+                <BarChart3 className="w-5 h-5 text-[#d4a853]" />
+              </div>
+              <span className="text-xs text-[#6b6560] font-medium">数据驱动</span>
+            </div>
+          </div>
+        </motion.div>
       </div>
 
-      <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
-        <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-12 items-center">
-          {/* 左侧：登录/注册表单 */}
-          <motion.div 
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-            className="w-full max-w-md mx-auto"
+      {/* 右栏 - 登录表单区 45% */}
+      <div className="w-full lg:w-[45%] bg-[#ffffff] flex flex-col min-h-screen relative">
+        {/* 移动端顶部品牌小条 */}
+        <div className="lg:hidden flex items-center gap-3 px-6 py-4 border-b border-[#e8e4df] bg-[#faf8f5]">
+          <div className="w-8 h-8 rounded-lg bg-[#d4a853] flex items-center justify-center">
+            <Sparkles className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <span
+              className="text-base font-bold text-[#2d2a26]"
+              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+            >
+              智教星
+            </span>
+            <span className="text-[9px] text-[#9a9590] tracking-[0.2em] ml-2">ZHIJIAOXING</span>
+          </div>
+        </div>
+
+        {/* 返回首页 */}
+        <div className="px-8 pt-6 lg:px-12 lg:pt-8">
+          <Link
+            to="/"
+            className="inline-flex items-center text-[#9a9590] hover:text-[#d4a853] transition-colors duration-300 group"
           >
-            {/* 返回首页 */}
+            <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform duration-300" />
+            <span className="text-sm">返回首页</span>
+          </Link>
+        </div>
+
+        {/* 表单主体 */}
+        <div className="flex-1 flex items-center justify-center px-8 lg:px-12 py-8">
+          <motion.div
+            className="w-full max-w-md"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: easeOut }}
+          >
             <div className="mb-8">
-              <Link to="/" className="inline-flex items-center text-white/40 hover:text-white transition-colors duration-300 group">
-                <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
-                <span className="text-sm tracking-wider">返回首页</span>
-              </Link>
-            </div>
-
-            {/* 品牌标识 */}
-            <div className="text-center mb-10">
-              <motion.div 
-                className="flex items-center justify-center gap-3 mb-6"
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.2, duration: 0.6 }}
+              <h2
+                className="text-[24px] font-bold text-[#2d2a26] mb-2"
+                style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
               >
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 flex items-center justify-center">
-                  <Sparkles className="w-6 h-6 text-cyan-400" />
-                </div>
-                <div>
-                  <span className="text-2xl font-light tracking-wider">智教星</span>
-                  <p className="text-xs text-white/30 tracking-[0.3em]">ZHIJIAOXING</p>
-                </div>
-              </motion.div>
-              <p className="text-white/40 text-sm">请登录或注册以使用系统功能</p>
+                欢迎回来
+              </h2>
+              <p className="text-sm text-[#6b6560]">登录以继续使用智教星——自适应错题诊疗系统</p>
             </div>
 
-            {/* 标签切换 */}
-            <div className="flex mb-8 bg-white/5 rounded-xl p-1 border border-white/10">
+            {/* 标签切换 - 胶囊样式 */}
+            <div className="flex mb-8 bg-[#faf8f5] rounded-full p-1 border border-[#e8e4df]">
               <button
                 onClick={() => { setActiveTab('login'); setError(''); setSuccess('') }}
-                className={`flex-1 py-3 rounded-lg text-sm tracking-wider transition-all duration-300 ${
-                  activeTab === 'login' 
-                    ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-[0_0_20px_rgba(0,212,255,0.3)]' 
-                    : 'text-white/40 hover:text-white/70'
+                className={`flex-1 py-2.5 rounded-full text-sm font-medium transition-all duration-300 ${
+                  activeTab === 'login'
+                    ? 'bg-[#d4a853] text-white shadow-md shadow-[#d4a853]/20'
+                    : 'text-[#9a9590] hover:text-[#6b6560]'
                 }`}
               >
                 登录
               </button>
               <button
                 onClick={() => { setActiveTab('register'); setError(''); setSuccess('') }}
-                className={`flex-1 py-3 rounded-lg text-sm tracking-wider transition-all duration-300 ${
-                  activeTab === 'register' 
-                    ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-[0_0_20px_rgba(0,212,255,0.3)]' 
-                    : 'text-white/40 hover:text-white/70'
+                className={`flex-1 py-2.5 rounded-full text-sm font-medium transition-all duration-300 ${
+                  activeTab === 'register'
+                    ? 'bg-[#d4a853] text-white shadow-md shadow-[#d4a853]/20'
+                    : 'text-[#9a9590] hover:text-[#6b6560]'
                 }`}
               >
                 注册
@@ -204,7 +261,7 @@ export default function LoginPage({ onLogin }) {
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm"
+                  className="mb-6 p-4 rounded-[10px] bg-red-50 border border-red-200 text-red-600 text-sm"
                 >
                   {error}
                 </motion.div>
@@ -214,7 +271,7 @@ export default function LoginPage({ onLogin }) {
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="mb-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm"
+                  className="mb-6 p-4 rounded-[10px] bg-emerald-50 border border-emerald-200 text-emerald-600 text-sm"
                 >
                   {success}
                 </motion.div>
@@ -229,14 +286,14 @@ export default function LoginPage({ onLogin }) {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
-                  transition={{ duration: 0.3 }}
+                  transition={{ duration: 0.3, ease: easeOut }}
                   onSubmit={handleLogin}
                   className="space-y-5"
                 >
                   <div className="space-y-2">
-                    <label className="text-sm text-white/60 tracking-wider">用户名</label>
+                    <label className="text-sm text-[#6b6560] font-medium">用户名</label>
                     <div className="relative">
-                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9a9590]" />
                       <Input
                         type="text"
                         placeholder="请输入用户名"
@@ -244,18 +301,18 @@ export default function LoginPage({ onLogin }) {
                         onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
                         onFocus={() => setFocusedField('username')}
                         onBlur={() => setFocusedField(null)}
-                        className={`pl-12 h-14 bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-xl transition-all duration-300 ${
-                          focusedField === 'username' ? 'border-cyan-500/50 shadow-[0_0_20px_rgba(0,212,255,0.1)]' : ''
+                        className={`pl-12 h-12 bg-white border-[#e8e4df] text-[#2d2a26] placeholder:text-[#9a9590] rounded-[10px] transition-all duration-300 ${
+                          focusedField === 'username' ? 'border-[#d4a853] shadow-[0_0_0_3px_rgba(212,168,83,0.1)]' : ''
                         }`}
                         required
                       />
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
-                    <label className="text-sm text-white/60 tracking-wider">密码</label>
+                    <label className="text-sm text-[#6b6560] font-medium">密码</label>
                     <div className="relative">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9a9590]" />
                       <Input
                         type={showPassword ? 'text' : 'password'}
                         placeholder="请输入密码（至少6位）"
@@ -263,8 +320,8 @@ export default function LoginPage({ onLogin }) {
                         onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
                         onFocus={() => setFocusedField('password')}
                         onBlur={() => setFocusedField(null)}
-                        className={`pl-12 pr-12 h-14 bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-xl transition-all duration-300 ${
-                          focusedField === 'password' ? 'border-cyan-500/50 shadow-[0_0_20px_rgba(0,212,255,0.1)]' : ''
+                        className={`pl-12 pr-12 h-12 bg-white border-[#e8e4df] text-[#2d2a26] placeholder:text-[#9a9590] rounded-[10px] transition-all duration-300 ${
+                          focusedField === 'password' ? 'border-[#d4a853] shadow-[0_0_0_3px_rgba(212,168,83,0.1)]' : ''
                         }`}
                         required
                         minLength={6}
@@ -272,17 +329,17 @@ export default function LoginPage({ onLogin }) {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-[#9a9590] hover:text-[#6b6560] transition-colors"
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>
-                  
-                  <Button 
-                    type="submit" 
+
+                  <Button
+                    type="submit"
                     disabled={loading}
-                    className="w-full h-14 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white rounded-xl text-base tracking-wider transition-all duration-300 hover:shadow-[0_0_30px_rgba(0,212,255,0.3)] disabled:opacity-50"
+                    className="w-full h-12 bg-[#d4a853] hover:bg-[#c49a4a] text-white rounded-[10px] text-base font-medium transition-all duration-300 hover:shadow-lg hover:shadow-[#d4a853]/25 disabled:opacity-50"
                   >
                     {loading ? (
                       <motion.div
@@ -302,14 +359,14 @@ export default function LoginPage({ onLogin }) {
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.3 }}
+                  transition={{ duration: 0.3, ease: easeOut }}
                   onSubmit={handleRegister}
                   className="space-y-4"
                 >
                   <div className="space-y-2">
-                    <label className="text-sm text-white/60 tracking-wider">真实姓名</label>
+                    <label className="text-sm text-[#6b6560] font-medium">真实姓名</label>
                     <div className="relative">
-                      <UserCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                      <UserCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9a9590]" />
                       <Input
                         type="text"
                         placeholder="请输入真实姓名"
@@ -317,18 +374,18 @@ export default function LoginPage({ onLogin }) {
                         onChange={(e) => setRegisterForm({ ...registerForm, real_name: e.target.value })}
                         onFocus={() => setFocusedField('real_name')}
                         onBlur={() => setFocusedField(null)}
-                        className={`pl-12 h-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-xl transition-all duration-300 ${
-                          focusedField === 'real_name' ? 'border-cyan-500/50 shadow-[0_0_20px_rgba(0,212,255,0.1)]' : ''
+                        className={`pl-12 h-11 bg-white border-[#e8e4df] text-[#2d2a26] placeholder:text-[#9a9590] rounded-[10px] transition-all duration-300 ${
+                          focusedField === 'real_name' ? 'border-[#d4a853] shadow-[0_0_0_3px_rgba(212,168,83,0.1)]' : ''
                         }`}
                         required
                       />
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
-                    <label className="text-sm text-white/60 tracking-wider">用户名</label>
+                    <label className="text-sm text-[#6b6560] font-medium">用户名</label>
                     <div className="relative">
-                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9a9590]" />
                       <Input
                         type="text"
                         placeholder="请输入用户名"
@@ -336,18 +393,18 @@ export default function LoginPage({ onLogin }) {
                         onChange={(e) => setRegisterForm({ ...registerForm, username: e.target.value })}
                         onFocus={() => setFocusedField('reg_username')}
                         onBlur={() => setFocusedField(null)}
-                        className={`pl-12 h-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-xl transition-all duration-300 ${
-                          focusedField === 'reg_username' ? 'border-cyan-500/50 shadow-[0_0_20px_rgba(0,212,255,0.1)]' : ''
+                        className={`pl-12 h-11 bg-white border-[#e8e4df] text-[#2d2a26] placeholder:text-[#9a9590] rounded-[10px] transition-all duration-300 ${
+                          focusedField === 'reg_username' ? 'border-[#d4a853] shadow-[0_0_0_3px_rgba(212,168,83,0.1)]' : ''
                         }`}
                         required
                       />
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
-                    <label className="text-sm text-white/60 tracking-wider">邮箱</label>
+                    <label className="text-sm text-[#6b6560] font-medium">邮箱</label>
                     <div className="relative">
-                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9a9590]" />
                       <Input
                         type="email"
                         placeholder="请输入邮箱地址"
@@ -355,18 +412,18 @@ export default function LoginPage({ onLogin }) {
                         onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
                         onFocus={() => setFocusedField('email')}
                         onBlur={() => setFocusedField(null)}
-                        className={`pl-12 h-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-xl transition-all duration-300 ${
-                          focusedField === 'email' ? 'border-cyan-500/50 shadow-[0_0_20px_rgba(0,212,255,0.1)]' : ''
+                        className={`pl-12 h-11 bg-white border-[#e8e4df] text-[#2d2a26] placeholder:text-[#9a9590] rounded-[10px] transition-all duration-300 ${
+                          focusedField === 'email' ? 'border-[#d4a853] shadow-[0_0_0_3px_rgba(212,168,83,0.1)]' : ''
                         }`}
                         required
                       />
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
-                    <label className="text-sm text-white/60 tracking-wider">密码</label>
+                    <label className="text-sm text-[#6b6560] font-medium">密码</label>
                     <div className="relative">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9a9590]" />
                       <Input
                         type={showPassword ? 'text' : 'password'}
                         placeholder="请输入密码（至少6位）"
@@ -374,8 +431,8 @@ export default function LoginPage({ onLogin }) {
                         onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
                         onFocus={() => setFocusedField('reg_password')}
                         onBlur={() => setFocusedField(null)}
-                        className={`pl-12 pr-12 h-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-xl transition-all duration-300 ${
-                          focusedField === 'reg_password' ? 'border-cyan-500/50 shadow-[0_0_20px_rgba(0,212,255,0.1)]' : ''
+                        className={`pl-12 pr-12 h-11 bg-white border-[#e8e4df] text-[#2d2a26] placeholder:text-[#9a9590] rounded-[10px] transition-all duration-300 ${
+                          focusedField === 'reg_password' ? 'border-[#d4a853] shadow-[0_0_0_3px_rgba(212,168,83,0.1)]' : ''
                         }`}
                         required
                         minLength={6}
@@ -383,17 +440,17 @@ export default function LoginPage({ onLogin }) {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-[#9a9590] hover:text-[#6b6560] transition-colors"
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
-                    <label className="text-sm text-white/60 tracking-wider">确认密码</label>
+                    <label className="text-sm text-[#6b6560] font-medium">确认密码</label>
                     <div className="relative">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9a9590]" />
                       <Input
                         type={showPassword ? 'text' : 'password'}
                         placeholder="请再次输入密码"
@@ -401,19 +458,19 @@ export default function LoginPage({ onLogin }) {
                         onChange={(e) => setRegisterForm({ ...registerForm, confirmPassword: e.target.value })}
                         onFocus={() => setFocusedField('confirmPassword')}
                         onBlur={() => setFocusedField(null)}
-                        className={`pl-12 h-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-xl transition-all duration-300 ${
-                          focusedField === 'confirmPassword' ? 'border-cyan-500/50 shadow-[0_0_20px_rgba(0,212,255,0.1)]' : ''
+                        className={`pl-12 h-11 bg-white border-[#e8e4df] text-[#2d2a26] placeholder:text-[#9a9590] rounded-[10px] transition-all duration-300 ${
+                          focusedField === 'confirmPassword' ? 'border-[#d4a853] shadow-[0_0_0_3px_rgba(212,168,83,0.1)]' : ''
                         }`}
                         required
                         minLength={6}
                       />
                     </div>
                   </div>
-                  
-                  <Button 
-                    type="submit" 
+
+                  <Button
+                    type="submit"
                     disabled={loading}
-                    className="w-full h-12 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white rounded-xl text-base tracking-wider transition-all duration-300 hover:shadow-[0_0_30px_rgba(0,212,255,0.3)] disabled:opacity-50"
+                    className="w-full h-12 bg-[#d4a853] hover:bg-[#c49a4a] text-white rounded-[10px] text-base font-medium transition-all duration-300 hover:shadow-lg hover:shadow-[#d4a853]/25 disabled:opacity-50"
                   >
                     {loading ? (
                       <motion.div
@@ -426,66 +483,33 @@ export default function LoginPage({ onLogin }) {
                 </motion.form>
               )}
             </AnimatePresence>
-          </motion.div>
 
-          {/* 右侧：演示账号 */}
-          <motion.div 
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="space-y-6"
-          >
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-light tracking-wider mb-2">演示账号</h2>
-              <p className="text-white/40 text-sm">点击下方按钮可以快速体验不同角色的功能</p>
-            </div>
-            
-            <div className="space-y-4">
-              <DemoAccountCard
-                title="系统管理员"
-                username="admin"
-                password="admin123"
-                description="用户管理、系统配置、数据分析"
-                icon={Shield}
-                color="cyan"
-                onQuickLogin={() => quickLogin('admin', 'admin123')}
-              />
-              <DemoAccountCard
-                title="示例教师"
-                username="teacher"
-                password="teacher123"
-                description="课程管理、内容生成、学情分析"
-                icon={Users}
-                color="purple"
-                onQuickLogin={() => quickLogin('teacher', 'teacher123')}
-              />
-              <DemoAccountCard
-                title="示例学生"
-                username="student"
-                password="student123"
-                description="在线学习、练习评测、AI问答"
-                icon={GraduationCap}
-                color="emerald"
-                onQuickLogin={() => quickLogin('student', 'student123')}
-              />
-            </div>
-
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-              <h3 className="font-light text-white/80 mb-4 tracking-wider">功能说明</h3>
-              <ul className="text-sm text-white/40 space-y-3">
-                <li className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full bg-cyan-400/60" />
-                  <span><strong className="text-white/60">管理员</strong>：用户管理、系统配置、数据分析</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full bg-purple-400/60" />
-                  <span><strong className="text-white/60">教师</strong>：课程管理、内容生成、学情分析</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full bg-emerald-400/60" />
-                  <span><strong className="text-white/60">学生</strong>：在线学习、练习评测、AI问答</span>
-                </li>
-              </ul>
+            {/* 演示账号快速登录区 */}
+            <div className="mt-10 pt-8 border-t border-[#e8e4df]">
+              <p className="text-xs text-[#9a9590] mb-4 font-medium uppercase tracking-wider">演示账号快速登录</p>
+              <div className="grid grid-cols-3 gap-3">
+                <DemoAccountCard
+                  title="管理员"
+                  username="admin"
+                  password="admin123"
+                  icon={Shield}
+                  onQuickLogin={() => quickLogin('admin', 'admin123')}
+                />
+                <DemoAccountCard
+                  title="教师"
+                  username="teacher"
+                  password="teacher123"
+                  icon={Users}
+                  onQuickLogin={() => quickLogin('teacher', 'teacher123')}
+                />
+                <DemoAccountCard
+                  title="学生"
+                  username="student"
+                  password="student123"
+                  icon={GraduationCap}
+                  onQuickLogin={() => quickLogin('student', 'student123')}
+                />
+              </div>
             </div>
           </motion.div>
         </div>
@@ -494,128 +518,20 @@ export default function LoginPage({ onLogin }) {
   )
 }
 
-function DemoAccountCard({ title, username, password, description, icon: Icon, color, onQuickLogin }) {
-  const colorClasses = {
-    cyan: 'border-cyan-500/20 bg-cyan-500/5 hover:bg-cyan-500/10 hover:border-cyan-500/40',
-    purple: 'border-purple-500/20 bg-purple-500/5 hover:bg-purple-500/10 hover:border-purple-500/40',
-    emerald: 'border-emerald-500/20 bg-emerald-500/5 hover:bg-emerald-500/10 hover:border-emerald-500/40'
-  }
-
-  const iconColors = {
-    cyan: 'text-cyan-400',
-    purple: 'text-purple-400',
-    emerald: 'text-emerald-400'
-  }
-
+function DemoAccountCard({ title, username, password, icon: Icon, onQuickLogin }) {
   return (
-    <motion.div 
-      whileHover={{ y: -2, transition: { duration: 0.2 } }}
-      className={`${colorClasses[color]} border rounded-2xl cursor-pointer transition-all duration-300 hover:shadow-[0_0_20px_rgba(0,212,255,0.1)]`}
+    <motion.div
+      whileHover={{ y: -4, transition: { duration: 0.25 } }}
+      className="bg-[#faf8f5] border border-[#e8e4df] rounded-[10px] cursor-pointer transition-all duration-300 hover:border-[#d4a853]/30 hover:shadow-md hover:shadow-[#d4a853]/8 p-4 flex flex-col items-center text-center"
       onClick={onQuickLogin}
     >
-      <div className="p-5">
-        <div className="flex items-center gap-4">
-          <div className={`w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center ${iconColors[color]}`}>
-            <Icon className="w-6 h-6" />
-          </div>
-          <div className="flex-1">
-            <h3 className="font-light text-white/90 text-lg">{title}</h3>
-            <div className="text-sm text-white/40 space-x-4 mt-1">
-              <span>用户名：{username}</span>
-              <span>密码：{password}</span>
-            </div>
-            <p className="text-xs text-white/30 mt-2">{description}</p>
-          </div>
-          <Button 
-            size="sm" 
-            variant="outline" 
-            onClick={(e) => { e.stopPropagation(); onQuickLogin(); }}
-            className="border-white/20 text-white/60 hover:text-white hover:bg-white/5 hover:border-cyan-500/40"
-          >
-            快速登录
-          </Button>
-        </div>
+      <div className="w-10 h-10 rounded-xl bg-[#d4a853]/10 flex items-center justify-center mb-3">
+        <Icon className="w-5 h-5 text-[#d4a853]" />
       </div>
+      <h4 className="text-sm font-semibold text-[#2d2a26] mb-1">{title}</h4>
+      <p className="text-[10px] text-[#9a9590] leading-relaxed">
+        {username} / {password}
+      </p>
     </motion.div>
   )
-}
-
-// 量子网格背景
-function QuantumGridBackground() {
-  const canvasRef = useRef(null)
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const ctx = canvas.getContext('2d')
-    let animationId
-    let time = 0
-
-    const resize = () => {
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
-    }
-    resize()
-    window.addEventListener('resize', resize)
-
-    const drawGrid = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-      
-      const gridSize = 60
-      const perspective = 0.8
-      
-      ctx.strokeStyle = 'rgba(0, 212, 255, 0.06)'
-      ctx.lineWidth = 0.5
-
-      // 垂直线
-      for (let x = 0; x <= canvas.width; x += gridSize) {
-        ctx.beginPath()
-        ctx.moveTo(x, 0)
-        ctx.lineTo(x, canvas.height)
-        ctx.stroke()
-      }
-
-      // 水平线（带透视效果）
-      for (let y = 0; y <= canvas.height; y += gridSize) {
-        const offset = Math.sin(time * 0.001 + y * 0.01) * 20
-        ctx.beginPath()
-        ctx.moveTo(0, y + offset)
-        ctx.lineTo(canvas.width, y + offset)
-        ctx.stroke()
-      }
-
-      // 脉冲点
-      const pulseX = Math.floor(canvas.width / 2 / gridSize) * gridSize
-      const pulseY = Math.floor(canvas.height / 2 / gridSize) * gridSize
-      
-      for (let x = pulseX - gridSize * 3; x <= pulseX + gridSize * 3; x += gridSize) {
-        for (let y = pulseY - gridSize * 3; y <= pulseY + gridSize * 3; y += gridSize) {
-          const distance = Math.sqrt((x - pulseX) ** 2 + (y - pulseY) ** 2)
-          const maxDistance = gridSize * 3
-          const intensity = Math.max(0, 1 - distance / maxDistance)
-          const pulse = Math.sin(time * 0.003) * 0.5 + 0.5
-          
-          if (intensity > 0) {
-            ctx.fillStyle = `rgba(0, 212, 255, ${intensity * pulse * 0.3})`
-            ctx.beginPath()
-            ctx.arc(x, y, 2 * intensity * pulse, 0, Math.PI * 2)
-            ctx.fill()
-          }
-        }
-      }
-
-      time += 16
-      animationId = requestAnimationFrame(drawGrid)
-    }
-
-    drawGrid()
-
-    return () => {
-      cancelAnimationFrame(animationId)
-      window.removeEventListener('resize', resize)
-    }
-  }, [])
-
-  return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none" />
 }

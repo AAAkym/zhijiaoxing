@@ -25,7 +25,22 @@ const REC_TYPE_CONFIG = {
   document: { icon: FileText, color: '#8b5cf6', label: '文档' },
   video: { icon: Video, color: '#3b82f6', label: '视频' },
   project: { icon: Code, color: '#f59e0b', label: '实操' },
+  case: { icon: BookOpen, color: '#ec4899', label: '案例' },
 }
+
+const DIFFICULTY_CONFIG = {
+  beginner: { label: '入门', color: '#10b981', bg: '#ecfdf5' },
+  basic: { label: '基础', color: '#22c55e', bg: '#f0fdf4' },
+  intermediate: { label: '中级', color: '#f59e0b', bg: '#fffbeb' },
+  advanced: { label: '高级', color: '#ef4444', bg: '#fef2f2' },
+}
+
+const GOAL_OPTIONS = [
+  { value: 'exam', label: '应试导向' },
+  { value: 'career', label: '职业发展' },
+  { value: 'hobby', label: '兴趣驱动' },
+  { value: 'research', label: '学术研究' },
+]
 
 const PRIORITY_CONFIG = {
   0: { label: 'P0 紧急', color: '#ef4444', bg: '#fef2f2' },
@@ -45,7 +60,11 @@ export default function LearningPlanSystem({ user }) {
   const [expandedRec, setExpandedRec] = useState(null)
   const [filterType, setFilterType] = useState(null)
   const [filterPriority, setFilterPriority] = useState(null)
+  const [filterDifficulty, setFilterDifficulty] = useState(null)
+  const [filterGoal, setFilterGoal] = useState(null)
   const [profile, setProfile] = useState(null)
+  const [effectiveness, setEffectiveness] = useState(null)
+  const [showEffectiveness, setShowEffectiveness] = useState(false)
 
   const fetchPaths = useCallback(async () => {
     try {
@@ -70,6 +89,54 @@ export default function LearningPlanSystem({ user }) {
       console.error('Fetch recommendations error:', e)
     }
   }, [])
+
+  const handleSmartRecommend = async () => {
+    setLoading(true)
+    try {
+      const filters = {}
+      if (filterType) filters.resource_type = filterType
+      if (filterDifficulty) filters.difficulty_level = filterDifficulty
+      if (filterGoal) filters.learning_objective = filterGoal
+      const result = await learningPathApi.generateSmartRecommendations(filters, 20, true)
+      if (result.recommendations) {
+        setRecommendations(result.recommendations)
+      }
+    } catch (e) {
+      console.error('Smart recommend error:', e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleRefresh = async () => {
+    setLoading(true)
+    try {
+      const result = await learningPathApi.generateSmartRecommendations({}, 20, true)
+      if (result.recommendations) {
+        setRecommendations(result.recommendations)
+      }
+    } catch (e) {
+      console.error('Refresh recommend error:', e)
+      try {
+        const result = await learningPathApi.getRecommendations()
+        setRecommendations(result.recommendations || [])
+      } catch (e2) {
+        console.error('Fallback fetch error:', e2)
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleFetchEffectiveness = async () => {
+    try {
+      const result = await learningPathApi.getEffectiveness()
+      setEffectiveness(result.effectiveness)
+      setShowEffectiveness(true)
+    } catch (e) {
+      console.error('Fetch effectiveness error:', e)
+    }
+  }
 
   const fetchPlans = useCallback(async () => {
     try {
@@ -170,6 +237,8 @@ export default function LearningPlanSystem({ user }) {
   const filteredRecs = recommendations.filter(r => {
     if (filterType && r.resource_type !== filterType) return false
     if (filterPriority !== null && r.priority !== filterPriority) return false
+    if (filterDifficulty && r.difficulty !== filterDifficulty) return false
+    if (filterGoal && !r.reason_interest?.includes(filterGoal) && !r.tags?.includes(filterGoal)) return false
     return true
   })
 
@@ -256,13 +325,23 @@ export default function LearningPlanSystem({ user }) {
             setFilterType={setFilterType}
             filterPriority={filterPriority}
             setFilterPriority={setFilterPriority}
+            filterDifficulty={filterDifficulty}
+            setFilterDifficulty={setFilterDifficulty}
+            filterGoal={filterGoal}
+            setFilterGoal={setFilterGoal}
             onComplete={handleCompleteRec}
             onDismiss={handleDismissRec}
             onFeedback={handleFeedback}
+            onSmartRecommend={handleSmartRecommend}
+            onFetchEffectiveness={handleFetchEffectiveness}
+            effectiveness={effectiveness}
+            showEffectiveness={showEffectiveness}
+            setShowEffectiveness={setShowEffectiveness}
             expandedRec={expandedRec}
             setExpandedRec={setExpandedRec}
-            onRefresh={() => { fetchRecommendations() }}
+            onRefresh={handleRefresh}
             loading={loading}
+            profile={profile}
           />
         )}
 
@@ -506,7 +585,7 @@ function PathView({ paths, selectedPath, setSelectedPath, onGenerate, onUpdateNo
   )
 }
 
-function RecommendView({ recommendations, filterType, setFilterType, filterPriority, setFilterPriority, onComplete, onDismiss, onFeedback, expandedRec, setExpandedRec, onRefresh, loading }) {
+function RecommendView({ recommendations, filterType, setFilterType, filterPriority, setFilterPriority, filterDifficulty, setFilterDifficulty, filterGoal, setFilterGoal, onComplete, onDismiss, onFeedback, onSmartRecommend, onFetchEffectiveness, effectiveness, showEffectiveness, setShowEffectiveness, expandedRec, setExpandedRec, onRefresh, loading, profile }) {
   return (
     <div>
       <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -529,49 +608,148 @@ function RecommendView({ recommendations, filterType, setFilterType, filterPrior
           </button>
         ))}
         <span style={{ width: '1px', height: '20px', backgroundColor: '#e2e8f0', margin: '0 4px' }} />
-        {[0, 1, 2].map(p => (
+        {Object.entries(DIFFICULTY_CONFIG).map(([key, cfg]) => (
           <button
-            key={p}
-            onClick={() => setFilterPriority(filterPriority === p ? null : p)}
+            key={key}
+            onClick={() => setFilterDifficulty(filterDifficulty === key ? null : key)}
             style={{
               padding: '4px 10px', borderRadius: '6px', fontSize: '12px',
-              border: `1px solid ${filterPriority === p ? PRIORITY_CONFIG[p].color : '#e2e8f0'}`,
-              backgroundColor: filterPriority === p ? PRIORITY_CONFIG[p].bg : '#fff',
-              color: filterPriority === p ? PRIORITY_CONFIG[p].color : '#64748b',
+              border: `1px solid ${filterDifficulty === key ? cfg.color : '#e2e8f0'}`,
+              backgroundColor: filterDifficulty === key ? cfg.bg : '#fff',
+              color: filterDifficulty === key ? cfg.color : '#64748b',
               cursor: 'pointer',
             }}
           >
-            {PRIORITY_CONFIG[p].label}
+            {cfg.label}
           </button>
         ))}
+        <span style={{ width: '1px', height: '20px', backgroundColor: '#e2e8f0', margin: '0 4px' }} />
+        {GOAL_OPTIONS.map(opt => (
+          <button
+            key={opt.value}
+            onClick={() => setFilterGoal(filterGoal === opt.value ? null : opt.value)}
+            style={{
+              padding: '4px 10px', borderRadius: '6px', fontSize: '12px',
+              border: `1px solid ${filterGoal === opt.value ? '#6366f1' : '#e2e8f0'}`,
+              backgroundColor: filterGoal === opt.value ? '#eef2ff' : '#fff',
+              color: filterGoal === opt.value ? '#6366f1' : '#64748b',
+              cursor: 'pointer',
+            }}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', alignItems: 'center' }}>
+        <button
+          onClick={onSmartRecommend}
+          disabled={loading}
+          style={{
+            padding: '8px 18px', borderRadius: '8px', border: 'none',
+            backgroundColor: '#6366f1', color: '#fff', cursor: loading ? 'not-allowed' : 'pointer',
+            fontSize: '13px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px',
+            boxShadow: '0 2px 8px rgba(99,102,241,0.3)',
+          }}
+        >
+          {loading ? <Loader2 style={{ width: '14px', height: '14px', animation: 'spin 1s linear infinite' }} /> : <Sparkles style={{ width: '14px', height: '14px' }} />}
+          {loading ? '智能匹配中...' : '智能推荐'}
+        </button>
         <button
           onClick={onRefresh}
           disabled={loading}
           style={{
-            marginLeft: 'auto', padding: '6px 12px', borderRadius: '6px',
+            padding: '6px 12px', borderRadius: '6px',
             border: '1px solid #e2e8f0', backgroundColor: '#fff',
             cursor: loading ? 'not-allowed' : 'pointer', fontSize: '12px', color: '#64748b',
             display: 'flex', alignItems: 'center', gap: '4px',
           }}
         >
-          <RefreshCw style={{ width: '12px', height: '12px' }} /> 刷新推荐
+          <RefreshCw style={{ width: '12px', height: '12px' }} /> 刷新
+        </button>
+        <button
+          onClick={onFetchEffectiveness}
+          style={{
+            marginLeft: 'auto', padding: '6px 12px', borderRadius: '6px',
+            border: '1px solid #e2e8f0', backgroundColor: '#fff',
+            cursor: 'pointer', fontSize: '12px', color: '#64748b',
+            display: 'flex', alignItems: 'center', gap: '4px',
+          }}
+        >
+          <TrendingUp style={{ width: '12px', height: '12px' }} /> 推荐效果
         </button>
       </div>
+
+      {showEffectiveness && effectiveness && (
+        <div style={{
+          padding: '16px', marginBottom: '16px', borderRadius: '10px',
+          backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#166534', margin: 0 }}>
+              📊 推荐效果分析
+            </h4>
+            <button onClick={() => setShowEffectiveness(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+              <X style={{ width: '14px', height: '14px', color: '#64748b' }} />
+            </button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+            {[
+              { label: '总推荐数', value: effectiveness.total || 0, color: '#3b82f6' },
+              { label: '完成率', value: `${Math.round((effectiveness.completion_rate || 0) * 100)}%`, color: '#10b981' },
+              { label: '忽略率', value: `${Math.round((effectiveness.dismiss_rate || 0) * 100)}%`, color: '#f59e0b' },
+              { label: '平均评分', value: effectiveness.avg_feedback_score ? effectiveness.avg_feedback_score.toFixed(1) : '-', color: '#8b5cf6' },
+            ].map(stat => (
+              <div key={stat.label} style={{ textAlign: 'center', padding: '8px', backgroundColor: '#fff', borderRadius: '6px' }}>
+                <p style={{ fontSize: '18px', fontWeight: 700, color: stat.color, margin: 0 }}>{stat.value}</p>
+                <p style={{ fontSize: '11px', color: '#64748b', margin: '2px 0 0' }}>{stat.label}</p>
+              </div>
+            ))}
+          </div>
+          {effectiveness.by_type && Object.keys(effectiveness.by_type).length > 0 && (
+            <div style={{ marginTop: '10px' }}>
+              <p style={{ fontSize: '12px', color: '#166534', fontWeight: 500, marginBottom: '6px' }}>按类型统计：</p>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {Object.entries(effectiveness.by_type).map(([type, stats]) => {
+                  const cfg = REC_TYPE_CONFIG[type] || REC_TYPE_CONFIG.document
+                  return (
+                    <span key={type} style={{
+                      padding: '4px 10px', borderRadius: '6px', fontSize: '11px',
+                      backgroundColor: `${cfg.color}15`, color: cfg.color,
+                      display: 'flex', alignItems: 'center', gap: '4px',
+                    }}>
+                      {cfg.label}: 完成{stats.completed || 0}/{stats.total || 0}
+                      {stats.avg_score > 0 && ` 评分${stats.avg_score.toFixed(1)}`}
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {recommendations.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: '#94a3b8' }}>
           <List style={{ width: '48px', height: '48px', margin: '0 auto 12px' }} />
           <p style={{ fontSize: '16px', fontWeight: 500 }}>暂无推荐内容</p>
-          <p style={{ fontSize: '13px' }}>完成学习画像后即可获取个性化推荐</p>
+          <p style={{ fontSize: '13px' }}>点击"智能推荐"获取基于学习画像的个性化资源推荐</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {recommendations.map(rec => {
             const typeCfg = REC_TYPE_CONFIG[rec.resource_type] || REC_TYPE_CONFIG.document
             const priCfg = PRIORITY_CONFIG[rec.priority] || PRIORITY_CONFIG[2]
+            const diffCfg = DIFFICULTY_CONFIG[rec.difficulty] || DIFFICULTY_CONFIG.intermediate
             const TypeIcon = typeCfg.icon
             const isExpanded = expandedRec === rec.id
             const reasons = rec.reasons || {}
+            const isVideoWithUrl = rec.resource_type === 'video' && rec.url
+            const matchIndicators = []
+            if (rec.reason_knowledge) matchIndicators.push({ label: '知识匹配', color: '#8b5cf6' })
+            if (rec.reason_progress) matchIndicators.push({ label: '进度适配', color: '#3b82f6' })
+            if (rec.reason_ability) matchIndicators.push({ label: '能力提升', color: '#10b981' })
+            if (rec.reason_interest) matchIndicators.push({ label: '兴趣匹配', color: '#f59e0b' })
 
             return (
               <div key={rec.id} style={{
@@ -585,7 +763,7 @@ function RecommendView({ recommendations, filterType, setFilterType, filterPrior
                     <TypeIcon style={{ width: '20px', height: '20px', color: typeCfg.color }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px', flexWrap: 'wrap' }}>
                       <span style={{
                         padding: '2px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: 600,
                         backgroundColor: priCfg.bg, color: priCfg.color,
@@ -593,19 +771,52 @@ function RecommendView({ recommendations, filterType, setFilterType, filterPrior
                         {priCfg.label}
                       </span>
                       <span style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>{rec.title}</span>
+                      <span style={{
+                        padding: '2px 6px', borderRadius: '4px', fontSize: '10px',
+                        backgroundColor: diffCfg.bg, color: diffCfg.color,
+                      }}>
+                        {diffCfg.label}
+                      </span>
                     </div>
                     <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>{rec.description}</p>
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
                       <span style={{ fontSize: '11px', color: '#94a3b8' }}>⏱️ {rec.estimated_minutes}分钟</span>
-                      <span style={{ fontSize: '11px', color: '#94a3b8' }}>📊 难度：{rec.difficulty}</span>
-                      <span style={{ fontSize: '11px', color: '#94a3b8' }}>🤖 {rec.generated_by_agent}</span>
-                      {rec.tags?.map((tag, i) => (
+                      {rec.relevance_score > 0 && (
+                        <span style={{ fontSize: '11px', color: '#6366f1' }}>
+                          匹配度 {Math.round(rec.relevance_score * 100)}%
+                        </span>
+                      )}
+                      {matchIndicators.map(ind => (
+                        <span key={ind.label} style={{
+                          padding: '1px 6px', borderRadius: '4px', fontSize: '10px',
+                          backgroundColor: `${ind.color}15`, color: ind.color, fontWeight: 500,
+                        }}>
+                          {ind.label}
+                        </span>
+                      ))}
+                      {rec.tags?.slice(0, 3).map((tag, i) => (
                         <span key={i} style={{
                           padding: '1px 6px', borderRadius: '4px', fontSize: '10px',
                           backgroundColor: '#f1f5f9', color: '#64748b',
                         }}>{tag}</span>
                       ))}
                     </div>
+                    {isVideoWithUrl && (
+                      <div style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
+                        <a
+                          href={rec.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            padding: '4px 12px', borderRadius: '6px', fontSize: '12px',
+                            backgroundColor: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe',
+                            textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px',
+                          }}
+                        >
+                          <Video style={{ width: '12px', height: '12px' }} /> 搜索视频
+                        </a>
+                      </div>
+                    )}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flexShrink: 0 }}>
                     <button
@@ -626,7 +837,7 @@ function RecommendView({ recommendations, filterType, setFilterType, filterPrior
                         cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px',
                       }}
                     >
-                      <Eye style={{ width: '12px', height: '12px' }} /> 理由
+                      <Eye style={{ width: '12px', height: '12px' }} /> 匹配详情
                     </button>
                     <button
                       onClick={() => onDismiss(rec.id)}
@@ -647,29 +858,40 @@ function RecommendView({ recommendations, filterType, setFilterType, filterPrior
                     borderTop: '1px solid #e2e8f0',
                   }}>
                     <h4 style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b', margin: '0 0 10px' }}>
-                      📋 推荐理由分析
+                      📋 画像匹配分析
                     </h4>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                       {[
-                        { key: 'knowledge', label: '知识关联性', icon: '📚', color: '#8b5cf6' },
-                        { key: 'progress', label: '进度匹配度', icon: '📈', color: '#3b82f6' },
-                        { key: 'ability', label: '能力提升空间', icon: '💪', color: '#10b981' },
-                        { key: 'interest', label: '兴趣偏好匹配', icon: '❤️', color: '#f59e0b' },
+                        { key: 'knowledge', label: '知识关联性', icon: '📚', color: '#8b5cf6', value: rec.reason_knowledge },
+                        { key: 'progress', label: '进度匹配度', icon: '📈', color: '#3b82f6', value: rec.reason_progress },
+                        { key: 'ability', label: '能力提升空间', icon: '💪', color: '#10b981', value: rec.reason_ability },
+                        { key: 'interest', label: '兴趣偏好匹配', icon: '❤️', color: '#f59e0b', value: rec.reason_interest },
                       ].map(dim => (
                         <div key={dim.key} style={{
                           padding: '10px', borderRadius: '8px',
-                          backgroundColor: reasons[dim.key] ? '#fff' : '#f9fafb',
-                          border: `1px solid ${reasons[dim.key] ? `${dim.color}30` : '#e2e8f0'}`,
+                          backgroundColor: dim.value ? '#fff' : '#f9fafb',
+                          border: `1px solid ${dim.value ? `${dim.color}30` : '#e2e8f0'}`,
                         }}>
                           <p style={{ fontSize: '12px', fontWeight: 500, color: dim.color, margin: '0 0 4px' }}>
                             {dim.icon} {dim.label}
                           </p>
                           <p style={{ fontSize: '12px', color: '#475569', margin: 0, lineHeight: '1.5' }}>
-                            {reasons[dim.key] || '暂无分析'}
+                            {dim.value || '暂无分析'}
                           </p>
                         </div>
                       ))}
                     </div>
+                    {rec.relevance_score > 0 && (
+                      <div style={{ marginTop: '10px', padding: '8px 12px', backgroundColor: '#eef2ff', borderRadius: '6px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                          <span style={{ fontSize: '12px', color: '#4338ca', fontWeight: 500 }}>综合匹配度</span>
+                          <span style={{ fontSize: '14px', color: '#4338ca', fontWeight: 700 }}>{Math.round(rec.relevance_score * 100)}%</span>
+                        </div>
+                        <div style={{ height: '6px', backgroundColor: '#c7d2fe', borderRadius: '3px', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', borderRadius: '3px', backgroundColor: '#6366f1', width: `${Math.round(rec.relevance_score * 100)}%` }} />
+                        </div>
+                      </div>
+                    )}
                     <div style={{ display: 'flex', gap: '8px', marginTop: '10px', justifyContent: 'flex-end' }}>
                       <span style={{ fontSize: '11px', color: '#94a3b8' }}>推荐有帮助吗？</span>
                       <button onClick={() => onFeedback(rec.id, 5)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px' }}>

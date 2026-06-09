@@ -21,8 +21,72 @@ from pathlib import Path
 env_path = Path(__file__).parent.parent.parent / '.env'
 load_dotenv(env_path)
 
-# 配置日志
 logger = logging.getLogger(__name__)
+
+
+def _record_token_usage(usage_data: Dict[str, Any], user_id: Optional[int] = None,
+                        user_role: Optional[str] = None, call_type: Optional[str] = None,
+                        request_id: Optional[str] = None):
+    try:
+        from src.models.token_usage import TokenUsage
+        from src.models.user import db as _db
+        from flask import current_app
+
+        if not usage_data:
+            return
+
+        prompt_tokens = usage_data.get('prompt_tokens', 0) or 0
+        completion_tokens = usage_data.get('completion_tokens', 0) or 0
+        total_tokens = usage_data.get('total_tokens', 0) or 0
+
+        if total_tokens == 0 and prompt_tokens == 0 and completion_tokens == 0:
+            return
+
+        has_app_context = False
+        try:
+            current_app._get_current_object()
+            has_app_context = True
+        except RuntimeError:
+            has_app_context = False
+
+        if not has_app_context:
+            try:
+                from src.main import app as _flask_app
+                ctx = _flask_app.app_context()
+                ctx.__enter__()
+            except Exception:
+                logger.debug("Cannot acquire Flask app context for token recording, skipping")
+                return
+
+        try:
+            record = TokenUsage(
+                user_id=user_id,
+                user_role=user_role,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                total_tokens=total_tokens,
+                model=_env("SPARK_MODEL", DEFAULT_SPARK_MODEL),
+                call_type=call_type,
+                request_id=request_id,
+            )
+            _db.session.add(record)
+            _db.session.commit()
+            logger.info("Token usage recorded: user_id=%s, total=%s, type=%s",
+                         user_id, total_tokens, call_type)
+        except Exception as e:
+            logger.warning("Failed to record token usage: %s", e)
+            try:
+                _db.session.rollback()
+            except Exception:
+                pass
+        finally:
+            if not has_app_context:
+                try:
+                    ctx.__exit__(None, None, None)
+                except Exception:
+                    pass
+    except Exception as e:
+        logger.warning("Failed to record token usage: %s", e)
 
 
 DEFAULT_SPARK_API_URL = "https://spark-api-open.xf-yun.com/v1/chat/completions"
@@ -318,7 +382,12 @@ def _parse_chat_response(data: Dict[str, object]) -> str:
 
 
 def _iter_stream_chunks(resp: requests.Response) -> Iterable[str]:
-    """迭代处理SSE流式响应，确保UTF-8编码正确处理"""
+    for content, _ in _iter_stream_chunks_with_data(resp):
+        yield content
+
+
+def _iter_stream_chunks_with_data(resp: requests.Response) -> Iterable[tuple]:
+    """迭代处理SSE流式响应，返回 (content_str, raw_data_dict) 元组"""
     buffer = ""
     chunk_count = 0
     
@@ -326,7 +395,6 @@ def _iter_stream_chunks(resp: requests.Response) -> Iterable[str]:
         if not chunk:
             continue
         
-        # 明确使用UTF-8解码，处理编码错误
         try:
             decoded_chunk = chunk.decode('utf-8', errors='replace')
         except (UnicodeDecodeError, AttributeError) as e:
@@ -335,7 +403,6 @@ def _iter_stream_chunks(resp: requests.Response) -> Iterable[str]:
         
         buffer += decoded_chunk
         
-        # 按行分割处理
         while '\n' in buffer:
             line, buffer = buffer.split('\n', 1)
             line = line.strip()
@@ -343,7 +410,6 @@ def _iter_stream_chunks(resp: requests.Response) -> Iterable[str]:
             if not line:
                 continue
             
-            # 移除SSE的data:前缀
             if line.startswith("data:"):
                 line = line[len("data:"):].strip()
             
@@ -351,31 +417,30 @@ def _iter_stream_chunks(resp: requests.Response) -> Iterable[str]:
                 logger.info(f"SSE流处理完成，共处理 {chunk_count} 个数据块")
                 return
             
-            # 解析JSON数据
             try:
                 data = json.loads(line)
             except json.JSONDecodeError as e:
                 logger.warning(f"JSON解析失败: {e}, 原始数据: {line[:100]}")
                 continue
             
-            # 检查API错误
             if isinstance(data, dict) and data.get("code") not in (None, 0):
                 error_msg = f"Spark API error {data.get('code')}: {data.get('message')}"
                 logger.error(error_msg)
                 raise SparkServiceError(error_msg)
             
-            # 提取内容
             choices = data.get("choices") or []
             for choice in choices:
                 delta = choice.get("delta") or {}
                 if isinstance(delta, dict) and delta.get("content") is not None:
                     content = delta.get("content")
                     chunk_count += 1
-                    # 确保返回字符串类型
-                    yield str(content) if content is not None else ""
+                    yield (str(content) if content is not None else "", data)
 
 
-def chat(messages: Union[str, List[Dict[str, str]]]) -> str:
+def chat(messages: Union[str, List[Dict[str, str]]],
+         user_id: Optional[int] = None,
+         user_role: Optional[str] = None,
+         call_type: Optional[str] = None) -> str:
     """Send a synchronous chat request and return the text response."""
     url = _env("SPARK_API_URL", DEFAULT_SPARK_API_URL)
     timeout = int(_env("SPARK_TIMEOUT", str(DEFAULT_TIMEOUT_SECONDS)))
@@ -387,8 +452,14 @@ def chat(messages: Union[str, List[Dict[str, str]]]) -> str:
         try:
             resp = requests.post(url, json=payload, headers=_get_headers(), timeout=timeout)
             resp.raise_for_status()
+            resp_json = resp.json()
+            usage = resp_json.get("usage")
+            request_id = resp_json.get("id")
+            if usage:
+                _record_token_usage(usage, user_id=user_id, user_role=user_role,
+                                    call_type=call_type, request_id=request_id)
             logger.info("Spark API request succeeded with status=%s", resp.status_code)
-            return _parse_chat_response(resp.json())
+            return _parse_chat_response(resp_json)
         except requests.RequestException as exc:
             response_text = ""
             if getattr(exc, "response", None) is not None:
@@ -402,7 +473,10 @@ def chat(messages: Union[str, List[Dict[str, str]]]) -> str:
             raise SparkServiceError("Spark API returned invalid JSON") from exc
 
 
-def chat_stream(messages: Union[str, List[Dict[str, str]]]) -> Generator[str, None, None]:
+def chat_stream(messages: Union[str, List[Dict[str, str]]],
+                user_id: Optional[int] = None,
+                user_role: Optional[str] = None,
+                call_type: Optional[str] = None) -> Generator[str, None, None]:
     """Yield chunks from the streaming endpoint using SSE."""
     if not is_configured():
         error_msg = "Spark credentials are not configured. Set SPARK_API_PASSWORD or SPARK_API_KEY/SPARK_API_SECRET."
@@ -427,9 +501,22 @@ def chat_stream(messages: Union[str, List[Dict[str, str]]]) -> Generator[str, No
                 raise SparkServiceError(f"Spark API request failed: {exc}") from exc
 
             chunk_index = 0
-            for chunk in _iter_stream_chunks(resp):
+            last_usage = None
+            last_request_id = None
+            for chunk_content, chunk_data in _iter_stream_chunks_with_data(resp):
                 chunk_index += 1
-                yield chunk
+                if chunk_data:
+                    usage = chunk_data.get("usage")
+                    if usage:
+                        last_usage = usage
+                    rid = chunk_data.get("id")
+                    if rid:
+                        last_request_id = rid
+                yield chunk_content
+
+            if last_usage:
+                _record_token_usage(last_usage, user_id=user_id, user_role=user_role,
+                                    call_type=call_type, request_id=last_request_id)
 
             logger.info("Spark streaming response completed with %s chunks", chunk_index)
 
@@ -438,6 +525,8 @@ def generate_teaching_content(
     course_title: str,
     topic: str,
     knowledge_base: Optional[str] = None,
+    user_id: Optional[int] = None,
+    user_role: Optional[str] = None,
 ) -> str:
     prompt = f"""请为以下课程生成教学内容。
 
@@ -453,7 +542,7 @@ def generate_teaching_content(
     if knowledge_base:
         prompt += f"\n\n参考知识库：\n{knowledge_base[:2000]}"
     messages = [{"role": "user", "content": prompt}]
-    return chat(messages)
+    return chat(messages, user_id=user_id, user_role=user_role, call_type='teaching_content')
 
 
 def ai_tutor_chat(
@@ -461,6 +550,8 @@ def ai_tutor_chat(
     context: str = "",
     knowledge_base: str = "",
     ai_style: str = "academic",
+    user_id: Optional[int] = None,
+    user_role: Optional[str] = None,
 ) -> str:
     style_prompts = {
         'academic': """你是一位专业的AI学习助手，风格严谨学术。请根据学生的问题，结合教学内容进行解答。
@@ -512,7 +603,7 @@ def ai_tutor_chat(
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt},
     ]
-    return chat(messages)
+    return chat(messages, user_id=user_id, user_role=user_role, call_type='ai_tutor')
 
 
 def generate_assessment(
@@ -520,6 +611,8 @@ def generate_assessment(
     topic: str,
     question_count: int = 5,
     knowledge_base: Optional[str] = None,
+    user_id: Optional[int] = None,
+    user_role: Optional[str] = None,
 ) -> str:
     """生成考核题目."""
     prompt = f"""你是一位专业的教育考试出题专家。请为以下课程生成{question_count}道高质量的选择题。
@@ -563,7 +656,7 @@ def generate_assessment(
     prompt += "\n\n请现在生成题目，只返回JSON数组："
 
     try:
-        result = chat(prompt)
+        result = chat(prompt, user_id=user_id, user_role=user_role, call_type='assessment')
         return result
     except Exception as e:
         return json.dumps(
@@ -592,6 +685,8 @@ def evaluate_practice(
     question: str,
     user_answer: str,
     correct_answer: str = "",
+    user_id: Optional[int] = None,
+    user_role: Optional[str] = None,
 ) -> str:
     """评测练习答案."""
     prompt = f"""请评测学生的练习答案。
@@ -606,7 +701,7 @@ def evaluate_practice(
 3. 学习建议"""
 
     try:
-        return chat(prompt)
+        return chat(prompt, user_id=user_id, user_role=user_role, call_type='evaluate_practice')
     except Exception:
         return "评测完成，请继续加油！"
 
@@ -618,6 +713,8 @@ def analyze_mistake(
     knowledge_tags: Optional[List[str]] = None,
     course_title: Optional[str] = None,
     explanation: Optional[str] = None,
+    user_id: Optional[int] = None,
+    user_role: Optional[str] = None,
 ) -> str:
     """分析错题原因，识别知识点漏洞，给出学习建议。"""
     if not is_configured():
@@ -651,7 +748,7 @@ def analyze_mistake(
     )
 
     try:
-        result = chat(prompt)
+        result = chat(prompt, user_id=user_id, user_role=user_role, call_type='analyze_mistake')
         check = _validate_mistake_analysis(result)
         if check["valid"]:
             return result
@@ -665,7 +762,7 @@ def analyze_mistake(
             explanation_section=explanation_section,
             quality_hints="上一版未达标：" + "；".join(check["issues"]) + "。请完整重写，不要沿用原句。",
         )
-        retried = chat(retry_prompt)
+        retried = chat(retry_prompt, user_id=user_id, user_role=user_role, call_type='analyze_mistake_retry')
         retry_check = _validate_mistake_analysis(retried)
         return retried if retry_check["valid"] else retried
     except Exception as e:
@@ -680,6 +777,8 @@ def analyze_mistake_stream(
     knowledge_tags: Optional[List[str]] = None,
     course_title: Optional[str] = None,
     explanation: Optional[str] = None,
+    user_id: Optional[int] = None,
+    user_role: Optional[str] = None,
 ) -> Generator[str, None, None]:
     """流式分析错题原因。"""
     logger.info(f"[analyze_mistake_stream] 开始流式错题分析...")
@@ -714,7 +813,7 @@ def analyze_mistake_stream(
     try:
         logger.info(f"[analyze_mistake_stream] 调用chat_stream API...")
         chunk_count = 0
-        for chunk in chat_stream(prompt):
+        for chunk in chat_stream(prompt, user_id=user_id, user_role=user_role, call_type='analyze_mistake_stream'):
             chunk_count += 1
             if chunk_count % 10 == 0:  # 每10个chunk记录一次日志
                 logger.debug(f"[analyze_mistake_stream] 已生成 {chunk_count} 个数据块")
@@ -727,6 +826,8 @@ def analyze_mistake_stream(
 
 def analyze_mistakes_batch(
     mistakes: List[Dict[str, str]],
+    user_id: Optional[int] = None,
+    user_role: Optional[str] = None,
 ) -> str:
     """批量分析多个错题，生成综合学习建议。"""
     if not mistakes:
@@ -781,7 +882,7 @@ def analyze_mistakes_batch(
 请用清晰、易懂的语言进行分析，确保推理过程严密、结论可靠。"""
 
     try:
-        return chat(prompt)
+        return chat(prompt, user_id=user_id, user_role=user_role, call_type='batch_analysis')
     except Exception as e:
         logger.error(f"批量错题分析失败: {e}")
         return "分析暂时不可用，请稍后再试。"
@@ -792,6 +893,8 @@ def generate_targeted_practice(
     knowledge_tags: List[str],
     course_title: Optional[str] = None,
     question_count: int = 10,
+    user_id: Optional[int] = None,
+    user_role: Optional[str] = None,
 ) -> str:
     """基于错题提示词汇总生成靶向练习题，内置去重机制。"""
     if not mistake_summaries:
@@ -858,7 +961,7 @@ def generate_targeted_practice(
 直接输出JSON数组，不要有任何前缀或后缀。"""
 
     try:
-        result = chat(prompt)
+        result = chat(prompt, user_id=user_id, user_role=user_role, call_type='targeted_practice')
         json_match = re.search(r'\[.*\]', result, re.DOTALL)
         if json_match:
             raw_questions = json.loads(json_match.group(0))
@@ -875,6 +978,8 @@ def generate_adaptive_practice_plan(
     previous_results: List[Dict[str, Any]],
     knowledge_tags: List[str],
     course_title: Optional[str] = None,
+    user_id: Optional[int] = None,
+    user_role: Optional[str] = None,
 ) -> str:
     """基于学生历史表现生成自适应练习计划。"""
     perf_info = f"""
@@ -926,7 +1031,7 @@ JSON格式为一个对象，包含以下字段：
 请直接输出JSON对象："""
 
     try:
-        result = chat(prompt)
+        result = chat(prompt, user_id=user_id, user_role=user_role, call_type='adaptive_plan')
         json_match = re.search(r'\{.*\}', result, re.DOTALL)
         if json_match:
             return json_match.group(0)
@@ -986,6 +1091,8 @@ def summarize_note(
     note_title: str,
     note_content: str,
     course_title: Optional[str] = None,
+    user_id: Optional[int] = None,
+    user_role: Optional[str] = None,
 ) -> str:
     """生成笔记摘要"""
     import re
@@ -1017,7 +1124,7 @@ def summarize_note(
 概念1、概念2、概念3"""
 
     try:
-        return chat(prompt)
+        return chat(prompt, user_id=user_id, user_role=user_role, call_type='summarize_note')
     except Exception as e:
         logger.error(f"笔记摘要生成失败: {e}")
         return "摘要生成暂时不可用，请稍后再试。"
@@ -1027,6 +1134,8 @@ def summarize_note_stream(
     note_title: str,
     note_content: str,
     course_title: Optional[str] = None,
+    user_id: Optional[int] = None,
+    user_role: Optional[str] = None,
 ) -> Generator[str, None, None]:
     """流式生成笔记摘要"""
     import re
@@ -1058,7 +1167,7 @@ def summarize_note_stream(
 概念1、概念2、概念3"""
 
     try:
-        for chunk in chat_stream(prompt):
+        for chunk in chat_stream(prompt, user_id=user_id, user_role=user_role, call_type='summarize_note_stream'):
             yield chunk
     except Exception as e:
         logger.error(f"流式笔记摘要生成失败: {e}")
@@ -1067,6 +1176,8 @@ def summarize_note_stream(
 
 def organize_notes(
     notes: List[Dict[str, str]],
+    user_id: Optional[int] = None,
+    user_role: Optional[str] = None,
 ) -> str:
     """整理多篇笔记，生成结构化复习文档"""
     if not notes:
@@ -1114,7 +1225,7 @@ def organize_notes(
 请用清晰、有条理的语言进行整理，帮助学生高效复习。"""
 
     try:
-        return chat(prompt)
+        return chat(prompt, user_id=user_id, user_role=user_role, call_type='organize_notes')
     except Exception as e:
         logger.error(f"笔记整理失败: {e}")
         return "整理暂时不可用，请稍后再试。"
@@ -1122,6 +1233,8 @@ def organize_notes(
 
 def organize_notes_stream(
     notes: List[Dict[str, str]],
+    user_id: Optional[int] = None,
+    user_role: Optional[str] = None,
 ) -> Generator[str, None, None]:
     """流式整理多篇笔记"""
     if not notes:
@@ -1170,7 +1283,7 @@ def organize_notes_stream(
 请用清晰、有条理的语言进行整理，帮助学生高效复习。"""
 
     try:
-        for chunk in chat_stream(prompt):
+        for chunk in chat_stream(prompt, user_id=user_id, user_role=user_role, call_type='organize_notes_stream'):
             yield chunk
     except Exception as e:
         logger.error(f"流式笔记整理失败: {e}")
@@ -1181,6 +1294,8 @@ def recommend_tags(
     note_title: str,
     note_content: str,
     existing_tags: Optional[List[str]] = None,
+    user_id: Optional[int] = None,
+    user_role: Optional[str] = None,
 ) -> str:
     """基于笔记内容推荐标签"""
     import re
@@ -1208,7 +1323,7 @@ def recommend_tags(
 标签1, 标签2, 标签3, 标签4, 标签5"""
 
     try:
-        return chat(prompt)
+        return chat(prompt, user_id=user_id, user_role=user_role, call_type='recommend_tags')
     except Exception as e:
         logger.error(f"标签推荐失败: {e}")
         return "推荐暂时不可用"
@@ -1219,6 +1334,8 @@ def generate_weekly_report(
     mistakes: List[Dict[str, str]],
     week_start: Optional[str] = None,
     week_end: Optional[str] = None,
+    user_id: Optional[int] = None,
+    user_role: Optional[str] = None,
 ) -> str:
     """生成周学习报告"""
     notes_summary = []
@@ -1270,7 +1387,7 @@ def generate_weekly_report(
 请用鼓励性的语言，帮助学生建立学习信心，同时给出切实可行的建议。"""
 
     try:
-        return chat(prompt)
+        return chat(prompt, user_id=user_id, user_role=user_role, call_type='weekly_report')
     except Exception as e:
         logger.error(f"周报告生成失败: {e}")
         return "报告生成暂时不可用，请稍后再试。"
@@ -1281,6 +1398,8 @@ def generate_weekly_report_stream(
     mistakes: List[Dict[str, str]],
     week_start: Optional[str] = None,
     week_end: Optional[str] = None,
+    user_id: Optional[int] = None,
+    user_role: Optional[str] = None,
 ) -> Generator[str, None, None]:
     """流式生成周学习报告"""
     notes_summary = []
@@ -1332,7 +1451,7 @@ def generate_weekly_report_stream(
 请用鼓励性的语言，帮助学生建立学习信心，同时给出切实可行的建议。"""
 
     try:
-        for chunk in chat_stream(prompt):
+        for chunk in chat_stream(prompt, user_id=user_id, user_role=user_role, call_type='weekly_report_stream'):
             yield chunk
     except Exception as e:
         logger.error(f"流式周报告生成失败: {e}")
@@ -1343,19 +1462,25 @@ class _SparkServiceSingleton:
     def is_configured(self):
         return is_configured()
 
-    def chat(self, messages: Union[str, List[Dict[str, str]]]) -> str:
-        return chat(messages)
+    def chat(self, messages: Union[str, List[Dict[str, str]]],
+             user_id: Optional[int] = None, user_role: Optional[str] = None,
+             call_type: Optional[str] = None) -> str:
+        return chat(messages, user_id=user_id, user_role=user_role, call_type=call_type)
 
-    def chat_stream(self, messages: Union[str, List[Dict[str, str]]]):
-        return chat_stream(messages)
+    def chat_stream(self, messages: Union[str, List[Dict[str, str]]],
+                    user_id: Optional[int] = None, user_role: Optional[str] = None,
+                    call_type: Optional[str] = None):
+        return chat_stream(messages, user_id=user_id, user_role=user_role, call_type=call_type)
 
     def generate_teaching_content(
         self,
         course_title: str,
         topic: str,
         knowledge_base: Optional[str] = None,
+        user_id: Optional[int] = None,
+        user_role: Optional[str] = None,
     ) -> str:
-        return generate_teaching_content(course_title, topic, knowledge_base)
+        return generate_teaching_content(course_title, topic, knowledge_base, user_id=user_id, user_role=user_role)
 
     def ai_tutor_chat(
         self,
@@ -1363,8 +1488,10 @@ class _SparkServiceSingleton:
         context: str = "",
         knowledge_base: str = "",
         ai_style: str = "academic",
+        user_id: Optional[int] = None,
+        user_role: Optional[str] = None,
     ) -> str:
-        return ai_tutor_chat(question, context, knowledge_base, ai_style)
+        return ai_tutor_chat(question, context, knowledge_base, ai_style, user_id=user_id, user_role=user_role)
 
     def generate_assessment(
         self,
@@ -1372,16 +1499,20 @@ class _SparkServiceSingleton:
         topic: str,
         question_count: int = 5,
         knowledge_base: Optional[str] = None,
+        user_id: Optional[int] = None,
+        user_role: Optional[str] = None,
     ) -> str:
-        return generate_assessment(course_title, topic, question_count, knowledge_base)
+        return generate_assessment(course_title, topic, question_count, knowledge_base, user_id=user_id, user_role=user_role)
 
     def evaluate_practice(
         self,
         question: str,
         user_answer: str,
         correct_answer: str = "",
+        user_id: Optional[int] = None,
+        user_role: Optional[str] = None,
     ) -> str:
-        return evaluate_practice(question, user_answer, correct_answer)
+        return evaluate_practice(question, user_answer, correct_answer, user_id=user_id, user_role=user_role)
 
     def analyze_mistake(
         self,
@@ -1391,9 +1522,12 @@ class _SparkServiceSingleton:
         knowledge_tags: Optional[List[str]] = None,
         course_title: Optional[str] = None,
         explanation: Optional[str] = None,
+        user_id: Optional[int] = None,
+        user_role: Optional[str] = None,
     ) -> str:
         return analyze_mistake(
-            question_content, user_answer, correct_answer, knowledge_tags, course_title, explanation
+            question_content, user_answer, correct_answer, knowledge_tags, course_title, explanation,
+            user_id=user_id, user_role=user_role
         )
 
     def analyze_mistake_stream(
@@ -1404,16 +1538,21 @@ class _SparkServiceSingleton:
         knowledge_tags: Optional[List[str]] = None,
         course_title: Optional[str] = None,
         explanation: Optional[str] = None,
+        user_id: Optional[int] = None,
+        user_role: Optional[str] = None,
     ):
         return analyze_mistake_stream(
-            question_content, user_answer, correct_answer, knowledge_tags, course_title, explanation
+            question_content, user_answer, correct_answer, knowledge_tags, course_title, explanation,
+            user_id=user_id, user_role=user_role
         )
 
     def analyze_mistakes_batch(
         self,
         mistakes: List[Dict[str, str]],
+        user_id: Optional[int] = None,
+        user_role: Optional[str] = None,
     ) -> str:
-        return analyze_mistakes_batch(mistakes)
+        return analyze_mistakes_batch(mistakes, user_id=user_id, user_role=user_role)
 
     def generate_targeted_practice(
         self,
@@ -1421,10 +1560,12 @@ class _SparkServiceSingleton:
         knowledge_tags: List[str],
         course_title: Optional[str] = None,
         question_count: int = 10,
+        user_id: Optional[int] = None,
+        user_role: Optional[str] = None,
     ) -> str:
-        """基于错题提示词汇总生成靶向练习题。"""
         return generate_targeted_practice(
-            mistake_summaries, knowledge_tags, course_title, question_count
+            mistake_summaries, knowledge_tags, course_title, question_count,
+            user_id=user_id, user_role=user_role
         )
 
     def generate_adaptive_practice_plan(
@@ -1433,10 +1574,12 @@ class _SparkServiceSingleton:
         previous_results: List[Dict[str, Any]],
         knowledge_tags: List[str],
         course_title: Optional[str] = None,
+        user_id: Optional[int] = None,
+        user_role: Optional[str] = None,
     ) -> str:
-        """基于学生表现生成自适应练习计划。"""
         return generate_adaptive_practice_plan(
-            student_performance, previous_results, knowledge_tags, course_title
+            student_performance, previous_results, knowledge_tags, course_title,
+            user_id=user_id, user_role=user_role
         )
 
     def summarize_note(
@@ -1444,36 +1587,46 @@ class _SparkServiceSingleton:
         note_title: str,
         note_content: str,
         course_title: Optional[str] = None,
+        user_id: Optional[int] = None,
+        user_role: Optional[str] = None,
     ) -> str:
-        return summarize_note(note_title, note_content, course_title)
+        return summarize_note(note_title, note_content, course_title, user_id=user_id, user_role=user_role)
 
     def summarize_note_stream(
         self,
         note_title: str,
         note_content: str,
         course_title: Optional[str] = None,
+        user_id: Optional[int] = None,
+        user_role: Optional[str] = None,
     ):
-        return summarize_note_stream(note_title, note_content, course_title)
+        return summarize_note_stream(note_title, note_content, course_title, user_id=user_id, user_role=user_role)
 
     def organize_notes(
         self,
         notes: List[Dict[str, str]],
+        user_id: Optional[int] = None,
+        user_role: Optional[str] = None,
     ) -> str:
-        return organize_notes(notes)
+        return organize_notes(notes, user_id=user_id, user_role=user_role)
 
     def organize_notes_stream(
         self,
         notes: List[Dict[str, str]],
+        user_id: Optional[int] = None,
+        user_role: Optional[str] = None,
     ):
-        return organize_notes_stream(notes)
+        return organize_notes_stream(notes, user_id=user_id, user_role=user_role)
 
     def recommend_tags(
         self,
         note_title: str,
         note_content: str,
         existing_tags: Optional[List[str]] = None,
+        user_id: Optional[int] = None,
+        user_role: Optional[str] = None,
     ) -> str:
-        return recommend_tags(note_title, note_content, existing_tags)
+        return recommend_tags(note_title, note_content, existing_tags, user_id=user_id, user_role=user_role)
 
     def generate_weekly_report(
         self,
@@ -1481,8 +1634,10 @@ class _SparkServiceSingleton:
         mistakes: List[Dict[str, str]],
         week_start: Optional[str] = None,
         week_end: Optional[str] = None,
+        user_id: Optional[int] = None,
+        user_role: Optional[str] = None,
     ) -> str:
-        return generate_weekly_report(notes, mistakes, week_start, week_end)
+        return generate_weekly_report(notes, mistakes, week_start, week_end, user_id=user_id, user_role=user_role)
 
     def generate_weekly_report_stream(
         self,
@@ -1490,8 +1645,10 @@ class _SparkServiceSingleton:
         mistakes: List[Dict[str, str]],
         week_start: Optional[str] = None,
         week_end: Optional[str] = None,
+        user_id: Optional[int] = None,
+        user_role: Optional[str] = None,
     ):
-        return generate_weekly_report_stream(notes, mistakes, week_start, week_end)
+        return generate_weekly_report_stream(notes, mistakes, week_start, week_end, user_id=user_id, user_role=user_role)
 
 
 spark_service = _SparkServiceSingleton()

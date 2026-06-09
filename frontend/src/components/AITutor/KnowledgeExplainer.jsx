@@ -102,9 +102,217 @@ function TopicSuggestions({ weakPoints, recentTopics, onSelect }) {
   )
 }
 
+function parseInlineFormatting(text) {
+  const parts = []
+  let remaining = text
+  let keyIdx = 0
+
+  while (remaining.length > 0) {
+    const boldMatch = remaining.match(/\*\*(.+?)\*\*/)
+    const italicMatch = remaining.match(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/)
+    const codeMatch = remaining.match(/`(.+?)`/)
+
+    let earliest = null
+    let earliestIndex = Infinity
+    let matchType = null
+    let matchContent = null
+
+    if (boldMatch && boldMatch.index < earliestIndex) {
+      earliestIndex = boldMatch.index
+      earliest = boldMatch
+      matchType = 'bold'
+      matchContent = boldMatch[1]
+    }
+    if (codeMatch && codeMatch.index < earliestIndex) {
+      earliestIndex = codeMatch.index
+      earliest = codeMatch
+      matchType = 'code'
+      matchContent = codeMatch[1]
+    }
+    if (italicMatch && italicMatch.index < earliestIndex) {
+      earliestIndex = italicMatch.index
+      earliest = italicMatch
+      matchType = 'italic'
+      matchContent = italicMatch[1]
+    }
+
+    if (!earliest) {
+      parts.push(<span key={keyIdx++}>{remaining}</span>)
+      break
+    }
+
+    if (earliestIndex > 0) {
+      parts.push(<span key={keyIdx++}>{remaining.slice(0, earliestIndex)}</span>)
+    }
+
+    if (matchType === 'bold') {
+      parts.push(<strong key={keyIdx++} className="font-semibold text-gray-900">{matchContent}</strong>)
+    } else if (matchType === 'italic') {
+      parts.push(<em key={keyIdx++} className="italic text-gray-600">{matchContent}</em>)
+    } else if (matchType === 'code') {
+      parts.push(
+        <code key={keyIdx++} className="px-1.5 py-0.5 rounded bg-green-100/60 text-green-800 text-xs font-mono">
+          {matchContent}
+        </code>
+      )
+    }
+
+    remaining = remaining.slice(earliestIndex + earliest[0].length)
+  }
+
+  return parts.length > 0 ? parts : text
+}
+
+function parseDocumentBlocks(text) {
+  if (!text || typeof text !== 'string') return []
+
+  const lines = text.split('\n')
+  const blocks = []
+  let currentList = null
+  let listType = null
+
+  function flushList() {
+    if (currentList && currentList.length > 0) {
+      blocks.push({ type: listType, items: currentList })
+      currentList = null
+      listType = null
+    }
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    const trimmed = line.trim()
+
+    if (!trimmed) {
+      flushList()
+      continue
+    }
+
+    const headingMatch = trimmed.match(/^(#{1,3})\s+(.+)/)
+    if (headingMatch) {
+      flushList()
+      blocks.push({ type: 'heading', level: headingMatch[1].length, content: headingMatch[2] })
+      continue
+    }
+
+    const boldHeadingMatch = trimmed.match(/^\*\*(.+?)\*\*$/)
+    if (boldHeadingMatch && !trimmed.includes('**', 2)) {
+      flushList()
+      blocks.push({ type: 'heading', level: 3, content: boldHeadingMatch[1] })
+      continue
+    }
+
+    const unorderedMatch = trimmed.match(/^[-*•]\s+(.+)/)
+    if (unorderedMatch) {
+      if (listType !== 'unordered') flushList()
+      listType = 'unordered'
+      if (!currentList) currentList = []
+      currentList.push(unorderedMatch[1])
+      continue
+    }
+
+    const orderedMatch = trimmed.match(/^\d+[.)]\s+(.+)/)
+    if (orderedMatch) {
+      if (listType !== 'ordered') flushList()
+      listType = 'ordered'
+      if (!currentList) currentList = []
+      currentList.push(orderedMatch[1])
+      continue
+    }
+
+    const defMatch = trimmed.match(/^(.{1,30}?)[：:—–]\s*(.+)/)
+    if (defMatch) {
+      flushList()
+      blocks.push({ type: 'definition', term: defMatch[1], description: defMatch[2] })
+      continue
+    }
+
+    flushList()
+    blocks.push({ type: 'paragraph', content: trimmed })
+  }
+
+  flushList()
+  return blocks
+}
+
+function VisualDocumentContent({ content }) {
+  const blocks = React.useMemo(() => parseDocumentBlocks(content), [content])
+
+  if (blocks.length === 0) {
+    return (
+      <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">
+        {content}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      {blocks.map((block, idx) => {
+        switch (block.type) {
+          case 'heading':
+            return (
+              <div key={idx} className={
+                block.level === 1
+                  ? 'text-base font-bold text-green-800 mt-4 mb-2 pb-1 border-b border-green-200'
+                  : block.level === 2
+                    ? 'text-sm font-bold text-green-700 mt-3 mb-1.5'
+                    : 'text-sm font-semibold text-green-600 mt-2 mb-1'
+              }>
+                {parseInlineFormatting(block.content)}
+              </div>
+            )
+          case 'paragraph':
+            return (
+              <p key={idx} className="text-sm text-gray-700 leading-relaxed">
+                {parseInlineFormatting(block.content)}
+              </p>
+            )
+          case 'unordered':
+            return (
+              <ul key={idx} className="space-y-1.5 ml-1">
+                {block.items.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 mt-2 shrink-0" />
+                    <span className="leading-relaxed">{parseInlineFormatting(item)}</span>
+                  </li>
+                ))}
+              </ul>
+            )
+          case 'ordered':
+            return (
+              <ol key={idx} className="space-y-1.5 ml-1">
+                {block.items.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                    <span className="w-5 h-5 rounded-full bg-green-100 text-green-700 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+                      {i + 1}
+                    </span>
+                    <span className="leading-relaxed">{parseInlineFormatting(item)}</span>
+                  </li>
+                ))}
+              </ol>
+            )
+          case 'definition':
+            return (
+              <div key={idx} className="flex items-start gap-2 text-sm">
+                <span className="shrink-0 px-2 py-0.5 rounded bg-green-100 text-green-700 font-medium text-xs">
+                  {block.term}
+                </span>
+                <span className="text-gray-700 leading-relaxed">{parseInlineFormatting(block.description)}</span>
+              </div>
+            )
+          default:
+            return null
+        }
+      })}
+    </div>
+  )
+}
+
 function CollapsibleLayer({ config, content, expanded, onToggle }) {
   const Icon = config.icon
   const contentRef = useRef(null)
+  const isBasic = config.key === 'basic'
 
   return (
     <div className={`rounded-lg border ${config.colorClass} overflow-hidden transition-all`}>
@@ -133,10 +341,16 @@ function CollapsibleLayer({ config, content, expanded, onToggle }) {
           opacity: expanded ? 1 : 0,
         }}
       >
-        <div ref={contentRef} className="px-4 pb-4 pt-1">
-          <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">
-            {content}
-          </div>
+        <div ref={contentRef} className={isBasic ? 'px-5 pb-5 pt-2' : 'px-4 pb-4 pt-1'}>
+          {isBasic ? (
+            <div className="rounded-lg bg-white/80 border border-green-100 p-4 shadow-sm">
+              <VisualDocumentContent content={content} />
+            </div>
+          ) : (
+            <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">
+              {content}
+            </div>
+          )}
         </div>
       </div>
     </div>
