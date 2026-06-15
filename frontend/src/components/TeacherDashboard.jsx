@@ -26,7 +26,8 @@ import {
   Activity,
   Video,
   MessageCircle,
-  Zap
+  Zap,
+  Network
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area } from 'recharts'
 import { courses, content, ai, auth, videos, teacher as teacherApi, programming, courseGeneration } from '../services/api'
@@ -38,6 +39,7 @@ import TeacherInteractionPanel from './TeacherInteractionPanel'
 import InteractiveMindMap from './ui/InteractiveMindMap'
 import CodePlayground from './ui/CodePlayground'
 import ContentSaveSyncPanel from './ui/ContentSaveSyncPanel'
+import KnowledgeGraphManager from './KnowledgeGraphManager'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useNavigate } from 'react-router-dom'
 
@@ -382,6 +384,7 @@ export default function TeacherDashboard({ user, onLogout }) {
     { id: 'videos', label: '视频管理', icon: Video },
     { id: 'interaction', label: '互动管理', icon: MessageCircle },
     { id: 'content', label: '内容生成', icon: FileText },
+    { id: 'knowledgeGraph', label: '知识图谱', icon: Network },
     { id: 'exams', label: '考核管理', icon: Target },
     { id: 'analytics', label: '学情分析', icon: BarChart3 },
     { id: 'token-usage', label: 'Token用量', icon: Zap }
@@ -1404,6 +1407,8 @@ export default function TeacherDashboard({ user, onLogout }) {
           </div>
         )
 
+      case 'knowledgeGraph':
+        return <KnowledgeGraphManager courses={courseList} onRefresh={refreshDashboardStats} />
       case 'content':
         return (
           <div className="space-y-6">

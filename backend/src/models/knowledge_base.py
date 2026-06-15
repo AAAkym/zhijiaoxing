@@ -336,3 +336,191 @@ class CourseExercise(db.Model):
             result['correct_answer'] = _safe_json(self.correct_answer, self.correct_answer)
             result['answer_analysis'] = self.answer_analysis
         return result
+
+
+class KnowledgeGraphNode(db.Model):
+    __tablename__ = 'knowledge_graph_nodes'
+    __table_args__ = (
+        db.Index('idx_kgn_course_type', 'course_id', 'node_type'),
+        db.Index('idx_kgn_course_label', 'course_id', 'label'),
+        db.UniqueConstraint('course_id', 'node_type', 'label', name='uq_kgn_course_type_label'),
+        {'extend_existing': True},
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    graph_id = db.Column(db.String(80), nullable=False)
+    course_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=False)
+    node_type = db.Column(db.String(30), nullable=False)
+    label = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    category = db.Column(db.String(80))
+    weight = db.Column(db.Float, default=1.0)
+    source_chunk_ids = db.Column(db.Text, default='[]')
+    properties = db.Column(db.Text, default='{}')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    course = db.relationship('Course', backref='knowledge_graph_nodes')
+
+    def to_dict(self, include_sources=False):
+        result = {
+            'id': self.id,
+            'graph_id': self.graph_id,
+            'course_id': self.course_id,
+            'node_type': self.node_type,
+            'label': self.label,
+            'description': self.description,
+            'category': self.category,
+            'weight': self.weight,
+            'properties': _parse_json_value(self.properties, {}),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+        if include_sources:
+            result['source_chunk_ids'] = _parse_json_value(self.source_chunk_ids, [])
+        return result
+
+
+class KnowledgeGraphEdge(db.Model):
+    __tablename__ = 'knowledge_graph_edges'
+    __table_args__ = (
+        db.Index('idx_kge_course_type', 'course_id', 'edge_type'),
+        db.Index('idx_kge_source', 'source_node_id'),
+        db.Index('idx_kge_target', 'target_node_id'),
+        db.UniqueConstraint('course_id', 'source_node_id', 'target_node_id', 'edge_type', name='uq_kge_course_edge'),
+        {'extend_existing': True},
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    graph_id = db.Column(db.String(80), nullable=False)
+    course_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=False)
+    source_node_id = db.Column(db.Integer, db.ForeignKey('knowledge_graph_nodes.id'), nullable=False)
+    target_node_id = db.Column(db.Integer, db.ForeignKey('knowledge_graph_nodes.id'), nullable=False)
+    edge_type = db.Column(db.String(40), nullable=False)
+    weight = db.Column(db.Float, default=0.6)
+    confidence = db.Column(db.Float, default=0.8)
+    evidence_chunk_ids = db.Column(db.Text, default='[]')
+    properties = db.Column(db.Text, default='{}')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    source_node = db.relationship('KnowledgeGraphNode', foreign_keys=[source_node_id])
+    target_node = db.relationship('KnowledgeGraphNode', foreign_keys=[target_node_id])
+    course = db.relationship('Course', backref='knowledge_graph_edges')
+
+    def to_dict(self, include_sources=False):
+        result = {
+            'id': self.id,
+            'graph_id': self.graph_id,
+            'course_id': self.course_id,
+            'source': self.source_node_id,
+            'target': self.target_node_id,
+            'source_node_id': self.source_node_id,
+            'target_node_id': self.target_node_id,
+            'edge_type': self.edge_type,
+            'weight': self.weight,
+            'confidence': self.confidence,
+            'properties': _parse_json_value(self.properties, {}),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+        if include_sources:
+            result['evidence_chunk_ids'] = _parse_json_value(self.evidence_chunk_ids, [])
+        return result
+
+
+class KnowledgeSourceChunk(db.Model):
+    __tablename__ = 'knowledge_source_chunks'
+    __table_args__ = (
+        db.Index('idx_ksc_course', 'course_id'),
+        db.Index('idx_ksc_type', 'source_type'),
+        db.Index('idx_ksc_ref', 'reference_code'),
+        {'extend_existing': True},
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=False)
+    source_type = db.Column(db.String(40), nullable=False, default='syllabus')
+    source_id = db.Column(db.String(80))
+    reference_code = db.Column(db.String(30), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    location = db.Column(db.String(200))
+    source_url = db.Column(db.String(500))
+    metadata_json = db.Column(db.Text, default='{}')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    course = db.relationship('Course', backref='knowledge_source_chunks')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'course_id': self.course_id,
+            'source_id': self.source_id or f'chunk:{self.id}',
+            'source_type': self.source_type,
+            'reference_code': self.reference_code,
+            'title': self.title,
+            'excerpt': self.content[:500],
+            'content': self.content,
+            'location': self.location,
+            'url': self.source_url,
+            'metadata': _parse_json_value(self.metadata_json, {}),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class GenerationCitation(db.Model):
+    __tablename__ = 'generation_citations'
+    __table_args__ = (
+        db.Index('idx_gc_package', 'package_id'),
+        db.Index('idx_gc_course', 'course_id'),
+        db.Index('idx_gc_resource_type', 'resource_type'),
+        {'extend_existing': True},
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    package_id = db.Column(db.String(80))
+    course_id = db.Column(db.Integer, db.ForeignKey('courses.id'), nullable=True)
+    resource_type = db.Column(db.String(40), nullable=False)
+    source_chunk_id = db.Column(db.Integer, db.ForeignKey('knowledge_source_chunks.id'), nullable=True)
+    source_type = db.Column(db.String(40))
+    title = db.Column(db.String(200))
+    excerpt = db.Column(db.Text)
+    location = db.Column(db.String(200))
+    url = db.Column(db.String(500))
+    confidence = db.Column(db.Float, default=0.75)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    source_chunk = db.relationship('KnowledgeSourceChunk')
+    course = db.relationship('Course')
+
+    def to_dict(self):
+        source_code = None
+        if self.source_chunk:
+            source_code = self.source_chunk.reference_code
+        return {
+            'id': self.id,
+            'package_id': self.package_id,
+            'course_id': self.course_id,
+            'resource_type': self.resource_type,
+            'source_id': source_code or (f'S{self.source_chunk_id}' if self.source_chunk_id else None),
+            'source_chunk_id': self.source_chunk_id,
+            'source_type': self.source_type,
+            'title': self.title,
+            'excerpt': self.excerpt,
+            'location': self.location,
+            'url': self.url,
+            'confidence': self.confidence,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+def _parse_json_value(value, default):
+    if value is None:
+        return default
+    if isinstance(value, (dict, list)):
+        return value
+    try:
+        return json.loads(value)
+    except Exception:
+        return default

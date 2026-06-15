@@ -28,8 +28,9 @@ function fetchWithTimeout(url, options = {}, timeout = SSE_TIMEOUT) {
 // 通用请求函数
 export async function request(url, options = {}) {
   const { signal, ...restOptions } = options
+  const isFormData = restOptions.body instanceof FormData
   const config = {
-    headers: {
+    headers: isFormData ? {} : {
       'Content-Type': 'application/json',
     },
     credentials: 'include',
@@ -40,7 +41,7 @@ export async function request(url, options = {}) {
     config.signal = signal
   }
 
-  if (restOptions.body && typeof restOptions.body === 'object') {
+  if (restOptions.body && typeof restOptions.body === 'object' && !isFormData) {
     config.body = JSON.stringify(restOptions.body)
   }
 
@@ -293,6 +294,38 @@ export const courseGeneration = {
   }),
 }
 
+export const knowledgeGraph = {
+  importSyllabus: (courseId, data) => request(`/knowledge-graph/courses/${courseId}/import-syllabus`, {
+    method: 'POST',
+    body: data,
+  }),
+
+  deleteGraph: (courseId) => request(`/knowledge-graph/courses/${courseId}`, {
+    method: 'DELETE',
+  }),
+
+  getGraph: (courseId, params = {}) => {
+    const query = new URLSearchParams()
+    if (params.node_type) query.set('node_type', params.node_type)
+    if (params.edge_type) query.set('edge_type', params.edge_type)
+    if (params.include_sources === false) query.set('include_sources', 'false')
+    const qs = query.toString()
+    return request(`/knowledge-graph/courses/${courseId}${qs ? `?${qs}` : ''}`)
+  },
+
+  getCourseProfile: (courseId) => request(`/knowledge-graph/courses/${courseId}/profile`),
+
+  retrieve: (data) => request('/rag/retrieve', {
+    method: 'POST',
+    body: data,
+  }),
+
+  verify: (data) => request('/rag/verify', {
+    method: 'POST',
+    body: data,
+  }),
+}
+
 export const classManagement = {
   getClasses: () => request('/classes'),
 
@@ -323,6 +356,10 @@ export const classManagement = {
   getStudentProfile: (classId, userId) => request(`/classes/${classId}/students/${userId}/profile`),
 
   getClassStudentsProfiles: (classId) => request(`/classes/${classId}/students/profiles`),
+
+  getStudentDashboard: (classId, userId, timeRange = '30') => request(`/classes/${classId}/students/${userId}/dashboard?time_range=${timeRange}`),
+
+  syncClassProfiles: (classId) => request(`/classes/${classId}/profiles-sync`, { method: 'POST' }),
 }
 
 // AI助手API
@@ -1112,6 +1149,8 @@ export const profileApi = {
   getInsight: () => request('/profile/insight'),
 
   getStudentProfile: (userId) => request(`/profile/teacher/${userId}`),
+
+  getDashboard: (timeRange = '30') => request(`/profile/dashboard?time_range=${timeRange}`),
 }
 
 export const learningPathApi = {

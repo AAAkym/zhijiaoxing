@@ -43,6 +43,7 @@ from src.routes.learning_analytics import learning_analytics_bp
 from src.routes.ai_optimization import ai_optimization_bp
 from src.routes.ai_tutor_routes import ai_tutor_bp
 from src.routes.knowledge_base_routes import kb_bp
+from src.routes.knowledge_graph_routes import knowledge_graph_bp
 from src.routes.code_execution import code_execution_bp
 from src.routes.content_review import content_review_bp
 from src.services.websocket_service import init_socketio
@@ -115,6 +116,7 @@ app.register_blueprint(learning_analytics_bp, url_prefix='/api')
 app.register_blueprint(ai_optimization_bp, url_prefix='/api')
 app.register_blueprint(ai_tutor_bp, url_prefix='/api/ai-tutor')
 app.register_blueprint(kb_bp, url_prefix='/api')
+app.register_blueprint(knowledge_graph_bp, url_prefix='/api')
 app.register_blueprint(code_execution_bp, url_prefix='/api')
 app.register_blueprint(content_review_bp, url_prefix='/api/content-review')
 
@@ -751,6 +753,71 @@ with app.app_context():
                         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                     )
                 ''',
+                'knowledge_source_chunks': '''
+                    CREATE TABLE IF NOT EXISTS knowledge_source_chunks (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        course_id INTEGER NOT NULL REFERENCES courses(id),
+                        source_type VARCHAR(40) NOT NULL DEFAULT 'syllabus',
+                        source_id VARCHAR(80),
+                        reference_code VARCHAR(30) NOT NULL,
+                        title VARCHAR(200) NOT NULL,
+                        content TEXT NOT NULL,
+                        location VARCHAR(200),
+                        source_url VARCHAR(500),
+                        metadata_json TEXT DEFAULT '{}',
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''',
+                'knowledge_graph_nodes': '''
+                    CREATE TABLE IF NOT EXISTS knowledge_graph_nodes (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        graph_id VARCHAR(80) NOT NULL,
+                        course_id INTEGER NOT NULL REFERENCES courses(id),
+                        node_type VARCHAR(30) NOT NULL,
+                        label VARCHAR(200) NOT NULL,
+                        description TEXT,
+                        category VARCHAR(80),
+                        weight FLOAT DEFAULT 1.0,
+                        source_chunk_ids TEXT DEFAULT '[]',
+                        properties TEXT DEFAULT '{}',
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE(course_id, node_type, label)
+                    )
+                ''',
+                'knowledge_graph_edges': '''
+                    CREATE TABLE IF NOT EXISTS knowledge_graph_edges (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        graph_id VARCHAR(80) NOT NULL,
+                        course_id INTEGER NOT NULL REFERENCES courses(id),
+                        source_node_id INTEGER NOT NULL REFERENCES knowledge_graph_nodes(id),
+                        target_node_id INTEGER NOT NULL REFERENCES knowledge_graph_nodes(id),
+                        edge_type VARCHAR(40) NOT NULL,
+                        weight FLOAT DEFAULT 0.6,
+                        confidence FLOAT DEFAULT 0.8,
+                        evidence_chunk_ids TEXT DEFAULT '[]',
+                        properties TEXT DEFAULT '{}',
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE(course_id, source_node_id, target_node_id, edge_type)
+                    )
+                ''',
+                'generation_citations': '''
+                    CREATE TABLE IF NOT EXISTS generation_citations (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        package_id VARCHAR(80),
+                        course_id INTEGER REFERENCES courses(id),
+                        resource_type VARCHAR(40) NOT NULL,
+                        source_chunk_id INTEGER REFERENCES knowledge_source_chunks(id),
+                        source_type VARCHAR(40),
+                        title VARCHAR(200),
+                        excerpt TEXT,
+                        location VARCHAR(200),
+                        url VARCHAR(500),
+                        confidence FLOAT DEFAULT 0.75,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''',
             }
             for table_name, create_sql in knowledge_base_tables.items():
                 cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}'")
@@ -774,6 +841,17 @@ with app.app_context():
                 'idx_exercises_course': ('course_exercises', 'course_id'),
                 'idx_exercises_kp': ('course_exercises', 'knowledge_point_id'),
                 'idx_exercises_type_difficulty': ('course_exercises', 'exercise_type, difficulty_level'),
+                'idx_ksc_course': ('knowledge_source_chunks', 'course_id'),
+                'idx_ksc_type': ('knowledge_source_chunks', 'source_type'),
+                'idx_ksc_ref': ('knowledge_source_chunks', 'reference_code'),
+                'idx_kgn_course_type': ('knowledge_graph_nodes', 'course_id, node_type'),
+                'idx_kgn_course_label': ('knowledge_graph_nodes', 'course_id, label'),
+                'idx_kge_course_type': ('knowledge_graph_edges', 'course_id, edge_type'),
+                'idx_kge_source': ('knowledge_graph_edges', 'source_node_id'),
+                'idx_kge_target': ('knowledge_graph_edges', 'target_node_id'),
+                'idx_gc_package': ('generation_citations', 'package_id'),
+                'idx_gc_course': ('generation_citations', 'course_id'),
+                'idx_gc_resource_type': ('generation_citations', 'resource_type'),
             }
             for index_name, (table_name, columns) in kb_indexes.items():
                 try:

@@ -176,6 +176,18 @@ class AgentMonitor:
                     self._agents[name]["current_task"] = None
                     self._agents[name]["started_at"] = None
 
+    def update_citation_coverage(self, agent_name, coverage_score):
+        """更新智能体的引用覆盖率"""
+        with self._lock:
+            if agent_name in self._agents:
+                self._agents[agent_name]["citation_coverage"] = coverage_score
+
+    def update_output_summary(self, agent_name, summary):
+        """更新智能体的产物摘要"""
+        with self._lock:
+            if agent_name in self._agents:
+                self._agents[agent_name]["output_summary"] = summary
+
     def get_status(self, name=None):
         with self._lock:
             if name:

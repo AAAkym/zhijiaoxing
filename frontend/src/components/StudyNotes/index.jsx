@@ -9,8 +9,6 @@ import {
   RefreshCw,
   FileText,
   Loader2,
-  PanelLeftClose,
-  PanelLeft,
   Sparkles,
   Calendar
 } from 'lucide-react'
@@ -19,7 +17,6 @@ import NoteCard from './NoteCard'
 import NoteEditor from './NoteEditor'
 import NoteViewer from './NoteViewer'
 import NoteSearch, { highlightText, TAG_COLORS } from './NoteSearch'
-import TagCloud from './TagCloud'
 import { NotesOrganizePanel, WeeklyReportPanel } from './NoteAIPanel'
 
 export default function StudyNotes({ myCourses = [] }) {
@@ -33,7 +30,6 @@ export default function StudyNotes({ myCourses = [] }) {
   const [allTags, setAllTags] = useState([])
   const [selectedTags, setSelectedTags] = useState([])
   const [tagColors, setTagColors] = useState({})
-  const [showSidebar, setShowSidebar] = useState(true)
   const [selectedNoteIds, setSelectedNoteIds] = useState([])
   
   const [searchParams, setSearchParams] = useState({
@@ -291,34 +287,9 @@ export default function StudyNotes({ myCourses = [] }) {
 
   return (
     <div className="flex gap-6">
-      {showSidebar && (
-        <div className="w-64 shrink-0 hidden lg:block">
-          <TagCloud
-            tagsWithCount={tagsWithCount}
-            selectedTags={selectedTags}
-            onTagSelect={handleTagFilter}
-            onTagColorChange={handleTagColorChange}
-            tagColors={tagColors}
-            showCreate={false}
-          />
-        </div>
-      )}
-      
       <div className="flex-1 min-w-0 space-y-6">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowSidebar(!showSidebar)}
-              className="hidden lg:flex"
-            >
-              {showSidebar ? (
-                <PanelLeftClose className="w-4 h-4" />
-              ) : (
-                <PanelLeft className="w-4 h-4" />
-              )}
-            </Button>
             <div>
               <h2 className="text-2xl font-bold text-gray-900">学习笔记</h2>
               <p className="text-gray-600">记录学习心得，整理知识要点</p>
@@ -435,17 +406,6 @@ export default function StudyNotes({ myCourses = [] }) {
             </div>
           </CardContent>
         </Card>
-
-        <div className="lg:hidden">
-          <TagCloud
-            tagsWithCount={tagsWithCount}
-            selectedTags={selectedTags}
-            onTagSelect={handleTagFilter}
-            onTagColorChange={handleTagColorChange}
-            tagColors={tagColors}
-            compact
-          />
-        </div>
 
         {loading ? (
           <div className="flex justify-center items-center py-12">

@@ -10,6 +10,17 @@ from .learning_path import LearningPath, LearningPathNode, ResourceRecommendatio
 from .content_sync_record import ContentSyncRecord
 from .token_usage import TokenUsage
 from .content_review import ContentReview, ReviewRule, ReviewOperationLog
+from .knowledge_base import (
+    CourseSyllabus,
+    CourseChapter,
+    KnowledgePoint,
+    TeachingCase,
+    CourseExercise,
+    KnowledgeGraphNode,
+    KnowledgeGraphEdge,
+    KnowledgeSourceChunk,
+    GenerationCitation,
+)
 
 __all__ = [
     'db',
@@ -25,4 +36,13 @@ __all__ = [
     'ContentReview',
     'ReviewRule',
     'ReviewOperationLog',
+    'CourseSyllabus',
+    'CourseChapter',
+    'KnowledgePoint',
+    'TeachingCase',
+    'CourseExercise',
+    'KnowledgeGraphNode',
+    'KnowledgeGraphEdge',
+    'KnowledgeSourceChunk',
+    'GenerationCitation',
 ]

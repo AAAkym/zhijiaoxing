@@ -32,7 +32,8 @@ import {
   AlertTriangle,
   Crosshair,
   Radar,
-  Map
+  Map,
+  Network
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area } from 'recharts'
 import { courses, ai, auth, student, studentSettings as studentSettingsApi, notes, mistakeBook, achievements as achievementApi } from '../services/api'
@@ -46,6 +47,7 @@ import TargetedTherapy from './MistakeBook/TargetedTherapy'
 import StudyNotes from './StudyNotes'
 import AchievementPanel from './AchievementPanel'
 import ProfileBuilder from './ProfileBuilder'
+import { KnowledgeGraph3D } from '@/components/KnowledgeGraph3D'
 
 const AI_REQUEST_TIMEOUT = 30000
 const ASSESSMENT_POLL_INTERVAL = 2000
@@ -123,6 +125,7 @@ export default function StudentDashboard({ user, onLogout }) {
     { id: 'overview', label: '学习概览', icon: BarChart3 },
     { id: 'courses', label: '我的课程', icon: BookOpen },
     { id: 'learningPlan', label: '学习规划', icon: Map },
+    { id: 'knowledgeGraph', label: '知识图谱', icon: Network },
     { id: 'aiTutor', label: 'AI助教', icon: GraduationCap },
     { id: 'practice', label: '练习评测', icon: Target },
     { id: 'mistakeBook', label: '错题本', icon: BookX },
@@ -998,6 +1001,8 @@ export default function StudentDashboard({ user, onLogout }) {
     switch (currentView) {
       case 'learningPlan':
         return <LearningPlanSystem user={user} />
+      case 'knowledgeGraph':
+        return <KnowledgeGraph3D myCourses={myCourses} />
       case 'courses':
         return (
           <div className="space-y-6">

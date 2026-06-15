@@ -44,7 +44,16 @@ export default function CourseManagement() {
     setLoading(true)
     try {
       const response = await courses.getAll()
-      setCourseList(response.courses || [])
+      const coursesArr = response.courses || []
+      const seen = new Set()
+      const uniqueCourses = coursesArr.filter(c => {
+        if (!c || c.id == null) return false
+        const key = String(c.id)
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+      setCourseList(uniqueCourses)
     } catch (error) {
       console.error('加载课程列表失败:', error)
       setCourseList([])
@@ -329,12 +338,12 @@ export default function CourseManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {courseList.map((course) => (
-                  <TableRow key={course.id}>
-                    <TableCell className="font-medium">
+                {courseList.map((course, idx) => (
+                  <TableRow key={course.id != null ? `course-${course.id}` : `course-idx-${idx}`}>
+                    <TableCell className="font-medium whitespace-normal">
                       <div>
                         <p className="font-semibold text-[#2d2a26]">{course.title}</p>
-                        <p className="text-sm text-[#9a9590]">{course.description}</p>
+                        <p className="text-sm text-[#9a9590] line-clamp-2">{course.description}</p>
                       </div>
                     </TableCell>
                     <TableCell className="text-[#6b6560]">{getCategoryName(course.category)}</TableCell>

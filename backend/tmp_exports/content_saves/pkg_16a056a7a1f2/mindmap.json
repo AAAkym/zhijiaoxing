@@ -1,9 +1,0 @@
-{
-  "root": {
-    "children": [],
-    "description": "主题概述",
-    "is_core": true,
-    "name": "java变量类型与数据结构",
-    "relationship_type": null
-  }
-}

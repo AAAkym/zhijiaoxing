@@ -13,9 +13,65 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select'
 import {
-  Users, Plus, Trash2, BookOpen, BarChart3, UserPlus, Search, Loader2, Eye, Brain, Target, Clock, TrendingUp, AlertTriangle
+  Users, Plus, Trash2, BookOpen, BarChart3, UserPlus, Search, Loader2, Eye, Brain, Target, Clock, TrendingUp, AlertTriangle, RefreshCw, Radar
 } from 'lucide-react'
 import { classManagement, profileApi } from '@/services/api'
+
+const ERROR_TYPE_LABELS = {
+  calculation_error: '计算失误',
+  concept_understanding: '概念理解偏差',
+  question_misread: '审题不清',
+  programming_error: '编程错误',
+  careless: '粗心失误',
+  other: '其他',
+}
+
+const PROFILE_DIM_LABELS = {
+  cognitive_style: '认知风格',
+  learning_pace: '学习节奏',
+  goal_orientation: '目标导向',
+  interaction_preference: '互动偏好',
+}
+
+const STYLE_LABELS = {
+  visual: '视觉型', auditory: '听觉型', kinesthetic: '动觉型',
+  reading: '阅读型', mixed: '混合型',
+}
+const PACE_LABELS = {
+  fast: '快速型', moderate: '适中型', slow: '深度型', adaptive: '灵活型',
+}
+const GOAL_LABELS = {
+  exam: '应试导向', career: '职业发展', hobby: '兴趣驱动', research: '学术研究',
+}
+const INTERACTION_LABELS = {
+  guided: '引导式', exploratory: '探索式', challenging: '挑战式',
+}
+
+const MASTERY_STATUS_LABELS = {
+  unmastered: '未掌握',
+  learning: '学习中',
+  mastered: '已掌握',
+  reviewing: '复习中',
+}
+
+const ACHIEVEMENT_CATEGORY_LABELS = {
+  knowledge: '知识',
+  learning_time: '学习时长',
+  practice: '练习',
+  accuracy: '准确率',
+  mistake: '错题',
+}
+
+const translateProfileValue = (dimension, value) => {
+  if (!value) return '未设置'
+  const labelMaps = {
+    cognitive_style: STYLE_LABELS,
+    learning_pace: PACE_LABELS,
+    goal_orientation: GOAL_LABELS,
+    interaction_preference: INTERACTION_LABELS,
+  }
+  return labelMaps[dimension]?.[value] || value
+}
 
 export default function ClassManagement({ myCourses = [] }) {
   const [classes, setClasses] = useState([])
@@ -47,6 +103,14 @@ export default function ClassManagement({ myCourses = [] }) {
   const [showProfileDialog, setShowProfileDialog] = useState(false)
   const [profileData, setProfileData] = useState(null)
   const [profileLoading, setProfileLoading] = useState(false)
+
+  const [showDashboardDialog, setShowDashboardDialog] = useState(false)
+  const [dashboardData, setDashboardData] = useState(null)
+  const [dashboardLoading, setDashboardLoading] = useState(false)
+  const [dashboardTimeRange, setDashboardTimeRange] = useState('30')
+  const [dashboardUserId, setDashboardUserId] = useState(null)
+
+  const [syncing, setSyncing] = useState(false)
 
   const fetchClasses = useCallback(async () => {
     try {
@@ -223,6 +287,52 @@ export default function ClassManagement({ myCourses = [] }) {
       }
     } finally {
       setProfileLoading(false)
+    }
+  }
+
+  const handleViewDashboard = async (userId) => {
+    if (!selectedClass) return
+    setDashboardUserId(userId)
+    setShowDashboardDialog(true)
+    setDashboardLoading(true)
+    setDashboardData(null)
+    try {
+      const result = await classManagement.getStudentDashboard(selectedClass, userId, dashboardTimeRange)
+      setDashboardData(result)
+    } catch (err) {
+      console.error('View dashboard error:', err)
+    } finally {
+      setDashboardLoading(false)
+    }
+  }
+
+  const handleDashboardTimeRangeChange = async (range) => {
+    setDashboardTimeRange(range)
+    if (selectedClass && dashboardUserId) {
+      setDashboardLoading(true)
+      try {
+        const result = await classManagement.getStudentDashboard(selectedClass, dashboardUserId, range)
+        setDashboardData(result)
+      } catch (err) {
+        console.error('Dashboard time range error:', err)
+      } finally {
+        setDashboardLoading(false)
+      }
+    }
+  }
+
+  const handleSyncProfiles = async () => {
+    if (!selectedClass) return
+    setSyncing(true)
+    try {
+      const result = await classManagement.syncClassProfiles(selectedClass)
+      alert(`同步完成：${result.synced}/${result.total} 名学生画像已更新`)
+      fetchClassDetail(selectedClass)
+    } catch (err) {
+      console.error('Sync profiles error:', err)
+      alert('同步失败: ' + (err.message || '未知错误'))
+    } finally {
+      setSyncing(false)
     }
   }
 
@@ -468,6 +578,9 @@ export default function ClassManagement({ myCourses = [] }) {
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-sm flex items-center gap-2"><Users className="w-4 h-4" />学生管理</CardTitle>
                     <div className="flex gap-2">
+                      <Button variant="outline" size="sm" className="gap-1" onClick={handleSyncProfiles} disabled={syncing}>
+                        {syncing ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}同步画像
+                      </Button>
                       <Button variant="outline" size="sm" className="gap-1" onClick={handleOpenSelectStudent}>
                         <UserPlus className="w-3 h-3" />选择学生
                       </Button>
@@ -504,6 +617,9 @@ export default function ClassManagement({ myCourses = [] }) {
                               <td className="py-2 px-3 text-gray-500">{s.contact || '-'}</td>
                               <td className="py-2 px-3">
                                 <div className="flex gap-1">
+                                  <Button variant="ghost" size="sm" className="gap-1 text-purple-600 hover:text-purple-800" onClick={() => handleViewDashboard(s.user_id)} title="查看看板">
+                                    <Radar className="w-3 h-3" />看板
+                                  </Button>
                                   <Button variant="ghost" size="sm" className="gap-1 text-blue-600 hover:text-blue-800" onClick={() => handleViewProfile(s.user_id)} title="查看画像">
                                     <Eye className="w-3 h-3" />画像
                                   </Button>
@@ -591,10 +707,10 @@ export default function ClassManagement({ myCourses = [] }) {
                   </h4>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {[
-                      { label: '认知风格', value: profileData.profile.cognitive_style, icon: '🧠' },
-                      { label: '学习节奏', value: profileData.profile.learning_pace, icon: '⏱️' },
-                      { label: '目标导向', value: profileData.profile.goal_orientation, icon: '🎯' },
-                      { label: '互动偏好', value: profileData.profile.interaction_preference, icon: '💬' },
+                      { label: '认知风格', value: translateProfileValue('cognitive_style', profileData.profile.cognitive_style), icon: '🧠' },
+                      { label: '学习节奏', value: translateProfileValue('learning_pace', profileData.profile.learning_pace), icon: '⏱️' },
+                      { label: '目标导向', value: translateProfileValue('goal_orientation', profileData.profile.goal_orientation), icon: '🎯' },
+                      { label: '互动偏好', value: translateProfileValue('interaction_preference', profileData.profile.interaction_preference), icon: '💬' },
                     ].map(item => (
                       <div key={item.label} className="p-3 bg-white border rounded-lg">
                         <p className="text-xs text-gray-500">{item.icon} {item.label}</p>
@@ -627,7 +743,7 @@ export default function ClassManagement({ myCourses = [] }) {
                         {profileData.profile.error_patterns.slice(0, 5).map((ep, i) => (
                           <div key={i} className="flex items-center gap-2 text-xs">
                             <AlertTriangle className="w-3 h-3 text-amber-500" />
-                            <span>{ep.knowledge_point || ep.error_type}</span>
+                            <span>{ep.knowledge_point || ERROR_TYPE_LABELS[ep.error_type] || ep.error_type}</span>
                             <span className={`px-1.5 py-0.5 rounded ${
                               ep.frequency === '高' ? 'bg-red-100 text-red-600' :
                               ep.frequency === '中' ? 'bg-yellow-100 text-yellow-600' :
@@ -696,7 +812,7 @@ export default function ClassManagement({ myCourses = [] }) {
                     </div>
                     <div className="p-3 bg-red-50 rounded-lg">
                       <p className="text-xs text-gray-500">未掌握</p>
-                      <p className="text-xl font-bold text-red-600">{profileData.mistakes?.by_status?.unmastered || 0}</p>
+                      <p className="text-xl font-bold text-red-600">{profileData.mistakes?.by_status?.unmastered || profileData.mistakes?.by_status?.未掌握 || 0}</p>
                     </div>
                   </div>
                   {profileData.mistakes?.top_knowledge_points?.length > 0 && (
@@ -759,6 +875,205 @@ export default function ClassManagement({ myCourses = [] }) {
                   <div className="p-3 bg-cyan-50 rounded-lg text-center">
                     <p className="text-lg font-bold text-cyan-600">{Math.round((profileData.interaction?.total_watch_time_seconds || 0) / 60)}</p>
                     <p className="text-xs text-gray-500">学习时长(分)</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* 学生画像看板弹窗 */}
+      <Dialog open={showDashboardDialog} onOpenChange={setShowDashboardDialog}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Radar className="w-5 h-5 text-purple-500" />
+              学生学习画像看板
+              {dashboardData?.user?.student_name && (
+                <Badge variant="secondary" className="ml-2">{dashboardData.user.student_name}</Badge>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          {dashboardLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+              <span className="ml-3 text-gray-500">加载看板数据...</span>
+            </div>
+          ) : !dashboardData ? (
+            <div className="text-center py-12 text-gray-400">
+              <p>暂无看板数据</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* 时间范围筛选 */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">时间范围:</span>
+                {['7', '30', '90'].map(range => (
+                  <Button
+                    key={range}
+                    variant={dashboardTimeRange === range ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => handleDashboardTimeRangeChange(range)}
+                    className="text-xs"
+                  >
+                    近{range}天
+                  </Button>
+                ))}
+              </div>
+
+              {/* AI 洞察 */}
+              {dashboardData.insight && (
+                <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200">
+                  <p className="text-sm font-medium text-purple-700 mb-1 flex items-center gap-1">
+                    <Brain className="w-4 h-4" />AI 学习洞察
+                  </p>
+                  <p className="text-sm text-gray-700">{dashboardData.insight}</p>
+                </div>
+              )}
+
+              {/* 概览统计 */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg p-4">
+                  <p className="text-blue-100 text-xs">在学课程</p>
+                  <p className="text-2xl font-bold">{dashboardData.learning_outcomes?.total_courses || 0}</p>
+                  <p className="text-blue-200 text-xs">已完成 {dashboardData.learning_outcomes?.completed_courses || 0} 门</p>
+                </div>
+                <div className="bg-gradient-to-br from-emerald-500 to-green-600 text-white rounded-lg p-4">
+                  <p className="text-green-100 text-xs">平均成绩</p>
+                  <p className="text-2xl font-bold">{dashboardData.learning_outcomes?.avg_score || 0}</p>
+                  <p className="text-green-200 text-xs">最高 {dashboardData.learning_outcomes?.max_score || 0} 分</p>
+                </div>
+                <div className="bg-gradient-to-br from-purple-500 to-violet-600 text-white rounded-lg p-4">
+                  <p className="text-purple-100 text-xs">累计学习</p>
+                  <p className="text-2xl font-bold">{dashboardData.time_distribution?.total_estimated_hours?.toFixed(1) || 0}h</p>
+                  <p className="text-purple-200 text-xs">近{dashboardTimeRange}天</p>
+                </div>
+                <div className="bg-gradient-to-br from-orange-500 to-amber-600 text-white rounded-lg p-4">
+                  <p className="text-orange-100 text-xs">获得成就</p>
+                  <p className="text-2xl font-bold">{dashboardData.learning_outcomes?.total_achievements || 0}</p>
+                  <p className="text-orange-200 text-xs">练习 {dashboardData.learning_outcomes?.total_practices || 0} 次</p>
+                </div>
+              </div>
+
+              {/* 画像维度 */}
+              {dashboardData.dimension_scores && (
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <Brain className="w-4 h-4 text-purple-500" />画像维度评分
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {Object.entries(dashboardData.dimension_scores).map(([key, score]) => (
+                      <div key={key} className="p-3 bg-white border rounded-lg">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-gray-500">{PROFILE_DIM_LABELS[key] || key}</span>
+                          <span className="text-xs font-medium">{score}%</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-blue-500 rounded-full"
+                            style={{ width: `${score}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 错题类型分布 */}
+              {dashboardData.knowledge_mastery?.error_type_distribution?.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-500" />错题类型分布
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {dashboardData.knowledge_mastery.error_type_distribution.map((e, i) => (
+                      <Badge key={i} variant="outline" className="text-xs">
+                        {ERROR_TYPE_LABELS[e.type] || e.type} ({e.count})
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 薄弱知识点 */}
+              {dashboardData.knowledge_mastery?.weak_points?.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <Target className="w-4 h-4 text-red-500" />薄弱知识点
+                  </h4>
+                  <div className="flex flex-wrap gap-1.5">
+                    {dashboardData.knowledge_mastery.weak_points.map(([point, count], i) => (
+                      <Badge key={i} variant="outline" className="text-xs">
+                        {point} <span className="text-red-400 ml-1">x{count}</span>
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 成就分类 */}
+              {dashboardData.learning_outcomes?.achievement_categories && Object.keys(dashboardData.learning_outcomes.achievement_categories).length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-blue-500" />成就分类
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(dashboardData.learning_outcomes.achievement_categories).map(([cat, count]) => (
+                      <Badge key={cat} variant="secondary" className="text-xs">
+                        {ACHIEVEMENT_CATEGORY_LABELS[cat] || cat} ({count})
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 掌握程度 */}
+              {dashboardData.learning_outcomes?.mastery_levels && (
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-green-500" />课程掌握程度
+                  </h4>
+                  <div className="flex gap-3">
+                    {Object.entries(dashboardData.learning_outcomes.mastery_levels).map(([level, count]) => (
+                      <div key={level} className="text-center">
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                          level === '精通' ? 'bg-green-500' :
+                          level === '熟练' ? 'bg-blue-500' :
+                          level === '了解' ? 'bg-yellow-500' :
+                          'bg-red-500'
+                        }`}>
+                          {count}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">{level}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 学习互动 */}
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-indigo-500" />学习互动
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <div className="p-3 bg-indigo-50 rounded-lg text-center">
+                    <p className="text-lg font-bold text-indigo-600">{dashboardData.interaction_frequency?.total_questions || 0}</p>
+                    <p className="text-xs text-gray-500">提问次数</p>
+                  </div>
+                  <div className="p-3 bg-purple-50 rounded-lg text-center">
+                    <p className="text-lg font-bold text-purple-600">{dashboardData.interaction_frequency?.completed_videos || 0}/{dashboardData.interaction_frequency?.total_videos || 0}</p>
+                    <p className="text-xs text-gray-500">视频完成</p>
+                  </div>
+                  <div className="p-3 bg-teal-50 rounded-lg text-center">
+                    <p className="text-lg font-bold text-teal-600">{dashboardData.interaction_frequency?.study_notes_count || 0}</p>
+                    <p className="text-xs text-gray-500">学习笔记</p>
+                  </div>
+                  <div className="p-3 bg-cyan-50 rounded-lg text-center">
+                    <p className="text-lg font-bold text-cyan-600">{dashboardData.interaction_frequency?.video_completion_rate || 0}%</p>
+                    <p className="text-xs text-gray-500">视频完成率</p>
                   </div>
                 </div>
               </div>

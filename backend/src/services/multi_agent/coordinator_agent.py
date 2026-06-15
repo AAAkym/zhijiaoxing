@@ -24,6 +24,8 @@ from src.services.multi_agent.recommendation_agent import RecommendationAgent
 from src.services.multi_agent.project_agent import ProjectAgent
 from src.services.knowledge_base_service import knowledge_base_service
 from src.services.content_converter_service import content_converter_service
+from src.services.rag_citation_service import rag_citation_service
+from src.services.syllabus_graph_service import syllabus_graph_service
 
 logger = logging.getLogger(__name__)
 
@@ -178,8 +180,14 @@ class CoordinatorAgent(AgentBase):
         options = task.get("options", {})
         course_id = task.get("course_id")
         chapter_ids = task.get("chapter_ids")
+        if not course_id and options.get("course_id"):
+            course_id = options.get("course_id")
+        if not chapter_ids and options.get("chapter_ids"):
+            chapter_ids = options.get("chapter_ids")
         _user_id = task.get("user_id")
         _user_role = task.get("user_role")
+        rag_required = bool(task.get("rag_required", options.get("rag_required", False)))
+        citation_style = task.get("citation_style", options.get("citation_style", "bracket"))
 
         if course_id:
             kb_context = self._load_knowledge_base(course_id, chapter_ids)
@@ -193,11 +201,32 @@ class CoordinatorAgent(AgentBase):
         else:
             kb_context = None
 
+        course_profile = None
+        if course_id:
+            try:
+                course_profile = syllabus_graph_service.build_course_profile(course_id)
+                options["course_profile"] = course_profile
+            except Exception as e:
+                logger.warning(f"Failed to build course profile: {e}")
+
+        rag_evidence = []
+        if rag_required and course_id:
+            rag_evidence = rag_citation_service.retrieve(
+                course_id=course_id,
+                query=" ".join([topic] + [str(kp) for kp in knowledge_points[:8]]),
+                chapter_ids=chapter_ids,
+                top_k=8,
+            )
+            options["rag_evidence"] = rag_evidence
+            options["rag_evidence_prompt"] = rag_citation_service.build_evidence_prompt(rag_evidence)
+            options["citation_style"] = citation_style
+
         shared_state.update({
             f"{package_id}_topic": topic,
             f"{package_id}_profile": profile,
             f"{package_id}_status": "generating",
             f"{package_id}_kb_context": kb_context,
+            f"{package_id}_rag_evidence": rag_evidence,
         }, self.agent_name)
 
         strategy = self._plan_generation_strategy(
@@ -257,6 +286,37 @@ class CoordinatorAgent(AgentBase):
                 except Exception as e:
                     logger.warning(f"Auto-conversion failed for {rtype}: {e}")
 
+        citation_reports = {}
+        if rag_required and course_id:
+            for rtype, resource in list(results.items()):
+                evidence = rag_evidence or rag_citation_service.retrieve(
+                    course_id=course_id,
+                    query=f"{topic} {rtype}",
+                    chapter_ids=chapter_ids,
+                    top_k=6,
+                )
+                results[rtype] = rag_citation_service.attach_citations(
+                    resource,
+                    evidence[:6],
+                    package_id=package_id,
+                    course_id=course_id,
+                    resource_type=rtype,
+                )
+                citation_reports[rtype] = results[rtype].get("verification_report", {})
+                # 更新各 agent 的引用覆盖率
+                agent_name = RESOURCE_TYPE_AGENT_MAP.get(rtype, rtype)
+                coverage = citation_reports[rtype].get("citation_coverage_score", 0)
+                agent_monitor.update_citation_coverage(agent_name, coverage)
+                # 更新产物摘要
+                output_summary = None
+                if isinstance(results[rtype], dict):
+                    if results[rtype].get("title"):
+                        output_summary = results[rtype]["title"]
+                    elif results[rtype].get("topic"):
+                        output_summary = results[rtype]["topic"]
+                if output_summary:
+                    agent_monitor.update_output_summary(agent_name, output_summary[:100])
+
         consistency_report = self._check_consistency(
             results, knowledge_points, profile
         )
@@ -269,8 +329,15 @@ class CoordinatorAgent(AgentBase):
             "student_profile_summary": self._summarize_profile(profile),
             "generation_strategy": strategy,
             "knowledge_base_used": bool(kb_context),
+            "course_profile": course_profile,
             "resources": results,
             "errors": errors if errors else None,
+            "citations": self._collect_package_citations(results),
+            "citation_coverage_score": self._average_citation_score(results),
+            "verification_report": {
+                "status": "passed" if citation_reports and all(r.get("status") == "passed" for r in citation_reports.values()) else "needs_review" if citation_reports else "not_requested",
+                "resources": citation_reports,
+            },
             "completeness_report": {
                 "requested_types": resource_types,
                 "generated_types": list(results.keys()),
@@ -289,6 +356,8 @@ class CoordinatorAgent(AgentBase):
                 "resource_types_generated": list(results.keys()),
                 "course_id": course_id,
                 "chapter_ids": chapter_ids,
+                "rag_required": rag_required,
+                "citation_style": citation_style,
                 "created_at": datetime.utcnow().isoformat(),
             },
         }
@@ -310,6 +379,9 @@ class CoordinatorAgent(AgentBase):
         topic = task.get("topic", "")
         knowledge_points = task.get("knowledge_points", [])
         options = task.get("options", {})
+        course_id = task.get("course_id") or options.get("course_id")
+        chapter_ids = task.get("chapter_ids") or options.get("chapter_ids")
+        rag_required = bool(task.get("rag_required", options.get("rag_required", False)))
         _user_id = task.get("user_id")
         _user_role = task.get("user_role")
 
@@ -326,6 +398,17 @@ class CoordinatorAgent(AgentBase):
                 )
             except Exception as e:
                 logger.warning(f"Auto-conversion failed for {resource_type}: {e}")
+
+        if "error" not in result and rag_required and course_id:
+            evidence = rag_citation_service.retrieve(
+                course_id=course_id,
+                query=" ".join([topic] + [str(kp) for kp in knowledge_points[:8]]),
+                chapter_ids=chapter_ids,
+                top_k=6,
+            )
+            result = rag_citation_service.attach_citations(
+                result, evidence, course_id=course_id, resource_type=resource_type
+            )
 
         return result
 
@@ -386,7 +469,88 @@ class CoordinatorAgent(AgentBase):
             pace_strategies.get(learning_pace, pace_strategies["moderate"])
         )
 
+        course_profile = options.get("course_profile") or {}
+        if course_profile:
+            strategy_parts.append(
+                f"课程画像：知识密度{course_profile.get('knowledge_density', 0)}，"
+                f"难度{course_profile.get('difficulty', 'unknown')}，"
+                f"实践比例{course_profile.get('practice_ratio', 0)}"
+            )
+        if options.get("rag_required"):
+            strategy_parts.append("RAG约束：生成内容必须附带知识库引用并通过引用核验")
+
+        # 新增：先修链匹配薄弱点
+        course_id = options.get("course_id")
+        if course_id and profile.get("knowledge_base"):
+            try:
+                prereq_chain = self._match_prerequisite_chain(course_id, profile)
+                if prereq_chain:
+                    strategy_parts.append(f"先修补强：{prereq_chain}")
+            except Exception as e:
+                logger.warning(f"Prerequisite chain matching failed: {e}")
+
+        # 新增：认知风格影响资源类型权重
+        style_weights = self._get_style_resource_weights(cognitive_style)
+        if style_weights:
+            strategy_parts.append(f"资源权重：{style_weights}")
+
+        # 新增：学习目标影响推荐排序
+        goal_sort = self._get_goal_sort_strategy(goal)
+        if goal_sort:
+            strategy_parts.append(goal_sort)
+
         return "；".join(strategy_parts)
+
+    def _match_prerequisite_chain(self, course_id, profile):
+        """从图谱获取先修链，匹配学生薄弱点"""
+        from src.models.knowledge_base import KnowledgeGraphNode, KnowledgeGraphEdge
+
+        prereq_edges = KnowledgeGraphEdge.query.filter_by(
+            course_id=course_id, edge_type="prerequisite"
+        ).limit(30).all()
+        if not prereq_edges:
+            return None
+
+        skill_node_ids = {e.source_node_id for e in prereq_edges}
+        skill_nodes = KnowledgeGraphNode.query.filter(
+            KnowledgeGraphNode.id.in_(skill_node_ids)
+        ).all()
+        skill_map = {n.id: n.label for n in skill_nodes}
+
+        kb = profile.get("knowledge_base", {})
+        weak_areas = [k for k, v in kb.items() if isinstance(v, (int, float)) and v < 50] if isinstance(kb, dict) else []
+        if not weak_areas:
+            return None
+
+        matched = []
+        for edge in prereq_edges[:10]:
+            skill_label = skill_map.get(edge.source_node_id, "")
+            for weak in weak_areas:
+                if weak.lower() in skill_label.lower() or skill_label.lower() in weak.lower():
+                    matched.append(skill_label)
+                    break
+
+        return "、".join(matched[:5]) if matched else None
+
+    def _get_style_resource_weights(self, cognitive_style):
+        """认知风格影响资源类型权重"""
+        weights = {
+            "visual": "视频脚本权重+30%，增加图表描述",
+            "auditory": "视频脚本权重+25%，增加旁白讲解",
+            "kinesthetic": "实操项目权重+30%，增加编程题比例",
+            "reading": "文档权重+30%，增加深度内容",
+        }
+        return weights.get(cognitive_style)
+
+    def _get_goal_sort_strategy(self, goal):
+        """学习目标影响推荐排序"""
+        strategies = {
+            "exam": "推荐排序：真题>考点练习>知识文档>拓展资源",
+            "career": "推荐排序：行业案例>实操项目>技能资源>理论文档",
+            "hobby": "推荐排序：趣味案例>探索项目>视频教程>学术论文",
+            "research": "推荐排序：学术论文>研究方法>深度文档>基础练习",
+        }
+        return strategies.get(goal)
 
     def _build_agent_task(
         self, resource_type, profile, topic, knowledge_points, options, user_id=None, user_role=None
@@ -405,6 +569,8 @@ class CoordinatorAgent(AgentBase):
             base_task["course_id"] = options["course_id"]
         if options.get("chapter_ids"):
             base_task["chapter_ids"] = options["chapter_ids"]
+        if options.get("rag_evidence_prompt"):
+            base_task["rag_evidence_prompt"] = options["rag_evidence_prompt"]
 
         if resource_type == "exercise":
             base_task.update({
@@ -494,6 +660,23 @@ class CoordinatorAgent(AgentBase):
         if all(v > 100 for v in topic_mentions.values()):
             return 80
         return 65
+
+    def _collect_package_citations(self, resources):
+        seen = {}
+        for resource in resources.values():
+            if isinstance(resource, dict):
+                for citation in resource.get("citations", []) or []:
+                    source_id = citation.get("source_id") or citation.get("title")
+                    if source_id and source_id not in seen:
+                        seen[source_id] = citation
+        return list(seen.values())
+
+    def _average_citation_score(self, resources):
+        scores = []
+        for resource in resources.values():
+            if isinstance(resource, dict) and resource.get("citation_coverage_score") is not None:
+                scores.append(float(resource.get("citation_coverage_score") or 0))
+        return round(sum(scores) / len(scores), 1) if scores else 0
 
     def _summarize_profile(self, profile):
         if not profile:

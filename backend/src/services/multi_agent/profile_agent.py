@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from datetime import datetime
 from src.services.multi_agent import AgentBase
 
@@ -134,16 +135,97 @@ class ProfileAgent(AgentBase):
         if not user_answer or not user_answer.strip():
             return None
 
-        dim_type = dimension['type']
+        # 先尝试规则抽取
+        rule_result = self._extract_dimension_value_by_rules(dimension, user_answer)
 
+        # 判断规则结果是否为默认值或空，决定是否尝试 LLM
+        dim_type = dimension['type']
+        is_default = False
+        if dim_type == 'enum':
+            valid_values = dimension.get('valid_values', [])
+            fallback_values = []
+            if 'mixed' in valid_values:
+                fallback_values.append('mixed')
+            if 'adaptive' in valid_values:
+                fallback_values.append('adaptive')
+            if not fallback_values:
+                fallback_values = [valid_values[0]] if valid_values else []
+            if rule_result in fallback_values:
+                is_default = True
+        elif dim_type in ('json', 'json_array'):
+            if not rule_result or rule_result == {} or rule_result == []:
+                is_default = True
+
+        if is_default:
+            llm_result = self._extract_dimension_value_with_llm(dimension, user_answer)
+            if llm_result is not None:
+                return llm_result
+
+        return rule_result
+
+    def _extract_dimension_value_by_rules(self, dimension, user_answer):
+        dim_type = dimension['type']
         if dim_type == 'enum':
             return self._extract_enum_value(dimension, user_answer)
         elif dim_type == 'json':
             return self._extract_json_value(dimension, user_answer)
         elif dim_type == 'json_array':
             return self._extract_json_array_value(dimension, user_answer)
-
         return None
+
+    def _extract_dimension_value_with_llm(self, dimension, user_answer):
+        """使用 LLM 做结构化抽取，失败返回 None"""
+        from src.services.spark_service import spark_service
+
+        dim_type = dimension['type']
+        valid_values = dimension.get('valid_values', [])
+
+        prompt = f"""请从用户回答中提取「{dimension['name']}」维度信息。
+
+抽取说明：{dimension['extract_instruction']}
+"""
+        if dim_type == 'enum' and valid_values:
+            prompt += f"\n可选值：{', '.join(valid_values)}\n请只返回一个可选值。"
+        elif dim_type == 'json':
+            prompt += "\n请返回JSON对象。"
+        elif dim_type == 'json_array':
+            prompt += "\n请返回JSON数组。"
+
+        prompt += f"\n\n用户回答：{user_answer}\n\n请只返回提取结果，不要添加其他文字。"
+
+        try:
+            response = spark_service.chat(
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1,
+            )
+            if not response:
+                return None
+            response = response.strip()
+
+            if dim_type == 'enum':
+                for val in valid_values:
+                    if val in response.lower():
+                        return val
+                return None
+            elif dim_type == 'json':
+                try:
+                    return json.loads(response)
+                except Exception:
+                    json_match = re.search(r'\{[\s\S]*\}', response)
+                    if json_match:
+                        return json.loads(json_match.group())
+                    return None
+            elif dim_type == 'json_array':
+                try:
+                    return json.loads(response)
+                except Exception:
+                    json_match = re.search(r'\[[\s\S]*\]', response)
+                    if json_match:
+                        return json.loads(json_match.group())
+                    return None
+        except Exception as e:
+            logger.warning(f"LLM extraction failed for {dimension['key']}: {e}")
+            return None
 
     def _extract_enum_value(self, dimension, user_answer):
         valid_values = dimension.get('valid_values', [])

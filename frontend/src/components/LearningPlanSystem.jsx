@@ -504,7 +504,7 @@ function PathView({ paths, selectedPath, setSelectedPath, onGenerate, onUpdateNo
                           </span>
                         </div>
                         {node.description && (
-                          <p style={{ fontSize: '12px', color: '#94a3b8', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <p style={{ fontSize: '12px', color: '#94a3b8', margin: '2px 0 0', lineHeight: '1.4', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                             {node.description}
                           </p>
                         )}

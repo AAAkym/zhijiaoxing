@@ -57,6 +57,14 @@ def generate_resource_package():
             ["exercise", "document", "media", "recommendation", "project"],
         )
         options = data.get("options", {})
+        if data.get("rag_required") is not None:
+            options["rag_required"] = data.get("rag_required")
+        if data.get("citation_style"):
+            options["citation_style"] = data.get("citation_style")
+        if data.get("course_id"):
+            options["course_id"] = data.get("course_id")
+        if data.get("chapter_ids"):
+            options["chapter_ids"] = data.get("chapter_ids")
         profile_data = data.get("student_profile")
 
         if not profile_data:
@@ -70,6 +78,10 @@ def generate_resource_package():
             "knowledge_points": knowledge_points,
             "resource_types": resource_types,
             "options": options,
+            "course_id": data.get("course_id"),
+            "chapter_ids": data.get("chapter_ids"),
+            "rag_required": data.get("rag_required", options.get("rag_required", False)),
+            "citation_style": data.get("citation_style", options.get("citation_style", "bracket")),
             "user_id": user_id,
             "user_role": user_role,
         })
@@ -113,6 +125,14 @@ def generate_single_resource():
 
         knowledge_points = data.get("knowledge_points", [])
         options = data.get("options", {})
+        if data.get("rag_required") is not None:
+            options["rag_required"] = data.get("rag_required")
+        if data.get("citation_style"):
+            options["citation_style"] = data.get("citation_style")
+        if data.get("course_id"):
+            options["course_id"] = data.get("course_id")
+        if data.get("chapter_ids"):
+            options["chapter_ids"] = data.get("chapter_ids")
         profile_data = data.get("student_profile")
 
         if not profile_data:
@@ -126,6 +146,10 @@ def generate_single_resource():
             "topic": topic,
             "knowledge_points": knowledge_points,
             "options": options,
+            "course_id": data.get("course_id"),
+            "chapter_ids": data.get("chapter_ids"),
+            "rag_required": data.get("rag_required", options.get("rag_required", False)),
+            "citation_style": data.get("citation_style", options.get("citation_style", "bracket")),
             "user_id": user_id,
             "user_role": user_role,
         })
@@ -378,6 +402,8 @@ def generate_personalized_resources():
             options["weak_points"] = weak_points
         if learning_needs:
             options["learning_needs"] = learning_needs
+        options["rag_required"] = data.get("rag_required", True)
+        options["citation_style"] = data.get("citation_style", "bracket")
 
         coordinator = _get_coordinator()
         result = coordinator.process({
@@ -389,6 +415,8 @@ def generate_personalized_resources():
             "options": options,
             "course_id": course_id,
             "chapter_ids": chapter_ids,
+            "rag_required": data.get("rag_required", True),
+            "citation_style": data.get("citation_style", "bracket"),
             "user_id": user_id,
             "user_role": user_role,
         })
