@@ -309,14 +309,14 @@ export default function QuestionPanel({ onSubmit }) {
             </p>
             {questionType === 'programming' && (
               <div className="mt-4 space-y-3 text-sm text-gray-700">
-                {currentQuestion.description && <p className="whitespace-pre-wrap">{currentQuestion.description}</p>}
+                {currentQuestion.description && typeof currentQuestion.description === 'string' && <p className="whitespace-pre-wrap">{currentQuestion.description}</p>}
                 {currentQuestion.input_format && <p><span className="font-semibold">输入：</span>{currentQuestion.input_format}</p>}
                 {currentQuestion.output_format && <p><span className="font-semibold">输出：</span>{currentQuestion.output_format}</p>}
                 {currentQuestion.constraints && <p><span className="font-semibold">约束：</span>{currentQuestion.constraints}</p>}
                 {Array.isArray(currentQuestion.samples) && currentQuestion.samples.length > 0 && (
                   <div className="grid md:grid-cols-2 gap-3">
-                    <pre className="bg-white border rounded-md p-3 overflow-auto"><span className="font-semibold">样例输入</span>{'\n'}{currentQuestion.samples[0].input}</pre>
-                    <pre className="bg-white border rounded-md p-3 overflow-auto"><span className="font-semibold">样例输出</span>{'\n'}{currentQuestion.samples[0].output}</pre>
+                    <pre className="bg-white border rounded-md p-3 overflow-auto"><span className="font-semibold">样例输入</span>{'\n'}{String(currentQuestion.samples[0].input ?? currentQuestion.samples[0].input_data ?? '')}</pre>
+                    <pre className="bg-white border rounded-md p-3 overflow-auto"><span className="font-semibold">样例输出</span>{'\n'}{String(currentQuestion.samples[0].output ?? currentQuestion.samples[0].expected_output ?? '')}</pre>
                   </div>
                 )}
               </div>

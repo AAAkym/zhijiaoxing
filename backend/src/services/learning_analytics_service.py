@@ -1,18 +1,130 @@
 import json
 import logging
+import re
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 
 from sqlalchemy import func, case, desc, and_
+from sqlalchemy.exc import OperationalError
 
 from src.models.user import db, User
 from src.models.course import (
     Course, LearningProgress, PracticeEvaluation, Assessment,
-    TeachingContent, MistakeRecord, ProgrammingSubmission,
+    TeachingContent, MistakeRecord, ProgrammingSubmission, VideoProgress, VideoLesson, CourseQuestion,
 )
 from src.services.spark_service import spark_service
 
 logger = logging.getLogger(__name__)
+
+
+def _clamp_score(value: float) -> float:
+    return round(max(0.0, min(100.0, float(value or 0))), 1)
+
+
+def _course_duration_minutes(course: Course) -> float:
+    raw = getattr(course, "duration", None)
+    try:
+        if raw is None:
+            return 600.0
+        if isinstance(raw, (int, float)):
+            return max(float(raw), 1.0)
+        text = str(raw)
+        nums = re.findall(r"\d+(?:\.\d+)?", text)
+        if not nums:
+            return 600.0
+        value = float(nums[0])
+        if "小时" in text or "hour" in text.lower() or "h" in text.lower():
+            return value * 60
+        return value
+    except Exception:
+        return 600.0
+
+
+def _practice_score(user_id: int, course_id: int) -> Dict:
+    evaluations = (
+        PracticeEvaluation.query.join(Assessment, PracticeEvaluation.assessment_id == Assessment.id)
+        .filter(PracticeEvaluation.user_id == user_id, Assessment.course_id == course_id)
+        .all()
+    )
+    scores = [e.score for e in evaluations if e.score is not None]
+    avg_score = sum(scores) / len(scores) if scores else 0
+    participation = min(len(evaluations) / 5, 1) * 100
+    return {
+        "score": _clamp_score(avg_score * 0.75 + participation * 0.25),
+        "avg_score": round(avg_score, 1) if scores else 0,
+        "count": len(evaluations),
+    }
+
+
+def _duration_score(user_id: int, course: Course) -> Dict:
+    video_progresses = (
+        VideoProgress.query
+        .join(VideoLesson, VideoProgress.video_id == VideoLesson.id)
+        .filter(VideoProgress.user_id == user_id, VideoLesson.course_id == course.id)
+        .all()
+    )
+    watch_minutes = sum(vp.current_time or 0 for vp in video_progresses) / 60
+    video_total_seconds = (
+        db.session.query(db.func.coalesce(db.func.sum(VideoLesson.duration), 0))
+        .filter(VideoLesson.course_id == course.id)
+        .scalar()
+        or 0
+    )
+    duration_minutes = (video_total_seconds / 60) if video_total_seconds else _course_duration_minutes(course)
+    return {
+        "score": _clamp_score(min(watch_minutes / max(duration_minutes * 0.6, 1), 1) * 100),
+        "watch_minutes": round(watch_minutes, 1),
+        "expected_minutes": round(duration_minutes, 1),
+    }
+
+
+def _interaction_score(user_id: int, course_id: int) -> Dict:
+    questions = CourseQuestion.query.filter_by(user_id=user_id, course_id=course_id).count()
+    submissions = ProgrammingSubmission.query.filter_by(user_id=user_id, course_id=course_id).count()
+    return {
+        "score": _clamp_score(min((questions * 12) + (submissions * 15), 100)),
+        "questions": questions,
+        "programming_submissions": submissions,
+    }
+
+
+def build_learning_progress_model(user_id: int, course: Course, progress_pct: float = 0) -> Dict:
+    practice = _practice_score(user_id, course.id)
+    duration = _duration_score(user_id, course)
+    interaction = _interaction_score(user_id, course.id)
+    progress_score = _clamp_score(progress_pct or 0)
+    composite = _clamp_score(
+        progress_score * 0.35
+        + practice["score"] * 0.30
+        + duration["score"] * 0.20
+        + interaction["score"] * 0.15
+    )
+    if composite >= 85:
+        level = "excellent"
+    elif composite >= 70:
+        level = "good"
+    elif composite >= 50:
+        level = "average"
+    elif composite >= 20:
+        level = "below_average"
+    else:
+        level = "inactive"
+    return {
+        "composite_progress": composite,
+        "level": level,
+        "dimensions": {
+            "course_progress": progress_score,
+            "practice": practice,
+            "duration": duration,
+            "interaction": interaction,
+        },
+        "weights": {
+            "course_progress": 0.35,
+            "practice": 0.30,
+            "duration": 0.20,
+            "interaction": 0.15,
+        },
+    }
 
 
 def get_class_learning_analytics(teacher_id: int, course_id: int = None) -> Dict:
@@ -31,27 +143,27 @@ def get_class_learning_analytics(teacher_id: int, course_id: int = None) -> Dict
     ).all()
 
     progress_dist = {"excellent": 0, "good": 0, "average": 0, "below_average": 0, "inactive": 0}
+    multidimensional_records = []
     for p in progress_records:
-        pct = p.progress_percentage or 0
-        if pct >= 80:
-            progress_dist["excellent"] += 1
-        elif pct >= 60:
-            progress_dist["good"] += 1
-        elif pct >= 40:
-            progress_dist["average"] += 1
-        elif pct >= 10:
-            progress_dist["below_average"] += 1
-        else:
-            progress_dist["inactive"] += 1
+        course = Course.query.get(p.course_id)
+        model = build_learning_progress_model(p.user_id, course, p.progress_percentage) if course else {
+            "composite_progress": _clamp_score(p.progress_percentage or 0),
+            "level": "inactive",
+            "dimensions": {},
+        }
+        multidimensional_records.append({**model, "user_id": p.user_id, "course_id": p.course_id})
+        progress_dist[model["level"]] += 1
 
     avg_progress = 0
-    if progress_records:
-        avg_progress = round(sum(p.progress_percentage or 0 for p in progress_records) / len(progress_records), 1)
+    if multidimensional_records:
+        avg_progress = round(sum(p["composite_progress"] for p in multidimensional_records) / len(multidimensional_records), 1)
 
     course_analytics = []
     for cid in target_ids:
         c_records = [p for p in progress_records if p.course_id == cid]
-        c_avg = round(sum(p.progress_percentage or 0 for p in c_records) / len(c_records), 1) if c_records else 0
+        c_models = [m for m in multidimensional_records if m["course_id"] == cid]
+        c_avg = round(sum(m["composite_progress"] for m in c_models) / len(c_models), 1) if c_models else 0
+        raw_avg = round(sum(p.progress_percentage or 0 for p in c_records) / len(c_records), 1) if c_records else 0
         c_students = len(set(p.user_id for p in c_records))
 
         assessment_count = Assessment.query.filter_by(course_id=cid).count()
@@ -63,6 +175,7 @@ def get_class_learning_analytics(teacher_id: int, course_id: int = None) -> Dict
             "course_title": course_map.get(cid, "未知"),
             "student_count": c_students,
             "avg_progress": c_avg,
+            "raw_course_progress": raw_avg,
             "assessment_count": assessment_count,
             "mistake_count": mistake_count,
             "submission_count": submission_count,
@@ -71,6 +184,10 @@ def get_class_learning_analytics(teacher_id: int, course_id: int = None) -> Dict
     return {
         "total_students": total_students,
         "avg_progress": avg_progress,
+        "progress_model": {
+            "description": "\u7efc\u5408\u8bfe\u7a0b\u8fdb\u5ea6\u3001\u7ec3\u4e60\u8bc4\u6d4b\u3001\u5b66\u4e60\u65f6\u957f\u548c\u4e92\u52a8\u53c2\u4e0e\u5ea6\u7684\u591a\u7ef4\u8fdb\u5ea6\u6a21\u578b",
+            "weights": {"course_progress": 0.35, "practice": 0.30, "duration": 0.20, "interaction": 0.15},
+        },
         "progress_distribution": progress_dist,
         "course_analytics": course_analytics,
     }
@@ -259,7 +376,11 @@ def get_knowledge_mastery_heatmap(teacher_id: int, course_id: int) -> Dict:
 
 
 def get_at_risk_students(teacher_id: int, threshold: float = 40.0) -> List[Dict]:
-    courses = Course.query.filter_by(teacher_id=teacher_id).all()
+    try:
+        courses = Course.query.filter_by(teacher_id=teacher_id).all()
+    except OperationalError as exc:
+        logger.warning("At-risk student analytics skipped because required tables are unavailable: %s", exc)
+        return []
     if not courses:
         return []
     course_ids = [c.id for c in courses]

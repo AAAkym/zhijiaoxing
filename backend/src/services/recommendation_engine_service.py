@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from datetime import datetime, timedelta
 from urllib.parse import quote
 from src.models.user import db
@@ -10,6 +11,36 @@ from src.models.course import Course, VideoLesson, LearningProgress, PracticeEva
 from src.services.spark_service import spark_service, is_configured as spark_is_configured
 
 logger = logging.getLogger(__name__)
+
+
+# 代码片段特征正则：描述若以这些模式开头，说明是代码而非文本描述
+_CODE_PATTERN = re.compile(
+    r'^\s*(def |class |import |from |public |private |function |var |let |const |'
+    r'#include |int main|void main|print\(|console\.log|if __name__)',
+    re.IGNORECASE,
+)
+
+
+def _is_low_quality_candidate(title, description):
+    """判断候选资源是否为低质量（标题无意义或描述实为代码）。
+
+    Args:
+        title: 资源标题
+        description: 资源描述
+
+    Returns:
+        True 表示低质量应跳过
+    """
+    if not title or not str(title).strip():
+        return True
+    # 纯数字或过短标题无意义
+    title_str = str(title).strip()
+    if title_str.isdigit() or len(title_str) < 2:
+        return True
+    # 描述实为代码片段（如 def sum_of_numbers():...），不适合作为推荐描述
+    if description and _CODE_PATTERN.match(str(description)):
+        return True
+    return False
 
 # Default dimension weights for profile-weighted matching
 DEFAULT_DIMENSION_WEIGHTS = {
@@ -95,7 +126,8 @@ class RecommendationEngineService:
         """
         profile = StudentProfile.query.filter_by(user_id=user_id).first()
         if not profile:
-            return {"error": "请先完成学习画像构建"}
+            # Fallback: generate basic recommendations without a profile
+            return self._generate_fallback_recommendations(user_id, filters, limit)
 
         profile_data = profile.to_dict()
 
@@ -249,23 +281,29 @@ class RecommendationEngineService:
             if not isinstance(ex_tags, list):
                 ex_tags = []
 
+            ex_title = ex.title or ''
+            ex_desc = (ex.content[:200] if ex.content else '')
+            # 跳过低质量候选（标题纯数字/过短、描述实为代码）
+            if _is_low_quality_candidate(ex_title, ex_desc):
+                continue
+
             matches_error = any(
-                ekp in (ex.title or '').lower() or ekp in ' '.join(str(t) for t in ex_tags).lower()
+                ekp in ex_title.lower() or ekp in ' '.join(str(t) for t in ex_tags).lower()
                 for ekp in error_knowledge_points
             )
 
             candidates.append({
                 'resource_type': 'exercise',
                 'resource_id': ex.id,
-                'title': ex.title or '',
-                'description': (ex.content[:200] if ex.content else ''),
+                'title': ex_title,
+                'description': ex_desc,
                 'url': ex.source_url,
                 'difficulty': ex.difficulty_level or 'intermediate',
                 'tags': ex_tags,
                 'estimated_minutes': ex.estimated_minutes or 10,
                 'source_model': 'CourseExercise',
                 'matches_error_pattern': matches_error,
-                'knowledge_point_title': ex.title,
+                'knowledge_point_title': ex_title,
             })
 
         return candidates
@@ -290,23 +328,29 @@ class RecommendationEngineService:
             if not isinstance(tc_tags, list):
                 tc_tags = []
 
+            tc_title = tc.title or ''
+            tc_desc = (tc.background or '')[:200] if tc.background else ''
+            # 跳过低质量候选（标题纯数字/过短、描述实为代码）
+            if _is_low_quality_candidate(tc_title, tc_desc):
+                continue
+
             matches_interest = any(
-                ia in (tc.title or '').lower() or ia in ' '.join(str(t) for t in tc_tags).lower()
+                ia in tc_title.lower() or ia in ' '.join(str(t) for t in tc_tags).lower()
                 for ia in interest_lower
             )
 
             candidates.append({
                 'resource_type': 'case',
                 'resource_id': tc.id,
-                'title': tc.title or '',
-                'description': (tc.background or '')[:200] if tc.background else '',
+                'title': tc_title,
+                'description': tc_desc,
                 'url': tc.source_url,
                 'difficulty': tc.difficulty_level or 'intermediate',
                 'tags': tc_tags,
                 'estimated_minutes': 30,
                 'source_model': 'TeachingCase',
                 'matches_interest': matches_interest,
-                'knowledge_point_title': tc.title,
+                'knowledge_point_title': tc_title,
             })
 
         return candidates
@@ -714,19 +758,29 @@ class RecommendationEngineService:
     #  Video search link generation
     # ------------------------------------------------------------------ #
 
-    def generate_video_search_links(self, user_id):
+    def generate_video_search_links(self, user_id, topic=None, knowledge_points=None):
         """Generate YouTube/Bilibili search URLs for online videos based on
         weak knowledge points and course topics.
 
         Uses LLM (spark_service) to generate search queries when available,
         falls back to direct knowledge point titles otherwise.
 
+        Args:
+            user_id: The user ID.
+            topic: Optional topic string to search for directly.
+            knowledge_points: Optional list of knowledge point strings to search.
+
         Returns:
             List of recommendation dicts, or dict with 'error' key on failure.
         """
+        # If topic or knowledge_points are provided directly, use them
+        if topic or knowledge_points:
+            return self._generate_video_search_from_topic(user_id, topic, knowledge_points)
+
         profile = StudentProfile.query.filter_by(user_id=user_id).first()
         if not profile:
-            return {"error": "请先完成学习画像构建"}
+            # Fallback: use course topics to generate video search links
+            return self._generate_video_search_from_courses(user_id)
 
         profile_data = profile.to_dict()
         knowledge_base = profile_data.get('knowledge_base', {})
@@ -741,8 +795,8 @@ class RecommendationEngineService:
         weak_points.sort(key=lambda x: x[1])
 
         if not weak_points:
-            logger.info("No weak knowledge points found for user %s, skipping video search links", user_id)
-            return []
+            logger.info("No weak knowledge points found for user %s, using course topics for video search", user_id)
+            return self._generate_video_search_from_courses(user_id)
 
         # Get course topics from user's enrolled courses
         progresses = LearningProgress.query.filter_by(user_id=user_id).all()
@@ -859,6 +913,245 @@ class RecommendationEngineService:
                 })
 
         return queries
+
+    def _generate_fallback_recommendations(self, user_id, filters=None, limit=20):
+        """Generate basic recommendations for users without a StudentProfile.
+
+        Uses course content (knowledge points, exercises, teaching cases)
+        to provide useful recommendations.
+        """
+        candidates = []
+
+        # Collect knowledge points as document candidates
+        kp_query = KnowledgePoint.query.filter_by(status='published')
+        if filters and filters.get('difficulty_level'):
+            kp_query = kp_query.filter_by(difficulty_level=filters['difficulty_level'])
+        for kp in kp_query.limit(limit).all():
+            candidates.append({
+                'id': f'kp_{kp.id}',
+                'resource_type': 'document',
+                'title': kp.title,
+                'description': kp.definition or kp.content[:200] if kp.content else '',
+                'difficulty': kp.difficulty_level or 'intermediate',
+                'url': '',
+                'tags': json.loads(kp.tags) if kp.tags else [],
+                'source': 'knowledge_point',
+                'relevance_score': 0.6,
+            })
+
+        # Collect exercises as exercise candidates
+        ex_query = CourseExercise.query.filter_by(status='published')
+        if filters and filters.get('difficulty_level'):
+            ex_query = ex_query.filter_by(difficulty_level=filters['difficulty_level'])
+        for ex in ex_query.limit(limit).all():
+            candidates.append({
+                'id': f'ex_{ex.id}',
+                'resource_type': 'exercise',
+                'title': ex.title,
+                'description': ex.content[:200] if ex.content else '',
+                'difficulty': ex.difficulty_level or 'intermediate',
+                'url': '',
+                'tags': json.loads(ex.knowledge_tags) if ex.knowledge_tags else [],
+                'source': 'course_exercise',
+                'relevance_score': 0.65,
+            })
+
+        # Collect teaching cases as case candidates
+        tc_query = TeachingCase.query.filter_by(status='published')
+        for tc in tc_query.limit(limit).all():
+            candidates.append({
+                'id': f'tc_{tc.id}',
+                'resource_type': 'case',
+                'title': tc.title,
+                'description': tc.background[:200] if tc.background else '',
+                'difficulty': tc.difficulty_level or 'intermediate',
+                'url': tc.source_url or '',
+                'tags': json.loads(tc.tags) if tc.tags else [],
+                'source': 'teaching_case',
+                'relevance_score': 0.7,
+            })
+
+        # Collect video lessons as video candidates
+        vl_query = VideoLesson.query.filter_by(status='published')
+        for vl in vl_query.limit(limit).all():
+            candidates.append({
+                'id': f'vl_{vl.id}',
+                'resource_type': 'video',
+                'title': vl.title,
+                'description': vl.description or '',
+                'difficulty': 'intermediate',
+                'url': vl.video_url or '',
+                'tags': [],
+                'source': 'video_lesson',
+                'relevance_score': 0.75,
+            })
+
+        # Apply resource_type filter
+        if filters and filters.get('resource_type'):
+            candidates = [c for c in candidates if c['resource_type'] == filters['resource_type']]
+
+        # Sort by relevance and take top N
+        candidates.sort(key=lambda x: x['relevance_score'], reverse=True)
+        top_n = candidates[:limit]
+
+        # Build and persist recommendations
+        recommendations = []
+        for candidate in top_n:
+            rec = ResourceRecommendation(
+                user_id=user_id,
+                resource_type=candidate['resource_type'],
+                resource_id=None,
+                title=candidate['title'],
+                description=candidate.get('description', ''),
+                url=candidate.get('url', ''),
+                priority=1,
+                relevance_score=candidate.get('relevance_score', 0.5),
+                reason_knowledge='基于课程内容的通用推荐',
+                reason_progress='适合当前学习阶段',
+                reason_ability='有助于提升编程能力',
+                reason_interest='与课程主题相关',
+                generated_by_agent='fallback_recommender',
+                difficulty=candidate.get('difficulty', 'intermediate'),
+                estimated_minutes=30,
+            )
+            if candidate.get('tags'):
+                rec.set_tags(candidate['tags'])
+            recommendations.append(rec)
+
+        try:
+            for rec in recommendations:
+                db.session.add(rec)
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            logger.error("Failed to save fallback recommendations for user %s: %s", user_id, e)
+            return {"error": f"保存推荐失败: {str(e)}"}
+
+        return [r.to_dict() for r in recommendations]
+
+    def _generate_video_search_from_topic(self, user_id, topic=None, knowledge_points=None):
+        """Generate video search links from a specific topic or knowledge points."""
+        search_items = []
+        if topic:
+            search_items.append({'query': f'{topic} 教程', 'subject': topic, 'urgency': 'normal', 'score': 0.8})
+        if knowledge_points:
+            for kp in knowledge_points[:5]:
+                search_items.append({'query': f'{kp} 教程', 'subject': kp, 'urgency': 'normal', 'score': 0.75})
+
+        if not search_items:
+            return self._generate_video_search_from_courses(user_id)
+
+        recommendations = []
+        for query_info in search_items:
+            query_text = query_info['query']
+            encoded_query = quote(query_text)
+            youtube_url = f"https://www.youtube.com/results?search_query={encoded_query}"
+            bilibili_url = f"https://search.bilibili.com/all?keyword={encoded_query}"
+
+            for platform, url in [('YouTube', youtube_url), ('Bilibili', bilibili_url)]:
+                rec = ResourceRecommendation(
+                    user_id=user_id,
+                    resource_type='video',
+                    title=f'{query_info.get("subject", query_text)} - {platform}搜索',
+                    description=f'在{platform}上搜索"{query_text}"相关教学视频',
+                    url=url,
+                    priority=1,
+                    relevance_score=query_info.get('score', 0.7),
+                    reason_knowledge=f'知识匹配：{query_info.get("subject", "")}相关视频',
+                    reason_progress='通过视频学习更直观',
+                    reason_ability='视频资源有助于建立直观理解',
+                    reason_interest='视频适合多种学习风格',
+                    generated_by_agent='video_search_agent',
+                    difficulty='intermediate',
+                    estimated_minutes=30,
+                )
+                rec.set_tags([query_info.get('subject', ''), '视频搜索', platform])
+                recommendations.append(rec)
+
+        try:
+            for rec in recommendations:
+                db.session.add(rec)
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            logger.error("Failed to save video search links for user %s: %s", user_id, e)
+            return {"error": f"保存视频搜索推荐失败: {str(e)}"}
+
+        return [r.to_dict() for r in recommendations]
+
+    def _generate_video_search_from_courses(self, user_id):
+        """Generate video search links based on user's course topics when no profile or weak points."""
+        # Get user's enrolled courses via LearningProgress
+        progresses = LearningProgress.query.filter_by(user_id=user_id).all()
+        course_ids = [lp.course_id for lp in progresses]
+
+        # If no enrolled courses, get all active courses
+        if not course_ids:
+            courses = Course.query.filter_by(status='active').limit(3).all()
+        else:
+            courses = Course.query.filter(Course.id.in_(course_ids)).all()
+
+        if not courses:
+            logger.info("No courses found for video search, user %s", user_id)
+            return []
+
+        course_titles = [c.title for c in courses if c.title]
+
+        # Get knowledge points from these courses as search topics
+        kp_topics = []
+        for course in courses:
+            kps = KnowledgePoint.query.filter_by(course_id=course.id, status='published').limit(3).all()
+            for kp in kps:
+                kp_topics.append({'query': f'{kp.title} 教程', 'subject': kp.title, 'score': 0.7})
+
+        # If no knowledge points, use course titles directly
+        if not kp_topics:
+            for title in course_titles[:5]:
+                kp_topics.append({'query': f'{title} 教程', 'subject': title, 'score': 0.7})
+
+        if not kp_topics:
+            return []
+
+        # Limit to top 5
+        kp_topics = kp_topics[:5]
+
+        recommendations = []
+        for query_info in kp_topics:
+            query_text = query_info['query']
+            encoded_query = quote(query_text)
+            youtube_url = f"https://www.youtube.com/results?search_query={encoded_query}"
+            bilibili_url = f"https://search.bilibili.com/all?keyword={encoded_query}"
+
+            for platform, url in [('YouTube', youtube_url), ('Bilibili', bilibili_url)]:
+                rec = ResourceRecommendation(
+                    user_id=user_id,
+                    resource_type='video',
+                    title=f'{query_info.get("subject", query_text)} - {platform}搜索',
+                    description=f'在{platform}上搜索"{query_text}"相关教学视频',
+                    url=url,
+                    priority=1,
+                    relevance_score=query_info.get('score', 0.7),
+                    reason_knowledge=f'课程相关：{query_info.get("subject", "")}视频学习资源',
+                    reason_progress='通过视频学习可以更直观地理解知识点',
+                    reason_ability='视频资源有助于建立知识的直观理解',
+                    reason_interest='视频适合多种认知风格的学习者',
+                    generated_by_agent='video_search_agent',
+                    difficulty='intermediate',
+                    estimated_minutes=30,
+                )
+                rec.set_tags([query_info.get('subject', ''), '视频搜索', platform, '课程推荐'])
+                recommendations.append(rec)
+
+        try:
+            for rec in recommendations:
+                db.session.add(rec)
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            logger.error("Failed to save course-based video search links for user %s: %s", user_id, e)
+            return {"error": f"保存视频搜索推荐失败: {str(e)}"}
+
+        return [r.to_dict() for r in recommendations]
 
     def _parse_json_response(self, response):
         """Parse a JSON response from LLM, handling markdown code blocks."""

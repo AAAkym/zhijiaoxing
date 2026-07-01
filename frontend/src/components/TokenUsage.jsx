@@ -149,7 +149,8 @@ export default function TokenUsage() {
   const getRoleBadge = (userRole) => {
     if (userRole === 'teacher') return <Badge className="bg-[#d4a85312] text-[#d4a853]">教师</Badge>
     if (userRole === 'student') return <Badge className="bg-[#5a9e6f12] text-[#5a9e6f]">学生</Badge>
-    return <Badge className="bg-[#8b6fb012] text-[#8b6fb0]">{userRole || '未知'}</Badge>
+    if (userRole === 'admin') return <Badge className="bg-[#8b6fb012] text-[#8b6fb0]">管理员</Badge>
+    return <Badge className="bg-[#e8e4df] text-[#6b6560]">{userRole || '系统'}</Badge>
   }
 
   return (
@@ -405,7 +406,7 @@ export default function TokenUsage() {
               <div className="space-y-3">
                 {ranking.map((item, index) => (
                   <div
-                    key={item.user_id || index}
+                    key={`ranking-${item.user_id}-${index}`}
                     className="flex items-center justify-between p-3 rounded-lg bg-[#faf8f5] hover:bg-[#f5f2ee] transition-colors"
                   >
                     <div className="flex items-center gap-3">

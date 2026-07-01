@@ -11,6 +11,88 @@ from src.services.multi_agent.shared_state import agent_monitor
 
 logger = logging.getLogger(__name__)
 
+
+def _auto_submit_to_review(result, user_id, user_role):
+    """将AI生成的资源自动提交到内容审核系统（异步，不影响主流程）"""
+    try:
+        from src.services.content_review_service import content_review_service
+
+        # 从资源包结果中提取各类型资源
+        resources = result.get("resources", {})
+        source = "ai"
+        # 教师/学生触发的AI生成，标记来源
+        if user_role == "teacher":
+            source = "teacher"
+        elif user_role == "student":
+            source = "student"
+
+        content_type_map = {
+            "exercise": "exercise",
+            "layered_exercise": "exercise",
+            "document": "knowledge_point",
+            "mindmap": "teaching_content",
+            "media": "teaching_content",
+            "recommendation": "teaching_case",
+            "project": "teaching_case",
+        }
+
+        submitted = 0
+        for res_type, res_data in resources.items():
+            if not res_data:
+                continue
+
+            review_type = content_type_map.get(res_type, "teaching_content")
+
+            # 处理列表形式的资源
+            items = res_data if isinstance(res_data, list) else [res_data]
+
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+
+                title = item.get("title") or item.get("topic") or f"AI生成-{res_type}"
+                # 构建审核内容体
+                body_parts = []
+                for key in ("content", "definition", "description", "background", "analysis", "solution"):
+                    val = item.get(key)
+                    if val and isinstance(val, str):
+                        body_parts.append(val)
+                    elif val and isinstance(val, (dict, list)):
+                        body_parts.append(json.dumps(val, ensure_ascii=False)[:500])
+                body = "\n".join(body_parts)[:2000] if body_parts else title
+
+                content_id = item.get("id") or hash(title) % 100000
+
+                try:
+                    # 去重：跳过已存在相同 content_id+content_type 的审核记录
+                    from src.models.content_review import ContentReview
+                    existing = ContentReview.query.filter_by(
+                        content_id=content_id,
+                        content_type=review_type,
+                    ).first()
+                    if existing:
+                        continue
+
+                    content_review_service.submit_for_review(
+                        content_id=content_id,
+                        content_type=review_type,
+                        content_title=title,
+                        content_body=body,
+                        source=source,
+                        author_id=user_id,
+                    )
+                    submitted += 1
+                except Exception:
+                    # 去重（content_id+content_type已存在）等异常不阻断主流程
+                    pass
+
+        if submitted > 0:
+            logger.info(f"自动提交 {submitted} 条内容到审核系统 (user={user_id}, role={user_role})")
+
+    except Exception as e:
+        # 审核提交失败不影响资源生成主流程
+        logger.warning(f"自动提交审核失败(不影响主流程): {e}")
+
 resource_gen_bp = Blueprint("resource_generation", __name__)
 
 _coordinator = None
@@ -89,6 +171,9 @@ def generate_resource_package():
         if "error" in result:
             return jsonify(result), 500
 
+        # 自动提交AI生成内容到审核系统
+        _auto_submit_to_review(result, user_id, user_role)
+
         return jsonify(result), 200
     except Exception as e:
         logger.error(f"Generate resource package error: {e}")
@@ -156,6 +241,9 @@ def generate_single_resource():
 
         if "error" in result:
             return jsonify(result), 500
+
+        # 自动提交AI生成内容到审核系统
+        _auto_submit_to_review(result, user_id, user_role)
 
         return jsonify(result), 200
     except Exception as e:
@@ -423,6 +511,9 @@ def generate_personalized_resources():
 
         if "error" in result:
             return jsonify(result), 500
+
+        # 自动提交AI生成内容到审核系统
+        _auto_submit_to_review(result, user_id, user_role)
 
         return jsonify(result), 200
     except Exception as e:

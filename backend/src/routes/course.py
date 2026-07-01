@@ -1,18 +1,87 @@
 from flask import Blueprint, request, jsonify, session
 from src.models.user import User, db
-from src.models.course import Course, TeachingContent, Assessment, PracticeEvaluation, VideoLesson, ProgrammingSubmission, MistakeRecord, LearningProgress, CourseQuestion, CourseDiscussion, HandRaise, StudyNote, ContentBookmark
-from src.services.spark_service import spark_service
+from src.models.course import (
+    Course, TeachingContent, Assessment, PracticeEvaluation, VideoLesson,
+    MistakeRecord, ProgrammingSubmission,
+)
+from src.services.course_delete_service import delete_course_cascade
+from src.services.spark_service import SparkServiceError, spark_service
 from src.services.knowledge_base import knowledge_base_service
 from src.utils.auth import require_auth, require_role
 import json
+import logging
 import os
 import re
+import traceback
 from werkzeug.utils import secure_filename
+
+logger = logging.getLogger(__name__)
 
 
 _OPTION_LINE_RE = re.compile(r'^\s*[\(\uff08]?([A-D])[\)\uff09]?\s*[\.\u3001:\uff1a]?\s*(.*)', re.IGNORECASE)
 MAX_ASSESSMENT_PARSE_CHARS = int(os.environ.get('ASSESSMENT_PARSE_MAX_CHARS', '200000'))
 MAX_ASSESSMENT_PARSE_QUESTIONS = int(os.environ.get('ASSESSMENT_PARSE_MAX_QUESTIONS', '100'))
+MAX_QUESTION_COUNT = 20
+
+
+def _validate_question_count(count_value) -> int:
+    try:
+        count = int(count_value)
+    except (TypeError, ValueError):
+        return 1
+    if count < 1:
+        return 1
+    if count > MAX_QUESTION_COUNT:
+        return MAX_QUESTION_COUNT
+    return count
+
+
+_FALLBACK_QUESTION_TEMPLATES = [
+    {
+        "question": "关于{topic}，以下哪项描述是正确的？",
+        "options": ["{topic}仅适用于理论研究", "{topic}是计算机科学中的核心概念", "{topic}与数据处理无关", "{topic}只能用于特定场景"],
+        "correctAnswer": 1,
+        "explanation": "{topic}是计算机科学中的重要概念，具有广泛的应用价值。",
+    },
+    {
+        "question": "下列关于{topic}的说法，错误的是？",
+        "options": ["{topic}有其特定的应用场景", "{topic}需要结合实际需求使用", "{topic}没有任何实际用途", "{topic}是学科基础知识之一"],
+        "correctAnswer": 2,
+        "explanation": "{topic}在实际中有多种用途，说它没有任何实际用途是错误的。",
+    },
+    {
+        "question": "在学习{topic}时，最重要的是？",
+        "options": ["理解基本原理", "死记硬背公式", "忽略实践应用", "只看理论不练习"],
+        "correctAnswer": 0,
+        "explanation": "理解基本原理是学习{topic}的关键，有助于灵活运用。",
+    },
+    {
+        "question": "{topic}的主要特点不包括以下哪项？",
+        "options": ["结构化设计", "逻辑严谨", "随机无规律", "可复用性"],
+        "correctAnswer": 2,
+        "explanation": "{topic}具有结构化和逻辑严谨的特点，随机无规律不正确。",
+    },
+    {
+        "question": "以下哪个场景最适合应用{topic}？",
+        "options": ["需要处理复杂逻辑的场景", "无需思考的简单操作", "与主题完全无关的任务", "随机选择方案"],
+        "correctAnswer": 0,
+        "explanation": "{topic}适用于需要处理复杂逻辑的场景，能发挥其优势。",
+    },
+]
+
+
+def _build_fallback_question(topic, index):
+    """Build a fallback choice question when LLM generates fewer than requested."""
+    template = _FALLBACK_QUESTION_TEMPLATES[index % len(_FALLBACK_QUESTION_TEMPLATES)]
+    return {
+        "question": template["question"].format(topic=topic),
+        "options": [opt.format(topic=topic) for opt in template["options"]],
+        "correctAnswer": template["correctAnswer"],
+        "explanation": template["explanation"].format(topic=topic),
+        "type": "choice",
+        "score": 10,
+        "difficulty": "medium",
+    }
 
 
 def _parse_generated_assessment_text(text: str):
@@ -237,35 +306,25 @@ def update_course(course_id):
 @require_auth
 @require_role(['admin', 'teacher'])
 def delete_course(course_id):
-    """删除课程"""
+    """删除课程（含完整级联删除）"""
     try:
         course = Course.query.get(course_id)
         if not course:
             return jsonify({'error': 'Course not found'}), 404
-        
+
         if session.get('user_role') == 'teacher' and course.teacher_id != session.get('user_id'):
             return jsonify({'error': 'Permission denied'}), 403
-        
-        TeachingContent.query.filter_by(course_id=course_id).delete()
-        Assessment.query.filter_by(course_id=course_id).delete()
-        LearningProgress.query.filter_by(course_id=course_id).delete()
-        VideoLesson.query.filter_by(course_id=course_id).delete()
-        CourseQuestion.query.filter_by(course_id=course_id).delete()
-        CourseDiscussion.query.filter_by(course_id=course_id).delete()
-        HandRaise.query.filter_by(course_id=course_id).delete()
-        StudyNote.query.filter_by(course_id=course_id).delete()
-        ContentBookmark.query.filter_by(course_id=course_id).delete()
-        MistakeRecord.query.filter_by(course_id=course_id).delete()
-        ProgrammingSubmission.query.filter_by(course_id=course_id).delete()
-        
-        db.session.delete(course)
-        db.session.commit()
-        
-        return jsonify({'message': 'Course deleted successfully'}), 200
-        
+
+        deleted_counts = delete_course_cascade(course)
+        return jsonify({
+            'message': 'Course deleted successfully',
+            'deleted': deleted_counts,
+        }), 200
+
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"课程删除失败 course_id={course_id}: {e}\n{traceback.format_exc()}")
+        return jsonify({'error': f'删除课程失败: {str(e)}'}), 500
 
 
 @course_bp.route('/courses/<int:course_id>/content', methods=['GET'])
@@ -325,6 +384,21 @@ def create_teaching_content():
         if session.get('user_role') == 'teacher' and course.teacher_id != session.get('user_id'):
             return jsonify({'error': 'Permission denied'}), 403
         
+        # 去重：同课程同标题的内容更新而非重复创建
+        existing = TeachingContent.query.filter_by(
+            course_id=data['course_id'], title=data['title']
+        ).first()
+        if existing:
+            existing.content = data['content']
+            existing.video_id = data.get('video_id')
+            existing.generated_by_llm = data.get('generated_by_llm', False)
+            existing.content_type = data.get('content_type', 'lecture')
+            db.session.commit()
+            return jsonify({
+                'message': 'Content updated successfully',
+                'content': existing.to_dict()
+            }), 200
+
         # 创建教学内容
         teaching_content = TeachingContent(
             course_id=data['course_id'],
@@ -352,37 +426,54 @@ def create_teaching_content():
 @require_auth
 @require_role(['admin', 'teacher'])
 def generate_content():
-    """生成教学内容"""
+    """??????"""
     try:
-        data = request.get_json()
-        
-        # 验证必填字段
+        data = request.get_json() or {}
+
         required_fields = ['course_id', 'topic']
         for field in required_fields:
             if field not in data or not data[field]:
                 return jsonify({'error': f'{field} is required'}), 400
-        
+
         course = Course.query.get(data['course_id'])
         if not course:
             return jsonify({'error': 'Course not found'}), 404
-        
-        # 检查权限
+
         if session.get('user_role') == 'teacher' and course.teacher_id != session.get('user_id'):
             return jsonify({'error': 'Permission denied'}), 403
-        
-        # 获取相关知识库内容
+
         knowledge_base = knowledge_base_service.get_knowledge_by_topic(data['topic'])
-        
-        # 生成内容
-        content = spark_service.generate_teaching_content(
-            course_title=course.title,
-            topic=data['topic'],
-            knowledge_base=knowledge_base,
-            user_id=session.get('user_id'),
-            user_role=session.get('user_role')
-        )
-        
-        # 保存到数据库
+
+        try:
+            content = spark_service.generate_teaching_content(
+                course_title=course.title,
+                topic=data['topic'],
+                knowledge_base=knowledge_base,
+                user_id=session.get('user_id'),
+                user_role=session.get('user_role')
+            )
+        except SparkServiceError as e:
+            logger.error(f"Spark????????: {e}", exc_info=True)
+            return jsonify({
+                'error': 'AI?????????????',
+                'detail': str(e),
+                'code': 'AI_SERVICE_UNAVAILABLE',
+            }), 503
+
+        # 去重：同课程同标题的内容更新而非重复创建
+        existing = TeachingContent.query.filter_by(
+            course_id=data['course_id'], title=data['topic']
+        ).first()
+        if existing:
+            existing.content = content
+            existing.generated_by_llm = True
+            existing.video_id = data.get('video_id')
+            db.session.commit()
+            return jsonify({
+                'message': 'Content updated successfully',
+                'content': existing.to_dict()
+            }), 200
+
         teaching_content = TeachingContent(
             course_id=data['course_id'],
             title=data['topic'],
@@ -390,18 +481,19 @@ def generate_content():
             generated_by_llm=True,
             video_id=data.get('video_id')
         )
-        
+
         db.session.add(teaching_content)
         db.session.commit()
-        
+
         return jsonify({
             'message': 'Content generated successfully',
             'content': teaching_content.to_dict()
         }), 201
-        
+
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"????????: {e}", exc_info=True)
+        return jsonify({'error': str(e), 'code': 'GENERATE_CONTENT_FAILED'}), 500
 
 
 @course_bp.route('/generate_assessment', methods=['POST'])
@@ -428,12 +520,15 @@ def generate_assessment():
         
         # 获取相关知识库内容
         knowledge_base = knowledge_base_service.get_knowledge_by_topic(data['topic'])
-        
+
+        # 校验题目数量
+        question_count = _validate_question_count(data.get('question_count', 5))
+
         # 生成考核题目（LLM 可能返回纯文本或 JSON）
         raw_questions = spark_service.generate_assessment(
             course_title=course.title,
             topic=data['topic'],
-            question_count=data.get('question_count', 5),
+            question_count=question_count,
             knowledge_base=knowledge_base,
             user_id=session.get('user_id'),
             user_role=session.get('user_role')
@@ -466,6 +561,21 @@ def generate_assessment():
                     'correctAnswer': None,
                     'explanation': ''
                 }]
+
+        # 确保题目数量与请求一致：不足时用回退题目补全，超出时截断
+        if len(normalized_questions) < question_count:
+            logger.info("LLM生成 %d 道题，需补全 %d 道回退题以达到 %d 道",
+                        len(normalized_questions), question_count - len(normalized_questions), question_count)
+            existing_questions = set(q.get('question', '') for q in normalized_questions)
+            fill_idx = 0
+            while len(normalized_questions) < question_count:
+                fb = _build_fallback_question(data['topic'], fill_idx)
+                if fb['question'] not in existing_questions:
+                    normalized_questions.append(fb)
+                    existing_questions.add(fb['question'])
+                fill_idx += 1
+
+        normalized_questions = normalized_questions[:question_count]
 
         questions_json = json.dumps(normalized_questions, ensure_ascii=False)
 
@@ -693,6 +803,37 @@ def delete_assessment(assessment_id):
         db.session.commit()
         
         return jsonify({'message': 'Assessment deleted successfully'}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@course_bp.route('/teaching_content/<int:content_id>', methods=['DELETE'])
+@require_auth
+@require_role(['admin', 'teacher'])
+def delete_teaching_content(content_id):
+    """删除教学内容（讲义），同步清理关联的同步记录以保证学生端一致。"""
+    try:
+        teaching_content = TeachingContent.query.get(content_id)
+        if not teaching_content:
+            return jsonify({'error': 'Teaching content not found'}), 404
+
+        course = Course.query.get(teaching_content.course_id)
+        if session.get('user_role') == 'teacher' and course and course.teacher_id != session.get('user_id'):
+            return jsonify({'error': 'Permission denied'}), 403
+
+        # 级联清理同步记录，避免学生端残留已删除内容
+        try:
+            from src.models.content_sync_record import ContentSyncRecord
+            ContentSyncRecord.query.filter_by(teaching_content_id=content_id).delete()
+        except Exception as cleanup_err:
+            logger.warning(f"清理教学内容同步记录失败 content_id={content_id}: {cleanup_err}")
+
+        db.session.delete(teaching_content)
+        db.session.commit()
+
+        return jsonify({'message': 'Teaching content deleted successfully'}), 200
 
     except Exception as e:
         db.session.rollback()

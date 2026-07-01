@@ -66,32 +66,32 @@ export default function SystemSettings() {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [apiUnsupported, setApiUnsupported] = useState(false)
+  const [aiModelStatus, setAiModelStatus] = useState(null)
+  const [aiTestResult, setAiTestResult] = useState(null)
+  const [emailTestResult, setEmailTestResult] = useState(null)
 
   const loadSettings = async () => {
     setLoading(true)
     try {
-      if (typeof admin.getSystemSettings !== 'function') {
-        setApiUnsupported(true)
-        return
-      }
       const response = await admin.getSystemSettings()
       setSettings({ ...settings, ...response.settings })
+      setApiUnsupported(false)
     } catch (error) {
       console.error('加载系统设置失败:', error)
-      alert('加载系统设置失败，请检查后端接口配置')
+      setApiUnsupported(true)
     } finally {
       setLoading(false)
     }
   }
 
   const saveSettings = async () => {
-    if (typeof admin.updateSystemSettings !== 'function') {
-      alert('当前后端未提供系统设置保存接口')
-      return
-    }
     setSaving(true)
     try {
-      await admin.updateSystemSettings(settings)
+      const response = await admin.updateSystemSettings(settings)
+      setSettings(prev => ({ ...prev, ...response.settings }))
+      if (response.model_message) {
+        setAiModelStatus(response.model_message)
+      }
       alert('设置保存成功！')
     } catch (error) {
       console.error('保存设置失败:', error)
@@ -102,44 +102,39 @@ export default function SystemSettings() {
   }
 
   const testEmailSettings = async () => {
-    if (typeof admin.testEmailSettings !== 'function') {
-      alert('当前后端未提供邮件测试接口')
-      return
-    }
+    setEmailTestResult(null)
     try {
-      await admin.testEmailSettings(settings)
-      alert('邮件测试发送成功！')
+      const response = await admin.testEmailSettings(settings)
+      setEmailTestResult({ success: true, message: response.message || '邮件测试发送成功！' })
     } catch (error) {
       console.error('邮件测试失败:', error)
-      alert('邮件测试失败，请检查 SMTP 配置')
+      setEmailTestResult({ success: false, message: error.message || '邮件测试失败，请检查 SMTP 配置' })
     }
   }
 
   const testAIConnection = async () => {
-    if (typeof admin.testAIConnection !== 'function') {
-      alert('当前后端未提供 AI 连接测试接口')
-      return
-    }
+    setAiTestResult(null)
     try {
-      await admin.testAIConnection(settings)
-      alert('AI连接测试成功！')
+      const response = await admin.testAIConnection(settings)
+      setAiTestResult({ 
+        success: true, 
+        model: response.model, 
+        message: response.message || 'AI连接测试成功！',
+        response: response.response,
+      })
     } catch (error) {
       console.error('AI连接测试失败:', error)
-      alert('AI连接测试失败，请检查 AI 配置')
+      setAiTestResult({ success: false, message: error.message || 'AI连接测试失败，请检查 AI 配置' })
     }
   }
 
   const createBackup = async () => {
-    if (typeof admin.createBackup !== 'function') {
-      alert('当前后端未提供备份接口')
-      return
-    }
     try {
-      await admin.createBackup()
-      alert('备份创建成功！')
+      const response = await admin.createBackup()
+      alert(`备份创建成功！文件: ${response.backup_file || ''}`)
     } catch (error) {
       console.error('创建备份失败:', error)
-      alert('备份创建失败，请稍后重试')
+      alert('备份创建失败: ' + (error.message || '请稍后重试'))
     }
   }
 
@@ -160,13 +155,6 @@ export default function SystemSettings() {
           {saving ? '保存中...' : '保存设置'}
         </Button>
       </div>
-      {apiUnsupported && (
-        <Card className="border-yellow-200 bg-yellow-50">
-          <CardContent className="py-3 text-sm text-yellow-800">
-            当前后端未实现系统设置接口，页面仅可本地编辑展示，无法持久化保存。
-          </CardContent>
-        </Card>
-      )}
 
       <Tabs defaultValue="basic" className="space-y-6">
         <TabsList className="grid w-full grid-cols-6">
@@ -382,9 +370,37 @@ export default function SystemSettings() {
                 </div>
               </div>
               
-              <Button onClick={testAIConnection} variant="outline">
-                测试AI连接
-              </Button>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <Button onClick={testAIConnection} variant="outline">
+                    测试AI连接
+                  </Button>
+                  {settings.sparkModel && (
+                    <span className={`text-sm px-3 py-1 rounded-full ${
+                      settings.sparkModel === '4.0Ultra'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      当前模型: {settings.sparkModel === '4.0Ultra' ? '4.0 Ultra' : 'Lite'}
+                    </span>
+                  )}
+                </div>
+                {aiModelStatus && (
+                  <p className={`text-sm ${aiModelStatus.includes('回退') ? 'text-amber-600' : 'text-green-600'}`}>
+                    {aiModelStatus}
+                  </p>
+                )}
+                {aiTestResult && (
+                  <div className={`p-3 rounded-lg text-sm ${
+                    aiTestResult.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                  }`}>
+                    <p className="font-medium">{aiTestResult.message}</p>
+                    {aiTestResult.response && (
+                      <p className="mt-1 text-xs opacity-75">AI回复: {aiTestResult.response}</p>
+                    )}
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -454,9 +470,16 @@ export default function SystemSettings() {
                 </Select>
               </div>
               
-              <Button onClick={testEmailSettings} variant="outline">
-                测试邮件发送
-              </Button>
+              <div className="space-y-3">
+                <Button onClick={testEmailSettings} variant="outline">
+                  测试邮件发送
+                </Button>
+                {emailTestResult && (
+                  <p className={`text-sm ${emailTestResult.success ? 'text-green-600' : 'text-red-600'}`}>
+                    {emailTestResult.message}
+                  </p>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

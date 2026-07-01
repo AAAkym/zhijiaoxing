@@ -286,27 +286,60 @@ class KnowledgeGraphAgent(AgentBase):
         return text[:120]
 
     def _is_meaningful_kp(self, title, description=""):
-        text = f"{title} {description}".strip()
-        if len(title or "") < 2:
+        if not title or not title.strip():
             return False
-        if re.fullmatch(r"[_\-\s\d年月日/\\:.：（）()]+", title or ""):
+        t = title.strip()
+        # 过短（1字）或过长（超过50字通常不是知识点标题）
+        if len(t) < 2 or len(t) > 50:
             return False
-        if re.search(r"(姓名|学号|专业|指导教师|评阅人|复核人|得分|目录|摘要|关键词|参考文献)$", title or ""):
+        # 纯数字、纯标点
+        if re.match(r'^[\d\s\-—.,;:;!?！？、，。：；]+$', t):
             return False
-        if len(title or "") > 80 and not re.search(r"(概念|原理|机制|方法|模型|体系|策略|流程|结构|特征|关系|影响|问题|路径|优化|发展|安全|现代化|供应链)", text):
+        # 常见噪声模式
+        noise_patterns = [
+            r'^第[一二三四五六七八九十\d]+[章节]$',  # 仅"第一章"无内容
+            r'^\d+[\.\)、）]',  # 纯序号
+            r'^(姓名|学号|班级|院系|专业|教师|日期|学期|学年|成绩|分数|备注|说明|目录|附录|索引|参考文献|致谢)$',
+            r'^[\(（].+[\)）]$',  # 纯括号内容
+            r'^[A-Z]\.$',  # 单字母
+            r'^(是|否|无|有|其他|略|同上|见上|如下)$',  # 无意义短词
+        ]
+        for pattern in noise_patterns:
+            if re.match(pattern, t):
+                return False
+        # 如果标题和描述都为空或极短，也过滤
+        combined = (t + (description or "")).strip()
+        if len(combined) < 3:
             return False
         return True
 
     def _infer_importance(self, title, description, order_index):
-        text = f"{title} {description}"
-        score = 0.55
-        if order_index <= 3:
-            score += 0.15
-        if re.search(r"(核心|关键|重点|基础|主要|重要|体系|机制|模型|策略|路径|安全|现代化|供应链)", text):
-            score += 0.2
-        if re.search(r"(应用|实践|优化|发展|影响|问题|对策)", text):
+        text = f"{title} {description or ''}".lower()
+        score = 0.5  # 基础分
+
+        # 核心关键词（强信号）
+        core_keywords = ['核心', '基础', '基本', '关键', '重要', '重点', '本质', '原理', '概念', '定义', '根本', '主线']
+        for kw in core_keywords:
+            if kw in text:
+                score += 0.15
+
+        # 应用型关键词
+        apply_keywords = ['应用', '实践', '实现', '设计', '开发', '构建', '方法', '技术', '算法', '模型']
+        for kw in apply_keywords:
+            if kw in text:
+                score += 0.1
+
+        # 前置性关键词（说明是基础知识点）
+        prereq_keywords = ['前提', '前置', '先修', '预备', '入门', '基础', '初步', '基本概念']
+        for kw in prereq_keywords:
+            if kw in text:
+                score += 0.1
+
+        # 位置因素：前几个知识点通常更重要
+        if order_index and order_index <= 3:
             score += 0.1
-        return round(min(1.0, score), 2)
+
+        return round(min(score, 1.0), 2)
 
     def _infer_difficulty(self, title, description):
         text = f"{title} {description}"

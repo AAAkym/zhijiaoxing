@@ -1,6 +1,12 @@
 import React from 'react'
 import '@testing-library/jest-dom'
 import { cleanup } from '@testing-library/react'
+import { TextDecoder, TextEncoder } from 'util'
+
+global.React = React
+global.TextEncoder = TextEncoder
+global.TextDecoder = TextDecoder
+global.vi = jest
 
 afterEach(() => {
   cleanup()
@@ -122,6 +128,14 @@ jest.mock('lucide-react', () => ({
   GraduationCap: () => <svg data-testid="graduation-cap-icon" />,
   RefreshCw: () => <svg data-testid="refresh-icon" />,
   AlertCircle: () => <svg data-testid="alert-circle-icon" />,
+  Hand: () => <svg data-testid="hand-icon" />,
+  MessageCircle: () => <svg data-testid="message-circle-icon" />,
+  XCircle: () => <svg data-testid="x-circle-icon" />,
+  Send: () => <svg data-testid="send-icon" />,
+  ThumbsUp: () => <svg data-testid="thumbs-up-icon" />,
+  Pin: () => <svg data-testid="pin-icon" />,
+  UserCheck: () => <svg data-testid="user-check-icon" />,
+  MessageSquare: () => <svg data-testid="message-square-icon" />,
   BarChart3: () => <svg data-testid="bar-chart-icon" />,
   ListTodo: () => <svg data-testid="list-todo-icon" />,
   PanelLeft: () => <svg data-testid="panel-left-icon" />,

@@ -16,6 +16,7 @@ except ImportError:
 from src.config import get_config
 from src.models.user import db
 from src.models.token_usage import TokenUsage
+from src.models.system_settings import SystemSetting
 from src.routes.admin import admin_bp
 from src.routes.ai_assistant import ai_bp
 from src.routes.analytics import analytics_bp
@@ -121,6 +122,19 @@ app.register_blueprint(code_execution_bp, url_prefix='/api')
 app.register_blueprint(content_review_bp, url_prefix='/api/content-review')
 
 db.init_app(app)
+
+# 启用 SQLite WAL 模式，解决多线程并发写入时的数据库锁定问题
+with app.app_context():
+    db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+    if db_uri.startswith('sqlite:///'):
+        from sqlalchemy import event, text as sa_text
+        @event.listens_for(db.engine, "connect")
+        def set_sqlite_pragma(dbapi_connection, connection_record):
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA busy_timeout=30000")
+            cursor.execute("PRAGMA synchronous=NORMAL")
+            cursor.close()
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 UPLOAD_FOLDER = os.path.join(PROJECT_ROOT, 'uploads', 'videos')
@@ -902,6 +916,86 @@ with app.app_context():
                     print(f'[DB Migration] [WARN] Failed to create index {index_name}: {e}')
 
             conn.commit()
+
+            # system_settings 表
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='system_settings'")
+            if not cursor.fetchone():
+                cursor.execute('''
+                    CREATE TABLE system_settings (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        key VARCHAR(100) NOT NULL UNIQUE,
+                        value TEXT DEFAULT '',
+                        category VARCHAR(50) DEFAULT 'general',
+                        description VARCHAR(200) DEFAULT '',
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_system_settings_key ON system_settings (key)')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_system_settings_category ON system_settings (category)')
+                print('[DB Migration] [OK] Created table: system_settings')
+
+            # content_reviews 表（如果不存在）
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='content_reviews'")
+            if not cursor.fetchone():
+                cursor.execute('''
+                    CREATE TABLE content_reviews (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        content_id INTEGER NOT NULL,
+                        content_type VARCHAR(30) NOT NULL,
+                        content_title VARCHAR(200) DEFAULT '',
+                        content_body TEXT DEFAULT '',
+                        source VARCHAR(20) DEFAULT 'ai',
+                        author_id INTEGER REFERENCES users(id),
+                        status VARCHAR(20) DEFAULT 'pending',
+                        review_mechanism VARCHAR(20) DEFAULT 'auto',
+                        auto_score FLOAT,
+                        auto_review_result TEXT DEFAULT '',
+                        auto_reviewed_at DATETIME,
+                        reviewer_id INTEGER REFERENCES users(id),
+                        review_comment TEXT DEFAULT '',
+                        review_score INTEGER,
+                        reviewed_at DATETIME,
+                        version INTEGER DEFAULT 1,
+                        previous_version_id INTEGER REFERENCES content_reviews(id),
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+                print('[DB Migration] [OK] Created table: content_reviews')
+
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='review_rules'")
+            if not cursor.fetchone():
+                cursor.execute('''
+                    CREATE TABLE review_rules (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name VARCHAR(100) NOT NULL,
+                        rule_type VARCHAR(20) DEFAULT 'auto',
+                        enabled BOOLEAN DEFAULT 1,
+                        threshold FLOAT DEFAULT 60.0,
+                        description TEXT DEFAULT '',
+                        config TEXT DEFAULT '{}',
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+                print('[DB Migration] [OK] Created table: review_rules')
+
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='review_operation_logs'")
+            if not cursor.fetchone():
+                cursor.execute('''
+                    CREATE TABLE review_operation_logs (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        review_id INTEGER REFERENCES content_reviews(id),
+                        operator_id INTEGER REFERENCES users(id),
+                        action VARCHAR(50) NOT NULL,
+                        detail TEXT DEFAULT '',
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+                print('[DB Migration] [OK] Created table: review_operation_logs')
+
+            conn.commit()
             conn.close()
 
             print('[DB Migration] 数据库 Schema 迁移检查完成')
@@ -960,4 +1054,5 @@ if __name__ == '__main__':
     print(f"Debug Mode: {app.config.get('DEBUG')}")
 
     # 修复：启用多线程支持SSE流式响应，避免连接中断
-    app.run(host='0.0.0.0', port=5000, debug=app.config.get('DEBUG', True), threaded=True)
+    # 关闭 reloader：避免编辑代码时进程自动重启导致内存中的异步任务状态（_import_tasks）丢失
+    app.run(host='0.0.0.0', port=5000, debug=app.config.get('DEBUG', True), threaded=True, use_reloader=False)

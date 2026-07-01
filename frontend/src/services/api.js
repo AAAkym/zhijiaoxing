@@ -1,5 +1,5 @@
 // 开发环境使用相对路径通过Vite代理，生产环境使用环境变量或相对路径
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+const API_BASE_URL = (typeof process !== 'undefined' && process.env?.VITE_API_BASE_URL) || '/api'
 
 const SSE_TIMEOUT = 300000
 
@@ -27,7 +27,7 @@ function fetchWithTimeout(url, options = {}, timeout = SSE_TIMEOUT) {
 
 // 通用请求函数
 export async function request(url, options = {}) {
-  const { signal, ...restOptions } = options
+  const { signal, timeout = 0, ...restOptions } = options
   const isFormData = restOptions.body instanceof FormData
   const config = {
     headers: isFormData ? {} : {
@@ -37,9 +37,17 @@ export async function request(url, options = {}) {
     ...restOptions,
   }
 
+  // 合并外部 signal 和内部超时 signal
+  let timeoutId = null
+  const controller = new AbortController()
   if (signal) {
-    config.signal = signal
+    if (signal.aborted) controller.abort()
+    else signal.addEventListener('abort', () => controller.abort())
   }
+  if (timeout > 0) {
+    timeoutId = setTimeout(() => controller.abort(), timeout)
+  }
+  config.signal = controller.signal
 
   if (restOptions.body && typeof restOptions.body === 'object' && !isFormData) {
     config.body = JSON.stringify(restOptions.body)
@@ -49,12 +57,16 @@ export async function request(url, options = {}) {
   try {
     response = await fetch(`${API_BASE_URL}${url}`, config)
   } catch (err) {
-    if (err.name === 'AbortError') throw err
+    if (timeoutId) clearTimeout(timeoutId)
+    if (err.name === 'AbortError') {
+      throw new Error('请求超时，请稍后重试')
+    }
     const networkError = new Error('网络连接失败，请检查网络后重试')
     networkError.isNetworkError = true
     networkError.originalError = err
     throw networkError
   }
+  if (timeoutId) clearTimeout(timeoutId)
   
   if (response.status === 401) {
     const errorData = await response.json().catch(() => ({ error: 'Authentication required' }))
@@ -66,9 +78,12 @@ export async function request(url, options = {}) {
   
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Network error' }))
-    const requestError = new Error(error.error || 'Request failed')
+    const message = error.detail ? `${error.error || 'Request failed'}：${error.detail}` : (error.error || 'Request failed')
+    const requestError = new Error(message)
     requestError.status = response.status
     requestError.errorDetail = error.error
+    requestError.detail = error.detail
+    requestError.code = error.code
     throw requestError
   }
 
@@ -132,6 +147,7 @@ export const courses = {
   
   delete: (id) => request(`/courses/${id}`, {
     method: 'DELETE',
+    timeout: 300000,
   }),
   
   getContent: (id) => request(`/courses/${id}/content`),
@@ -152,6 +168,10 @@ export const courses = {
   }),
   
   deleteAssessment: (id) => request(`/assessments/${id}`, {
+    method: 'DELETE',
+  }),
+
+  deleteContent: (id) => request(`/teaching_content/${id}`, {
     method: 'DELETE',
   }),
 }
@@ -299,6 +319,56 @@ export const knowledgeGraph = {
     method: 'POST',
     body: data,
   }),
+
+  startChunkedImport: (courseId, data) => request(`/knowledge-graph/courses/${courseId}/import-syllabus/chunk/start`, {
+    method: 'POST',
+    body: data,
+  }),
+
+  uploadImportChunk: async (courseId, uploadId, formData, signal) => {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 60000)
+    if (signal) {
+      if (signal.aborted) controller.abort()
+      else signal.addEventListener('abort', () => controller.abort())
+    }
+    try {
+      const response = await fetch(`${API_BASE_URL}/knowledge-graph/courses/${courseId}/import-syllabus/chunk/${uploadId}`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+        signal: controller.signal,
+      })
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: '分片上传失败' }))
+        throw new Error(error.error || '分片上传失败')
+      }
+      return response.json()
+    } catch (err) {
+      if (err.name === 'AbortError') throw new Error('分片上传超时，请重试')
+      throw err
+    } finally {
+      clearTimeout(timeoutId)
+    }
+  },
+
+  getChunkedImportStatus: (courseId, uploadId) => request(`/knowledge-graph/courses/${courseId}/import-syllabus/chunk/${uploadId}/status`),
+
+  completeChunkedImport: async (courseId, uploadId) => {
+    // 异步模式：合并完成后立即返回 202 + task_id，由前端轮询任务状态
+    const response = await fetch(`${API_BASE_URL}/knowledge-graph/courses/${courseId}/import-syllabus/chunk/${uploadId}/complete`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    })
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: '合并分片失败' }))
+      throw new Error(error.error || '合并分片失败')
+    }
+    return response.json()
+  },
+
+  getImportTaskStatus: (taskId) => request(`/knowledge-graph/import-task/${taskId}/status`),
 
   deleteGraph: (courseId) => request(`/knowledge-graph/courses/${courseId}`, {
     method: 'DELETE',
@@ -495,6 +565,45 @@ export const admin = {
     const queryString = new URLSearchParams(params).toString()
     return request(`/token-usage/user-ranking${queryString ? `?${queryString}` : ''}`)
   },
+
+  getSystemSettings: () => request('/settings'),
+
+  updateSystemSettings: (data) => request('/settings', {
+    method: 'PUT',
+    body: data,
+  }),
+
+  testAIConnection: (data) => request('/settings/test-ai', {
+    method: 'POST',
+    body: data,
+  }),
+
+  testEmailSettings: (data) => request('/settings/test-email', {
+    method: 'POST',
+    body: data,
+  }),
+
+  createBackup: () => request('/settings/backup', {
+    method: 'POST',
+  }),
+
+  // 多智能体监控
+  getAgentsStatus: () => request('/agents/status'),
+  getAgentsPerformance: () => request('/agents/performance'),
+  getRecentAgentTasks: (params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return request(`/agents/tasks/recent${qs ? `?${qs}` : ''}`)
+  },
+
+  getAgentExecutionsHistory: (params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return request(`/agents/executions/history${qs ? `?${qs}` : ''}`)
+  },
+
+  // AI内容审核反馈与对比
+  getContentReviewFeedbackStats: () => request('/content-review/feedback-stats'),
+  getContentReviewComparison: () => request('/content-review/comparison'),
+  getContentReviewFeedbackTrend: () => request('/content-review/feedback-trend'),
 }
 
 // 学生API
@@ -1300,6 +1409,11 @@ export const contentReview = {
   autoSubmitCourse: (courseId) => request(`/content-review/auto-submit/${courseId}`, {
     method: 'POST',
   }),
+
+  getReviewHistory: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString()
+    return request(`/content-review/history${queryString ? `?${queryString}` : ''}`)
+  },
 }
 
 export const aiTutor = {

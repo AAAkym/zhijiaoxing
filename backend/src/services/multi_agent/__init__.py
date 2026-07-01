@@ -1,5 +1,6 @@
 import logging
 import json
+import time
 from abc import ABC, abstractmethod
 from datetime import datetime
 
@@ -10,6 +11,10 @@ class AgentBase(ABC):
     agent_name = "base"
     agent_role = "通用智能体"
     agent_description = ""
+
+    # LLM调用重试配置：应对并发场景下Spark API bulkhead/circuit breaker/QPS/并发限流瞬时拒绝
+    LLM_MAX_RETRIES = 4
+    LLM_RETRY_BASE_DELAY = 2.0
 
     def __init__(self, spark_service=None):
         self.spark_service = spark_service
@@ -38,10 +43,36 @@ class AgentBase(ABC):
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
-        try:
-            return self.spark_service.chat(messages, user_id=user_id, user_role=user_role, call_type='multi_agent')
-        except TypeError:
-            return self.spark_service.chat(messages)
+
+        last_error = None
+        for attempt in range(1, self.LLM_MAX_RETRIES + 2):
+            try:
+                try:
+                    return self.spark_service.chat(messages, user_id=user_id, user_role=user_role, call_type='multi_agent')
+                except TypeError:
+                    return self.spark_service.chat(messages)
+            except Exception as exc:
+                last_error = exc
+                error_msg = str(exc).lower()
+                # 检测瞬时错误：bulkhead忙/熔断器开启/超时/QPS限流/并发限流/500服务端错误
+                is_transient = any(keyword in error_msg for keyword in (
+                    "busy", "circuit", "timeout", "timed out", "connection",
+                    "rate limit", "too many requests", "service unavailable",
+                    "500", "internal server error",
+                    "qpsoverflow", "concurrencyoverflow", "overflow", "concurrency",
+                ))
+                if not is_transient or attempt > self.LLM_MAX_RETRIES:
+                    raise
+                # QPS/并发限流错误需要更长退避时间，给API更多恢复时间
+                is_rate_limited = any(k in error_msg for k in ("qps", "overflow", "concurrency", "busy"))
+                delay = self.LLM_RETRY_BASE_DELAY * attempt * (2.5 if is_rate_limited else 1)
+                logger.warning(
+                    "Agent %s LLM调用第%d次失败(瞬时错误%s)，%.1fs后重试: %s",
+                    self.agent_name, attempt,
+                    "·限流" if is_rate_limited else "", delay, exc,
+                )
+                time.sleep(delay)
+        raise last_error
 
     def to_dict(self):
         return {

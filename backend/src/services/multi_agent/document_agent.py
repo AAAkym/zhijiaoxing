@@ -39,40 +39,42 @@ DOCUMENT_SYSTEM_PROMPT = """你是一位专业的课程文档撰写专家智能�
 - 进阶者：增加深度分析、前沿拓展
 
 ## 输出格式
-严格返回以下JSON格式，不要添加任何markdown代码块标记：
+严格返回以下JSON格式，不要添加任何markdown代码块标记。
+注意：下方尖括号 <...> 中的说明是填写指引，必须替换为针对本主题的实际内容，禁止保留占位文字：
 {
   "document": {
-    "title": "文档标题",
-    "summary": "200字以内的内容摘要",
-    "target_audience": "目标读者描述",
+    "title": "<填写本文档的实际标题>",
+    "summary": "<填写200字以内的实际内容摘要>",
+    "target_audience": "<填写目标读者描述>",
     "estimated_reading_time_minutes": 30,
     "sections": [
       {
         "section_id": "s1",
-        "title": "章节标题",
-        "key_points": ["要点1", "要点2"],
-        "content": "章节正文内容，至少200字，包含概念定义、核心要素、相关原理的详细讲解",
+        "title": "<填写本章节的实际标题>",
+        "key_points": ["<填写实际要点1>", "<填写实际要点2>"],
+        "content": "<填写章节正文，至少200字，包含概念定义、核心要素、相关原理的详细讲解>",
         "examples": [
           {
-            "title": "示例标题",
-            "description": "示例描述",
-            "content": "示例内容"
+            "title": "<填写本示例的实际标题，禁止写'示例标题'>",
+            "description": "<填写本示例的实际描述，禁止写'示例描述'>",
+            "content": "<填写本示例的实际内容/代码/步骤，禁止写'示例内容'>"
           }
         ],
-        "common_mistakes": ["误区1", "误区2"],
-        "further_reading": ["扩展阅读1"]
+        "common_mistakes": ["<填写实际误区1>", "<填写实际误区2>"],
+        "further_reading": ["<填写实际扩展阅读1>"]
       }
     ],
     "glossary": [
-      {"term": "术语", "definition": "定义"}
+      {"term": "<填写实际术语>", "definition": "<填写实际定义>"}
     ],
-    "review_questions": ["复习思考题1"]
+    "review_questions": ["<填写实际复习思考题1>"]
   }
 }
 
 ## 重要提醒
 - content字段不得为空，每个章节至少200字的详细讲解
 - 至少生成3个章节，每个章节包含至少2个key_points和1个example
+- examples 中每个示例的 title/description/content 必须是与本章节知识点相关的实际内容，严禁使用"示例标题""示例描述""示例内容"等占位文字
 - glossary至少包含5个术语
 - review_questions至少包含3道题
 - 直接输出纯JSON，不要用```json```包裹"""
@@ -362,12 +364,18 @@ class DocumentAgent(AgentBase):
 
 ## 生成要求
 1. 根节点为"{topic}"，description为该主题的整体概述
-2. 第一层分支覆盖该主题的4-6个主要知识领域
+2. 第一层分支覆盖该主题的4-6个主要知识领域，**必须围绕"{topic}"本身展开**
 3. 每个第一层分支下至少2个核心概念（第二层）
 4. 核心概念下展开具体知识点或应用场景（第三层）
-5. 每个节点必须有有意义的description（10-50字）
+5. 每个节点必须有有意义的description（10-50字），不得使用"知识模块1/2/3"等占位符命名
 6. 标记核心节点is_core=true
 7. 准确标注relationship_type（包含/并列/因果/递进）
+
+## 主题相关性约束（关键）
+1. **所有分支与节点必须与"{topic}"直接相关**，不得引入课程全局但与主题无关的知识点
+2. "参考知识点"列表仅作为参考，**只选取其中与"{topic}"强相关的部分**，无关的请直接忽略
+3. 若参考知识点均与主题无关，请基于"{topic}"本身自动规划 4-6 个核心领域（如基础概念、核心原理、应用场景、进阶拓展）
+4. 第一层分支命名必须体现"{topic}"的子领域特征（如主题"多线程与并发编程"可分：线程基础、同步机制、线程池、并发工具、JMM 内存模型），禁止使用通用占位符
 
 请严格按照JSON格式输出，不要用```json```包裹。"""
 
@@ -379,9 +387,157 @@ class DocumentAgent(AgentBase):
                 user_id=_user_id,
                 user_role=_user_role,
             )
-            return self._parse_json_response(response)
+            parsed = self._parse_json_response(response)
+
+            # 检测解析失败，使用降级思维导图确保多分支结构
+            if parsed.get("parse_error"):
+                logger.warning(
+                    f"DocumentAgent mindmap JSON 解析失败，使用降级多分支结构。raw_response 长度: {len(parsed.get('raw_response', ''))}"
+                )
+                return self._build_fallback_mindmap(topic, knowledge_points)
+
+            # 校验解析结果是否包含有效的多分支结构
+            mindmap_data = parsed.get("mindmap", parsed)
+            root = mindmap_data.get("root", {}) if isinstance(mindmap_data, dict) else {}
+            children = root.get("children", []) if isinstance(root, dict) else []
+            if not children or len(children) < 2:
+                logger.warning(f"DocumentAgent mindmap 分支不足（{len(children)}个），使用降级多分支结构")
+                return self._build_fallback_mindmap(topic, knowledge_points)
+
+            return parsed
         except Exception as e:
-            return {"error": str(e)}
+            logger.error(f"DocumentAgent mindmap 生成失败: {e}", exc_info=True)
+            return self._build_fallback_mindmap(topic, knowledge_points)
+
+    def _build_fallback_mindmap(self, topic, knowledge_points=None):
+        """当 LLM 生成失败或分支不足时，基于主题构建降级的多分支思维导图。
+
+        设计原则：
+        1. 始终围绕主题生成 4 个有语义的分支（基础概念/核心原理/应用场景/进阶拓展），
+           不再用"知识模块1/2/3..."这种与主题无关的占位符命名。
+        2. 若传入了 knowledge_points，按关键词将其归类到对应分支下作为子节点；
+           无法归类且与主题强相关的知识点放入"相关知识点"分支。
+        3. 确保思维导图始终呈现多模块连接的完整结构，而非单一根节点。
+        """
+        knowledge_points = knowledge_points or []
+        topic = topic or "知识结构"
+
+        # 4 个固定语义分支模板（围绕主题展开）
+        branch_templates = [
+            {
+                "name": "基础概念",
+                "description": f"{topic}的核心定义与基本术语",
+                "is_core": True,
+                "relationship_type": "包含",
+                "keywords": ["基础", "概念", "定义", "术语", "入门", "基本", "简介", "概述", "原理"],
+                "children": [
+                    {"name": "定义与内涵", "description": f"{topic}的基本定义", "is_core": True, "relationship_type": "并列", "children": []},
+                    {"name": "基本术语", "description": f"{topic}领域的常用术语", "is_core": False, "relationship_type": "并列", "children": []},
+                ],
+            },
+            {
+                "name": "核心原理",
+                "description": f"{topic}的主要理论与方法论",
+                "is_core": True,
+                "relationship_type": "包含",
+                "keywords": ["原理", "机制", "理论", "方法", "算法", "模型", "架构", "设计", "实现", "流程"],
+                "children": [
+                    {"name": "理论基础", "description": f"{topic}的底层理论", "is_core": True, "relationship_type": "并列", "children": []},
+                    {"name": "关键方法", "description": f"{topic}的常用方法", "is_core": False, "relationship_type": "并列", "children": []},
+                ],
+            },
+            {
+                "name": "应用场景",
+                "description": f"{topic}的实际应用与案例",
+                "is_core": False,
+                "relationship_type": "包含",
+                "keywords": ["应用", "场景", "案例", "实例", "实践", "实战", "项目", "demo", "示例"],
+                "children": [
+                    {"name": "典型应用", "description": f"{topic}的典型应用场景", "is_core": False, "relationship_type": "并列", "children": []},
+                    {"name": "案例分析", "description": f"{topic}相关案例剖析", "is_core": False, "relationship_type": "递进", "children": []},
+                ],
+            },
+            {
+                "name": "进阶拓展",
+                "description": f"{topic}的高级主题与前沿",
+                "is_core": False,
+                "relationship_type": "包含",
+                "keywords": ["进阶", "高级", "拓展", "扩展", "前沿", "趋势", "优化", "调优", "最佳实践", "源码"],
+                "children": [
+                    {"name": "前沿趋势", "description": f"{topic}的最新进展", "is_core": False, "relationship_type": "递进", "children": []},
+                    {"name": "扩展资源", "description": f"深入学习{topic}的资源", "is_core": False, "relationship_type": "并列", "children": []},
+                ],
+            },
+        ]
+
+        # 主题核心词：用于判断传入的知识点是否与主题强相关
+        topic_lower = topic.lower()
+
+        # 把传入的知识点按关键词归类到对应分支
+        related_kp_unclassified = []  # 与主题相关但无法归类到具体分支的知识点
+        # 主题 2-gram 核心词集合
+        topic_core = {topic_lower[i:i+2] for i in range(len(topic_lower)-1) if len(topic_lower[i:i+2]) == 2}
+        for kp in knowledge_points:
+            kp_name = kp if isinstance(kp, str) else (kp.get("name") or kp.get("title") or str(kp))
+            kp_lower = str(kp_name).lower()
+            # 主题相关性判断：双向子串包含，或 2-gram 核心词有交集
+            kp_core = {kp_lower[i:i+2] for i in range(len(kp_lower)-1) if len(kp_lower[i:i+2]) == 2}
+            is_related = (topic_lower in kp_lower or kp_lower in topic_lower
+                          or bool(topic_core & kp_core))
+
+            if not is_related:
+                # 与主题无关的知识点不放入导图，避免污染
+                continue
+
+            # 关键词归类
+            classified = False
+            for branch in branch_templates:
+                if any(kw in kp_lower for kw in branch["keywords"]):
+                    branch["children"].append({
+                        "name": kp_name,
+                        "description": f"{kp_name}的核心要点",
+                        "is_core": True,
+                        "relationship_type": "并列",
+                        "children": [],
+                    })
+                    classified = True
+                    break
+            if not classified:
+                related_kp_unclassified.append(kp_name)
+
+        # 与主题相关但无法归类的知识点，单独放入"相关知识点"分支
+        if related_kp_unclassified:
+            branch_templates.append({
+                "name": "相关知识点",
+                "description": f"与{topic}直接相关的重要知识点",
+                "is_core": True,
+                "relationship_type": "并列",
+                "keywords": [],
+                "children": [
+                    {
+                        "name": kp_name,
+                        "description": f"{kp_name}的核心要点",
+                        "is_core": True,
+                        "relationship_type": "并列",
+                        "children": [],
+                    }
+                    for kp_name in related_kp_unclassified[:12]  # 最多 12 个，避免过长
+                ],
+            })
+
+        return {
+            "mindmap": {
+                "root": {
+                    "name": topic,
+                    "description": f"{topic}的知识体系（降级生成）",
+                    "is_core": True,
+                    "relationship_type": None,
+                    "children": branch_templates,
+                }
+            },
+            "fallback": True,
+            "fallback_reason": "LLM 生成失败或分支不足，已使用基于主题的降级多分支结构",
+        }
 
     def _get_style_instruction(self, style):
         instructions = {

@@ -38,6 +38,22 @@ def _get_cache():
         return None
 
 
+def _get_visible_course_ids(user_id):
+    if session.get('user_role') == 'admin':
+        return [c.id for c in Course.query.all()]
+    return [c.id for c in Course.query.filter_by(teacher_id=user_id).all()]
+
+
+def _empty_progress_distribution():
+    distribution = [
+        {'name': '优秀', 'value': 0, 'color': '#10B981'},
+        {'name': '良好', 'value': 0, 'color': '#3B82F6'},
+        {'name': '一般', 'value': 0, 'color': '#F59E0B'},
+        {'name': '待提高', 'value': 0, 'color': '#EF4444'},
+    ]
+    return {'distribution': distribution, 'data': distribution}
+
+
 @teacher_bp.route('/teacher/dashboard/stats', methods=['GET'])
 @require_auth
 @require_teacher
@@ -86,45 +102,54 @@ def get_student_progress_distribution():
     try:
         user_id = session['user_id']
         cache = _get_cache()
-        cache_key = f'teacher_progress:{user_id}'
+        cache_key = f'teacher_progress:{user_id}:{session.get("user_role")}'
         if cache:
             cached = cache.get(cache_key)
             if cached:
                 return jsonify(cached), 200
 
-        course_ids = [c.id for c in Course.query.filter_by(teacher_id=user_id).all()]
+        course_ids = _get_visible_course_ids(user_id)
         if not course_ids:
-            return jsonify({'distribution': []}), 200
-        progress_records = LearningProgress.query.filter(
-            LearningProgress.course_id.in_(course_ids)
-        ).all()
-        excellent = sum(1 for p in progress_records if p.progress_percentage >= 80)
-        good = sum(1 for p in progress_records if 60 <= p.progress_percentage < 80)
-        average = sum(1 for p in progress_records if 40 <= p.progress_percentage < 60)
-        need_improve = sum(1 for p in progress_records if p.progress_percentage < 40)
+            result = _empty_progress_distribution()
+            if cache:
+                cache.set(cache_key, result, timeout=120)
+            return jsonify(result), 200
+
+        progress_rows = LearningProgress.query.with_entities(
+            LearningProgress.progress_percentage
+        ).filter(LearningProgress.course_id.in_(course_ids)).all()
+
+        excellent = good = average = need_improve = 0
+        for row in progress_rows:
+            value = row[0] or 0
+            if value >= 80:
+                excellent += 1
+            elif value >= 60:
+                good += 1
+            elif value >= 40:
+                average += 1
+            else:
+                need_improve += 1
+
         distribution = []
         if excellent > 0:
-            distribution.append({'name': '优秀', 'value': excellent, 'color': '#10B981'})
+            distribution.append({'name': '??', 'value': excellent, 'color': '#10B981'})
         if good > 0:
-            distribution.append({'name': '良好', 'value': good, 'color': '#3B82F6'})
+            distribution.append({'name': '??', 'value': good, 'color': '#3B82F6'})
         if average > 0:
-            distribution.append({'name': '一般', 'value': average, 'color': '#F59E0B'})
+            distribution.append({'name': '??', 'value': average, 'color': '#F59E0B'})
         if need_improve > 0:
-            distribution.append({'name': '待提高', 'value': need_improve, 'color': '#EF4444'})
-        if not distribution:
-            distribution = [
-                {'name': '优秀', 'value': 0, 'color': '#10B981'},
-                {'name': '良好', 'value': 0, 'color': '#3B82F6'},
-                {'name': '一般', 'value': 0, 'color': '#F59E0B'},
-                {'name': '待提高', 'value': 0, 'color': '#EF4444'}
-            ]
-        result = {'distribution': distribution, 'data': distribution}
+            distribution.append({'name': '???', 'value': need_improve, 'color': '#EF4444'})
+
+        result = {'distribution': distribution, 'data': distribution} if distribution else _empty_progress_distribution()
         if cache:
             cache.set(cache_key, result, timeout=120)
         return jsonify(result), 200
     except Exception as e:
-        logger.error(f'获取学生进度分布失败: {str(e)}')
-        return jsonify({'error': str(e)}), 500
+        logger.error(f'??????????: {str(e)}', exc_info=True)
+        result = _empty_progress_distribution()
+        result['warning'] = '??????????????????'
+        return jsonify(result), 200
 
 
 @teacher_bp.route('/teacher/analytics/weekly-activity', methods=['GET'])
@@ -133,7 +158,7 @@ def get_student_progress_distribution():
 def get_weekly_activity():
     try:
         user_id = session['user_id']
-        course_ids = [c.id for c in Course.query.filter_by(teacher_id=user_id).all()]
+        course_ids = _get_visible_course_ids(user_id)
         if not course_ids:
             return jsonify({'activity': [], 'data': []}), 200
         day_names = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
@@ -159,7 +184,7 @@ def get_weekly_activity():
 def get_learning_trend():
     try:
         user_id = session['user_id']
-        course_ids = [c.id for c in Course.query.filter_by(teacher_id=user_id).all()]
+        course_ids = _get_visible_course_ids(user_id)
         if not course_ids:
             return jsonify({'trend': [], 'data': []}), 200
         trend_data = []

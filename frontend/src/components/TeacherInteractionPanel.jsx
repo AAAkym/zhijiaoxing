@@ -39,6 +39,10 @@ export default function TeacherInteractionPanel({ courseId }) {
 
     return () => {
       if (courseId) {
+        // 移除监听器避免内存泄露与跨组件实例的回调残留
+        websocketService.off('hand_raise_updated', handleHandRaiseUpdate)
+        websocketService.off('question_updated', handleQuestionUpdate)
+        websocketService.off('discussion_updated', handleDiscussionUpdate)
         websocketService.leaveCourse(courseId)
       }
     }

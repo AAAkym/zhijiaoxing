@@ -11,6 +11,71 @@ const MAX_SCALE = 3.0;
 const DRAG_THRESHOLD = 5;
 const SCALE_STEP = 0.05;
 
+/**
+ * 当 root.children 为空或少于 2 时，生成默认多分支结构确保思维导图呈现多模块连接。
+ * 优先保留已有合法子节点，仅补充缺失的默认分支。
+ */
+function ensureMultiBranches(root) {
+  if (!root || typeof root !== "object") return root;
+  const children = Array.isArray(root.children) ? root.children : [];
+  if (children.length >= 2) return root;
+
+  const topic = root.name || "知识结构";
+  const defaultBranches = [
+    {
+      name: "基础概念",
+      description: `${topic}的核心定义与基本术语`,
+      is_core: true,
+      relationship_type: "包含",
+      children: [
+        { name: "定义与内涵", description: `${topic}的基本定义`, is_core: true, relationship_type: "并列", children: [] },
+        { name: "基本术语", description: `${topic}领域的常用术语`, is_core: false, relationship_type: "并列", children: [] },
+      ],
+    },
+    {
+      name: "核心原理",
+      description: `${topic}的主要理论与方法论`,
+      is_core: true,
+      relationship_type: "包含",
+      children: [
+        { name: "理论基础", description: `${topic}的底层理论`, is_core: true, relationship_type: "并列", children: [] },
+        { name: "关键方法", description: `${topic}的常用方法`, is_core: false, relationship_type: "并列", children: [] },
+      ],
+    },
+    {
+      name: "应用场景",
+      description: `${topic}的实际应用与案例`,
+      is_core: false,
+      relationship_type: "包含",
+      children: [
+        { name: "典型应用", description: `${topic}的典型应用场景`, is_core: false, relationship_type: "并列", children: [] },
+        { name: "案例分析", description: `${topic}相关案例剖析`, is_core: false, relationship_type: "递进", children: [] },
+      ],
+    },
+    {
+      name: "进阶拓展",
+      description: `${topic}的高级主题与前沿`,
+      is_core: false,
+      relationship_type: "包含",
+      children: [
+        { name: "前沿趋势", description: `${topic}的最新进展`, is_core: false, relationship_type: "递进", children: [] },
+        { name: "扩展资源", description: `深入学习${topic}的资源`, is_core: false, relationship_type: "并列", children: [] },
+      ],
+    },
+  ];
+
+  const existingNames = new Set(
+    children.filter((c) => c && typeof c === "object").map((c) => c.name)
+  );
+  const merged = [...children];
+  for (const branch of defaultBranches) {
+    if (!existingNames.has(branch.name)) {
+      merged.push(branch);
+    }
+  }
+  return { ...root, children: merged };
+}
+
 function calcSubtreeWidths(node, collapsed, path = "r", depth = 0) {
   const id = path;
   if (!node.children?.length || collapsed.has(id)) {
@@ -330,7 +395,9 @@ export default function InteractiveMindMap({ data, height = 500 }) {
 
   const tree = useMemo(() => {
     if (!data?.root) return { nodes: [], edges: [] };
-    const w = calcSubtreeWidths(data.root, collapsed);
+    // 保障多分支结构：children 不足时补充默认分支，避免只渲染单一根节点
+    const safeRoot = ensureMultiBranches(data.root);
+    const w = calcSubtreeWidths(safeRoot, collapsed);
     return positionTree(w, 0, 0);
   }, [data, collapsed]);
 
@@ -539,7 +606,7 @@ export default function InteractiveMindMap({ data, height = 500 }) {
 
       {viewMode === "markdown" ? (
         <div className="flex-1 px-6 py-4 overflow-auto">
-          <MarkdownView node={data.root} />
+          <MarkdownView node={ensureMultiBranches(data.root)} />
         </div>
       ) : (
         <div

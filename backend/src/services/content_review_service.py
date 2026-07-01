@@ -259,6 +259,71 @@ class ContentReviewService:
             'pages': pagination.pages,
         }
 
+    def get_review_history(self, filters=None):
+        """获取审核历史记录，包含审核人、审核时间、审核意见及审核状态"""
+        filters = filters or {}
+        query = ContentReview.query.filter(ContentReview.status.in_(['passed', 'rejected']))
+
+        reviewer_id = filters.get('reviewer_id')
+        if reviewer_id:
+            query = query.filter(ContentReview.reviewer_id == int(reviewer_id))
+
+        status = filters.get('status')
+        if status:
+            query = query.filter(ContentReview.status == status)
+
+        content_type = filters.get('content_type')
+        if content_type:
+            query = query.filter(ContentReview.content_type == content_type)
+
+        start_date = filters.get('start_date')
+        if start_date:
+            try:
+                sd = datetime.strptime(start_date, '%Y-%m-%d')
+                query = query.filter(ContentReview.reviewed_at >= sd)
+            except ValueError:
+                pass
+
+        end_date = filters.get('end_date')
+        if end_date:
+            try:
+                ed = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)
+                query = query.filter(ContentReview.reviewed_at < ed)
+            except ValueError:
+                pass
+
+        query = query.order_by(ContentReview.reviewed_at.desc())
+
+        page = int(filters.get('page', 1))
+        per_page = int(filters.get('per_page', 10))
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+
+        from src.models.user import User
+        items = []
+        for review in pagination.items:
+            d = review.to_dict()
+            # 附加审核人信息
+            if review.reviewer_id:
+                reviewer = User.query.get(review.reviewer_id)
+                d['reviewer_name'] = (reviewer.real_name or reviewer.username) if reviewer else None
+            else:
+                d['reviewer_name'] = '系统自动审核'
+            # 附加作者信息
+            if review.author_id:
+                author = User.query.get(review.author_id)
+                d['author_name'] = (author.real_name or author.username) if author else None
+            else:
+                d['author_name'] = None
+            items.append(d)
+
+        return {
+            'items': items,
+            'total': pagination.total,
+            'page': page,
+            'per_page': per_page,
+            'pages': pagination.pages,
+        }
+
     # ---- analytics ----
 
     def get_review_analytics(self):

@@ -15,6 +15,7 @@ import { request } from '../services/api'
 export default function CourseManagement() {
   const [courseList, setCourseList] = useState([])
   const [loading, setLoading] = useState(false)
+  const [deletingCourseId, setDeletingCourseId] = useState(null)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingCourse, setEditingCourse] = useState(null)
@@ -103,17 +104,23 @@ export default function CourseManagement() {
     }
   }
 
-  const handleDeleteCourse = async (courseId) => {
-    if (!confirm('确定要删除这个课程吗？')) return
-    
+  const handleDeleteCourse = async (courseId, courseTitle) => {
+    if (!courseId || deletingCourseId) return
+
+    const message = `⚠️ 删除课程确认\n\n即将删除课程：「${courseTitle || courseId}」\n\n此操作将永久删除以下所有关联数据，且不可恢复：\n• 课程基本信息与封面\n• 所有视频教学资源\n• 课程讲义与学习资料\n• 章节结构与知识点\n• 学生学习记录与进度\n• 课程讨论与评论\n• 知识图谱与题库\n\n确定要继续吗？`
+    if (!confirm(message)) return
+
     try {
-      await courses.delete(courseId)
+      setDeletingCourseId(courseId)
+      const result = await courses.delete(courseId)
       await loadCourses()
-      alert('课程删除成功！')
+      alert(result?.message || '课程删除成功！所有关联数据已清除。')
     } catch (error) {
       console.error('删除课程失败:', error)
       const errMsg = error?.message || error?.errorDetail || '删除课程失败，请重试'
       alert(errMsg)
+    } finally {
+      setDeletingCourseId(null)
     }
   }
 
@@ -376,7 +383,8 @@ export default function CourseManagement() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleDeleteCourse(course.id)}
+                          onClick={() => handleDeleteCourse(course.id, course.title)}
+                          disabled={deletingCourseId === course.id}
                           className="text-[#c45a5a] hover:text-[#b04a4a]"
                         >
                           <Trash2 className="w-4 h-4" />

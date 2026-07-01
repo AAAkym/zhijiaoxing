@@ -146,15 +146,17 @@ _spark_circuit = _CircuitBreaker(
     failure_threshold=int(os.environ.get("SPARK_CIRCUIT_FAILURE_THRESHOLD", "5")),
     recovery_timeout=int(os.environ.get("SPARK_CIRCUIT_RECOVERY_TIMEOUT", "60")),
 )
+# Spark Lite API并发上限约2路，限制全局在途请求数避免 AppIdConcurrencyOverFlowError
 _spark_bulkhead = threading.BoundedSemaphore(
-    value=max(1, int(os.environ.get("SPARK_MAX_IN_FLIGHT", "8")))
+    value=max(1, int(os.environ.get("SPARK_MAX_IN_FLIGHT", "2")))
 )
 
 
 @contextmanager
 def _guarded_spark_call():
     _spark_circuit.before_call()
-    acquire_timeout = float(os.environ.get("SPARK_BULKHEAD_WAIT_SECONDS", "2"))
+    # 等待时间放宽到30s，让排队的请求有机会获取slot而非直接失败
+    acquire_timeout = float(os.environ.get("SPARK_BULKHEAD_WAIT_SECONDS", "30"))
     acquired = _spark_bulkhead.acquire(timeout=acquire_timeout)
     if not acquired:
         raise SparkServiceError("Spark service is busy; please retry later")
@@ -463,11 +465,13 @@ def chat(messages: Union[str, List[Dict[str, str]]],
         except requests.RequestException as exc:
             response_text = ""
             if getattr(exc, "response", None) is not None:
-                response_text = getattr(exc.response, "text", "")[:200]
+                response_text = getattr(exc.response, "text", "")[:500]
             elif "resp" in locals():
-                response_text = resp.text[:200] if resp.text else ""
+                response_text = resp.text[:500] if resp.text else ""
             logger.error("Spark API request failed: %s; response=%s", exc, response_text or "<empty>")
-            raise SparkServiceError(f"Spark API request failed: {exc}") from exc
+            # 将响应体包含在错误信息中，便于上层重试逻辑判断和前端展示
+            detail = f" (response: {response_text})" if response_text else ""
+            raise SparkServiceError(f"Spark API request failed: {exc}{detail}") from exc
         except ValueError as exc:
             logger.error("Spark API returned invalid JSON: %s", exc)
             raise SparkServiceError("Spark API returned invalid JSON") from exc
@@ -496,9 +500,10 @@ def chat_stream(messages: Union[str, List[Dict[str, str]]],
                 resp.raise_for_status()
                 logger.info("Spark streaming request succeeded with status=%s", resp.status_code)
             except requests.RequestException as exc:
-                response_text = resp.text[:200] if resp.text else ""
+                response_text = resp.text[:500] if resp.text else ""
                 logger.error("Spark streaming request failed: %s; response=%s", exc, response_text or "<empty>")
-                raise SparkServiceError(f"Spark API request failed: {exc}") from exc
+                detail = f" (response: {response_text})" if response_text else ""
+                raise SparkServiceError(f"Spark API request failed: {exc}{detail}") from exc
 
             chunk_index = 0
             last_usage = None
@@ -1051,7 +1056,9 @@ def _deduplicate_questions(
         return []
 
     def normalize_text(text: str) -> str:
-        return re.sub(r'[\s\p{P}]+', '', text.lower(), flags=re.UNICODE)
+        # Python re 模块不支持 \p{P} Unicode 属性转义
+        # 使用 [\s\W_]+ 等效匹配所有空白与非单词字符（含 Unicode 标点/符号），保留 Unicode 字母与数字
+        return re.sub(r'[\s\W_]+', '', text.lower(), flags=re.UNICODE)
 
     def similarity(s1: str, s2: str) -> float:
         n1, n2 = normalize_text(s1), normalize_text(s2)

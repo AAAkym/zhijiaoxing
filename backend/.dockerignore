@@ -1,0 +1,43 @@
+# Docker 忽略文件 - 后端
+
+# 虚拟环境
+venv/
+.venv/
+env/
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 测试和覆盖率
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE 配置
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 日志文件
+logs/*.log
+
+# 临时文件
+*.tmp
+*.bak
+
+# 环境变量（敏感信息）
+.env
+.env.local
+
+# 上传的测试文件（非源码）
+uploads/videos/*.mp4
+uploads/videos/*.avi
+uploads/images/*.png
+uploads/images/*.jpg
+
+# 数据库文件（生产环境会自动创建）
+# instance/*.db

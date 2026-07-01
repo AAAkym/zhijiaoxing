@@ -57,6 +57,79 @@ const STATUS_CONFIG = {
   }
 }
 
+/** 将题目内容（可能是JSON字符串或纯文本）解析为结构化展示 */
+function QuestionContentDisplay({ content }) {
+  if (!content) return <p className="text-gray-400">暂无题目内容</p>
+
+  // 尝试解析JSON
+  let parsed = null
+  if (typeof content === 'string') {
+    try { parsed = JSON.parse(content) } catch { /* 不是JSON，按纯文本展示 */ }
+  } else if (typeof content === 'object') {
+    parsed = content
+  }
+
+  // 纯文本直接展示
+  if (!parsed || typeof parsed !== 'object') {
+    return <p className="text-gray-800 whitespace-pre-wrap">{String(content)}</p>
+  }
+
+  return (
+    <div className="space-y-3">
+      {parsed.title && (
+        <h4 className="font-semibold text-gray-800">{parsed.title}</h4>
+      )}
+      {parsed.description && typeof parsed.description === 'string' && (
+        <p className="text-gray-700 whitespace-pre-wrap">{parsed.description}</p>
+      )}
+      {parsed.input_format && (
+        <div>
+          <span className="text-xs font-medium text-gray-500">输入格式：</span>
+          <span className="text-sm text-gray-700 ml-1">{parsed.input_format}</span>
+        </div>
+      )}
+      {parsed.output_format && (
+        <div>
+          <span className="text-xs font-medium text-gray-500">输出格式：</span>
+          <span className="text-sm text-gray-700 ml-1">{parsed.output_format}</span>
+        </div>
+      )}
+      {parsed.constraints && (
+        <div>
+          <span className="text-xs font-medium text-gray-500">约束条件：</span>
+          <span className="text-sm text-gray-700 ml-1">{parsed.constraints}</span>
+        </div>
+      )}
+      {Array.isArray(parsed.samples) && parsed.samples.length > 0 && (
+        <div>
+          <span className="text-xs font-medium text-gray-500">样例：</span>
+          <div className="mt-1 space-y-2">
+            {parsed.samples.map((s, i) => (
+              <div key={i} className="bg-white border rounded p-2 text-sm font-mono">
+                <div><span className="text-gray-500">输入：</span>{String(s.input ?? s.input_data ?? '')}</div>
+                <div><span className="text-gray-500">输出：</span>{String(s.output ?? s.expected_output ?? '')}</div>
+                {s.explanation && <div className="text-gray-500 font-sans text-xs mt-1">说明：{s.explanation}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {parsed.question && !parsed.description && (
+        <p className="text-gray-700 whitespace-pre-wrap">{parsed.question}</p>
+      )}
+      {parsed.options && Array.isArray(parsed.options) && (
+        <div className="space-y-1">
+          {parsed.options.map((opt, i) => (
+            <div key={i} className="text-sm text-gray-700">
+              <span className="font-medium">{String.fromCharCode(65 + i)}.</span> {typeof opt === 'string' ? opt : JSON.stringify(opt)}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function resolveAnswerDisplay(answer, options) {
   if (answer === null || answer === undefined || answer === '') {
     return { display: '未作答', label: null, isResolved: false }
@@ -325,7 +398,7 @@ export default function MistakeDetail({ mistake, onBack, onUpdateStatus, onMista
           <div>
             <h3 className="text-sm font-medium text-gray-500 mb-2">题目内容</h3>
             <div className="bg-gray-50 rounded-lg p-4">
-              <p className="text-gray-800 whitespace-pre-wrap">{mistake.question_content}</p>
+              <QuestionContentDisplay content={mistake.question_content} />
             </div>
           </div>
 

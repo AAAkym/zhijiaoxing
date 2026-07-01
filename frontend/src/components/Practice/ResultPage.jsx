@@ -371,12 +371,12 @@ function ProgrammingFeedbackSection({ feedback }) {
   const aiFeedback = feedback.aiFeedback || {}
 
   const dimensionLabels = {
-    compile: { label: '编译', icon: '⚙️' },
-    runtime: { label: '运行', icon: '▶️' },
-    io_match: { label: 'IO匹配', icon: '🔄' },
-    syntax: { label: '语法', icon: '📝' },
-    logic: { label: '逻辑', icon: '🧠' },
-    efficiency: { label: '效率', icon: '⚡' },
+    compile: { label: '编译', icon: '⚙️', max: 15, desc: '代码能否通过编译/解释' },
+    runtime: { label: '运行', icon: '▶️', max: 15, desc: '运行时是否产生正确输出' },
+    io_match: { label: 'IO匹配', icon: '🔄', max: 35, desc: '输入输出是否与预期完全匹配' },
+    syntax: { label: '语法', icon: '📝', max: 15, desc: '代码语法规范性' },
+    logic: { label: '逻辑', icon: '🧠', max: 25, desc: '算法逻辑与参考答案的相似度' },
+    efficiency: { label: '效率', icon: '⚡', max: 10, desc: '代码复杂度和执行效率' },
   }
 
   return (
@@ -397,17 +397,42 @@ function ProgrammingFeedbackSection({ feedback }) {
             const dim = dimensions[key] || {}
             const score = typeof dim.score === 'number' ? dim.score : '-'
             return (
-              <div key={key} className="bg-white rounded-lg p-2 text-center border">
+              <div key={key} className="bg-white rounded-lg p-2 text-center border" title={config.desc}>
                 <div className="text-lg">{config.icon}</div>
                 <div className="text-xs text-gray-500">{config.label}</div>
                 <div className={`text-sm font-bold ${typeof score === 'number' && score >= 80 ? 'text-green-600' : typeof score === 'number' && score >= 50 ? 'text-yellow-600' : typeof score === 'number' ? 'text-red-600' : 'text-gray-400'}`}>
-                  {score}
+                  {score}<span className="text-xs text-gray-400 font-normal">/{config.max}</span>
                 </div>
               </div>
             )
           })}
         </div>
+        <p className="text-xs text-gray-400 mt-2">评分标准：编译15% + IO匹配35% + 语法15% + 逻辑25% + 效率10%</p>
       </div>
+
+      {feedback.lineComparison && feedback.lineComparison.length > 0 && (
+        <div className="border rounded-lg p-3">
+          <h5 className="font-medium text-gray-700 mb-2">代码差异对比</h5>
+          <div className="space-y-1 text-sm font-mono">
+            {feedback.lineComparison.map((item, idx) => (
+              <div key={idx} className={`flex items-start gap-2 px-2 py-1 rounded ${
+                item.type === 'missing_from_student' ? 'bg-red-50 text-red-700' :
+                item.type === 'extra_in_student' ? 'bg-amber-50 text-amber-700' :
+                'bg-gray-50 text-gray-600'
+              }`}>
+                <span className="shrink-0 w-5 text-center font-bold text-xs mt-0.5">
+                  {item.type === 'missing_from_student' ? '-' : item.type === 'extra_in_student' ? '+' : ' '}
+                </span>
+                <span className="whitespace-pre-wrap break-all">{item.content}</span>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-4 mt-2 text-xs text-gray-400">
+            <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 bg-red-100 rounded"></span> 参考答案有但你的代码缺少</span>
+            <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 bg-amber-100 rounded"></span> 你的代码有但参考答案没有</span>
+          </div>
+        </div>
+      )}
 
       {aiFeedback.summary && (
         <div className="bg-gray-50 border rounded-lg p-3">

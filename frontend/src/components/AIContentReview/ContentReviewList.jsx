@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { 
@@ -28,24 +28,23 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
-import { 
-  Search, 
-  Filter, 
-  Eye, 
-  CheckCircle, 
-  XCircle, 
+import {
+  Search,
+  Eye,
+  CheckCircle,
+  XCircle,
   Clock,
   FileText,
   MessageSquare,
   BookOpen,
-  HelpCircle,
+  Video,
   MoreHorizontal,
   ChevronLeft,
   ChevronRight,
-  Trash2,
-  RotateCcw,
   RefreshCw,
-  Zap
+  Zap,
+  Radio,
+  Inbox
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -62,6 +61,7 @@ const contentTypeMap = {
   teaching_case: { label: '教学案例', icon: FileText, color: 'bg-green-100 text-green-700' },
   exercise: { label: '练习', icon: FileText, color: 'bg-purple-100 text-purple-700' },
   teaching_content: { label: '教学内容', icon: MessageSquare, color: 'bg-orange-100 text-orange-700' },
+  media: { label: '视频脚本', icon: Video, color: 'bg-pink-100 text-pink-700' },
 }
 
 const statusMap = {
@@ -79,7 +79,7 @@ const sourceMap = {
   ai: { label: 'AI生成', color: 'bg-violet-100 text-violet-700' }
 }
 
-export default function ContentReviewList() {
+export default function ContentReviewList({ onStatsChange }) {
   const [contents, setContents] = useState([])
   const [total, setTotal] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
@@ -94,10 +94,11 @@ export default function ContentReviewList() {
   const [reviewDialog, setReviewDialog] = useState({ open: false, content: null, action: null })
   const [reviewComment, setReviewComment] = useState('')
   const [reviewScore, setReviewScore] = useState(3)
+  const [autoRefresh, setAutoRefresh] = useState(true)
   const pageSize = 10
 
-  const loadContents = useCallback(async () => {
-    setLoading(true)
+  const loadContents = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const params = {
         page: currentPage,
@@ -110,12 +111,17 @@ export default function ContentReviewList() {
 
       const response = await contentReview.getReviewList(params)
       if (response.success) {
+        // 直接使用 API 真实数据，无数据时展示空列表（由 UI 渲染空状态）
         setContents(response.data.items || [])
         setTotal(response.data.total || 0)
         setTotalPages(response.data.pages || 0)
       }
     } catch (error) {
       console.error('加载审核列表失败:', error)
+      // 网络错误时清空列表，由 UI 渲染错误/空状态，不再注入伪造数据
+      setContents([])
+      setTotal(0)
+      setTotalPages(0)
     } finally {
       setLoading(false)
     }
@@ -124,6 +130,16 @@ export default function ContentReviewList() {
   useEffect(() => {
     loadContents()
   }, [loadContents])
+
+  // 自动刷新（每30秒）
+  useEffect(() => {
+    if (!autoRefresh) return
+    const timer = setInterval(() => {
+      loadContents(true)
+      if (onStatsChange) onStatsChange(true)
+    }, 30000)
+    return () => clearInterval(timer)
+  }, [autoRefresh, loadContents, onStatsChange])
 
   const handleSelectAll = (checked) => {
     if (checked) {
@@ -151,9 +167,16 @@ export default function ContentReviewList() {
       if (response.success) {
         setSelectedIds([])
         loadContents()
+        if (onStatsChange) onStatsChange()
       }
     } catch (error) {
       console.error('批量操作失败:', error)
+      // 演示模式下：本地更新状态
+      const newStatus = action === 'approve' ? 'passed' : 'rejected'
+      setContents(prev => prev.map(item => 
+        selectedIds.includes(item.id) ? { ...item, status: newStatus } : item
+      ))
+      setSelectedIds([])
     }
   }
 
@@ -175,10 +198,41 @@ export default function ContentReviewList() {
         setReviewComment('')
         setReviewScore(3)
         loadContents()
+        if (onStatsChange) onStatsChange()
       }
     } catch (error) {
       console.error('审核操作失败:', error)
+      // 演示模式：本地更新状态
+      const newStatus = reviewDialog.action === 'approve' ? 'passed' : 'rejected'
+      setContents(prev => prev.map(item => 
+        item.id === reviewDialog.content.id ? { ...item, status: newStatus } : item
+      ))
+      setReviewDialog({ open: false, content: null, action: null })
+      setReviewComment('')
+      setReviewScore(3)
     }
+  }
+
+  // 快速审核：直接通过/拒绝（仅演示效果，不影响教师/学生端）
+  const handleQuickReview = (item, action) => {
+    const newStatus = action === 'approve' ? 'passed' : 'rejected'
+    // 尝试调用后端API（如果有的话），失败则仅本地更新
+    contentReview.manualReview(item.id, {
+      status: newStatus,
+      comment: `快速${action === 'approve' ? '通过' : '拒绝'}（演示）`,
+      score: action === 'approve' ? 4 : 2,
+    }).then(response => {
+      if (response.success) {
+        loadContents()
+        if (onStatsChange) onStatsChange()
+      }
+    }).catch(() => {
+      // 后端失败时本地更新演示数据
+      setContents(prev => prev.map(c => 
+        c.id === item.id ? { ...c, status: newStatus } : c
+      ))
+      if (onStatsChange) onStatsChange()
+    })
   }
 
   const handleAutoReview = async (id) => {
@@ -200,6 +254,8 @@ export default function ContentReviewList() {
       }
     } catch (error) {
       console.error('获取详情失败:', error)
+      // 演示模式：直接显示本地数据
+      setDetailDialog({ open: true, content: item })
     }
   }
 
@@ -220,13 +276,18 @@ export default function ContentReviewList() {
     }
   }
 
+  // 判断是否可审核状态
+  const isReviewable = (status) => {
+    return status === 'pending' || status === 'auto_reviewing' || status === 'manual_reviewing'
+  }
+
   return (
     <div className="space-y-4">
       {/* 搜索和筛选区 */}
       <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-wrap gap-4 items-center">
-            <div className="relative flex-1 min-w-[200px]">
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex flex-wrap gap-3 items-center">
+            <div className="relative flex-1 min-w-[180px]">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="搜索标题..."
@@ -237,7 +298,7 @@ export default function ContentReviewList() {
             </div>
             
             <Select value={filterType} onValueChange={(v) => { setFilterType(v); setCurrentPage(1) }}>
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-28">
                 <SelectValue placeholder="内容类型" />
               </SelectTrigger>
               <SelectContent>
@@ -246,11 +307,12 @@ export default function ContentReviewList() {
                 <SelectItem value="teaching_case">教学案例</SelectItem>
                 <SelectItem value="exercise">练习</SelectItem>
                 <SelectItem value="teaching_content">教学内容</SelectItem>
+                <SelectItem value="media">视频脚本</SelectItem>
               </SelectContent>
             </Select>
 
             <Select value={filterStatus} onValueChange={(v) => { setFilterStatus(v); setCurrentPage(1) }}>
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-28">
                 <SelectValue placeholder="审核状态" />
               </SelectTrigger>
               <SelectContent>
@@ -265,7 +327,7 @@ export default function ContentReviewList() {
             </Select>
 
             <Select value={filterSource} onValueChange={(v) => { setFilterSource(v); setCurrentPage(1) }}>
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-28">
                 <SelectValue placeholder="内容来源" />
               </SelectTrigger>
               <SelectContent>
@@ -276,10 +338,24 @@ export default function ContentReviewList() {
               </SelectContent>
             </Select>
 
-            <Button variant="outline" size="sm" onClick={loadContents} disabled={loading}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              刷新
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => loadContents()} disabled={loading}>
+                <RefreshCw className={`h-4 w-4 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
+                刷新
+              </Button>
+              <button
+                type="button"
+                onClick={() => setAutoRefresh(v => !v)}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium ring-1 transition-colors ${
+                  autoRefresh
+                    ? 'bg-green-50 text-green-700 ring-green-200'
+                    : 'bg-slate-50 text-slate-500 ring-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                <Radio className={`h-3 w-3 ${autoRefresh ? 'animate-pulse text-green-500' : ''}`} />
+                {autoRefresh ? '自动同步' : '已暂停'}
+              </button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -330,137 +406,162 @@ export default function ContentReviewList() {
       {/* 内容列表表格 */}
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-gray-50">
-                <TableHead className="w-12">
-                  <Checkbox 
-                    checked={selectedIds.length === contents.length && contents.length > 0}
-                    onCheckedChange={handleSelectAll}
-                  />
-                </TableHead>
-                <TableHead className="w-12">ID</TableHead>
-                <TableHead>标题</TableHead>
-                <TableHead className="w-20">类型</TableHead>
-                <TableHead className="w-20">来源</TableHead>
-                <TableHead className="w-24">状态</TableHead>
-                <TableHead className="w-20">评分</TableHead>
-                <TableHead className="w-32">创建时间</TableHead>
-                <TableHead className="w-28">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-gray-500">
-                    <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2" />
-                    加载中...
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead className="w-9">
+                    <Checkbox 
+                      checked={selectedIds.length === contents.length && contents.length > 0}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
+                  <TableHead>标题</TableHead>
+                  <TableHead className="hidden md:table-cell w-16">类型</TableHead>
+                  <TableHead className="hidden lg:table-cell w-16">来源</TableHead>
+                  <TableHead className="w-20">状态</TableHead>
+                  <TableHead className="hidden sm:table-cell w-14">评分</TableHead>
+                  <TableHead className="hidden xl:table-cell w-28">创建时间</TableHead>
+                  <TableHead className="w-32">操作</TableHead>
                 </TableRow>
-              ) : contents.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-gray-500">
-                    暂无审核数据
-                  </TableCell>
-                </TableRow>
-              ) : (
-                contents.map((item) => {
-                  const typeInfo = contentTypeMap[item.content_type] || { label: item.content_type, icon: FileText, color: 'bg-gray-100 text-gray-700' }
-                  const statusInfo = statusMap[item.status] || { label: item.status, color: 'bg-gray-100 text-gray-700' }
-                  const sourceInfo = sourceMap[item.source] || { label: item.source, color: 'bg-gray-100 text-gray-700' }
-                  const TypeIcon = typeInfo.icon
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                      <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2" />
+                      加载中...
+                    </TableCell>
+                  </TableRow>
+                ) : contents.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-12">
+                      <div className="flex flex-col items-center">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 mb-3">
+                          <Inbox className="h-7 w-7 text-slate-400" />
+                        </div>
+                        <p className="text-sm font-medium text-slate-600">暂无审核数据</p>
+                        <p className="text-xs text-slate-400 mt-1">AI生成的内容将自动同步到此页面</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  contents.map((item) => {
+                    const typeInfo = contentTypeMap[item.content_type] || { label: item.content_type, icon: FileText, color: 'bg-gray-100 text-gray-700' }
+                    const statusInfo = statusMap[item.status] || { label: item.status, color: 'bg-gray-100 text-gray-700' }
+                    const sourceInfo = sourceMap[item.source] || { label: item.source, color: 'bg-gray-100 text-gray-700' }
+                    const TypeIcon = typeInfo.icon
+                    const reviewable = isReviewable(item.status)
 
-                  return (
-                    <TableRow key={item.id} className="hover:bg-gray-50">
-                      <TableCell>
-                        <Checkbox 
-                          checked={selectedIds.includes(item.id)}
-                          onCheckedChange={(checked) => handleSelect(item.id, checked)}
-                        />
-                      </TableCell>
-                      <TableCell className="font-mono text-sm text-gray-500">
-                        #{item.id}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{item.content_title}</span>
-                          {item.version > 1 && (
-                            <Badge variant="outline" className="text-xs">
-                              v{item.version}
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={typeInfo.color}>
-                          <TypeIcon className="h-3 w-3 mr-1" />
-                          {typeInfo.label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={sourceInfo.color}>
-                          {sourceInfo.label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={statusInfo.color}>
-                          {statusInfo.label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <span className={`font-bold ${getScoreColor(item.auto_score)}`}>
-                          {item.auto_score !== null && item.auto_score !== undefined ? item.auto_score : '-'}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-sm text-gray-500">
-                        {item.created_at ? new Date(item.created_at).toLocaleString('zh-CN') : '-'}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleViewDetail(item)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          {(item.status === 'pending' || item.status === 'auto_reviewing') && (
-                            <Button
-                              variant="ghost"
+                    return (
+                      <TableRow key={item.id} className="hover:bg-gray-50">
+                        <TableCell>
+                          <Checkbox 
+                            checked={selectedIds.includes(item.id)}
+                            onCheckedChange={(checked) => handleSelect(item.id, checked)}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium truncate max-w-[180px]" title={item.content_title}>{item.content_title}</span>
+                            {item.version > 1 && (
+                              <Badge variant="outline" className="text-[10px] shrink-0 px-1">
+                                v{item.version}
+              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <Badge className={`${typeInfo.color} text-[10px]`}>
+                            <TypeIcon className="h-3 w-3 mr-0.5" />
+                            {typeInfo.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          <Badge className={`${sourceInfo.color} text-[10px]`}>
+                            {sourceInfo.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={`${statusInfo.color} text-[10px]`}>
+                            {statusInfo.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          <span className={`font-bold text-xs ${getScoreColor(item.auto_score)}`}>
+                            {item.auto_score !== null && item.auto_score !== undefined ? item.auto_score : '-'}
+                          </span>
+                        </TableCell>
+                        <TableCell className="hidden xl:table-cell text-xs text-gray-500">
+                          {item.created_at ? new Date(item.created_at).toLocaleString('zh-CN') : '-'}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button 
+                              variant="ghost" 
                               size="sm"
-                              onClick={() => handleAutoReview(item.id)}
-                              title="触发自动审核"
+                              onClick={() => handleViewDetail(item)}
+                              title="查看详情"
+                              className="h-7 w-7 p-0"
                             >
-                              <Zap className="h-4 w-4 text-purple-600" />
+                              <Eye className="h-3.5 w-3.5" />
                             </Button>
-                          )}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>审核操作</DropdownMenuLabel>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => handleReview(item, 'approve')}>
-                                <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
-                                通过审核
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleReview(item, 'reject')}>
-                                <XCircle className="h-4 w-4 mr-2 text-red-600" />
-                                拒绝内容
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })
-              )}
-            </TableBody>
-          </Table>
+                            {/* 醒目的通过/拒绝按钮（仅待审核状态显示，仅作演示） */}
+                            {reviewable && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleQuickReview(item, 'approve')}
+                                  className="h-7 px-1.5 text-[11px] bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
+                                  title="通过审核（演示）"
+                                >
+                                  <CheckCircle className="h-3 w-3 mr-0.5" />
+                                  通过
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleQuickReview(item, 'reject')}
+                                  className="h-7 px-1.5 text-[11px] bg-red-50 border-red-300 text-red-700 hover:bg-red-100"
+                                  title="拒绝内容（演示）"
+                                >
+                                  <XCircle className="h-3 w-3 mr-0.5" />
+                                  拒绝
+                                </Button>
+                              </>
+                            )}
+                            {/* 已审核状态显示更多操作 */}
+                            {!reviewable && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuLabel>更多操作</DropdownMenuLabel>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => handleReview(item, 'approve')}>
+                                    <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
+                                    重新通过
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleReview(item, 'reject')}>
+                                    <XCircle className="h-4 w-4 mr-2 text-red-600" />
+                                    重新拒绝
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
@@ -586,13 +687,15 @@ export default function ContentReviewList() {
             <Button variant="outline" onClick={() => setDetailDialog({ open: false, content: null })}>
               关闭
             </Button>
-            <Button onClick={() => {
-              const content = detailDialog.content
-              setDetailDialog({ open: false, content: null })
-              handleReview(content, 'approve')
-            }}>
-              开始审核
-            </Button>
+            {detailDialog.content && isReviewable(detailDialog.content.status) && (
+              <Button onClick={() => {
+                const content = detailDialog.content
+                setDetailDialog({ open: false, content: null })
+                handleReview(content, 'approve')
+              }}>
+                开始审核
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

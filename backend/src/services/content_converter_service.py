@@ -29,14 +29,14 @@ class ContentConverterService:
 
     def _validate_mindmap_schema(self, result, topic=""):
         if not isinstance(result, dict):
-            return {"root": {"name": topic or "知识结构", "description": "", "is_core": True, "relationship_type": None, "children": []}}
+            return {"root": self._build_default_mindmap_root(topic)}
 
         if "root" not in result:
-            return {"root": {"name": topic or "知识结构", "description": "", "is_core": True, "relationship_type": None, "children": []}}
+            return {"root": self._build_default_mindmap_root(topic)}
 
         root = result["root"]
         if not isinstance(root, dict):
-            return {"root": {"name": topic or "知识结构", "description": "", "is_core": True, "relationship_type": None, "children": []}}
+            return {"root": self._build_default_mindmap_root(topic)}
 
         root["name"] = root.get("name") or topic or "知识结构"
         if not root.get("description"):
@@ -49,7 +49,130 @@ class ContentConverterService:
 
         self._validate_mindmap_children(root["children"])
 
+        # 强制多分支结构：当 children 为空或少于 2 时，生成默认分支确保思维导图不显示单一节点
+        if len(root["children"]) < 2:
+            default_branches = self._build_default_mindmap_branches(root["name"])
+            # 保留已有的合法子节点，合并默认分支
+            existing_names = {c.get("name") for c in root["children"] if isinstance(c, dict)}
+            for branch in default_branches:
+                if branch["name"] not in existing_names:
+                    root["children"].append(branch)
+
         return {"root": root}
+
+    def _build_default_mindmap_root(self, topic=""):
+        """构建默认的思维导图根节点，包含多分支结构。"""
+        return {
+            "name": topic or "知识结构",
+            "description": f"{topic or '知识结构'}的知识体系",
+            "is_core": True,
+            "relationship_type": None,
+            "children": self._build_default_mindmap_branches(topic or "知识结构"),
+        }
+
+    def _build_default_mindmap_branches(self, topic):
+        """当 LLM 生成失败或分支不足时，基于主题生成默认的 4 个一级分支。
+
+        每个分支下包含 2-3 个二级子节点，确保思维导图呈现多模块连接的完整结构，
+        而非单一根节点。
+        """
+        return [
+            {
+                "name": "基础概念",
+                "description": f"{topic}的核心定义与基本术语",
+                "is_core": True,
+                "relationship_type": "包含",
+                "children": [
+                    {
+                        "name": "定义与内涵",
+                        "description": f"{topic}的基本定义和研究范畴",
+                        "is_core": True,
+                        "relationship_type": "并列",
+                        "children": [],
+                    },
+                    {
+                        "name": "基本术语",
+                        "description": f"{topic}领域的常用术语表",
+                        "is_core": False,
+                        "relationship_type": "并列",
+                        "children": [],
+                    },
+                    {
+                        "name": "发展历程",
+                        "description": f"{topic}的演进脉络与里程碑",
+                        "is_core": False,
+                        "relationship_type": "递进",
+                        "children": [],
+                    },
+                ],
+            },
+            {
+                "name": "核心原理",
+                "description": f"{topic}的主要理论与方法论",
+                "is_core": True,
+                "relationship_type": "包含",
+                "children": [
+                    {
+                        "name": "理论基础",
+                        "description": f"{topic}的底层理论支撑",
+                        "is_core": True,
+                        "relationship_type": "并列",
+                        "children": [],
+                    },
+                    {
+                        "name": "关键方法",
+                        "description": f"{topic}的常用方法与技术",
+                        "is_core": False,
+                        "relationship_type": "并列",
+                        "children": [],
+                    },
+                ],
+            },
+            {
+                "name": "应用场景",
+                "description": f"{topic}的实际应用与案例分析",
+                "is_core": False,
+                "relationship_type": "包含",
+                "children": [
+                    {
+                        "name": "典型应用",
+                        "description": f"{topic}在实践中的典型应用场景",
+                        "is_core": False,
+                        "relationship_type": "并列",
+                        "children": [],
+                    },
+                    {
+                        "name": "案例分析",
+                        "description": f"{topic}相关案例的深入剖析",
+                        "is_core": False,
+                        "relationship_type": "递进",
+                        "children": [],
+                    },
+                ],
+            },
+            {
+                "name": "进阶拓展",
+                "description": f"{topic}的高级主题与前沿进展",
+                "is_core": False,
+                "relationship_type": "包含",
+                "children": [
+                    {
+                        "name": "前沿趋势",
+                        "description": f"{topic}领域的最新研究进展",
+                        "is_core": False,
+                        "relationship_type": "递进",
+                        "children": [],
+                    },
+                    {
+                        "name": "扩展资源",
+                        "description": f"深入学习{topic}的推荐资源",
+                        "is_core": False,
+                        "relationship_type": "并列",
+                        "children": [],
+                    },
+                ],
+            },
+        ]
 
     def _validate_mindmap_children(self, children):
         if not isinstance(children, list):
@@ -946,7 +1069,17 @@ class ContentConverterService:
         if isinstance(data, list):
             items = data
         elif data.get("recommendations"):
-            items = data["recommendations"]
+            rec_data = data["recommendations"]
+            # recommendations 可能是 list（直接资源列表）或 dict（含 resources 字段）
+            if isinstance(rec_data, list):
+                items = rec_data
+            elif isinstance(rec_data, dict):
+                items = rec_data.get("resources") or rec_data.get("items") or []
+                # 若 dict 中无可提取的列表，且 dict 本身像资源项，则包装为单元素列表
+                if not items and (rec_data.get("title") or rec_data.get("description")):
+                    items = [rec_data]
+            else:
+                items = []
         elif data.get("items"):
             items = data["items"]
         elif data.get("resources"):

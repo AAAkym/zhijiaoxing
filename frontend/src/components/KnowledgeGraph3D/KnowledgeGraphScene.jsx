@@ -34,9 +34,65 @@ const EDGE_COLORS = {
 }
 
 /* ── 3D 力导向布局（性能自适应迭代次数） ── */
-export function useForceLayout(nodes, edges) {
+export function useForceLayout(nodes, edges, layoutMode = 'force') {
   return useMemo(() => {
     if (!nodes.length) return { positions: {}, links: [] }
+
+    if (layoutMode === 'lanes') {
+      const positions = {}
+      const chapters = nodes
+        .filter((n) => n.node_type === 'chapter')
+        .sort((a, b) => ((a.properties?.order_index ?? 999) - (b.properties?.order_index ?? 999)))
+      const courseNodes = nodes.filter((n) => n.node_type === 'course')
+      const otherNodes = nodes.filter((n) => !['course', 'chapter', 'knowledge_point'].includes(n.node_type))
+      const chapterIndex = new Map(chapters.map((chapter, index) => [chapter.label || chapter.name || chapter.id, index]))
+      const laneGap = Math.max(4, Math.min(8, 90 / Math.max(chapters.length, 1)))
+      const startY = ((chapters.length - 1) * laneGap) / 2
+
+      courseNodes.forEach((node, index) => {
+        positions[node.id] = new THREE.Vector3(-12, index * 3, 0)
+      })
+
+      chapters.forEach((chapter, index) => {
+        const y = startY - index * laneGap
+        positions[chapter.id] = new THREE.Vector3(-5, y, 0)
+      })
+
+      const groupedKps = {}
+      nodes.filter((n) => n.node_type === 'knowledge_point').forEach((node) => {
+        const chapterTitle = node.properties?.chapter || ''
+        const key = chapterIndex.has(chapterTitle) ? chapterTitle : '__ungrouped'
+        if (!groupedKps[key]) groupedKps[key] = []
+        groupedKps[key].push(node)
+      })
+
+      Object.entries(groupedKps).forEach(([chapterTitle, group], laneIndex) => {
+        const index = chapterTitle === '__ungrouped' ? chapters.length + laneIndex : chapterIndex.get(chapterTitle)
+        const y = startY - index * laneGap
+        group
+          .sort((a, b) => ((a.properties?.order_index ?? 999) - (b.properties?.order_index ?? 999)))
+          .forEach((node, kpIndex) => {
+            const col = kpIndex % 8
+            const row = Math.floor(kpIndex / 8)
+            positions[node.id] = new THREE.Vector3(col * 3.2, y - row * 1.5, (row % 2) * 2.2 - 1.1)
+          })
+      })
+
+      otherNodes.forEach((node, index) => {
+        positions[node.id] = new THREE.Vector3(28, startY - index * 2.4, 0)
+      })
+
+      const links = edges
+        .filter((e) => positions[e.source_node_id ?? e.source] && positions[e.target_node_id ?? e.target])
+        .map((e) => ({
+          source: e.source_node_id ?? e.source,
+          target: e.target_node_id ?? e.target,
+          weight: e.weight ?? 1,
+          type: e.edge_type,
+          edge: e,
+        }))
+      return { positions, links }
+    }
 
     const iterations = nodes.length > 200 ? 40 : nodes.length > 100 ? 80 : 120
     const positions = {}
@@ -109,7 +165,7 @@ export function useForceLayout(nodes, edges) {
     }
 
     return { positions, links: edgePairs }
-  }, [nodes, edges])
+  }, [nodes, edges, layoutMode])
 }
 
 /* ── 相机聚焦动画组件 ── */
@@ -144,11 +200,14 @@ function CameraFocus({ target, distance = 12 }) {
   return null
 }
 
-/* ── 单个节点组件 ── */
+/* ── 单个节点组件（含防误触逻辑） ── */
 function GraphNode({ node, position, isSelected, isHighlighted, isOnPath, isExpanded, onClick, onDoubleClick, lowDetail }) {
   const meshRef = useRef()
   const config = TYPE_CONFIG[node.node_type] || TYPE_CONFIG.knowledge_point
   const [hovered, setHovered] = useState(false)
+  // 防误触：记录鼠标按下位置，拖动超过阈值则判定为拖拽而非点击
+  const pointerDownPos = useRef(null)
+  const DRAG_THRESHOLD = 5 // 像素
 
   // 难度颜色
   const difficulty = node.properties?.difficulty
@@ -184,14 +243,34 @@ function GraphNode({ node, position, isSelected, isHighlighted, isOnPath, isExpa
     }
   }, [config.shape, lowDetail, geoDetail, sphereSeg])
 
+  // 判断是否为拖拽操作（鼠标移动超过阈值）
+  const isDragAction = (e) => {
+    if (!pointerDownPos.current) return false
+    const dx = e.clientX - pointerDownPos.current.x
+    const dy = e.clientY - pointerDownPos.current.y
+    return Math.sqrt(dx * dx + dy * dy) > DRAG_THRESHOLD
+  }
+
   return (
     <group>
       <mesh
         ref={meshRef}
         position={position}
         scale={baseScale}
-        onClick={(e) => { e.stopPropagation(); onClick(node) }}
-        onDoubleClick={(e) => { e.stopPropagation(); onDoubleClick?.(node) }}
+        onPointerDown={(e) => {
+          e.stopPropagation()
+          pointerDownPos.current = { x: e.clientX, y: e.clientY }
+        }}
+        onClick={(e) => {
+          e.stopPropagation()
+          if (!isDragAction(e)) onClick(node)
+          pointerDownPos.current = null
+        }}
+        onDoubleClick={(e) => {
+          e.stopPropagation()
+          if (!isDragAction(e)) onDoubleClick?.(node)
+          pointerDownPos.current = null
+        }}
         onPointerOver={(e) => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'pointer' }}
         onPointerOut={() => { setHovered(false); document.body.style.cursor = 'default' }}
       >
@@ -255,16 +334,25 @@ function GraphEdge({ start, end, type, weight, isOnPath, isHighlighted, isSelect
   )
 }
 
-/* ── 节点标签 ── */
-function NodeLabel({ position, text, isSelected, isExpanded, lowDetail }) {
+/* ── 节点标签（含内容简析） ── */
+function NodeLabel({ position, text, node, isSelected, isExpanded, lowDetail }) {
   if (lowDetail && !isSelected && !isExpanded) return null
+
+  const isKnowledgePoint = node?.node_type === 'knowledge_point'
+  const showSummary = isKnowledgePoint && (node?.description || node?.properties?.summary)
+  const summaryText = showSummary
+    ? (node.description || node.properties.summary || '')
+    : ''
 
   const canvas = useMemo(() => {
     const c = document.createElement('canvas')
-    c.width = 256
-    c.height = 64
+    const hasSummary = summaryText.length > 0
+    c.width = 512
+    c.height = hasSummary ? 128 : 64
     const ctx = c.getContext('2d')
     ctx.clearRect(0, 0, c.width, c.height)
+
+    // 节点名称
     const fontSize = isSelected || isExpanded ? 24 : 20
     ctx.font = `bold ${fontSize}px sans-serif`
     ctx.fillStyle = isSelected ? '#d4a853' : isExpanded ? '#4a90d9' : '#ffffff'
@@ -272,12 +360,27 @@ function NodeLabel({ position, text, isSelected, isExpanded, lowDetail }) {
     ctx.textBaseline = 'middle'
     const maxLen = isSelected || isExpanded ? 18 : 12
     const display = text.length > maxLen ? text.slice(0, maxLen - 1) + '…' : text
-    ctx.fillText(display, c.width / 2, c.height / 2)
+    ctx.fillText(display, c.width / 2, hasSummary ? 30 : c.height / 2)
+
+    // 内容简析（仅知识点节点显示）
+    if (hasSummary) {
+      const summarySize = isSelected || isExpanded ? 16 : 13
+      ctx.font = `${summarySize}px sans-serif`
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'
+      const maxSummaryLen = isSelected || isExpanded ? 36 : 24
+      const summaryDisplay = summaryText.length > maxSummaryLen
+        ? summaryText.slice(0, maxSummaryLen - 1) + '…'
+        : summaryText
+      ctx.fillText(summaryDisplay, c.width / 2, 85)
+    }
+
     return c
-  }, [text, isSelected, isExpanded])
+  }, [text, summaryText, isSelected, isExpanded])
 
   const texture = useMemo(() => new THREE.CanvasTexture(canvas), [canvas])
-  const labelScale = isSelected || isExpanded ? [3.5, 0.9, 1] : [2.8, 0.7, 1]
+  const labelScale = isSelected || isExpanded
+    ? (summaryText ? [5.5, 1.4, 1] : [3.5, 0.9, 1])
+    : (summaryText ? [4.5, 1.1, 1] : [2.8, 0.7, 1])
 
   return (
     <sprite position={[position.x, position.y + 1.4, position.z]} scale={labelScale}>
@@ -294,14 +397,14 @@ export default function KnowledgeGraphScene({
   highlightedNodes = [],
   pathNodeIds = [],
   pathEdgeKeys = [],
-  expandedNodeIds = [],
   focusTarget,
   onNodeClick,
   onNodeDoubleClick,
   onEdgeClick,
   selectedEdgeKey,
+  layoutMode = 'force',
 }) {
-  const { positions, links } = useForceLayout(nodes, edges)
+  const { positions, links } = useForceLayout(nodes, edges, layoutMode)
   const [lowDetail, setLowDetail] = useState(false)
 
   useEffect(() => {
@@ -311,7 +414,6 @@ export default function KnowledgeGraphScene({
   const highlightedSet = useMemo(() => new Set(highlightedNodes), [highlightedNodes])
   const pathNodeSet = useMemo(() => new Set(pathNodeIds), [pathNodeIds])
   const pathEdgeSet = useMemo(() => new Set(pathEdgeKeys), [pathEdgeKeys])
-  const expandedSet = useMemo(() => new Set(expandedNodeIds), [expandedNodeIds])
 
   // 选中节点的关联边
   const highlightedEdgeSet = useMemo(() => {
@@ -319,7 +421,7 @@ export default function KnowledgeGraphScene({
     const set = new Set()
     links.forEach((link) => {
       if (link.source === selectedNodeId || link.target === selectedNodeId) {
-        set.add(`${link.source}-${link.target}`)
+        set.add(`${link.source}-${link.target}-${link.type}`)
       }
     })
     return set
@@ -353,7 +455,7 @@ export default function KnowledgeGraphScene({
         const s = positions[link.source]
         const t = positions[link.target]
         if (!s || !t) return null
-        const key = `${link.source}-${link.target}`
+        const key = `${link.source}-${link.target}-${link.type}`
         return (
           <GraphEdge
             key={key}
@@ -376,7 +478,7 @@ export default function KnowledgeGraphScene({
         const isSelected = selectedNodeId === node.id
         const isHighlighted = highlightedSet.has(node.id)
         const isOnPath = pathNodeSet.has(node.id)
-        const isExpanded = expandedSet.has(node.id)
+        const isExpanded = false
         return (
           <group key={node.id}>
             <GraphNode
@@ -393,6 +495,7 @@ export default function KnowledgeGraphScene({
             <NodeLabel
               position={pos}
               text={node.label || node.name || ''}
+              node={node}
               isSelected={isSelected}
               isExpanded={isExpanded}
               lowDetail={lowDetail}

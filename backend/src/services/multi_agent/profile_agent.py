@@ -118,7 +118,7 @@ class ProfileAgent(AgentBase):
             }
 
         next_dim = PROFILE_DIMENSIONS[next_round]
-        feedback = self._generate_feedback(current_dim, extracted, user_answer)
+        feedback = self._generate_feedback(current_dim, extracted, user_answer, current_round)
 
         return {
             'type': 'dialog_continue',
@@ -348,7 +348,7 @@ class ProfileAgent(AgentBase):
 
         return []
 
-    def _generate_feedback(self, dimension, extracted, user_answer):
+    def _generate_feedback(self, dimension, extracted, user_answer, current_round=0):
         dim_name = dimension['name']
         if extracted is None:
             return f'好的，了解了。接下来我们聊聊{PROFILE_DIMENSIONS[min(current_round + 1, len(PROFILE_DIMENSIONS) - 1)]["name"]}方面的情况。'

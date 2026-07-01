@@ -21,7 +21,6 @@ class AIContentVersion(db.Model):
     存储AI生成内容的各个版本
     """
     __tablename__ = 'ai_content_versions'
-    __table_args__ = {'extend_existing': True}
     
     # 主键
     id = db.Column(db.Integer, primary_key=True)
@@ -65,6 +64,7 @@ class AIContentVersion(db.Model):
         db.UniqueConstraint('content_id', 'version_number', name='uix_content_version'),
         Index('idx_content_version_user', 'created_by', 'content_type'),
         Index('idx_content_version_created', 'created_at'),
+        {'extend_existing': True},
     )
     
     def __repr__(self):

@@ -653,7 +653,18 @@ class MistakeRecord(db.Model):
                 knowledge_tags = json.loads(self.knowledge_tags)
             except:
                 knowledge_tags = []
-        
+
+        # 解析 ai_analysis JSON字符串为对象，避免前端收到原始字符串
+        ai_analysis_parsed = None
+        if self.ai_analysis:
+            if isinstance(self.ai_analysis, dict):
+                ai_analysis_parsed = self.ai_analysis
+            else:
+                try:
+                    ai_analysis_parsed = json.loads(self.ai_analysis)
+                except (ValueError, TypeError):
+                    ai_analysis_parsed = self.ai_analysis
+
         result = {
             'id': self.id,
             'user_id': self.user_id,
@@ -669,7 +680,7 @@ class MistakeRecord(db.Model):
             'last_mistake_at': self.last_mistake_at.isoformat() if self.last_mistake_at else None,
             'mastery_status': self.mastery_status,
             'knowledge_tags': knowledge_tags,
-            'ai_analysis': self.ai_analysis,
+            'ai_analysis': ai_analysis_parsed,
             'error_type_auto': self.error_type_auto,
             'error_type_manual': self.error_type_manual,
             'error_type_confirmed': bool(self.error_type_confirmed),
@@ -740,6 +751,16 @@ class ProgrammingSubmission(db.Model):
     course = db.relationship('Course', backref='programming_submissions')
 
     def to_dict(self):
+        import json as _json
+        # 将JSON字符串字段解析为对象，前端需要直接访问 .score 等属性
+        def _safe_parse(val):
+            if not val or not isinstance(val, str):
+                return val if val else {}
+            try:
+                return _json.loads(val)
+            except (ValueError, TypeError):
+                return val
+
         return {
             'id': self.id,
             'user_id': self.user_id,
@@ -752,14 +773,14 @@ class ProgrammingSubmission(db.Model):
             'score': self.score,
             'max_score': self.max_score,
             'status': self.status,
-            'compile_result': self.compile_result,
-            'runtime_result': self.runtime_result,
-            'io_match_result': self.io_match_result,
-            'syntax_result': self.syntax_result,
-            'logic_result': self.logic_result,
-            'efficiency_result': self.efficiency_result,
-            'line_comparison': self.line_comparison,
-            'ai_feedback': self.ai_feedback,
+            'compile_result': _safe_parse(self.compile_result),
+            'runtime_result': _safe_parse(self.runtime_result),
+            'io_match_result': _safe_parse(self.io_match_result),
+            'syntax_result': _safe_parse(self.syntax_result),
+            'logic_result': _safe_parse(self.logic_result),
+            'efficiency_result': _safe_parse(self.efficiency_result),
+            'line_comparison': _safe_parse(self.line_comparison),
+            'ai_feedback': _safe_parse(self.ai_feedback),
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
 

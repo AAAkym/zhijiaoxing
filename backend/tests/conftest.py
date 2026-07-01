@@ -8,14 +8,44 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 @pytest.fixture
 def app():
-    os.environ.setdefault('FLASK_ENV', 'testing')
+    # 强制覆盖环境变量，防止已有 FLASK_ENV=development 导致连接生产数据库
+    os.environ['FLASK_ENV'] = 'testing'
+    os.environ['TEST_DATABASE_URL'] = 'sqlite:///:memory:'
+    os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
+
+    # 如果src.main已被缓存，先删除缓存以确保重新加载配置
+    for mod_name in list(sys.modules.keys()):
+        if mod_name.startswith('src.main') or mod_name == 'src.config':
+            del sys.modules[mod_name]
+
     from src.main import app
     app.config['TESTING'] = True
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['CACHE_TYPE'] = 'NullCache'
     app.config['WTF_CSRF_ENABLED'] = False
     app.config['SECRET_KEY'] = 'test-secret-key'
+
+    # 强制覆盖数据库URI为内存数据库（防止类级别属性已被求值）
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+
+    # 重新初始化SQLAlchemy引擎以应用新的URI
+    from src.models.user import db as _db
+    if hasattr(_db, 'engine'):
+        _db.engine.dispose()
+    _db.init_app(app)
+
+    # 安全检查：确保测试不会连接生产数据库
+    db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+    if 'sqlite' in db_uri.lower() and ':memory:' not in db_uri:
+        raise RuntimeError(
+            f"安全检查失败：测试数据库URI指向文件数据库而非内存数据库: {db_uri}\n"
+            "这可能导致生产数据被drop_all()清空！请检查config.py配置。"
+        )
+    if 'dev.db' in db_uri:
+        raise RuntimeError(
+            f"安全检查失败：测试数据库URI包含dev.db: {db_uri}\n"
+            "禁止在测试中连接生产数据库！"
+        )
     return app
 
 
@@ -28,6 +58,13 @@ def client(app):
 def db_session(app):
     from src.models.user import db as _db
     with app.app_context():
+        # 二次安全检查：确认数据库是内存数据库
+        db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+        if ':memory:' not in db_uri:
+            raise RuntimeError(
+                f"安全检查失败：db_session fixture检测到非内存数据库: {db_uri}\n"
+                "drop_all()被阻止以保护生产数据！"
+            )
         _db.create_all()
         yield _db
         _db.session.remove()

@@ -163,7 +163,7 @@ export default function NodeDetailPanel({ node, edges = [], nodes = [], onClose,
                   const edgeDesc = EDGE_TYPE_DESC[e.edge_type] || ''
                   return (
                     <div
-                      key={i}
+                      key={`${s}-${t}-${e.edge_type}`}
                       className="py-1.5 px-2 rounded-md hover:bg-[#f5f2ee] cursor-pointer transition-colors"
                       onClick={() => onNavigateToNode?.(otherId)}
                     >

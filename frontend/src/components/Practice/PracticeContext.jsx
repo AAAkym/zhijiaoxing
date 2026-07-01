@@ -13,6 +13,7 @@ const initialState = {
   endTime: null,
   isSubmitting: false,
   result: null,
+  error: null,
   filters: {
     subject: 'all',
     chapter: 'all',
@@ -115,13 +116,17 @@ function practiceReducer(state, action) {
       return { ...state, isSubmitting: true }
     
     case 'SUBMIT_SUCCESS':
-      return { 
-        ...state, 
-        isSubmitting: false, 
+      return {
+        ...state,
+        isSubmitting: false,
         result: action.payload,
+        error: null,
         endTime: Date.now(),
         currentView: 'result'
       }
+
+    case 'SUBMIT_ERROR':
+      return { ...state, isSubmitting: false, error: action.payload }
     
     case 'RESET':
       return { ...initialState }
@@ -161,7 +166,7 @@ export function PracticeProvider({ children }) {
       dispatch({ type: 'SUBMIT_SUCCESS', payload: result })
       return result
     } catch (error) {
-      dispatch({ type: 'SUBMIT_START' })
+      dispatch({ type: 'SUBMIT_ERROR', payload: error?.message || '提交失败，请重试' })
       throw error
     }
   }, [])

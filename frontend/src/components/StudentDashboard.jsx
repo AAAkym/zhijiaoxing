@@ -33,7 +33,11 @@ import {
   Crosshair,
   Radar,
   Map,
-  Network
+  Network,
+  LogIn,
+  Flame,
+  Shield,
+  Sparkles
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area } from 'recharts'
 import { courses, ai, auth, student, studentSettings as studentSettingsApi, notes, mistakeBook, achievements as achievementApi } from '../services/api'
@@ -77,6 +81,9 @@ export default function StudentDashboard({ user, onLogout }) {
     public: 0,
     recentNotes: []
   })
+
+  // 学习成就卡片数据：从后端成就系统获取真实数据，替代原本的硬编码启发式条件
+  const [achievementSummary, setAchievementSummary] = useState(null)
 
   const [myCourses, setMyCourses] = useState([])
   const [coursesLoading, setCoursesLoading] = useState(true)
@@ -160,22 +167,39 @@ export default function StudentDashboard({ user, onLogout }) {
       const response = await student.getMyCourses()
       const coursesData = response.courses || []
       if (coursesData.length > 0) {
-        setMyCourses(coursesData.map(c => ({
-          id: c.id,
-          title: c.title,
-          subtitle: c.description?.slice(0, 50) || '',
-          description: c.description || '',
-          progress: c.progress_percentage || 0,
-          instructor: c.teacher_name || '未知教师',
-          instructorId: c.teacher_id,
-          lessonsCount: 24,
-          durationHours: 12,
-          nextLesson: '继续学习',
-          nextLessonDate: new Date().toISOString().split('T')[0],
-          status: 'active',
-          tags: [],
-          modules: []
-        })))
+        setMyCourses(coursesData.map(c => {
+          const vs = c.video_stats || {}
+          // 基于视频完成状态计算真实进度、章节数、总时长和下节课信息
+          const totalVideos = vs.total_videos ?? 0
+          const completedVideos = vs.completed_videos ?? 0
+          const progress = totalVideos > 0
+            ? Math.round((completedVideos / totalVideos) * 100)
+            : (c.progress_percentage || 0)
+          const durationHours = vs.total_duration_hours ?? '-'
+          const lastWatched = vs.last_watched_at || c.last_accessed
+          const nextLessonTitle = vs.next_video_title || '继续学习'
+          const nextLessonDate = lastWatched
+            ? new Date(lastWatched).toISOString().split('T')[0]
+            : ''
+
+          return {
+            id: c.id,
+            title: c.title,
+            subtitle: c.description?.slice(0, 50) || '',
+            description: c.description || '',
+            progress,
+            instructor: c.teacher_name || '未知教师',
+            instructorId: c.teacher_id,
+            lessonsCount: totalVideos,
+            durationHours,
+            nextLesson: nextLessonTitle,
+            nextLessonDate,
+            lastWatchedAt: lastWatched,
+            status: progress >= 100 ? 'completed' : 'active',
+            tags: [],
+            modules: []
+          }
+        }))
         setStats(prev => ({
           ...prev,
           enrolledCourses: coursesData.length,
@@ -253,6 +277,16 @@ export default function StudentDashboard({ user, onLogout }) {
     }
   }, [])
 
+  // 拉取后端成就系统数据，用于概览页"学习成就"卡片展示真实解锁状态
+  const fetchAchievementSummary = useCallback(async () => {
+    try {
+      const result = await achievementApi.getAll()
+      setAchievementSummary(result)
+    } catch (error) {
+      console.warn('获取成就数据失败:', error)
+    }
+  }, [])
+
   const fetchProgressChartData = useCallback(async () => {
     try {
       const res = await student.getLearningProgressChart()
@@ -318,7 +352,8 @@ export default function StudentDashboard({ user, onLogout }) {
     fetchNoteStats()
     fetchProgressChartData()
     fetchRecentActivities()
-  }, [fetchMyCourses, fetchLearningStats, fetchMistakeStats, fetchNoteStats])
+    fetchAchievementSummary()
+  }, [fetchMyCourses, fetchLearningStats, fetchMistakeStats, fetchNoteStats, fetchAchievementSummary])
 
   // 修复：监听视图切换，当从练习页切回概览时自动刷新错题和学习统计
   useEffect(() => {
@@ -327,9 +362,10 @@ export default function StudentDashboard({ user, onLogout }) {
       fetchMistakeStats()
       fetchLearningStats()
       fetchNoteStats()
+      fetchAchievementSummary()
       checkAchievements()
     }
-  }, [currentView, fetchMistakeStats, fetchLearningStats, fetchNoteStats, checkAchievements])
+  }, [currentView, fetchMistakeStats, fetchLearningStats, fetchNoteStats, fetchAchievementSummary, checkAchievements])
 
   useEffect(() => {
     const handleOnline = () => {
@@ -1391,52 +1427,72 @@ export default function StudentDashboard({ user, onLogout }) {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {mistakeStats.mastered >= 10 && (
-                    <div className="flex items-center space-x-3">
-                      <BookX className="h-8 w-8 text-red-500" />
-                      <div>
-                        <p className="font-medium">错题克星</p>
-                        <p className="text-sm text-[#6b6560]">掌握10道以上错题</p>
+                {(() => {
+                  // 成就图标映射：与后端 achievement.icon 字段对齐，缺失时回退到 Award
+                  const ICON_MAP = {
+                    LogIn, Clock, Flame, Target, BookOpen, BookX, CheckCircle,
+                    RefreshCw, FileText, GraduationCap, Shield, TrendingUp, Star, Award,
+                  }
+                  const renderIcon = (iconName, className) => {
+                    const Comp = ICON_MAP[iconName] || Award
+                    return <Comp className={className} />
+                  }
+
+                  // 后端成就数据已加载：展示真实解锁的成就
+                  if (achievementSummary && Array.isArray(achievementSummary.achievements)) {
+                    const total = achievementSummary.total_count || achievementSummary.achievements.length || 0
+                    const unlockedCount = achievementSummary.unlocked_count || 0
+                    const unlocked = achievementSummary.achievements
+                      .filter(a => a && a.unlocked)
+                      .sort((a, b) => new Date(b.unlocked_at || 0) - new Date(a.unlocked_at || 0))
+                      .slice(0, 6)
+
+                    if (unlocked.length > 0) {
+                      return (
+                        <>
+                          <div className="flex items-center gap-2 mb-3 text-xs text-[#6b6560]">
+                            <Sparkles className="h-3.5 w-3.5 text-[#d4a853]" />
+                            <span>已解锁 {unlockedCount} / {total} 项成就</span>
+                            {achievementSummary.total_points > 0 && (
+                              <span className="ml-auto">累计积分 {achievementSummary.total_points}</span>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {unlocked.map(a => (
+                              <div key={a.id} className="flex items-center space-x-3">
+                                {renderIcon(a.icon, 'h-8 w-8 text-[#d4a853]')}
+                                <div className="min-w-0">
+                                  <p className="font-medium truncate">{a.name}</p>
+                                  <p className="text-sm text-[#6b6560] truncate">{a.description}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )
+                    }
+                    // 后端有成就定义但用户尚未解锁任何成就
+                    return (
+                      <div className="col-span-full flex items-center justify-center py-8 text-[#9a9590]">
+                        <div className="text-center">
+                          <Award className="h-12 w-12 mx-auto mb-3 text-[#9a9590]" />
+                          <p className="text-sm">继续学习，解锁更多成就</p>
+                          <p className="text-xs mt-1">已解锁 0 / {total} 项成就</p>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  {noteStats.total >= 10 && (
-                    <div className="flex items-center space-x-3">
-                      <StickyNote className="h-8 w-8 text-[#8b6fb0]" />
-                      <div>
-                        <p className="font-medium">笔记达人</p>
-                        <p className="text-sm text-[#6b6560]">创建10篇以上笔记</p>
-                      </div>
-                    </div>
-                  )}
-                  {stats.completedExams >= 5 && (
-                    <div className="flex items-center space-x-3">
-                      <Award className="h-8 w-8 text-[#d4a853]" />
-                      <div>
-                        <p className="font-medium">考核达人</p>
-                        <p className="text-sm text-[#6b6560]">完成5次以上考核</p>
-                      </div>
-                    </div>
-                  )}
-                  {stats.practiceCount >= 20 && (
-                    <div className="flex items-center space-x-3">
-                      <Star className="h-8 w-8 text-[#d4a853]" />
-                      <div>
-                        <p className="font-medium">练习之星</p>
-                        <p className="text-sm text-[#6b6560]">累计练习20次以上</p>
-                      </div>
-                    </div>
-                  )}
-                  {mistakeStats.mastered < 10 && noteStats.total < 10 && stats.completedExams < 5 && stats.practiceCount < 20 && (
+                    )
+                  }
+
+                  // 后端数据加载中或失败时的兜底（不再依赖本地启发式条件）
+                  return (
                     <div className="col-span-full flex items-center justify-center py-8 text-[#9a9590]">
                       <div className="text-center">
                         <Award className="h-12 w-12 mx-auto mb-3 text-[#9a9590]" />
-                        <p className="text-sm">继续学习，解锁更多成就</p>
+                        <p className="text-sm">成就数据加载中...</p>
                       </div>
                     </div>
-                  )}
-                </div>
+                  )
+                })()}
               </CardContent>
             </Card>
           </div>

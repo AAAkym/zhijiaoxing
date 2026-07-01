@@ -1,0 +1,88 @@
+# 智教星 Docker Compose 配置
+# 一键启动前后端 + Redis 服务
+
+version: '3.8'
+
+services:
+  # ==================== 后端服务 ====================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: zhijiaoxing-backend
+    ports:
+      - "5000:5000"
+    environment:
+      # Flask 配置
+      - FLASK_ENV=production
+      - SECRET_KEY=${SECRET_KEY:-zhijiaoxing-secret-key-change-in-production}
+
+      # Spark API 配置（需要在 .env 或运行时设置）
+      - SPARK_API_PASSWORD=${SPARK_API_PASSWORD}
+      - SPARK_API_URL=${SPARK_API_URL:-https://spark-api-open.xf-yun.com/v1/chat/completions}
+      - SPARK_MODEL=${SPARK_MODEL:-lite}
+
+      # 数据库配置
+      - DATABASE_URL=sqlite:///instance/production.db
+
+      # Redis 配置
+      - REDIS_URL=redis://redis:6379/0
+
+      # CORS 配置
+      - CORS_ORIGINS=http://localhost,http://localhost:80
+    volumes:
+      # 数据持久化
+      - ./backend/instance:/app/instance
+      - ./backend/uploads:/app/uploads
+      - ./backend/logs:/app/logs
+    depends_on:
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:5000/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ==================== 前端服务 ====================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: zhijiaoxing-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==================== Redis 服务 ====================
+  redis:
+    image: redis:5.0-alpine
+    container_name: zhijiaoxing-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# ==================== 数据卷 ====================
+volumes:
+  redis-data:
+    name: zhijiaoxing-redis-data
+
+# ==================== 网络配置 ====================
+networks:
+  default:
+    name: zhijiaoxing-network

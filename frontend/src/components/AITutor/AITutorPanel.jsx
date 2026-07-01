@@ -36,7 +36,7 @@ const TAB_ITEMS = [
 const MAX_RECENT_TOPICS = 20
 
 export default function AITutorPanel({ courseId: courseIdProp, videoId, className }) {
-  const [activeTab, setActiveTab] = useState('qa')
+  const [activeTab, setActiveTab] = useState('diagnosis')
   const [selectedCourseId, setSelectedCourseId] = useState(courseIdProp ? String(courseIdProp) : '')
   const [courses, setCourses] = useState([])
   const [coursesLoading, setCoursesLoading] = useState(true)
@@ -52,6 +52,7 @@ export default function AITutorPanel({ courseId: courseIdProp, videoId, classNam
       setCourses(coursesData)
       if (coursesData.length > 0 && !selectedCourseId) {
         setSelectedCourseId(String(coursesData[0].id))
+        setActiveTab('diagnosis')
       }
     } catch (err) {
       console.error('加载课程列表失败:', err)
@@ -67,6 +68,7 @@ export default function AITutorPanel({ courseId: courseIdProp, videoId, classNam
   useEffect(() => {
     if (courseIdProp) {
       setSelectedCourseId(String(courseIdProp))
+      setActiveTab('diagnosis')
     }
   }, [courseIdProp])
 
@@ -235,8 +237,10 @@ export default function AITutorPanel({ courseId: courseIdProp, videoId, classNam
       )}
 
       {/* 内容区：全宽 */}
-      <div className="flex-1 overflow-auto p-4">
-        {renderContent()}
+      <div className="flex-1 overflow-hidden p-3">
+        <div className="sticky bottom-0 flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+          {renderContent()}
+        </div>
       </div>
     </div>
   )

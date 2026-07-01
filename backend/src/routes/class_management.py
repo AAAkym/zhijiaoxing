@@ -564,19 +564,22 @@ def get_class_students_profiles(class_id):
 
         progress_map = {}
         if user_ids and course_ids:
-            lp_rows = (
-                db.session.query(
-                    LearningProgress.user_id,
-                    func.avg(LearningProgress.progress_percentage),
-                )
-                .filter(
-                    LearningProgress.user_id.in_(user_ids),
-                    LearningProgress.course_id.in_(course_ids),
-                )
-                .group_by(LearningProgress.user_id)
-                .all()
-            )
-            progress_map = {row[0]: round(row[1], 1) for row in lp_rows}
+            from src.services.learning_analytics_service import build_learning_progress_model
+            progress_rows = LearningProgress.query.filter(
+                LearningProgress.user_id.in_(user_ids),
+                LearningProgress.course_id.in_(course_ids),
+            ).all()
+            grouped_progress = {}
+            for lp in progress_rows:
+                if not lp.course:
+                    continue
+                model = build_learning_progress_model(lp.user_id, lp.course, lp.progress_percentage)
+                grouped_progress.setdefault(lp.user_id, []).append(model["composite_progress"])
+            progress_map = {
+                uid: round(sum(values) / len(values), 1)
+                for uid, values in grouped_progress.items()
+                if values
+            }
 
         students = []
         for m in memberships:

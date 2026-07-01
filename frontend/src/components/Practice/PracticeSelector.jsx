@@ -115,7 +115,12 @@ export default function PracticeSelector({ myCourses, onSelectPractice }) {
         totalScore: p.total_score || 100,
         completedAt: p.created_at,
         answers: p.user_answer,
-        evaluationResult: p.evaluation_result
+        evaluationResult: p.evaluation_result,
+        // 新增：章节归属与知识点掌握度（避免仅看"练习#X"形式化完成状态）
+        chapter: p.chapter || '未分类',
+        knowledgePoints: Array.isArray(p.knowledge_points) ? p.knowledge_points : [],
+        questionCount: p.question_count || 0,
+        masteryLevel: p.mastery_level || '未知',
       })))
     } catch (err) {
       console.warn('加载已完成练习失败:', err)
@@ -514,11 +519,11 @@ export default function PracticeSelector({ myCourses, onSelectPractice }) {
 }
 
 function CompletedPracticeCard({ practice, onView }) {
-  const percentage = practice.totalScore > 0 
-    ? Math.round((practice.score / practice.totalScore) * 100) 
+  const percentage = practice.totalScore > 0
+    ? Math.round((practice.score / practice.totalScore) * 100)
     : 0
-  
-  const completedDate = practice.completedAt 
+
+  const completedDate = practice.completedAt
     ? new Date(practice.completedAt).toLocaleDateString('zh-CN', {
         year: 'numeric',
         month: 'long',
@@ -528,15 +533,26 @@ function CompletedPracticeCard({ practice, onView }) {
       })
     : '未知时间'
 
+  // 掌握程度标签配置
+  const masteryConfig = {
+    '已掌握': { color: 'bg-green-100 text-green-700', icon: CheckCircle, desc: '掌握扎实' },
+    '部分掌握': { color: 'bg-amber-100 text-amber-700', icon: Award, desc: '存在薄弱环节' },
+    '未掌握': { color: 'bg-red-100 text-red-700', icon: XCircle, desc: '需要重点复习' },
+    '未知': { color: 'bg-gray-100 text-gray-700', icon: Award, desc: '待评估' },
+  }
+  const masteryInfo = masteryConfig[practice.masteryLevel] || masteryConfig['未知']
+  const MasteryIcon = masteryInfo.icon
+
   return (
     <Card className="hover:shadow-lg transition-all cursor-pointer border-2 hover:border-blue-300" onClick={onView}>
       <CardContent className="p-4">
-        <div className="flex justify-between items-start mb-3">
-          <div className="flex-1">
+        {/* 第一行：标题 + 分数百分比 */}
+        <div className="flex justify-between items-start mb-2">
+          <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-gray-900 line-clamp-1">{practice.title}</h3>
-            <p className="text-sm text-gray-500 mt-1">{practice.courseName}</p>
+            <p className="text-sm text-gray-500 mt-0.5 truncate">{practice.courseName}</p>
           </div>
-          <Badge className={`${
+          <Badge className={`shrink-0 ml-2 ${
             percentage >= 90 ? 'bg-green-100 text-green-700' :
             percentage >= 60 ? 'bg-blue-100 text-blue-700' :
             'bg-red-100 text-red-700'
@@ -544,8 +560,58 @@ function CompletedPracticeCard({ practice, onView }) {
             {percentage}%
           </Badge>
         </div>
-        
-        <div className="flex items-center justify-between text-sm">
+
+        {/* 第二行：章节归属 + 掌握程度标签 */}
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
+          <Badge variant="outline" className="text-xs gap-1 bg-indigo-50/50 border-indigo-200 text-indigo-700">
+            <BookOpen className="w-3 h-3" />
+            {practice.chapter || '未分类'}
+          </Badge>
+          <Badge className={`text-xs gap-1 ${masteryInfo.color}`}>
+            <MasteryIcon className="w-3 h-3" />
+            {practice.masteryLevel || '未知'}
+          </Badge>
+          {practice.questionCount > 0 && (
+            <Badge variant="outline" className="text-xs gap-1">
+              <Target className="w-3 h-3" />
+              {practice.questionCount} 题
+            </Badge>
+          )}
+          {practice.knowledgePoints && practice.knowledgePoints.length > 0 && (
+            <Badge variant="outline" className="text-xs gap-1">
+              <Layers className="w-3 h-3" />
+              {practice.knowledgePoints.length} 知识点
+            </Badge>
+          )}
+        </div>
+
+        {/* 第三行：知识点掌握度（最多展示 3 个） */}
+        {practice.knowledgePoints && practice.knowledgePoints.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-3">
+            {practice.knowledgePoints.slice(0, 3).map((kp, idx) => (
+              <span
+                key={idx}
+                className={`text-[11px] px-1.5 py-0.5 rounded ${
+                  kp.mastery === '已掌握' ? 'bg-green-50 text-green-600' :
+                  kp.mastery === '部分掌握' ? 'bg-amber-50 text-amber-600' :
+                  kp.mastery === '未掌握' ? 'bg-red-50 text-red-600' :
+                  'bg-gray-50 text-gray-600'
+                }`}
+                title={`${kp.point}：${kp.mastery_desc || kp.mastery}（得分 ${kp.score}）`}
+              >
+                {kp.point}
+              </span>
+            ))}
+            {practice.knowledgePoints.length > 3 && (
+              <span className="text-[11px] px-1.5 py-0.5 rounded bg-gray-50 text-gray-400">
+                +{practice.knowledgePoints.length - 3}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* 第四行：得分 + 时间 + 查看详情 */}
+        <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-100">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1 text-gray-600">
               <Trophy className="w-4 h-4 text-yellow-500" />

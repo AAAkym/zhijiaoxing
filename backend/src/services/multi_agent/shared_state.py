@@ -159,22 +159,104 @@ class AgentMonitor:
             }
 
     def update_status(self, name, status, task_info=None):
+        persist_payload = None
         with self._lock:
-            if name in self._agents:
-                self._agents[name]["status"] = status
-                self._agents[name]["last_heartbeat"] = datetime.utcnow().isoformat()
-                if status == AgentStatus.RUNNING:
-                    self._agents[name]["task_count"] += 1
-                    self._agents[name]["current_task"] = task_info
-                    self._agents[name]["started_at"] = datetime.utcnow().isoformat()
-                elif status == AgentStatus.SUCCESS:
-                    self._agents[name]["success_count"] += 1
-                    self._agents[name]["current_task"] = None
-                    self._agents[name]["started_at"] = None
-                elif status == AgentStatus.FAILED:
-                    self._agents[name]["fail_count"] += 1
-                    self._agents[name]["current_task"] = None
-                    self._agents[name]["started_at"] = None
+            if name not in self._agents:
+                return
+            agent_state = self._agents[name]
+            agent_state["status"] = status
+            agent_state["last_heartbeat"] = datetime.utcnow().isoformat()
+            if status == AgentStatus.RUNNING:
+                agent_state["task_count"] += 1
+                agent_state["current_task"] = task_info
+                agent_state["started_at"] = datetime.utcnow().isoformat()
+            elif status in (AgentStatus.SUCCESS, AgentStatus.FAILED):
+                # 终态：先计算耗时并准备持久化数据，再清理内存态
+                started_iso = agent_state.get("started_at")
+                duration_ms = None
+                if started_iso:
+                    try:
+                        started_dt = datetime.fromisoformat(started_iso)
+                        duration_ms = int((datetime.utcnow() - started_dt).total_seconds() * 1000)
+                    except (ValueError, TypeError):
+                        duration_ms = None
+                if status == AgentStatus.SUCCESS:
+                    agent_state["success_count"] += 1
+                else:
+                    agent_state["fail_count"] += 1
+                agent_state["current_task"] = None
+                agent_state["started_at"] = None
+                # 从 task_info 提取任务类型/错误/用户
+                task_type = None
+                error_message = None
+                user_id = None
+                if isinstance(task_info, dict):
+                    task_type = (task_info.get("task_type") or task_info.get("description")
+                                 or task_info.get("title"))
+                    error_message = task_info.get("error") or task_info.get("error_message")
+                    user_id = task_info.get("user_id")
+                elif isinstance(task_info, str):
+                    task_type = task_info
+                persist_payload = {
+                    "agent_name": name,
+                    "task_type": task_type,
+                    "status": status.value,
+                    "duration_ms": duration_ms,
+                    "error_message": error_message,
+                    "user_id": user_id,
+                }
+        # 落库放在锁外，避免持锁等待 DB IO；best-effort，失败不影响 agent 执行
+        if persist_payload:
+            self._persist_execution(persist_payload)
+
+    def _persist_execution(self, payload):
+        """将一次 agent 终态执行记录持久化到数据库（best-effort）。"""
+        try:
+            from src.models.agent_execution_log import AgentExecutionLog
+            from src.models.user import db as _db
+            from flask import current_app
+
+            def _do_persist():
+                try:
+                    record = AgentExecutionLog(
+                        agent_name=payload["agent_name"],
+                        task_type=payload["task_type"],
+                        status=payload["status"],
+                        duration_ms=payload["duration_ms"],
+                        error_message=payload["error_message"],
+                        user_id=payload["user_id"],
+                    )
+                    _db.session.add(record)
+                    _db.session.commit()
+                except Exception as exc:
+                    try:
+                        _db.session.rollback()
+                    except Exception:
+                        pass
+                    logger.warning("智能体执行记录落库失败 agent=%s status=%s: %s",
+                                   payload.get("agent_name"), payload.get("status"), exc)
+
+            # 多 Agent 在后台线程执行，可能缺少 Flask app context，需主动获取
+            # 使用 with 语句确保 context 在持久化完成后自动释放，避免 context 泄露
+            has_app_context = False
+            try:
+                current_app._get_current_object()
+                has_app_context = True
+            except RuntimeError:
+                has_app_context = False
+
+            if has_app_context:
+                _do_persist()
+            else:
+                try:
+                    from src.main import app as _flask_app
+                    with _flask_app.app_context():
+                        _do_persist()
+                except Exception:
+                    logger.debug("无法获取 Flask app context，跳过智能体执行记录落库")
+                    return
+        except Exception as exc:
+            logger.warning("智能体执行记录持久化异常: %s", exc)
 
     def update_citation_coverage(self, agent_name, coverage_score):
         """更新智能体的引用覆盖率"""

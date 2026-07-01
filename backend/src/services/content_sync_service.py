@@ -109,6 +109,8 @@ class ContentSyncService:
             return self._mindmap_to_markdown(data, topic)
         elif content_type == "project":
             return self._project_to_markdown(data, topic)
+        elif content_type == "media":
+            return self._media_to_markdown(data, topic)
         else:
             return f"# {topic}\n\n{json.dumps(data, ensure_ascii=False, indent=2)}"
 
@@ -260,6 +262,126 @@ class ContentSyncService:
 
         return "\n".join(parts)
 
+    def _media_to_markdown(self, data, topic):
+        """将视频脚本/多媒体内容结构化为可读 Markdown。
+
+        覆盖用户要求的六要素：呈现方式、台词、拍摄内容、拍摄形式、分镜规划、视觉元素。
+        """
+        media = data.get("media", data) if isinstance(data, dict) else {}
+        if not isinstance(media, dict):
+            return f"# {topic or '视频脚本'}\n\n{json.dumps(data, ensure_ascii=False, indent=2)}"
+
+        parts = []
+        title = media.get("title") or topic or "教学视频脚本"
+        parts.append(f"# {title}\n")
+
+        # 顶部元信息：呈现方式说明 + 整体视觉风格
+        meta_lines = []
+        if media.get("type"):
+            type_labels = {
+                "video_script": "视频脚本",
+                "animation": "动画脚本",
+                "infographic": "信息图",
+                "interactive": "交互式演示",
+            }
+            meta_lines.append(f"**内容类型**：{type_labels.get(media['type'], media['type'])}")
+        if media.get("topic"):
+            meta_lines.append(f"**主题**：{media['topic']}")
+        if media.get("estimated_duration_minutes"):
+            meta_lines.append(f"**预计时长**：{media['estimated_duration_minutes']} 分钟")
+        if media.get("target_style"):
+            style_labels = {
+                "visual": "视觉型",
+                "auditory": "听觉型",
+                "kinesthetic": "动觉型",
+                "mixed": "混合型",
+            }
+            meta_lines.append(f"**适配学习风格**：{style_labels.get(media['target_style'], media['target_style'])}")
+        if media.get("presentation_style"):
+            meta_lines.append(f"**呈现方式说明**：{media['presentation_style']}")
+        if meta_lines:
+            parts.append("\n".join(meta_lines))
+            parts.append("")
+
+        script = media.get("script", {})
+        if not isinstance(script, dict):
+            script = {}
+
+        if script.get("visual_style"):
+            parts.append(f"> **整体视觉风格**：{script['visual_style']}\n")
+        if script.get("shooting_format_suggestion"):
+            parts.append(f"> **拍摄形式建议**：{script['shooting_format_suggestion']}\n")
+        if script.get("total_duration_seconds"):
+            parts.append(f"> **总时长**：{script['total_duration_seconds']} 秒\n")
+        if script.get("background_music_suggestion"):
+            parts.append(f"> **背景音乐建议**：{script['background_music_suggestion']}\n")
+
+        # 分镜规划（核心）
+        raw_scenes = script.get("scenes", []) or media.get("scenes", [])
+        if raw_scenes:
+            parts.append("## 分镜规划\n")
+            for idx, scene in enumerate(raw_scenes, 1):
+                if not isinstance(scene, dict):
+                    continue
+                # 字段名容错：LLM 可能用 narrative/keyframes 等变体
+                scene_id = scene.get("scene_id", idx)
+                duration = scene.get("duration_seconds", scene.get("duration", "?"))
+                keyframes = scene.get("keyframes") if isinstance(scene.get("keyframes"), list) else None
+                narration = scene.get("narration") or scene.get("narrative") or scene.get("voiceover") or ""
+                visual_desc = scene.get("visual_description") or scene.get("visual") or scene.get("description") or ""
+                key_frame = scene.get("key_frame_description") or (
+                    "；".join(f"{k.get('title','')}：{k.get('content','')}" for k in keyframes if isinstance(k, dict))
+                    if keyframes else ""
+                )
+                visual_elems = scene.get("visual_elements")
+                if not isinstance(visual_elems, list) and keyframes:
+                    visual_elems = [k.get("title") for k in keyframes if isinstance(k, dict) and k.get("title")]
+                parts.append(f"### 分镜 {scene_id}（{duration} 秒）\n")
+
+                if scene.get("stage"):
+                    parts.append(f"- **阶段**：{scene['stage']}")
+                if visual_desc:
+                    parts.append(f"- **画面内容描述**：{visual_desc}")
+                if narration:
+                    parts.append(f"- **旁白台词**：\n\n  > {narration}")
+                if scene.get("subtitle"):
+                    parts.append(f"- **字幕文本**：{scene['subtitle']}")
+                if scene.get("shooting_format"):
+                    parts.append(f"- **拍摄形式建议**：{scene['shooting_format']}")
+                if scene.get("animation_notes") or scene.get("animation"):
+                    parts.append(f"- **动画/特效说明**：{scene.get('animation_notes') or scene.get('animation')}")
+                if key_frame:
+                    parts.append(f"- **关键帧视觉元素**：{key_frame}")
+                if visual_elems:
+                    if isinstance(visual_elems, list):
+                        parts.append("- **视觉元素清单**：" + "、".join(str(v) for v in visual_elems))
+                    else:
+                        parts.append(f"- **视觉元素清单**：{visual_elems}")
+                if scene.get("transition"):
+                    parts.append(f"- **转场效果**：{scene['transition']}")
+                parts.append("")
+
+        # 辅助材料
+        supplements = media.get("supplementary_materials", [])
+        if supplements:
+            parts.append("## 辅助教学材料\n")
+            for idx, sup in enumerate(supplements, 1):
+                if not isinstance(sup, dict):
+                    continue
+                sup_title = sup.get("title", f"辅助材料{idx}")
+                sup_type = sup.get("type", "")
+                parts.append(f"### {sup_title}" + (f"（{sup_type}）" if sup_type else "") + "\n")
+                if sup.get("description"):
+                    parts.append(f"{sup['description']}\n")
+                if sup.get("content_spec"):
+                    parts.append(f"**规格说明**：{sup['content_spec']}\n")
+
+        # 容错：若结构化字段全空，回退原始 JSON
+        if len(parts) <= 1:
+            return f"# {title}\n\n{json.dumps(data, ensure_ascii=False, indent=2)}"
+
+        return "\n".join(parts)
+
     def _export_to_file(self, package_id, content_type, json_str, markdown_str, save_format):
         base_dir = os.path.join(EXPORT_DIR, package_id)
         os.makedirs(base_dir, exist_ok=True)
@@ -285,6 +407,11 @@ class ContentSyncService:
             return self._save_project_to_exercise(course_id, chapter, content_data, topic)
         elif content_type == "recommendation":
             return self._save_recommendation_to_case(course_id, chapter, content_data, topic)
+        elif content_type == "media":
+            # 视频脚本：由前端 content.create 调用 /teaching_content 直接落库为
+            # TeachingContent（content_type='media'），供视频观看右侧栏按课程查询使用。
+            # 此处无需重复写入知识库表，避免与 TeachingContent 产生冗余记录。
+            return None
         return None
 
     def _get_or_create_chapter(self, course_id, topic):

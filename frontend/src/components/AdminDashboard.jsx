@@ -13,7 +13,8 @@ import {
   TrendingUp,
   Shield,
   Sparkles,
-  Zap
+  Zap,
+  Bot
 } from 'lucide-react'
 import { admin, auth } from '../services/api'
 import UserManagement from './UserManagement'
@@ -23,6 +24,7 @@ import SystemSettings from './SystemSettings'
 import AIContentReview from './AIContentReview'
 import AIAnalysisDashboard from './AIAnalysisDashboard'
 import TokenUsage from './TokenUsage'
+import AgentMonitorCenter from './AgentMonitorCenter'
 import { useNavigate } from 'react-router-dom'
 
 export default function AdminDashboard({ user, onLogout }) {
@@ -62,6 +64,7 @@ export default function AdminDashboard({ user, onLogout }) {
 
   const menuItems = [
     { id: 'overview', label: '系统概览', icon: BarChart3 },
+    { id: 'agent-monitor', label: '智能体监控', icon: Bot },
     { id: 'ai-review', label: 'AI内容审核', icon: Shield },
     { id: 'ai-analysis', label: 'AI智能分析', icon: Sparkles },
     { id: 'token-usage', label: 'Token用量', icon: Zap },
@@ -73,6 +76,8 @@ export default function AdminDashboard({ user, onLogout }) {
 
   const renderContent = () => {
     switch (currentView) {
+      case 'agent-monitor':
+        return <AgentMonitorCenter />
       case 'ai-review':
         return <AIContentReview />
       case 'ai-analysis':

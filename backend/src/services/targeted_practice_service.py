@@ -496,7 +496,7 @@ def _collect_weak_points(user_id: int, course_id: int = None) -> Dict:
 
 
 def _dedup_by_knowledge_point(questions: List[Dict]) -> List[Dict]:
-    seen_tags = set()
+    tag_counts = {}
     unique = []
     for q in questions:
         tags = q.get('knowledge_tags', [])
@@ -507,21 +507,96 @@ def _dedup_by_knowledge_point(questions: List[Dict]) -> List[Dict]:
         tags = [str(t).strip() if t is not None else '' for t in tags]
         tags = [t for t in tags if t]
         q['knowledge_tags'] = tags
-        if not tags:
+        primary_tag = tags[0]
+        content = q.get('content', '').strip()
+        if not primary_tag:
             unique.append(q)
             continue
-        primary_tag = tags[0]
-        if primary_tag not in seen_tags:
-            seen_tags.add(primary_tag)
+        # Keep several questions per weak point. The old one-question-per-tag
+        # rule could collapse a full generated plan into a single visible item.
+        if tag_counts.get(primary_tag, 0) < 3 or len(unique) < 6:
             unique.append(q)
-        else:
-            secondary_overlap = any(t in seen_tags for t in tags[1:])
-            if not secondary_overlap:
-                unique.append(q)
-                for t in tags:
-                    seen_tags.add(t)
+            tag_counts[primary_tag] = tag_counts.get(primary_tag, 0) + 1
     logger.info(f"[知识点去重] 输入 {len(questions)} 道，去重后 {len(unique)} 道")
     return unique
+
+
+def _classify_weak_tags(weak_tags: List[str], mistake_summaries: List[Dict]) -> List[Dict]:
+    categories = {
+        "programming": ["编程", "代码", "函数", "循环", "数组", "python", "java", "递归", "变量"],
+        "concept": ["概念", "定义", "原理", "理解", "基础"],
+        "application": ["应用", "案例", "场景", "实践", "综合"],
+        "calculation": ["计算", "公式", "推导", "算法", "复杂度"],
+    }
+    counts = {key: 0 for key in categories}
+    for tag in weak_tags:
+        tag_text = str(tag).lower()
+        matched = False
+        for key, words in categories.items():
+            if any(word.lower() in tag_text for word in words):
+                counts[key] += 1
+                matched = True
+        if not matched:
+            counts["concept"] += 1
+    for item in mistake_summaries:
+        err = str(item.get("error_type", "")).lower()
+        if "program" in err or "code" in err:
+            counts["programming"] += 1
+        elif "calculation" in err:
+            counts["calculation"] += 1
+    labels = {
+        "programming": "编程实现类",
+        "concept": "概念理解类",
+        "application": "应用迁移类",
+        "calculation": "计算推导类",
+    }
+    return [
+        {"category": key, "label": labels[key], "count": count}
+        for key, count in counts.items()
+        if count > 0
+    ]
+
+
+def _fallback_targeted_questions(weak_tags: List[str], question_count: int, include_programming: bool = False) -> List[Dict]:
+    tags = [str(t).strip() for t in weak_tags if str(t).strip()] or ["综合薄弱点"]
+    questions = []
+    for idx in range(max(1, question_count)):
+        tag = tags[idx % len(tags)]
+        if include_programming and ("编程" in tag or idx % 4 == 3):
+            questions.append({
+                "content": f"围绕“{tag}”完成一个小型编程任务：读取输入、处理核心逻辑并输出结果。请说明你的算法思路。",
+                "starter_code": "def solution():\n    pass\n\nif __name__ == \"__main__\":\n    solution()",
+                "standard_answer": "参考答案需结合具体课程数据由教师补充；重点检查输入处理、边界条件和核心逻辑。",
+                "test_cases": [
+                    {"input": "示例输入1", "expected_output": "示例输出1"},
+                    {"input": "边界输入", "expected_output": "边界输出"},
+                ],
+                "knowledge_tags": [tag],
+                "explanation": f"该题用于检测学生是否能把“{tag}”迁移到代码实现中。",
+                "difficulty": "medium",
+                "language": "python",
+                "type": "programming",
+                "question_type": "programming",
+                "score": 25,
+            })
+        else:
+            questions.append({
+                "content": f"关于“{tag}”，以下哪一项最能体现其关键理解或正确应用？",
+                "options": [
+                    f"先明确“{tag}”的适用条件，再结合题目约束判断",
+                    f"只记忆“{tag}”的名称，不需要分析上下文",
+                    f"遇到相关题目时直接套用固定答案",
+                    f"忽略边界条件，只关注题干中的第一个关键词",
+                ],
+                "correctAnswer": 0,
+                "knowledge_tags": [tag],
+                "explanation": f"靶向练习应从适用条件、上下文和易错边界重新建立对“{tag}”的理解。",
+                "difficulty": "easy" if idx % 3 == 0 else "medium" if idx % 3 == 1 else "hard",
+                "type": "choice",
+                "question_type": "choice",
+                "score": 10,
+            })
+    return questions
 
 
 def generate_ai_targeted_practice(
@@ -538,6 +613,7 @@ def generate_ai_targeted_practice(
     weak_tags = weak_data['weak_tags']
     existing_contents = weak_data['existing_contents']
     mistake_summaries = weak_data['mistake_summaries']
+    weak_tag_categories = _classify_weak_tags(weak_tags, mistake_summaries)
 
     safe_tags = [str(t) for t in weak_tags[:10] if t is not None]
     tags_text = "、".join(safe_tags) if safe_tags else "综合"
@@ -637,7 +713,11 @@ def generate_ai_targeted_practice(
         questions = _extract_json_array(result)
         if not questions:
             logger.warning(f"[靶向练习] AI返回内容无法解析为JSON数组, 前200字符: {result[:200]}")
-            return {"error": "AI生成结果解析失败，请重试"}
+            questions = _fallback_targeted_questions(
+                weak_tags,
+                question_count,
+                include_programming=any(c["category"] == "programming" for c in weak_tag_categories),
+            )
 
         validated = []
         for q in questions:
@@ -681,6 +761,13 @@ def generate_ai_targeted_practice(
 
         deduped = _dedup_question_group(validated, existing_contents)
         deduped = _dedup_by_knowledge_point(deduped)
+        if len(deduped) < max(3, min(question_count, 6)):
+            supplemental = _fallback_targeted_questions(
+                weak_tags,
+                question_count - len(deduped),
+                include_programming=any(c["category"] == "programming" for c in weak_tag_categories),
+            )
+            deduped = _dedup_question_group(deduped + supplemental, existing_contents)
 
         choice_questions = [q for q in deduped if q.get('type') == 'choice']
         prog_questions = [q for q in deduped if q.get('type') == 'programming']
@@ -734,6 +821,12 @@ def generate_ai_targeted_practice(
 
         return {
             "target_tags": weak_tags[:8],
+            "target_tag_categories": weak_tag_categories,
+            "auto_summary": {
+                "status": "generated",
+                "message": "\u5df2\u6839\u636e\u8584\u5f31\u77e5\u8bc6\u70b9\u7c7b\u578b\u751f\u6210\u9776\u5411\u7ec3\u4e60\uff1bAI \u89e3\u6790\u5931\u8d25\u6216\u9898\u91cf\u4e0d\u8db3\u65f6\u4f1a\u81ea\u52a8\u8865\u5145\u53ef\u7ec3\u4e60\u9898\u76ee\u3002",
+                "focus": [item["label"] for item in weak_tag_categories],
+            },
             "recommended_questions": deduped,
             "stage_plan": stage_plan,
             "plan_metrics": {

@@ -13,6 +13,7 @@ const TeacherDashboard = lazy(() => import('./components/TeacherDashboard'))
 const StudentDashboard = lazy(() => import('./components/StudentDashboard'))
 const CourseLearningPage = lazy(() => import('./components/CourseLearningPage'))
 const AITutorPanel = lazy(() => import('./components/AITutor/AITutorPanel'))
+const PersonalizationComparisonDemo = lazy(() => import('./components/PersonalizationComparisonDemo'))
 const UserManagement = lazy(() => import('./components/UserManagement'))
 const CourseManagement = lazy(() => import('./components/CourseManagement'))
 const DataAnalytics = lazy(() => import('./components/DataAnalytics'))
@@ -232,6 +233,26 @@ function App() {
                   <Navigate to="/login" replace />
                 )
               } 
+            />
+            <Route
+              path="/teacher/personalization-demo"
+              element={
+                user && user.role === 'teacher' ? (
+                  <LazyRoute component={PersonalizationComparisonDemo} user={user} />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/admin/personalization-demo"
+              element={
+                user && user.role === 'admin' ? (
+                  <LazyRoute component={PersonalizationComparisonDemo} user={user} />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
             />
             <Route 
               path="/student" 

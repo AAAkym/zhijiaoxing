@@ -192,12 +192,29 @@ class RecommendationAgent(AgentBase):
                 user_role=_user_role,
             )
             parsed = self._parse_json_response(response)
+
+            # 检测解析失败，使用降级推荐确保前端可用
+            if parsed.get("parse_error"):
+                logger.warning(
+                    f"RecommendationAgent JSON 解析失败，使用降级推荐。raw_response 长度: {len(parsed.get('raw_response', ''))}"
+                )
+                fallback = self._build_fallback_recommendations(task, "JSON 解析失败")
+                shared_state.set(
+                    "last_recommendation_result", fallback, self.agent_name
+                )
+                return fallback
+
             shared_state.set(
                 "last_recommendation_result", parsed, self.agent_name
             )
             return parsed
         except Exception as e:
-            return {"error": str(e)}
+            logger.error(f"RecommendationAgent LLM 调用失败: {e}", exc_info=True)
+            fallback = self._build_fallback_recommendations(task, str(e))
+            shared_state.set(
+                "last_recommendation_result", fallback, self.agent_name
+            )
+            return fallback
 
     def _generate_reading_list(self, task):
         profile = task.get("student_profile", {})
@@ -476,18 +493,204 @@ class RecommendationAgent(AgentBase):
             return ""
 
     def _parse_json_response(self, response):
+        """多层降级 JSON 解析，与 document_agent 保持一致的健壮性。
+
+        解析层级：
+        1. 去除代码块包装后直接解析
+        2. 提取首个 {...} 子串解析
+        3. 对 {...} 子串进行括号修复后解析
+        4. 提取首个 [...] 子串解析
+        5. 对 [...] 子串进行括号修复后解析
+        6. 对全文进行括号修复后解析
+        7. 全部失败则返回 raw_response + parse_error 标记
+        """
         text = response.strip()
         if text.startswith("```"):
             lines = text.split("\n")
-            text = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
+            first_line = lines[0].strip()
+            if first_line.startswith("```") and len(first_line) > 3:
+                lines = lines[1:]
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            text = "\n".join(lines)
         try:
             return json.loads(text)
         except json.JSONDecodeError:
-            start = text.find("{")
-            end = text.rfind("}") + 1
-            if start >= 0 and end > start:
-                try:
-                    return json.loads(text[start:end])
-                except json.JSONDecodeError:
-                    pass
-            return {"raw_response": text, "parse_error": True}
+            pass
+
+        # 提取 {...} 子串
+        start = text.find("{")
+        end = text.rfind("}") + 1
+        if start >= 0 and end > start:
+            candidate = text[start:end]
+            try:
+                return json.loads(candidate)
+            except json.JSONDecodeError:
+                repaired = self._repair_mismatched_brackets(candidate)
+                if repaired:
+                    try:
+                        return json.loads(repaired)
+                    except (json.JSONDecodeError, ValueError):
+                        pass
+
+        # 提取 [...] 子串（资源列表可能直接以数组形式返回）
+        start = text.find("[")
+        end = text.rfind("]") + 1
+        if start >= 0 and end > start:
+            candidate = text[start:end]
+            try:
+                parsed_arr = json.loads(candidate)
+                if isinstance(parsed_arr, list):
+                    return {"recommendations": {"resources": parsed_arr, "topic": "", "total_resources": len(parsed_arr)}}
+            except json.JSONDecodeError:
+                repaired = self._repair_mismatched_brackets(candidate)
+                if repaired:
+                    try:
+                        parsed_arr = json.loads(repaired)
+                        if isinstance(parsed_arr, list):
+                            return {"recommendations": {"resources": parsed_arr, "topic": "", "total_resources": len(parsed_arr)}}
+                    except (json.JSONDecodeError, ValueError):
+                        pass
+
+        # 全文括号修复
+        repaired_full = self._repair_mismatched_brackets(text)
+        if repaired_full:
+            try:
+                return json.loads(repaired_full)
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+        return {"raw_response": text, "parse_error": True}
+
+    @staticmethod
+    def _repair_mismatched_brackets(text):
+        """修复 JSON 文本中不匹配的括号，与 document_agent 实现一致。"""
+        if not text or not isinstance(text, str):
+            return None
+
+        chars = list(text)
+        stack = []
+        in_str = False
+        esc = False
+
+        for i, ch in enumerate(chars):
+            if esc:
+                esc = False
+                continue
+            if ch == '\\' and in_str:
+                esc = True
+                continue
+            if ch == '"':
+                in_str = not in_str
+                continue
+            if in_str:
+                continue
+            if ch in '{[':
+                stack.append(ch)
+            elif ch in '}]':
+                if stack:
+                    last_ch = stack[-1]
+                    if (ch == '}' and last_ch == '{') or (ch == ']' and last_ch == '['):
+                        stack.pop()
+                    else:
+                        expected = '}' if last_ch == '{' else ']'
+                        chars[i] = expected
+                        stack.pop()
+                else:
+                    chars[i] = ''
+
+        result = ''.join(chars).rstrip()
+        while stack:
+            last_ch = stack.pop()
+            expected = '}' if last_ch == '{' else ']'
+            result += expected
+
+        try:
+            json.loads(result)
+            return result
+        except json.JSONDecodeError:
+            pass
+
+        # 尝试提取首个完整 JSON 对象
+        brace_count = 0
+        json_start = None
+        for i, ch in enumerate(result):
+            if ch == '{':
+                if brace_count == 0:
+                    json_start = i
+                brace_count += 1
+            elif ch == '}':
+                brace_count -= 1
+                if brace_count == 0 and json_start is not None:
+                    candidate = result[json_start:i + 1]
+                    try:
+                        json.loads(candidate)
+                        return candidate
+                    except (json.JSONDecodeError, ValueError):
+                        json_start = None
+
+        return None
+
+    def _build_fallback_recommendations(self, task, error_msg=""):
+        """当 LLM 调用或解析失败时，基于主题和知识点生成降级推荐列表。
+
+        确保即使 AI 生成失败，前端也能展示可用的拓展资源结构，
+        而非空白或错误状态。
+        """
+        topic = task.get("topic", "学习主题")
+        knowledge_points = task.get("knowledge_points", [])
+        profile = task.get("student_profile", {})
+        goal = profile.get("goal_orientation", "exam")
+        count = task.get("count", 6)
+
+        # 根据学习目标定制推荐类型
+        if goal == "exam":
+            type_hint = "考点解析"
+            default_types = ["paper", "tutorial", "book"]
+        elif goal == "career":
+            type_hint = "职业技能"
+            default_types = ["blog", "project", "tutorial"]
+        elif goal == "research":
+            type_hint = "学术研究"
+            default_types = ["paper", "book", "dataset"]
+        else:
+            type_hint = "综合学习"
+            default_types = ["tutorial", "blog", "video"]
+
+        # 基于知识点构建基础推荐
+        resources = []
+        kp_list = knowledge_points[:count] if knowledge_points else [topic]
+
+        type_labels = {
+            "paper": "学术论文", "blog": "技术博客", "project": "开源项目",
+            "tutorial": "在线教程", "dataset": "数据集", "video": "视频课程",
+            "book": "书籍推荐",
+        }
+
+        for idx, kp in enumerate(kp_list):
+            rtype = default_types[idx % len(default_types)]
+            resources.append({
+                "id": f"rec_fallback_{idx + 1:03d}",
+                "title": f"{kp} - {type_labels.get(rtype, '学习资源')}",
+                "type": rtype,
+                "description": f"针对「{kp}」的{type_hint}拓展资源，建议根据关键词检索最新材料。",
+                "url_suggestion": f"https://www.google.com/search?q={kp}+{type_labels.get(rtype, '')}",
+                "relevance_score": 0.7,
+                "difficulty_level": "intermediate",
+                "estimated_time": "1-2小时",
+                "tags": [kp, type_hint],
+                "why_recommended": f"作为{type_hint}方向的基础资源，覆盖知识点「{kp}」。",
+                "prerequisites": [],
+            })
+
+        return {
+            "recommendations": {
+                "topic": topic,
+                "student_level": "intermediate",
+                "resources": resources,
+                "learning_path_suggestion": f"建议按以下顺序学习：{' → '.join(kp_list[:3])}",
+                "total_resources": len(resources),
+                "fallback": True,
+                "fallback_reason": error_msg or "LLM 生成失败，已使用降级推荐",
+            }
+        }

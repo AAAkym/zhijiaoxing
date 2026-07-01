@@ -41,6 +41,12 @@ export default function CourseLearningPage({ user }) {
   const [aiLoading, setAiLoading] = useState(false)
   const aiMessagesEndRef = useRef(null)
 
+  // 视频脚本面板状态（右侧栏同步展示教师生成的视频脚本）
+  const [videoScriptExpanded, setVideoScriptExpanded] = useState(true)
+  const [activeVideoScriptId, setActiveVideoScriptId] = useState(null)
+  // 视频脚本解析失败时，控制原始 JSON 折叠展示（对齐教师端）
+  const [showRawMediaJson, setShowRawMediaJson] = useState(false)
+
   const [courseResources, setCourseResources] = useState(null)
   const [resourcesLoading, setResourcesLoading] = useState(false)
   const [activeResourceModal, setActiveResourceModal] = useState(null)
@@ -267,6 +273,36 @@ export default function CourseLearningPage({ user }) {
       title: note.title,
       id: note.id
     }))
+
+  // 从课程教学内容中筛选视频脚本（content_type='media'）
+  // 教师在多模态生成卡片中保存的视频脚本会落库为 TeachingContent，按课程维度同步到此右侧栏
+  const videoScripts = React.useMemo(() => {
+    return (teachingContents || [])
+      .filter(c => c.content_type === 'media')
+      .map(c => {
+        // content 字段为格式化后的 Markdown 文本；尝试解析为结构化 JSON 以便分镜交互展示
+        let parsed = null
+        if (typeof c.content === 'string') {
+          const trimmed = c.content.trim()
+          if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+            try { parsed = JSON.parse(trimmed) } catch { /* 非JSON则按纯文本展示 */ }
+          }
+        } else if (c.content && typeof c.content === 'object') {
+          parsed = c.content
+        }
+        return { ...c, parsed }
+      })
+  }, [teachingContents])
+
+  // 当前选中的视频脚本（默认取第一条）
+  const activeVideoScript = React.useMemo(() => {
+    if (videoScripts.length === 0) return null
+    if (activeVideoScriptId) {
+      const found = videoScripts.find(s => s.id === activeVideoScriptId)
+      if (found) return found
+    }
+    return videoScripts[0]
+  }, [videoScripts, activeVideoScriptId])
 
   const handleAiSend = useCallback(async () => {
     if (!aiInput.trim() || aiLoading) return
@@ -743,6 +779,334 @@ export default function CourseLearningPage({ user }) {
               </div>
             ) : (
               <>
+                {/* 视频脚本面板：同步展示教师在多模态生成卡片中生成的视频脚本（表格形式对齐教师端） */}
+                {videoScripts.length > 0 && (() => {
+                  const script = activeVideoScript
+                  // 优先使用结构化解析结果，否则回退到 Markdown 渲染
+                  const parsed = script?.parsed
+                  const baseMedia = parsed?.media?.script ? parsed.media : (parsed?.script ? parsed : (parsed?.media || parsed))
+                  // 字段名容错：LLM 可能用 narrative 数组（而非 script.scenes）、narrator（而非 narration）、
+                  // content（而非 visual_description）、keyframes 等变体，统一映射
+                  const rawScenes = Array.isArray(baseMedia?.script?.scenes) ? baseMedia.script.scenes
+                    : (Array.isArray(baseMedia?.scenes) ? baseMedia.scenes
+                    : (Array.isArray(parsed?.narrative) ? parsed.narrative : []))
+                  const scenes = rawScenes.map((sc, i) => {
+                    if (!sc || typeof sc !== 'object') return null
+                    const kf = Array.isArray(sc.keyframes) ? sc.keyframes : null
+                    return {
+                      scene_id: sc.scene_id ?? (i + 1),
+                      stage: sc.stage || '',
+                      duration_seconds: sc.duration_seconds ?? sc.duration ?? '?',
+                      visual_description: sc.visual_description || sc.visual || sc.description || sc.content || '',
+                      narration: sc.narration || sc.narrative || sc.voiceover || sc.narrator || '',
+                      subtitle: sc.subtitle || '',
+                      shooting_format: sc.shooting_format || '',
+                      animation_notes: sc.animation_notes || sc.animation || '',
+                      key_frame_description: sc.key_frame_description || (kf ? kf.map(k => k.title ? `${k.title}：${k.content||''}` : (k.content||'')).join('；') : ''),
+                      visual_elements: Array.isArray(sc.visual_elements) ? sc.visual_elements : (kf ? kf.map(k => k.title).filter(Boolean) : []),
+                      transition: sc.transition || '',
+                    }
+                  }).filter(Boolean)
+                  const media = baseMedia || {}
+                  const scriptObj = media.script || {}
+                  const supplements = Array.isArray(media.supplementary_materials) ? media.supplementary_materials : []
+                  const stageColors = { '引入': '#f59e0b', '讲解': '#3b82f6', '演示': '#a855f7', '总结': '#22c55e', '引入阶段': '#f59e0b', '讲解阶段': '#3b82f6', '演示阶段': '#a855f7', '总结阶段': '#22c55e' }
+                  const stageBgColors = { '引入': '#fef3c7', '讲解': '#dbeafe', '演示': '#f3e8ff', '总结': '#dcfce7', '引入阶段': '#fef3c7', '讲解阶段': '#dbeafe', '演示阶段': '#f3e8ff', '总结阶段': '#dcfce7' }
+                  const hasStructured = scenes.length > 0 || media.presentation_style
+                  // 轻量 Markdown 渲染（结构化解析失败时的回退，避免原始 pre 文本）
+                  const renderMarkdown = (md) => {
+                    if (!md) return null
+                    const lines = md.split('\n')
+                    return lines.map((line, i) => {
+                      const t = line.trim()
+                      if (!t) return <div key={i} style={{ height: '6px' }} />
+                      if (t.startsWith('### ')) return <div key={i} style={{ fontWeight: 600, color: '#374151', fontSize: '13px', margin: '6px 0 3px' }}>{t.slice(4)}</div>
+                      if (t.startsWith('## ')) return <div key={i} style={{ fontWeight: 700, color: '#1f2937', fontSize: '14px', margin: '8px 0 4px' }}>{t.slice(3)}</div>
+                      if (t.startsWith('# ')) return <div key={i} style={{ fontWeight: 700, color: '#111827', fontSize: '15px', margin: '4px 0 6px' }}>{t.slice(2)}</div>
+                      if (t.startsWith('> ')) return <div key={i} style={{ paddingLeft: '8px', borderLeft: '2px solid #c7d2fe', color: '#4b5563', fontStyle: 'italic', margin: '2px 0' }}>{t.slice(2)}</div>
+                      if (t.startsWith('- ')) {
+                        const m = t.slice(2)
+                        const boldMatch = m.match(/^\*\*(.+?)\*\*：?(.*)$/)
+                        return <div key={i} style={{ color: '#4b5563', paddingLeft: '10px', position: 'relative' }}>
+                          <span style={{ position: 'absolute', left: 0, color: '#9ca3af' }}>•</span>
+                          {boldMatch ? <><span style={{ fontWeight: 600, color: '#6b7280' }}>{boldMatch[1]}：</span>{boldMatch[2]}</> : m}
+                        </div>
+                      }
+                      return <div key={i} style={{ color: '#4b5563' }}>{t}</div>
+                    })
+                  }
+                  return (
+                    <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#fff' }}>
+                      <button
+                        onClick={() => setVideoScriptExpanded(!videoScriptExpanded)}
+                        style={{
+                          width: '100%', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          backgroundColor: '#f9fafb', border: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: 600, color: '#374151',
+                        }}
+                      >
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>🎬</span>
+                          <span>视频脚本</span>
+                          {videoScripts.length > 1 && (
+                            <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 400 }}>（{videoScripts.length} 份）</span>
+                          )}
+                        </span>
+                        <span style={{ fontSize: '12px', color: '#9ca3af' }}>{videoScriptExpanded ? '▾' : '▸'}</span>
+                      </button>
+                      {videoScriptExpanded && (
+                        <div style={{ padding: '12px 16px', maxHeight: '480px', overflowY: 'auto' }}>
+                          {/* 多份脚本切换 */}
+                          {videoScripts.length > 1 && (
+                            <select
+                              value={script?.id || ''}
+                              onChange={(e) => setActiveVideoScriptId(Number(e.target.value))}
+                              style={{ width: '100%', marginBottom: '10px', padding: '6px 8px', borderRadius: '6px', border: '1px solid #e5e7eb', fontSize: '12px' }}
+                            >
+                              {videoScripts.map(s => (
+                                <option key={s.id} value={s.id}>{s.title}</option>
+                              ))}
+                            </select>
+                          )}
+
+                          {hasStructured ? (
+                            <div style={{ fontSize: '12px', lineHeight: 1.6 }}>
+                              {/* 顶部元信息：呈现方式 + 整体视觉风格 */}
+                              {media.presentation_style && (
+                                <div style={{ marginBottom: '10px', padding: '8px 10px', backgroundColor: '#eef2ff', borderRadius: '6px', borderLeft: '3px solid #6366f1' }}>
+                                  <div style={{ fontWeight: 600, color: '#4f46e5', marginBottom: '2px' }}>🎬 视频呈现方式</div>
+                                  <div style={{ color: '#4b5563' }}>{media.presentation_style}</div>
+                                </div>
+                              )}
+                              {(scriptObj.visual_style || scriptObj.shooting_format_suggestion || scriptObj.background_music_suggestion) && (
+                                <div style={{ marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  {scriptObj.visual_style && (
+                                    <div style={{ padding: '4px 8px', backgroundColor: '#f9fafb', borderRadius: '4px', fontSize: '11px' }}>
+                                      <span style={{ fontWeight: 600, color: '#6b7280' }}>整体视觉风格：</span>
+                                      <span style={{ color: '#4b5563' }}>{scriptObj.visual_style}</span>
+                                    </div>
+                                  )}
+                                  {scriptObj.shooting_format_suggestion && (
+                                    <div style={{ padding: '4px 8px', backgroundColor: '#f9fafb', borderRadius: '4px', fontSize: '11px' }}>
+                                      <span style={{ fontWeight: 600, color: '#6b7280' }}>拍摄形式建议：</span>
+                                      <span style={{ color: '#4b5563' }}>{scriptObj.shooting_format_suggestion}</span>
+                                    </div>
+                                  )}
+                                  {scriptObj.background_music_suggestion && (
+                                    <div style={{ padding: '4px 8px', backgroundColor: '#f9fafb', borderRadius: '4px', fontSize: '11px' }}>
+                                      <span style={{ fontWeight: 600, color: '#6b7280' }}>背景音乐建议：</span>
+                                      <span style={{ color: '#4b5563' }}>{scriptObj.background_music_suggestion}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* 分镜规划表格（对齐教师端表格结构） */}
+                              {scenes.length > 0 && (
+                                <div style={{ marginBottom: '8px' }}>
+                                  <div style={{ fontWeight: 600, marginBottom: '6px', color: '#374151' }}>📑 分镜规划表格（共 {scenes.length} 个分镜）</div>
+                                  <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: '6px' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
+                                      <thead>
+                                        <tr style={{ backgroundColor: '#f1f5f9' }}>
+                                          <th style={{ border: '1px solid #e5e7eb', padding: '4px 6px', textAlign: 'left', fontWeight: 600, color: '#475569', whiteSpace: 'nowrap' }}>序号</th>
+                                          <th style={{ border: '1px solid #e5e7eb', padding: '4px 6px', textAlign: 'left', fontWeight: 600, color: '#475569', whiteSpace: 'nowrap' }}>阶段</th>
+                                          <th style={{ border: '1px solid #e5e7eb', padding: '4px 6px', textAlign: 'left', fontWeight: 600, color: '#475569', whiteSpace: 'nowrap' }}>时长</th>
+                                          <th style={{ border: '1px solid #e5e7eb', padding: '4px 6px', textAlign: 'left', fontWeight: 600, color: '#475569', minWidth: '160px' }}>画面描述</th>
+                                          <th style={{ border: '1px solid #e5e7eb', padding: '4px 6px', textAlign: 'left', fontWeight: 600, color: '#475569', minWidth: '200px' }}>台词/旁白</th>
+                                          <th style={{ border: '1px solid #e5e7eb', padding: '4px 6px', textAlign: 'left', fontWeight: 600, color: '#475569', minWidth: '100px' }}>拍摄形式</th>
+                                          <th style={{ border: '1px solid #e5e7eb', padding: '4px 6px', textAlign: 'left', fontWeight: 600, color: '#475569', minWidth: '120px' }}>视觉元素</th>
+                                          <th style={{ border: '1px solid #e5e7eb', padding: '4px 6px', textAlign: 'left', fontWeight: 600, color: '#475569', whiteSpace: 'nowrap' }}>转场</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {scenes.map((sc, i) => {
+                                          const stage = sc.stage || ''
+                                          const stageColor = stageColors[stage] || '#6b7280'
+                                          const stageBg = stageBgColors[stage] || '#f3f4f6'
+                                          const ve = Array.isArray(sc.visual_elements) ? sc.visual_elements : []
+                                          return (
+                                            <tr key={i} style={{ backgroundColor: i % 2 === 0 ? '#fff' : '#f9fafb' }}>
+                                              <td style={{ border: '1px solid #e5e7eb', padding: '4px 6px', fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{sc.scene_id ?? i + 1}</td>
+                                              <td style={{ border: '1px solid #e5e7eb', padding: '4px 6px', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
+                                                {stage ? (
+                                                  <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '3px', backgroundColor: stageBg, color: stageColor }}>{stage}</span>
+                                                ) : <span style={{ color: '#9ca3af' }}>-</span>}
+                                              </td>
+                                              <td style={{ border: '1px solid #e5e7eb', padding: '4px 6px', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
+                                                <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '3px', backgroundColor: '#e5e7eb', color: '#4b5563' }}>{sc.duration_seconds ?? '?'} 秒</span>
+                                              </td>
+                                              <td style={{ border: '1px solid #e5e7eb', padding: '4px 6px', color: '#4b5563', verticalAlign: 'top' }}>
+                                                {sc.visual_description ? (
+                                                  <div>
+                                                    <div>{sc.visual_description}</div>
+                                                    {sc.animation_notes && <div style={{ fontSize: '10px', color: '#a855f7', marginTop: '2px' }}>✨ {sc.animation_notes}</div>}
+                                                    {sc.key_frame_description && <div style={{ fontSize: '10px', color: '#6366f1', marginTop: '2px' }}>🖼 {sc.key_frame_description}</div>}
+                                                  </div>
+                                                ) : <span style={{ color: '#9ca3af' }}>-</span>}
+                                              </td>
+                                              <td style={{ border: '1px solid #e5e7eb', padding: '4px 6px', color: '#4b5563', verticalAlign: 'top' }}>
+                                                {sc.narration ? (
+                                                  <div style={{ paddingLeft: '6px', borderLeft: '2px solid #c7d2fe', fontStyle: 'italic' }}>{sc.narration}</div>
+                                                ) : <span style={{ color: '#9ca3af' }}>-</span>}
+                                                {sc.subtitle && <div style={{ marginTop: '2px', fontSize: '10px', color: '#6b7280', fontStyle: 'normal' }}>字幕：{sc.subtitle}</div>}
+                                              </td>
+                                              <td style={{ border: '1px solid #e5e7eb', padding: '4px 6px', color: '#4b5563', verticalAlign: 'top' }}>
+                                                {sc.shooting_format || <span style={{ color: '#9ca3af' }}>-</span>}
+                                              </td>
+                                              <td style={{ border: '1px solid #e5e7eb', padding: '4px 6px', verticalAlign: 'top' }}>
+                                                {ve.length > 0 ? (
+                                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px' }}>
+                                                    {ve.map((v, j) => (
+                                                      <span key={j} style={{ fontSize: '10px', padding: '1px 5px', backgroundColor: '#eef2ff', color: '#4f46e5', borderRadius: '3px' }}>{v}</span>
+                                                    ))}
+                                                  </div>
+                                                ) : <span style={{ color: '#9ca3af' }}>-</span>}
+                                              </td>
+                                              <td style={{ border: '1px solid #e5e7eb', padding: '4px 6px', fontSize: '10px', color: '#6b7280', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
+                                                {sc.transition || <span style={{ color: '#9ca3af' }}>-</span>}
+                                              </td>
+                                            </tr>
+                                          )
+                                        })}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              )}
+                              {supplements.length > 0 && (
+                                <div style={{ marginTop: '8px' }}>
+                                  <div style={{ fontWeight: 600, marginBottom: '4px', color: '#374151' }}>📎 辅助材料</div>
+                                  {supplements.map((sup, i) => (
+                                    <div key={i} style={{ padding: '6px 8px', backgroundColor: '#f9fafb', borderRadius: '4px', marginBottom: '4px' }}>
+                                      <div style={{ fontWeight: 500, color: '#374151' }}>{sup.title || `辅助材料${i + 1}`}{sup.type && <span style={{ color: '#9ca3af', fontWeight: 400 }}> ({sup.type})</span>}</div>
+                                      {sup.description && <div style={{ color: '#6b7280', marginTop: '2px' }}>{sup.description}</div>}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            /* 回退：检测 content 是否为 JSON 字符串。
+                               - 是 → 与教师端一致的友好提示 + 字段提取 + 折叠原始 JSON
+                               - 否 → 轻量 Markdown 渲染 */
+                            (() => {
+                              const rawContent = script?.content || ''
+                              const isJsonString = typeof rawContent === 'string'
+                                && (rawContent.trim().startsWith('{') || rawContent.trim().startsWith('['))
+                              if (isJsonString) {
+                                // 轻量正则提取：从被截断的 JSON 文本中找出可识别字段值
+                                const extractField = (field) => {
+                                  const re = new RegExp(`"${field}"\\s*:\\s*"((?:[^"\\\\]|\\\\.){0,200})"`, 'm')
+                                  const m = rawContent.match(re)
+                                  return m ? m[1].replace(/\\"/g, '"').replace(/\\n/g, ' ') : ''
+                                }
+                                const title = extractField('title')
+                                const topic = extractField('topic')
+                                const presentationStyle = extractField('presentation_style')
+                                const visualStyle = extractField('visual_style')
+                                const shootingFormat = extractField('shooting_format_suggestion') || extractField('shooting_format')
+                                const sceneCount = (rawContent.match(/"scene_id"\s*:/g) || []).length
+                                  || (rawContent.match(/"stage"\s*:/g) || []).length
+                                return (
+                                  <div style={{ fontSize: '12px', lineHeight: 1.6 }}>
+                                    <div style={{
+                                      padding: '8px 10px', backgroundColor: '#fef3c7', borderRadius: '6px',
+                                      borderLeft: '3px solid #f59e0b', marginBottom: '8px',
+                                    }}>
+                                      <div style={{ fontWeight: 600, color: '#92400e', marginBottom: '2px' }}>
+                                        ⚠ 视频脚本结构化解析未完成
+                                      </div>
+                                      <div style={{ color: '#78350f', fontSize: '11px' }}>
+                                        AI 生成的脚本内容较长或格式异常，无法完整解析为分镜表格。下面已提取可识别字段，可展开查看原始内容。
+                                      </div>
+                                    </div>
+                                    {(title || topic || presentationStyle || visualStyle || shootingFormat || sceneCount > 0) && (
+                                      <div style={{
+                                        padding: '8px 10px', backgroundColor: '#fff', borderRadius: '6px',
+                                        border: '1px solid #fde68a', marginBottom: '8px',
+                                        display: 'flex', flexDirection: 'column', gap: '4px',
+                                      }}>
+                                        {title && (
+                                          <div style={{ fontSize: '11px' }}>
+                                            <span style={{ fontWeight: 600, color: '#6b7280' }}>标题：</span>
+                                            <span style={{ color: '#374151' }}>{title}</span>
+                                          </div>
+                                        )}
+                                        {topic && (
+                                          <div style={{ fontSize: '11px' }}>
+                                            <span style={{ fontWeight: 600, color: '#6b7280' }}>主题：</span>
+                                            <span style={{ color: '#374151' }}>{topic}</span>
+                                          </div>
+                                        )}
+                                        {presentationStyle && (
+                                          <div style={{ fontSize: '11px' }}>
+                                            <span style={{ fontWeight: 600, color: '#6b7280' }}>呈现方式：</span>
+                                            <span style={{ color: '#374151' }}>{presentationStyle}</span>
+                                          </div>
+                                        )}
+                                        {visualStyle && (
+                                          <div style={{ fontSize: '11px' }}>
+                                            <span style={{ fontWeight: 600, color: '#6b7280' }}>视觉风格：</span>
+                                            <span style={{ color: '#374151' }}>{visualStyle}</span>
+                                          </div>
+                                        )}
+                                        {shootingFormat && (
+                                          <div style={{ fontSize: '11px' }}>
+                                            <span style={{ fontWeight: 600, color: '#6b7280' }}>拍摄形式：</span>
+                                            <span style={{ color: '#374151' }}>{shootingFormat}</span>
+                                          </div>
+                                        )}
+                                        {sceneCount > 0 && (
+                                          <div style={{ fontSize: '11px' }}>
+                                            <span style={{ fontWeight: 600, color: '#6b7280' }}>分镜数量：</span>
+                                            <span style={{ color: '#374151' }}>约 {sceneCount} 个分镜（部分内容被截断）</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                    <div style={{ border: '1px solid #fde68a', borderRadius: '6px', overflow: 'hidden' }}>
+                                      <button
+                                        type="button"
+                                        onClick={() => setShowRawMediaJson(v => !v)}
+                                        style={{
+                                          width: '100%', padding: '6px 10px',
+                                          backgroundColor: showRawMediaJson ? '#fef3c7' : '#fffbeb',
+                                          border: 'none', cursor: 'pointer',
+                                          fontSize: '11px', color: '#92400e', fontWeight: 500,
+                                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                        }}
+                                      >
+                                        <span>{showRawMediaJson ? '收起原始内容' : '查看原始内容'}</span>
+                                        <span>{showRawMediaJson ? '▴' : '▾'}</span>
+                                      </button>
+                                      {showRawMediaJson && (
+                                        <pre style={{
+                                          whiteSpace: 'pre-wrap', padding: '8px 10px',
+                                          backgroundColor: '#f9fafb', maxHeight: '320px', overflowY: 'auto',
+                                          fontSize: '10px', color: '#4b5563', margin: 0,
+                                          borderTop: '1px solid #fde68a',
+                                        }}>
+                                          {rawContent}
+                                        </pre>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              }
+                              // 非 JSON 字符串：按 Markdown 渲染
+                              return (
+                                <div style={{ fontSize: '12px', lineHeight: 1.6 }}>
+                                  {renderMarkdown(rawContent) || '暂无视频脚本内容'}
+                                </div>
+                              )
+                            })()
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+
                 {/* 视频笔记面板 */}
                 {currentVideo && (
                   <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>

@@ -418,6 +418,17 @@ def finalize_course(config_id: int, teacher_id: int) -> Dict:
     if not config.course_id:
         return {"error": "请先关联课程后再定稿"}
 
+    # 去重：检查是否已经创建过教学内容，避免重复生成
+    existing_count = TeachingContent.query.filter_by(course_id=config.course_id).count()
+    if existing_count > 0:
+        config.status = "finalized"
+        db.session.commit()
+        return {
+            "config": config.to_dict(),
+            "created_items": [],
+            "message": "课程内容已存在，跳过重复创建",
+        }
+
     versions = CourseGenerationVersion.query.filter_by(config_id=config_id).order_by(
         CourseGenerationVersion.step, CourseGenerationVersion.version_number.desc()
     ).all()

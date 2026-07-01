@@ -181,6 +181,23 @@ def get_content_versions(content_id, content_type):
     return jsonify({'success': True, 'data': versions})
 
 
+@content_review_bp.route('/history', methods=['GET'])
+@login_required
+def get_review_history():
+    """获取审核历史记录，支持按审核人、审核状态、时间范围筛选"""
+    filters = {
+        'reviewer_id': request.args.get('reviewer_id'),
+        'status': request.args.get('status'),
+        'start_date': request.args.get('start_date'),
+        'end_date': request.args.get('end_date'),
+        'content_type': request.args.get('content_type'),
+        'page': request.args.get('page', 1),
+        'per_page': request.args.get('per_page', 10),
+    }
+    result = content_review_service.get_review_history(filters)
+    return jsonify({'success': True, 'data': result})
+
+
 @content_review_bp.route('/auto-submit/<int:course_id>', methods=['POST'])
 @login_required
 def auto_submit_course(course_id):

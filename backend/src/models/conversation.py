@@ -20,7 +20,6 @@ class Conversation(db.Model):
     存储用户与AI的对话会话信息
     """
     __tablename__ = 'conversations'
-    __table_args__ = {'extend_existing': True}
     
     # 主键
     id = db.Column(db.Integer, primary_key=True)
@@ -57,6 +56,7 @@ class Conversation(db.Model):
         Index('idx_conversation_user_status', 'user_id', 'status'),
         Index('idx_conversation_user_deleted', 'user_id', 'is_deleted'),
         Index('idx_conversation_last_message', 'last_message_at'),
+        {'extend_existing': True},
     )
     
     def __repr__(self):
@@ -137,7 +137,6 @@ class ConversationMessage(db.Model):
     存储对话中的单条消息
     """
     __tablename__ = 'conversation_messages'
-    __table_args__ = {'extend_existing': True}
     
     # 主键
     id = db.Column(db.Integer, primary_key=True)
@@ -178,6 +177,7 @@ class ConversationMessage(db.Model):
         Index('idx_message_conversation_sequence', 'conversation_id', 'sequence'),
         Index('idx_message_conversation_role', 'conversation_id', 'role'),
         Index('idx_message_created', 'created_at'),
+        {'extend_existing': True},
     )
     
     def __repr__(self):

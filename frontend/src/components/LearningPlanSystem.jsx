@@ -239,6 +239,10 @@ export default function LearningPlanSystem({ user }) {
     if (filterPriority !== null && r.priority !== filterPriority) return false
     if (filterDifficulty && r.difficulty !== filterDifficulty) return false
     if (filterGoal && !r.reason_interest?.includes(filterGoal) && !r.tags?.includes(filterGoal)) return false
+    // 前端兜底质量过滤：标题过短、纯数字、匹配度过低的推荐不展示
+    const title = typeof r.title === 'string' ? r.title.trim() : ''
+    if (!title || title.length < 2 || /^\d+$/.test(title)) return false
+    if (typeof r.relevance_score === 'number' && r.relevance_score > 0 && r.relevance_score < 0.1) return false
     return true
   })
 
@@ -778,7 +782,27 @@ function RecommendView({ recommendations, filterType, setFilterType, filterPrior
                         {diffCfg.label}
                       </span>
                     </div>
-                    <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>{rec.description}</p>
+                    {(() => {
+                      // 描述可能是对象（AI 偶发生成 test_cases 对象放入 description），
+                      // 必须确保只渲染字符串，否则 React 抛 "Objects are not valid as a React child"
+                      const desc = rec.description
+                      if (typeof desc !== 'string' || !desc.trim()) return null
+                      // 描述实为代码片段时用 pre 渲染，避免长代码撑乱卡片布局
+                      const isCode = /^\s*(def |class |import |from |public |private |function |var |let |const |#include |int main|void main|print\(|console\.log|if __name__)/i.test(desc)
+                      if (isCode) {
+                        return (
+                          <pre style={{
+                            fontSize: '11px', color: '#475569', margin: '4px 0 0',
+                            padding: '8px', backgroundColor: '#f8fafc', borderRadius: '6px',
+                            border: '1px solid #e2e8f0', overflow: 'auto', maxHeight: '120px',
+                            fontFamily: 'Consolas, Monaco, monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                          }}>
+                            {desc}
+                          </pre>
+                        )
+                      }
+                      return <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>{desc}</p>
+                    })()}
                     <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
                       <span style={{ fontSize: '11px', color: '#94a3b8' }}>⏱️ {rec.estimated_minutes}分钟</span>
                       {rec.relevance_score > 0 && (

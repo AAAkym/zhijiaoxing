@@ -89,10 +89,13 @@ export default function TargetedPracticePanel({ courseId }) {
                 {previewQuestions.map((q, idx) => (
                   <div key={`${q.assessment_id}-${q.question_index}-${idx}`} className="p-3 border rounded-lg bg-slate-50">
                     <div className="flex justify-between items-center mb-1">
-                      <p className="text-sm font-medium">{idx + 1}. {q.question_content?.slice(0, 80) || '题目内容缺失'}</p>
+                      <p className="text-sm font-medium">{idx + 1}. {(q.question_content || q.content || '').slice(0, 80) || '题目内容缺失'}</p>
                       <Badge variant="secondary">{q.phase_name} / {q.difficulty}</Badge>
                     </div>
-                    <p className="text-xs text-gray-600">命中知识点：{(q.matched_tags || []).join('、') || '暂无'}</p>
+                    <p className="text-xs text-gray-600">
+                      命中知识点：{(q.matched_tags || q.knowledge_tags || []).join('、') || '暂无'}
+                      {(q.type === 'programming' || q.question_type === 'programming') ? ' · 编程题' : ''}
+                    </p>
                   </div>
                 ))}
                 {!previewQuestions.length && <p className="text-sm text-gray-500">暂无可推荐题目，建议先补充题库标签。</p>}

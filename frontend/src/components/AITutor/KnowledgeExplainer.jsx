@@ -61,12 +61,14 @@ function getInitialExpanded(mastery) {
 }
 
 function TopicSuggestions({ weakPoints, recentTopics, onSelect }) {
+  const [expandedIdx, setExpandedIdx] = useState(null)
   const items = []
 
   if (weakPoints && weakPoints.length > 0) {
     weakPoints.slice(0, 3).forEach((point) => {
-      const name = typeof point === 'string' ? point : point.name || point.topic
-      items.push({ label: `薄弱点: ${name}`, value: name, type: 'weak' })
+      const name = typeof point === 'string' ? point : point.name || point.topic || point.point
+      const mistakeCount = typeof point === 'object' ? (point.mistake_count || point.count || 0) : 0
+      items.push({ label: `薄弱点: ${name}`, value: name, type: 'weak', mistakeCount, raw: point })
     })
   }
 
@@ -78,26 +80,115 @@ function TopicSuggestions({ weakPoints, recentTopics, onSelect }) {
 
   if (items.length === 0) return null
 
+  // 根据错误次数评估掌握程度
+  const getMasteryLevel = (count) => {
+    if (count >= 5) return { label: '掌握较差', color: 'text-red-600', bg: 'bg-red-50', desc: '该知识点错误次数较多，建议重点突破' }
+    if (count >= 2) return { label: '尚需巩固', color: 'text-amber-600', bg: 'bg-amber-50', desc: '该知识点存在理解偏差，建议系统复习' }
+    return { label: '基本掌握', color: 'text-green-600', bg: 'bg-green-50', desc: '该知识点偶有失误，建议针对性练习' }
+  }
+
   return (
-    <div className="flex flex-wrap gap-2 mt-2">
-      {items.map((item, idx) => (
-        <button
-          key={idx}
-          onClick={() => onSelect(item.value)}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-            item.type === 'weak'
-              ? 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 hover:border-amber-300'
-              : 'bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300'
-          }`}
-        >
-          {item.type === 'weak' ? (
-            <AlertCircle className="w-3 h-3" />
+    <div className="mt-2 space-y-2">
+      <div className="flex flex-wrap gap-2">
+        {items.map((item, idx) => (
+          <button
+            key={idx}
+            onClick={() => setExpandedIdx(expandedIdx === idx ? null : idx)}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              item.type === 'weak'
+                ? expandedIdx === idx
+                  ? 'bg-amber-200 text-amber-900 border border-amber-400'
+                  : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 hover:border-amber-300'
+                : expandedIdx === idx
+                  ? 'bg-indigo-200 text-indigo-900 border border-indigo-400'
+                  : 'bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300'
+            }`}
+          >
+            {item.type === 'weak' ? (
+              <AlertCircle className="w-3 h-3" />
+            ) : (
+              <Search className="w-3 h-3" />
+            )}
+            {item.label}
+            {item.type === 'weak' && item.mistakeCount > 0 && (
+              <span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-amber-200 text-amber-800 text-[10px] font-semibold">
+                {item.mistakeCount}次
+              </span>
+            )}
+            <ChevronDown className={`w-3 h-3 transition-transform ${expandedIdx === idx ? 'rotate-180' : ''}`} />
+          </button>
+        ))}
+      </div>
+
+      {/* 展开的详情面板 */}
+      {expandedIdx !== null && items[expandedIdx] && (
+        <div className={`rounded-lg border p-3 ${items[expandedIdx].type === 'weak' ? 'border-amber-200 bg-amber-50/50' : 'border-indigo-200 bg-indigo-50/50'}`}>
+          {items[expandedIdx].type === 'weak' ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-gray-800">{items[expandedIdx].value}</span>
+                {(() => {
+                  const mastery = getMasteryLevel(items[expandedIdx].mistakeCount)
+                  return (
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${mastery.bg} ${mastery.color} font-medium`}>
+                      {mastery.label}
+                    </span>
+                  )
+                })()}
+              </div>
+              {(() => {
+                const mastery = getMasteryLevel(items[expandedIdx].mistakeCount)
+                return <p className="text-xs text-gray-600">{mastery.desc}</p>
+              })()}
+              <div className="flex items-center gap-3 text-xs text-gray-500 pt-1 border-t border-amber-200/60">
+                <span className="flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  错误次数：<span className="font-semibold text-amber-700">{items[expandedIdx].mistakeCount}</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <BookOpen className="w-3 h-3" />
+                  建议学习路径：基础概念 → 典型例题 → 进阶应用
+                </span>
+              </div>
+              <div className="flex items-center gap-2 pt-1">
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    onSelect(items[expandedIdx].value)
+                    setExpandedIdx(null)
+                  }}
+                  className="h-7 text-xs bg-amber-600 hover:bg-amber-700 text-white"
+                >
+                  <GraduationCap className="w-3.5 h-3.5 mr-1" />
+                  开始针对性学习
+                </Button>
+                <span className="text-[11px] text-gray-400">AI 将生成该知识点的分层讲解与练习</span>
+              </div>
+            </div>
           ) : (
-            <Search className="w-3 h-3" />
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-gray-800">{items[expandedIdx].value}</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-medium">最近学习</span>
+              </div>
+              <p className="text-xs text-gray-600">继续学习该主题，巩固已学内容并探索更深层次的知识点。</p>
+              <div className="flex items-center gap-2 pt-1">
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    onSelect(items[expandedIdx].value)
+                    setExpandedIdx(null)
+                  }}
+                  className="h-7 text-xs bg-indigo-600 hover:bg-indigo-700 text-white"
+                >
+                  <Search className="w-3.5 h-3.5 mr-1" />
+                  继续学习
+                </Button>
+              </div>
+            </div>
           )}
-          {item.label}
-        </button>
-      ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -479,7 +570,7 @@ function MermaidDiagram({ code, index }) {
         mermaid.default.initialize({
           startOnLoad: false,
           theme: 'default',
-          securityLevel: 'loose',
+          securityLevel: 'strict',
         })
         setMermaidLoaded(true)
 

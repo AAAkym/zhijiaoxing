@@ -27,21 +27,71 @@ import {
   Video,
   MessageCircle,
   Zap,
-  Network
+  Network,
+  GitCompare,
+  AlertCircle
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area } from 'recharts'
 import { courses, content, ai, auth, videos, teacher as teacherApi, programming, courseGeneration } from '../services/api'
 import ErrorBoundary from './ErrorBoundary'
 import VideoLessonManager from './VideoLessonManager'
 import CourseGenerationWizard from './CourseGenerationWizard'
+import PersonalizationComparisonDemo from './PersonalizationComparisonDemo'
 import ClassManagement from './ClassManagement'
 import TeacherInteractionPanel from './TeacherInteractionPanel'
 import InteractiveMindMap from './ui/InteractiveMindMap'
 import CodePlayground from './ui/CodePlayground'
 import ContentSaveSyncPanel from './ui/ContentSaveSyncPanel'
+import AgentCollaborationProgress from './AgentCollaborationProgress'
+import ContentQualityPanel from './ContentQualityPanel'
 import KnowledgeGraphManager from './KnowledgeGraphManager'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useNavigate } from 'react-router-dom'
+
+/**
+ * 检测代码字符串是否为占位文字而非真实代码。
+ * 当AI生成的代码模板/参考实现若为描述性文字而非真实代码时，前端应隐藏该区域。
+ */
+function isPlaceholderCode(code) {
+  if (!code || typeof code !== 'string') return true
+  const trimmed = code.trim()
+  if (trimmed.length < 30) return true
+  const lower = trimmed.toLowerCase()
+  const patterns = [
+    '代码模板', '参考实现', '参考代码', '待补充',
+    'todo.*标记', '占位', '完整可运行',
+    '代码骨架', '这里写代码', '请在此',
+    'your code', 'code here', '代码示例',
+  ]
+  for (const p of patterns) {
+    if (new RegExp(p, 'i').test(lower)) return true
+  }
+  return false
+}
+
+/**
+ * AI 生成内容去重：相同标题的 AI 生成项仅保留最新一条，保持原列表顺序。
+ * 非AI生成项与无标题项原样保留。
+ */
+function dedupeAiItems(items) {
+  if (!Array.isArray(items)) return []
+  // 记录每个 AI 标题最后一次出现的位置（列表按创建时间升序时即最新一条）
+  const lastAiIndexByTitle = new Map()
+  items.forEach((item, index) => {
+    const isAi = item && item.generated_by_llm
+    const title = item && (item.title || '').trim()
+    if (isAi && title) {
+      lastAiIndexByTitle.set(title, index)
+    }
+  })
+  // 过滤：非AI/无标题项全部保留；AI项仅保留该标题最后一次出现的那条
+  return items.filter((item, index) => {
+    const isAi = item && item.generated_by_llm
+    const title = item && (item.title || '').trim()
+    if (!isAi || !title) return true
+    return lastAiIndexByTitle.get(title) === index
+  })
+}
 
 export default function TeacherDashboard({ user, onLogout }) {
   const navigate = useNavigate()
@@ -56,6 +106,7 @@ export default function TeacherDashboard({ user, onLogout }) {
 
   // 课程管理状态
   const [courseList, setCourseList] = useState([])
+  const [deletingCourseId, setDeletingCourseId] = useState(null)
   const [isAddCourseOpen, setIsAddCourseOpen] = useState(false)
   const [newCourse, setNewCourse] = useState({ title: '', description: '', category: 'programming', difficulty: 'beginner' })
 
@@ -72,13 +123,18 @@ export default function TeacherDashboard({ user, onLogout }) {
   const [multimodalResults, setMultimodalResults] = useState(null)
   const [isGeneratingMultimodal, setIsGeneratingMultimodal] = useState(false)
   const [activeMultimodalTab, setActiveMultimodalTab] = useState('document')
-  const [selectedResourceTypes, setSelectedResourceTypes] = useState(['document', 'mindmap', 'project', 'recommendation'])
+  const [selectedResourceTypes, setSelectedResourceTypes] = useState(['document', 'mindmap', 'project', 'recommendation', 'media'])
+  const [agentProgress, setAgentProgress] = useState(null)
+  const [qualityReport, setQualityReport] = useState(null)
+  // 视频脚本解析失败时，控制原始 JSON 折叠展示
+  const [showRawMediaJson, setShowRawMediaJson] = useState(false)
 
   const RESOURCE_TYPE_OPTIONS = [
     { value: 'document', label: '核心概念文档', icon: FileText, description: '结构化讲解文档，含概念定义、核心要素、应用场景' },
     { value: 'mindmap', label: '知识点思维导图', icon: Brain, description: '可视化知识结构，含层级关系和概念连接' },
     { value: 'project', label: '代码实操案例', icon: Target, description: '可执行的代码演示，含语法注释和实现细节' },
     { value: 'recommendation', label: '拓展阅读推荐', icon: BookOpen, description: '相关学习资源和延伸材料推荐' },
+    { value: 'media', label: '视频脚本', icon: Video, description: '教学视频脚本，含分镜规划、台词、拍摄形式与视觉元素' },
   ]
 
   const toggleResourceType = (type) => {
@@ -380,6 +436,7 @@ export default function TeacherDashboard({ user, onLogout }) {
     { id: 'overview', label: '概览', icon: BarChart3 },
     { id: 'courses', label: '课程管理', icon: BookOpen },
     { id: 'courseGen', label: '课程生成', icon: Sparkles },
+    { id: 'personalizationDemo', label: '个性化对比', icon: GitCompare },
     { id: 'classMgmt', label: '班级管理', icon: Users },
     { id: 'videos', label: '视频管理', icon: Video },
     { id: 'interaction', label: '互动管理', icon: MessageCircle },
@@ -736,6 +793,18 @@ export default function TeacherDashboard({ user, onLogout }) {
 
     setIsGeneratingMultimodal(true)
     setMultimodalResults(null)
+    setAgentProgress({
+      overall_progress: 5,
+      stage: 'planning',
+      steps: selectedResourceTypes.map((resourceType) => ({
+        resource_type: resourceType,
+        agent_name: `${resourceType}_agent`,
+        task_type: '',
+        status: 'pending',
+        progress: 0,
+      })),
+    })
+    setQualityReport(null)
     try {
       const res = await courseGeneration.generatePersonalizedResources({
         course_id: parseInt(selectedCourse, 10),
@@ -745,11 +814,23 @@ export default function TeacherDashboard({ user, onLogout }) {
       })
       const resources = res.resources || res
       setMultimodalResults(resources)
+      if (res.agent_progress) {
+        setAgentProgress(res.agent_progress)
+      }
+      if (res.content_quality_report) {
+        setQualityReport(res.content_quality_report)
+      }
       const firstAvailable = selectedResourceTypes.find(t => resources[t])
       if (firstAvailable) setActiveMultimodalTab(firstAvailable)
     } catch (error) {
       console.error('多模态内容生成失败:', error)
       alert('生成失败: ' + (error.message || '请重试'))
+      setAgentProgress((prev) => ({
+        ...(prev || {}),
+        overall_progress: 0,
+        stage: 'failed',
+        steps: (prev?.steps || []).map((step) => ({ ...step, status: 'failed' })),
+      }))
     } finally {
       setIsGeneratingMultimodal(false)
     }
@@ -762,12 +843,170 @@ export default function TeacherDashboard({ user, onLogout }) {
     if (!selectedCourse) return
     setSaveStatus('saving')
     try {
-      const typeLabels = { document: '核心概念文档', mindmap: '知识点思维导图', project: '代码实操案例', recommendation: '拓展阅读材料' }
+      const typeLabels = { document: '核心概念文档', mindmap: '知识点思维导图', project: '代码实操案例', recommendation: '拓展阅读材料', media: '视频脚本' }
       const label = typeLabels[type] || type
+
+      // 根据内容类型提取格式化后的文本内容，避免存储原始 JSON
+      let formattedContent = ''
+      if (type === 'document' && data) {
+        // 文档类型：优先使用 markdown 字段，否则从结构化字段构建 Markdown
+        if (data.markdown) {
+          formattedContent = data.markdown
+        } else if (data.sections) {
+          const parts = []
+          if (data.title) parts.push(`# ${data.title}\n`)
+          if (data.summary) parts.push(`> ${data.summary}\n`)
+          for (const sec of data.sections) {
+            parts.push(`## ${sec.title || ''}\n`)
+            if (sec.key_points?.length) {
+              parts.push('**核心要点：**')
+              for (const kp of sec.key_points) parts.push(`- ${kp}`)
+              parts.push('')
+            }
+            if (sec.content) parts.push(sec.content + '\n')
+            if (sec.examples?.length) {
+              for (const ex of sec.examples) {
+                parts.push(`### ${ex.title || '示例'}\n`)
+                if (ex.description) parts.push(ex.description + '\n')
+                if (ex.content) parts.push('```\n' + ex.content + '\n```\n')
+              }
+            }
+            if (sec.common_mistakes?.length) {
+              parts.push('**常见误区：**')
+              for (const cm of sec.common_mistakes) parts.push(`- ${cm}`)
+              parts.push('')
+            }
+          }
+          if (data.glossary?.length) {
+            parts.push('## 术语表\n')
+            for (const g of data.glossary) parts.push(`- **${g.term}**：${g.definition}`)
+          }
+          if (data.review_questions?.length) {
+            parts.push('\n## 复习思考题\n')
+            data.review_questions.forEach((q, i) => parts.push(`${i + 1}. ${q}`))
+          }
+          formattedContent = parts.join('\n')
+        } else {
+          formattedContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2)
+        }
+      } else if (type === 'mindmap' && data) {
+        // 思维导图：构建可读的结构化文本
+        const parts = [`# ${data.title || contentTopic || '思维导图'}\n`]
+        const buildNode = (node, depth = 0) => {
+          if (!node) return
+          const indent = '  '.repeat(depth)
+          parts.push(`${indent}- ${node.name || '未命名节点'}`)
+          if (node.description) parts.push(`${indent}  ${node.description}`)
+          if (node.children?.length) {
+            for (const child of node.children) buildNode(child, depth + 1)
+          }
+        }
+        if (data.root) buildNode(data.root)
+        else buildNode(data)
+        formattedContent = parts.join('\n')
+      } else if (type === 'project' && data) {
+        // 代码实操：构建项目说明文档
+        const parts = [`# ${data.title || data.project_title || contentTopic || '代码实操项目'}\n`]
+        if (data.description || data.project_description) {
+          parts.push(`${data.description || data.project_description}\n`)
+        }
+        if (data.learning_objectives?.length) {
+          parts.push('## 学习目标\n')
+          for (const obj of data.learning_objectives) parts.push(`- ${obj}`)
+          parts.push('')
+        }
+        if (data.tasks?.length) {
+          parts.push('## 任务分解\n')
+          data.tasks.forEach((task, i) => {
+            parts.push(`### 任务${i + 1}：${task.title || ''}\n`)
+            if (task.description) parts.push(`${task.description}\n`)
+            if (task.steps?.length) {
+              parts.push('**步骤：**')
+              task.steps.forEach((step, j) => {
+                const stepText = typeof step === 'string' ? step : (step.instruction || step.step || '')
+                if (stepText) parts.push(`${j + 1}. ${stepText}`)
+              })
+              parts.push('')
+            }
+            if (task.code_template) {
+              parts.push('**代码模板：**\n```' + (data.language || data.programming_language || 'python').toLowerCase() + '\n' + task.code_template + '\n```\n')
+            }
+            if (task.reference_solution) {
+              parts.push('**参考答案：**\n```' + (data.language || data.programming_language || 'python').toLowerCase() + '\n' + task.reference_solution + '\n```\n')
+            }
+          })
+        }
+        if (data.full_code) {
+          parts.push('## 完整代码\n```' + (data.language || data.programming_language || 'python').toLowerCase() + '\n' + data.full_code + '\n```\n')
+        }
+        formattedContent = parts.join('\n')
+      } else if (type === 'recommendation' && data) {
+        // 拓展推荐：构建推荐列表
+        const parts = [`# ${contentTopic || '拓展学习资源'}\n`]
+        const recs = data.recommendations || data.resources || (Array.isArray(data) ? data : [data])
+        if (Array.isArray(recs)) {
+          recs.forEach((rec, i) => {
+            parts.push(`## ${i + 1}. ${rec.title || rec.name || '推荐资源'}\n`)
+            if (rec.description) parts.push(`${rec.description}\n`)
+            if (rec.url) parts.push(`链接：${rec.url}\n`)
+            if (rec.reason) parts.push(`推荐理由：${rec.reason}\n`)
+          })
+        }
+        formattedContent = parts.join('\n')
+      } else if (type === 'media' && data) {
+        // 视频脚本：保存规范化结构化 JSON，便于学生端 CourseLearningPage.jsx
+        // 通过 JSON.parse 解析后直接渲染分镜表格（对齐教师端表格结构）。
+        // 字段名容错：LLM 可能用 narrative/keyframes/shooting_format 等变体，统一映射。
+        const media = data.media || data
+        const rawScript = media.script || {}
+        const rawScenes = Array.isArray(rawScript.scenes) ? rawScript.scenes
+          : (Array.isArray(media.scenes) ? media.scenes
+          : (Array.isArray(data.narrative) ? data.narrative : []))
+        const scenes = rawScenes.map((sc, i) => {
+          if (!sc || typeof sc !== 'object') return null
+          const kf = Array.isArray(sc.keyframes) ? sc.keyframes : null
+          return {
+            scene_id: sc.scene_id ?? (i + 1),
+            stage: sc.stage || '',
+            duration_seconds: sc.duration_seconds ?? sc.duration ?? '?',
+            visual_description: sc.visual_description || sc.visual || sc.description || sc.content || '',
+            narration: sc.narration || sc.narrative || sc.voiceover || sc.narrator || '',
+            subtitle: sc.subtitle || '',
+            shooting_format: sc.shooting_format || '',
+            animation_notes: sc.animation_notes || sc.animation || '',
+            key_frame_description: sc.key_frame_description || (kf ? kf.map(k => k.title ? `${k.title}：${k.content||''}` : (k.content||'')).join('；') : ''),
+            visual_elements: Array.isArray(sc.visual_elements) ? sc.visual_elements : (kf ? kf.map(k => k.title).filter(Boolean) : []),
+            transition: sc.transition || '',
+          }
+        }).filter(Boolean)
+        const script = {
+          ...rawScript,
+          visual_style: rawScript.visual_style || media.visual_style || '',
+          shooting_format_suggestion: rawScript.shooting_format_suggestion || media.shooting_format || '',
+          background_music_suggestion: rawScript.background_music_suggestion || media.background_music_suggestion || '',
+          total_duration_seconds: rawScript.total_duration_seconds || media.total_duration_seconds,
+          scenes,
+        }
+        // 规范化 JSON 结构：顶层 media 包含 title/presentation_style/估计时长等元信息，
+        // media.script 包含整体视觉风格与分镜数组，供学生端表格直接消费。
+        const normalizedMedia = {
+          ...media,
+          title: media.title || contentTopic || '教学视频脚本',
+          presentation_style: media.presentation_style || '',
+          estimated_duration_minutes: media.estimated_duration_minutes ?? null,
+          target_style: media.target_style || '',
+          supplementary_materials: Array.isArray(media.supplementary_materials) ? media.supplementary_materials : [],
+          script,
+        }
+        formattedContent = JSON.stringify({ media: normalizedMedia }, null, 2)
+      } else {
+        formattedContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2)
+      }
+
       await content.create({
         course_id: parseInt(selectedCourse, 10),
         title: `${contentTopic || '教学内容'} - ${label}`,
-        content: JSON.stringify({ metadata: { type, topic: contentTopic, course_id: parseInt(selectedCourse, 10) }, content: data }, null, 2),
+        content: formattedContent,
         content_type: type,
       })
       setSaveStatus('success')
@@ -1210,17 +1449,24 @@ export default function TeacherDashboard({ user, onLogout }) {
   }
 
   // 删除课程
-  const handleDeleteCourse = async (courseId) => {
-    if (!confirm('确定要删除这个课程吗？')) return
+  const handleDeleteCourse = async (course) => {
+    const courseId = course?.id
+    if (!courseId || deletingCourseId) return
+
+    const message = `删除课程确认\n\n即将删除课程：「${course?.title || courseId}」\n\n此操作不可撤销，并会永久清除以下所有关联数据：\n- 课程基本信息、描述与封面\n- 视频教学资源与讲义文档\n- 学习资料、PDF、PPT、补充材料\n- 章节结构、知识点与知识图谱\n- 学生学习记录与进度数据\n- 课程讨论、评论、题库与练习记录\n\n确定要继续删除吗？`
+    if (!confirm(message)) return
 
     try {
-      await courses.delete(courseId)
+      setDeletingCourseId(courseId)
+      const result = await courses.delete(courseId)
       setCourseList(prev => prev.filter(c => c.id !== courseId))
       await refreshDashboardStats()
-      alert('课程删除成功！')
+      alert(result?.message || '课程删除成功！所有关联数据已清除。')
     } catch (error) {
       console.error('删除课程失败:', error)
       alert('课程删除失败：' + (error.message || '未知错误'))
+    } finally {
+      setDeletingCourseId(null)
     }
   }
 
@@ -1234,9 +1480,12 @@ export default function TeacherDashboard({ user, onLogout }) {
         courses.getAssessments(course.id),
         videos.getByCourse(course.id)
       ])
-      const contents = contentRes.status === 'fulfilled' ? (contentRes.value?.contents || []) : []
-      const assessments = assessmentsRes.status === 'fulfilled' ? (assessmentsRes.value?.assessments || []) : []
+      const rawContents = contentRes.status === 'fulfilled' ? (contentRes.value?.contents || []) : []
+      const rawAssessments = assessmentsRes.status === 'fulfilled' ? (assessmentsRes.value?.assessments || []) : []
       const videoList = videosRes.status === 'fulfilled' ? (videosRes.value?.videos || []) : []
+      // AI 生成内容去重：相同标题的 AI 生成项仅保留一条（取最新）
+      const contents = dedupeAiItems(rawContents)
+      const assessments = dedupeAiItems(rawAssessments)
       setCourseDetail(prev => ({
         ...prev,
         contents,
@@ -1250,6 +1499,57 @@ export default function TeacherDashboard({ user, onLogout }) {
       console.warn('加载课程详情失败:', err)
     } finally {
       setCourseDetailLoading(false)
+    }
+  }
+
+  // 删除课程详情中的视频项
+  const handleDeleteVideoItem = async (videoId, title) => {
+    if (!confirm(`确定要删除视频「${title}」吗？此操作将同步至学生端且不可撤销。`)) return
+    try {
+      await videos.delete(videoId)
+      setCourseDetail(prev => prev ? {
+        ...prev,
+        videoList: (prev.videoList || []).filter(v => v.id !== videoId),
+        videoCount: Math.max(0, (prev.videoCount || 0) - 1)
+      } : prev)
+      alert('视频已删除并同步至学生端')
+    } catch (error) {
+      console.error('删除视频失败:', error)
+      alert('删除视频失败: ' + (error.message || '未知错误'))
+    }
+  }
+
+  // 删除课程详情中的考核项
+  const handleDeleteAssessmentItem = async (assessmentId, title) => {
+    if (!confirm(`确定要删除考核「${title}」吗？此操作将同步至学生端且不可撤销。`)) return
+    try {
+      await courses.deleteAssessment(assessmentId)
+      setCourseDetail(prev => prev ? {
+        ...prev,
+        assessments: (prev.assessments || []).filter(a => a.id !== assessmentId),
+        assessmentCount: Math.max(0, (prev.assessmentCount || 0) - 1)
+      } : prev)
+      alert('考核已删除并同步至学生端')
+    } catch (error) {
+      console.error('删除考核失败:', error)
+      alert('删除考核失败: ' + (error.message || '未知错误'))
+    }
+  }
+
+  // 删除课程详情中的讲义项
+  const handleDeleteContentItem = async (contentId, title) => {
+    if (!confirm(`确定要删除讲义「${title}」吗？此操作将同步至学生端且不可撤销。`)) return
+    try {
+      await courses.deleteContent(contentId)
+      setCourseDetail(prev => prev ? {
+        ...prev,
+        contents: (prev.contents || []).filter(c => c.id !== contentId),
+        contentCount: Math.max(0, (prev.contentCount || 0) - 1)
+      } : prev)
+      alert('讲义已删除并同步至学生端')
+    } catch (error) {
+      console.error('删除讲义失败:', error)
+      alert('删除讲义失败: ' + (error.message || '未知错误'))
     }
   }
 
@@ -1391,7 +1691,8 @@ export default function TeacherDashboard({ user, onLogout }) {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleDeleteCourse(course.id)}
+                              onClick={() => handleDeleteCourse(course)}
+                              disabled={deletingCourseId === course.id}
                               className="text-red-600 hover:text-red-700"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -1555,9 +1856,22 @@ export default function TeacherDashboard({ user, onLogout }) {
                 </Button>
 
                 {isGeneratingMultimodal && !multimodalResults && (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mr-3" />
-                    <span className="text-sm text-gray-500">AI正在生成文档、思维导图、代码实操和拓展推荐...</span>
+                  <div className="mt-4">
+                    <AgentCollaborationProgress
+                      progress={agentProgress}
+                      loading={isGeneratingMultimodal}
+                      title="多 Agent 协作生成进度"
+                    />
+                  </div>
+                )}
+
+                {multimodalResults && agentProgress && (
+                  <div className="mt-4">
+                    <AgentCollaborationProgress
+                      progress={agentProgress}
+                      loading={false}
+                      title="Agent 协作执行记录"
+                    />
                   </div>
                 )}
 
@@ -1569,6 +1883,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                         {multimodalResults.mindmap && <TabsTrigger value="mindmap">思维导图</TabsTrigger>}
                         {multimodalResults.project && <TabsTrigger value="project">代码实操</TabsTrigger>}
                         {multimodalResults.recommendation && <TabsTrigger value="recommendation">拓展推荐</TabsTrigger>}
+                        {multimodalResults.media && <TabsTrigger value="media">视频脚本</TabsTrigger>}
                       </TabsList>
                     </Tabs>
 
@@ -1595,6 +1910,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                                     <div key={j} className="mt-2 p-2 bg-gray-50 rounded text-xs">
                                       <span className="font-medium">{ex.title || `示例${j+1}`}</span>
                                       {ex.description && <p className="text-gray-500 mt-0.5">{ex.description}</p>}
+                                      {ex.content && <pre className="mt-1 p-1.5 bg-white border rounded text-[11px] whitespace-pre-wrap text-gray-700">{ex.content}</pre>}
                                     </div>
                                   ))}
                                 </div>
@@ -1658,10 +1974,36 @@ export default function TeacherDashboard({ user, onLogout }) {
 
                     {multimodalResults.project && (() => {
                       const proj = multimodalResults.project
-                      const hasStructuredData = proj && typeof proj === 'object' && (proj.tasks?.length > 0 || proj.project_title || proj.full_code || proj.code_template || proj.reference_solution)
-                      const displayTitle = proj.project_title || proj.title || `${contentTopic || ''} 代码实操案例`
-                      const displayLang = proj.programming_language || proj.language || 'python'
-                      const displayCode = proj.full_code || proj.reference_solution || proj.code_template || ''
+                      // 兼容 coordinator_agent._normalize_resources_for_output 的字段重命名
+                      // (project_title→title, project_description→description, programming_language→language)
+                      const projTitle = proj.project_title || proj.title
+                      const projDesc = proj.project_description || proj.description
+                      const projLang = proj.programming_language || proj.language
+                      // 只要存在任意结构化字段即视为可结构化展示，避免 fallback 到 JSON dump
+                      const hasStructuredData = proj && typeof proj === 'object' && (
+                        proj.tasks?.length > 0
+                        || projTitle
+                        || projDesc
+                        || proj.full_code
+                        || proj.code_template
+                        || proj.reference_solution
+                        || proj.starter_code
+                        || proj.learning_objectives?.length > 0
+                        || proj.prerequisites?.length > 0
+                        || proj.knowledge_points_covered?.length > 0
+                      )
+                      const displayTitle = projTitle || `${contentTopic || ''} 代码实操案例`
+                      const displayLang = projLang || 'python'
+                      // 完整代码优先级：full_code > reference_solution > starter_code > code_template
+                      const rawCode = proj.full_code || proj.reference_solution || proj.starter_code || proj.code_template || ''
+                      // 空代码时提供语言对应的占位模板，保证编辑器始终可用
+                      const placeholderTemplates = {
+                        python: `# ${displayTitle}\n# 在此处编写你的代码实现\n\ndef main():\n    pass\n\nif __name__ == '__main__':\n    main()\n`,
+                        javascript: `// ${displayTitle}\n// 在此处编写你的代码实现\n\nfunction main() {\n  // TODO: 实现功能\n}\n\nmain();\n`,
+                        java: `// ${displayTitle}\npublic class Main {\n    public static void main(String[] args) {\n        // TODO: 实现功能\n    }\n}\n`,
+                        cpp: `// ${displayTitle}\n#include <iostream>\nusing namespace std;\n\nint main() {\n    // TODO: 实现功能\n    return 0;\n}\n`,
+                      }
+                      const displayCode = rawCode || placeholderTemplates[displayLang] || placeholderTemplates.python
                       const tasks = proj.tasks || []
                       const prerequisites = proj.prerequisites || proj.knowledge_points_covered || []
                       const scoringCriteria = proj.scoring_criteria || proj.rubric || []
@@ -1675,7 +2017,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                                 {proj.difficulty && <span className="text-xs px-2 py-0.5 bg-green-50 text-green-700 rounded">{proj.difficulty}</span>}
                                 {proj.estimated_time && <span className="text-xs px-2 py-0.5 bg-purple-50 text-purple-700 rounded">{proj.estimated_time}</span>}
                               </div>
-                              {proj.project_description && <p className="text-sm text-gray-600">{proj.project_description}</p>}
+                              {projDesc && <p className="text-sm text-gray-600">{projDesc}</p>}
                               {prerequisites.length > 0 && (
                                 <div className="flex flex-wrap gap-1">
                                   <span className="text-xs text-gray-500 mr-1">前置知识:</span>
@@ -1704,16 +2046,16 @@ export default function TeacherDashboard({ user, onLogout }) {
                                           ))}
                                         </div>
                                       )}
-                                      {task.code_template && (
+                                      {task.code_template && !isPlaceholderCode(task.code_template) && (
                                         <div className="ml-8 mt-2">
                                           <p className="text-xs text-gray-500 mb-1">代码模板:</p>
-                                          <pre className="text-xs bg-gray-800 text-green-300 p-2 rounded overflow-x-auto max-h-40">{task.code_template}</pre>
+                                          <pre className="text-xs bg-gray-800 text-green-300 p-2 rounded overflow-x-auto max-h-40 whitespace-pre">{task.code_template}</pre>
                                         </div>
                                       )}
-                                      {task.reference_solution && (
+                                      {task.reference_solution && !isPlaceholderCode(task.reference_solution) && (
                                         <details className="ml-8 mt-1">
                                           <summary className="text-xs text-indigo-600 cursor-pointer hover:text-indigo-800">查看参考实现</summary>
-                                          <pre className="text-xs bg-gray-800 text-green-300 p-2 rounded overflow-x-auto max-h-60 mt-1">{task.reference_solution}</pre>
+                                          <pre className="text-xs bg-gray-800 text-green-300 p-2 rounded overflow-x-auto max-h-60 mt-1 whitespace-pre">{task.reference_solution}</pre>
                                         </details>
                                       )}
                                       {task.hints?.length > 0 && (
@@ -1727,18 +2069,19 @@ export default function TeacherDashboard({ user, onLogout }) {
                               )}
                               {displayCode && (
                                 <div className="space-y-2">
-                                  <h4 className="font-semibold text-sm text-gray-800">完整代码</h4>
+                                  <div className="flex items-center justify-between">
+                                    <h4 className="font-semibold text-sm text-gray-800">
+                                      {rawCode ? '完整代码' : '代码编辑器'}
+                                    </h4>
+                                    {!rawCode && (
+                                      <span className="text-xs text-amber-600">⚠ AI 未生成完整代码，已提供模板，请在此基础上编写</span>
+                                    )}
+                                  </div>
                                   <CodePlayground
                                     initialCode={displayCode}
                                     language={displayLang}
                                     readOnly={false}
                                   />
-                                </div>
-                              )}
-                              {!displayCode && tasks.length === 0 && (
-                                <div className="text-center py-8 text-gray-400">
-                                  <Target className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                                  <p className="text-sm">代码内容生成中，请稍候或重新生成</p>
                                 </div>
                               )}
                               {scoringCriteria.length > 0 && (
@@ -1853,6 +2196,431 @@ export default function TeacherDashboard({ user, onLogout }) {
                         </div>
                       )
                     })()}
+
+                    {multimodalResults.media && (() => {
+                      const rawMedia = multimodalResults.media
+                      // JS 字面量 → JSON 修复：LLM 偶尔输出 { stage: "1. 引言" } 而非 { "stage": "1. 引言" }，
+                      // 用状态机给无引号的 key 加双引号，避免误伤字符串内部的冒号
+                      const fixJsLiteralKeys = (text) => {
+                        if (!text || typeof text !== 'string') return text
+                        const result = []
+                        let i = 0
+                        const n = text.length
+                        let inStr = false, esc = false
+                        while (i < n) {
+                          const ch = text[i]
+                          if (esc) { result.push(ch); esc = false; i++; continue }
+                          if (ch === '\\' && inStr) { result.push(ch); esc = true; i++; continue }
+                          if (ch === '"') { inStr = !inStr; result.push(ch); i++; continue }
+                          if (inStr) { result.push(ch); i++; continue }
+                          if (ch === '{' || ch === ',') {
+                            result.push(ch); i++
+                            while (i < n && /\s/.test(text[i])) { result.push(text[i]); i++ }
+                            if (i < n && /[A-Za-z_]/.test(text[i])) {
+                              const ks = i
+                              while (i < n && /[A-Za-z0-9_]/.test(text[i])) i++
+                              const key = text.slice(ks, i)
+                              while (i < n && /\s/.test(text[i])) i++
+                              if (i < n && text[i] === ':') {
+                                result.push('"', key, '"')
+                              } else {
+                                result.push(key)
+                              }
+                            }
+                            continue
+                          }
+                          result.push(ch); i++
+                        }
+                        return result.join('')
+                      }
+                      // 截断 JSON 修复：补全未闭合的字符串/数组/对象
+                      const repairTruncatedJson = (text) => {
+                        if (!text) return null
+                        const stack = []
+                        let inStr = false, esc = false
+                        for (const ch of text) {
+                          if (esc) { esc = false; continue }
+                          if (ch === '\\') { esc = true; continue }
+                          if (ch === '"') { inStr = !inStr; continue }
+                          if (inStr) continue
+                          if (ch === '{' || ch === '[') stack.push(ch)
+                          else if (ch === '}' && stack[stack.length-1] === '{') stack.pop()
+                          else if (ch === ']' && stack[stack.length-1] === '[') stack.pop()
+                        }
+                        let suffix = ''
+                        if (inStr) suffix += '"'
+                        for (let i = stack.length - 1; i >= 0; i--) suffix += stack[i] === '{' ? '}' : ']'
+                        return suffix ? text + suffix : null
+                      }
+                      // 解析容错：若后端返回 parse_error + raw_response（LLM 输出被截断或 JS 字面量语法），
+                      // 尝试从前端再次解析 raw_response，依次尝试：直接解析 → JS 字面量修复 → 截断修复 → 组合修复 → partial 提取兜底
+                      let baseMedia = rawMedia
+                      if (rawMedia && rawMedia.parse_error && typeof rawMedia.raw_response === 'string') {
+                        const tryParse = (s) => { try { return JSON.parse(s) } catch { return null } }
+                        let rs = rawMedia.raw_response.trim()
+                        if (rs.startsWith('```')) { const lns = rs.split('\n'); rs = lns.slice(1, lns[lns.length-1].trim()==='```'?-1:undefined).join('\n') }
+                        let parsed = tryParse(rs)
+                        if (!parsed) {
+                          const s = rs.indexOf('{')
+                          if (s >= 0) {
+                            const frag = rs.slice(s)
+                            parsed = tryParse(frag)
+                            if (!parsed) parsed = tryParse(fixJsLiteralKeys(frag))
+                            if (!parsed) {
+                              const repaired = repairTruncatedJson(frag)
+                              if (repaired) parsed = tryParse(repaired)
+                            }
+                            if (!parsed) {
+                              const fixed = fixJsLiteralKeys(frag)
+                              const repairedFixed = repairTruncatedJson(fixed)
+                              if (repairedFixed) parsed = tryParse(repairedFixed)
+                            }
+                          }
+                        }
+                        // partial 提取兜底：当上述修复全部失败时，从截断的 JSON 文本中
+                        // 用括号栈逐个提取已完成的 scene 对象，组装成可用的 media 结构。
+                        // 这样即使 LLM 在第 N 个分镜处截断，前 N-1 个完整分镜仍可渲染为分镜表格。
+                        if (!parsed) {
+                          const extractPartialMedia = (text) => {
+                            if (!text || typeof text !== 'string') return null
+                            const media = { scenes: [] }
+                            // 提取顶层简单字符串/数字字段
+                            const simpleFields = ['type', 'title', 'topic', 'target_style', 'presentation_style',
+                              'visual_style', 'shooting_format', 'shooting_format_suggestion',
+                              'background_music_suggestion', 'estimated_duration_minutes']
+                            for (const field of simpleFields) {
+                              const re = new RegExp(`"${field}"\\s*:\\s*"((?:[^"\\\\]|\\\\.){0,200})"`, 'm')
+                              const m = text.match(re)
+                              if (m) media[field] = m[1].replace(/\\"/g, '"').replace(/\\n/g, ' ')
+                              else {
+                                const re2 = new RegExp(`"${field}"\\s*:\\s*(\\d+(?:\\.\\d+)?)`, 'm')
+                                const m2 = text.match(re2)
+                                if (m2) media[field] = parseFloat(m2[1])
+                              }
+                            }
+                            // 定位 "scenes": [ 之后的内容
+                            const scenesMatch = text.match(/"scenes"\s*:\s*\[/)
+                            if (!scenesMatch) {
+                              if (!media.type && !media.title) return null
+                              return { media, partial_extracted: true }
+                            }
+                            let i = scenesMatch.index + scenesMatch[0].length
+                            const n = text.length
+                            const scenes = []
+                            while (i < n) {
+                              while (i < n && ' \t\n\r,'.includes(text[i])) i++
+                              if (i >= n || text[i] === ']') break
+                              if (text[i] !== '{') { i++; continue }
+                              // 用括号栈找一个完整的 {...}
+                              let depth = 0, inStr = false, esc = false, objStart = i, objEnd = -1
+                              while (i < n) {
+                                const ch = text[i]
+                                if (esc) { esc = false; i++; continue }
+                                if (ch === '\\' && inStr) { esc = true; i++; continue }
+                                if (ch === '"') { inStr = !inStr; i++; continue }
+                                if (inStr) { i++; continue }
+                                if (ch === '{') depth++
+                                else if (ch === '}') { depth--; if (depth === 0) { objEnd = i + 1; break } }
+                                i++
+                              }
+                              if (objEnd > objStart) {
+                                const sceneStr = text.slice(objStart, objEnd)
+                                let sceneObj = tryParse(sceneStr)
+                                if (!sceneObj) {
+                                  const repaired = repairTruncatedJson(sceneStr)
+                                  if (repaired) sceneObj = tryParse(repaired)
+                                }
+                                if (sceneObj) scenes.push(sceneObj)
+                                i = objEnd
+                              } else break
+                            }
+                            if (scenes.length > 0) media.scenes = scenes
+                            if (!media.type && !media.title && scenes.length === 0) return null
+                            return { media, partial_extracted: true }
+                          }
+                          const partial = extractPartialMedia(rs)
+                          if (partial) parsed = partial
+                        }
+                        if (parsed) baseMedia = parsed
+                      }
+                      // 兼容 coordinator 标准化输出：顶层可能直接是 media 对象，或包在 media 字段中
+                      let media = baseMedia?.media?.script ? baseMedia.media : (baseMedia?.script ? baseMedia : (baseMedia?.media || baseMedia))
+                      // 字段名容错：LLM 可能用 narrative 数组（而非 script.scenes）、narrator（而非 narration）、
+                      // content（而非 visual_description）、keyframes 等变体，统一映射
+                      const rawScript = media.script || media.scenes || baseMedia?.narrative ? { ...media } : {}
+                      const rawScenes = Array.isArray(rawScript.scenes) ? rawScript.scenes
+                        : (Array.isArray(media.scenes) ? media.scenes
+                        : (Array.isArray(baseMedia?.narrative) ? baseMedia.narrative : []))
+                      const scenes = rawScenes.map((sc, i) => {
+                        if (!sc || typeof sc !== 'object') return null
+                        const keyframes = Array.isArray(sc.keyframes) ? sc.keyframes : null
+                        return {
+                          scene_id: sc.scene_id ?? (i + 1),
+                          stage: sc.stage || '',
+                          duration_seconds: sc.duration_seconds ?? sc.duration ?? '?',
+                          visual_description: sc.visual_description || sc.visual || sc.description || sc.content || '',
+                          narration: sc.narration || sc.narrative || sc.voiceover || sc.narrator || '',
+                          subtitle: sc.subtitle || '',
+                          shooting_format: sc.shooting_format || '',
+                          animation_notes: sc.animation_notes || sc.animation || '',
+                          key_frame_description: sc.key_frame_description || (keyframes ? keyframes.map(k => k.title ? `${k.title}：${k.content||''}` : (k.content||'')).join('；') : ''),
+                          visual_elements: Array.isArray(sc.visual_elements) ? sc.visual_elements : (keyframes ? keyframes.map(k => k.title).filter(Boolean) : []),
+                          transition: sc.transition || '',
+                        }
+                      }).filter(Boolean)
+                      const script = {
+                        ...(media.script || {}),
+                        scenes,
+                        visual_style: (media.script && media.script.visual_style) || media.visual_style || '',
+                        shooting_format_suggestion: (media.script && media.script.shooting_format_suggestion) || media.shooting_format || media.shooting_format_suggestion || '',
+                        background_music_suggestion: (media.script && media.script.background_music_suggestion) || media.background_music_suggestion || '',
+                        total_duration_seconds: (media.script && media.script.total_duration_seconds) || media.total_duration_seconds,
+                      }
+                      const supplements = Array.isArray(media.supplementary_materials) ? media.supplementary_materials : []
+                      const stageLabels = { '引入': 'bg-amber-100 text-amber-700', '讲解': 'bg-blue-100 text-blue-700', '演示': 'bg-purple-100 text-purple-700', '总结': 'bg-green-100 text-green-700', '引入阶段': 'bg-amber-100 text-amber-700', '讲解阶段': 'bg-blue-100 text-blue-700', '演示阶段': 'bg-purple-100 text-purple-700', '总结阶段': 'bg-green-100 text-green-700' }
+                      const hasStructured = scenes.length > 0 || media.presentation_style || script.visual_style || media.estimated_duration_minutes
+                      return (
+                        <div className={activeMultimodalTab === 'media' ? '' : 'hidden'}>
+                          {hasStructured ? (
+                            <div className="border rounded-lg p-4 bg-white space-y-4">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className="text-lg font-bold">{media.title || contentTopic || '教学视频脚本'}</h3>
+                                {media.estimated_duration_minutes && (
+                                  <span className="text-xs px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded">⏱ {media.estimated_duration_minutes} 分钟</span>
+                                )}
+                                {media.target_style && (
+                                  <span className="text-xs px-2 py-0.5 bg-pink-50 text-pink-700 rounded">🎯 {media.target_style}</span>
+                                )}
+                                {script.total_duration_seconds && (
+                                  <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">{Math.floor(script.total_duration_seconds / 60)}:{(script.total_duration_seconds % 60).toString().padStart(2, '0')}</span>
+                                )}
+                                {scenes.length > 0 && (
+                                  <span className="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded">📑 {scenes.length} 个分镜</span>
+                                )}
+                              </div>
+
+                              {media.presentation_style && (
+                                <div className="p-3 bg-indigo-50/50 rounded-lg border border-indigo-100">
+                                  <div className="text-xs font-semibold text-indigo-700 mb-1">🎬 视频呈现方式说明</div>
+                                  <p className="text-sm text-gray-700">{media.presentation_style}</p>
+                                </div>
+                              )}
+
+                              {(script.visual_style || script.shooting_format_suggestion || script.background_music_suggestion) && (
+                                <div className="grid grid-cols-1 gap-2 text-xs">
+                                  {script.visual_style && (
+                                    <div className="p-2 bg-gray-50 rounded"><span className="font-medium text-gray-600">整体视觉风格：</span><span className="text-gray-700">{script.visual_style}</span></div>
+                                  )}
+                                  {script.shooting_format_suggestion && (
+                                    <div className="p-2 bg-gray-50 rounded"><span className="font-medium text-gray-600">拍摄形式建议：</span><span className="text-gray-700">{script.shooting_format_suggestion}</span></div>
+                                  )}
+                                  {script.background_music_suggestion && (
+                                    <div className="p-2 bg-gray-50 rounded"><span className="font-medium text-gray-600">背景音乐建议：</span><span className="text-gray-700">{script.background_music_suggestion}</span></div>
+                                  )}
+                                </div>
+                              )}
+
+                              {scenes.length > 0 && (
+                                <div>
+                                  <h4 className="font-semibold text-sm mb-2">📑 分镜规划表格（共 {scenes.length} 个分镜）</h4>
+                                  <div className="overflow-x-auto border rounded-lg">
+                                    <table className="w-full text-xs border-collapse">
+                                      <thead className="bg-slate-100 sticky top-0">
+                                        <tr>
+                                          <th className="border border-slate-200 px-2 py-1.5 text-left font-semibold text-slate-700 whitespace-nowrap">序号</th>
+                                          <th className="border border-slate-200 px-2 py-1.5 text-left font-semibold text-slate-700 whitespace-nowrap">阶段</th>
+                                          <th className="border border-slate-200 px-2 py-1.5 text-left font-semibold text-slate-700 whitespace-nowrap">时长</th>
+                                          <th className="border border-slate-200 px-2 py-1.5 text-left font-semibold text-slate-700" style={{ minWidth: '180px' }}>画面描述</th>
+                                          <th className="border border-slate-200 px-2 py-1.5 text-left font-semibold text-slate-700" style={{ minWidth: '220px' }}>台词/旁白</th>
+                                          <th className="border border-slate-200 px-2 py-1.5 text-left font-semibold text-slate-700" style={{ minWidth: '120px' }}>拍摄形式</th>
+                                          <th className="border border-slate-200 px-2 py-1.5 text-left font-semibold text-slate-700" style={{ minWidth: '140px' }}>视觉元素</th>
+                                          <th className="border border-slate-200 px-2 py-1.5 text-left font-semibold text-slate-700 whitespace-nowrap">转场</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {scenes.map((scene, i) => {
+                                          const stage = scene.stage || ''
+                                          const stageCls = stageLabels[stage] || 'bg-gray-100 text-gray-700'
+                                          const visualElems = Array.isArray(scene.visual_elements) ? scene.visual_elements : []
+                                          return (
+                                            <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}>
+                                              <td className="border border-slate-200 px-2 py-1.5 font-semibold text-slate-700 whitespace-nowrap">{scene.scene_id ?? i + 1}</td>
+                                              <td className="border border-slate-200 px-2 py-1.5 whitespace-nowrap">
+                                                {stage ? <span className={`text-[10px] px-1.5 py-0.5 rounded ${stageCls}`}>{stage}</span> : <span className="text-gray-400">-</span>}
+                                              </td>
+                                              <td className="border border-slate-200 px-2 py-1.5 whitespace-nowrap">
+                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 text-slate-700">{scene.duration_seconds ?? '?'} 秒</span>
+                                              </td>
+                                              <td className="border border-slate-200 px-2 py-1.5 text-gray-700 align-top">
+                                                {scene.visual_description ? (
+                                                  <div className="space-y-1">
+                                                    <div>{scene.visual_description}</div>
+                                                    {scene.animation_notes && <div className="text-[10px] text-purple-600">✨ {scene.animation_notes}</div>}
+                                                    {scene.key_frame_description && <div className="text-[10px] text-indigo-600">🖼 {scene.key_frame_description}</div>}
+                                                  </div>
+                                                ) : <span className="text-gray-400">-</span>}
+                                              </td>
+                                              <td className="border border-slate-200 px-2 py-1.5 text-gray-700 align-top">
+                                                {scene.narration ? (
+                                                  <blockquote className="pl-2 border-l-2 border-indigo-200 italic">{scene.narration}</blockquote>
+                                                ) : <span className="text-gray-400">-</span>}
+                                                {scene.subtitle && <div className="mt-1 text-[10px] text-gray-500 not-italic">字幕：{scene.subtitle}</div>}
+                                              </td>
+                                              <td className="border border-slate-200 px-2 py-1.5 text-gray-700 align-top">
+                                                {scene.shooting_format || <span className="text-gray-400">-</span>}
+                                              </td>
+                                              <td className="border border-slate-200 px-2 py-1.5 align-top">
+                                                {visualElems.length > 0 ? (
+                                                  <div className="flex flex-wrap gap-1">
+                                                    {visualElems.map((ve, j) => (
+                                                      <span key={j} className="text-[10px] px-1.5 py-0.5 bg-indigo-50 text-indigo-700 rounded">{ve}</span>
+                                                    ))}
+                                                  </div>
+                                                ) : <span className="text-gray-400">-</span>}
+                                              </td>
+                                              <td className="border border-slate-200 px-2 py-1.5 text-[10px] text-gray-500 whitespace-nowrap align-top">
+                                                {scene.transition || <span className="text-gray-400">-</span>}
+                                              </td>
+                                            </tr>
+                                          )
+                                        })}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              )}
+
+                              {supplements.length > 0 && (
+                                <div>
+                                  <h4 className="font-semibold text-sm mb-2">📎 辅助教学材料</h4>
+                                  <div className="space-y-1.5">
+                                    {supplements.map((sup, i) => (
+                                      <div key={i} className="p-2 border rounded bg-white">
+                                        <div className="text-sm font-medium">{sup.title || `辅助材料${i + 1}`}{sup.type && <span className="text-[10px] text-gray-500 ml-1">({sup.type})</span>}</div>
+                                        {sup.description && <p className="text-xs text-gray-600 mt-0.5">{sup.description}</p>}
+                                        {sup.content_spec && <p className="text-[10px] text-gray-400 mt-0.5">规格：{sup.content_spec}</p>}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              <div className="flex items-center gap-2 pt-2">
+                                <Button size="sm" onClick={() => saveMultimodalContent('media', rawMedia)} disabled={saveStatus === 'saving'}>
+                                  {saveStatus === 'saving' ? '保存中...' : '保存到课程'}
+                                </Button>
+                                {saveStatus === 'success' && <span className="text-green-600 text-xs">✓ 已保存</span>}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="border rounded-lg p-4 bg-amber-50/50 border-amber-200 space-y-3">
+                              {/* 友好的解析失败提示 */}
+                              <div className="flex items-start gap-2">
+                                <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                                <div className="text-sm text-amber-800">
+                                  <div className="font-semibold mb-1">视频脚本结构化解析未完成</div>
+                                  <div className="text-xs text-amber-700">
+                                    AI 生成的脚本内容较长或格式异常，无法完整解析为分镜表格。下面已尽可能提取可识别字段，您可展开"查看原始内容"获取完整文本，或重新生成。
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* 尝试从 raw_response 中提取可识别字段部分展示 */}
+                              {(() => {
+                                const rawText = typeof rawMedia === 'string'
+                                  ? rawMedia
+                                  : (rawMedia?.raw_response || JSON.stringify(rawMedia, null, 2))
+                                // 轻量正则提取：从被截断的 JSON 文本中找出 title / topic / presentation_style 等字段值
+                                const extractField = (field) => {
+                                  const re = new RegExp(`"${field}"\\s*:\\s*"((?:[^"\\\\]|\\\\.){0,200})"`, 'm')
+                                  const m = rawText.match(re)
+                                  return m ? m[1].replace(/\\"/g, '"').replace(/\\n/g, ' ') : ''
+                                }
+                                const title = extractField('title')
+                                const topic = extractField('topic')
+                                const presentationStyle = extractField('presentation_style')
+                                const visualStyle = extractField('visual_style')
+                                const shootingFormat = extractField('shooting_format_suggestion') || extractField('shooting_format')
+                                // 统计 scenes 数量（数 "scene_id" 或 "stage" 出现次数）
+                                const sceneCount = (rawText.match(/"scene_id"\s*:/g) || []).length
+                                  || (rawText.match(/"stage"\s*:/g) || []).length
+                                const hasAny = title || topic || presentationStyle || visualStyle || shootingFormat || sceneCount > 0
+                                if (!hasAny) return null
+                                return (
+                                  <div className="space-y-2 text-xs bg-white rounded-md p-3 border border-amber-100">
+                                    {title && (
+                                      <div className="flex gap-2">
+                                        <span className="font-semibold text-gray-600 shrink-0">标题：</span>
+                                        <span className="text-gray-800">{title}</span>
+                                      </div>
+                                    )}
+                                    {topic && (
+                                      <div className="flex gap-2">
+                                        <span className="font-semibold text-gray-600 shrink-0">主题：</span>
+                                        <span className="text-gray-800">{topic}</span>
+                                      </div>
+                                    )}
+                                    {presentationStyle && (
+                                      <div className="flex gap-2">
+                                        <span className="font-semibold text-gray-600 shrink-0">呈现方式：</span>
+                                        <span className="text-gray-800">{presentationStyle}</span>
+                                      </div>
+                                    )}
+                                    {visualStyle && (
+                                      <div className="flex gap-2">
+                                        <span className="font-semibold text-gray-600 shrink-0">视觉风格：</span>
+                                        <span className="text-gray-800">{visualStyle}</span>
+                                      </div>
+                                    )}
+                                    {shootingFormat && (
+                                      <div className="flex gap-2">
+                                        <span className="font-semibold text-gray-600 shrink-0">拍摄形式：</span>
+                                        <span className="text-gray-800">{shootingFormat}</span>
+                                      </div>
+                                    )}
+                                    {sceneCount > 0 && (
+                                      <div className="flex gap-2">
+                                        <span className="font-semibold text-gray-600 shrink-0">分镜数量：</span>
+                                        <span className="text-gray-800">约 {sceneCount} 个分镜（部分内容被截断）</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })()}
+
+                              {/* 折叠的原始 JSON 文本 */}
+                              <div className="border border-amber-200 rounded-md overflow-hidden">
+                                <button
+                                  type="button"
+                                  onClick={() => setShowRawMediaJson(v => !v)}
+                                  className="w-full flex items-center justify-between px-3 py-2 bg-amber-100/50 hover:bg-amber-100 text-xs text-amber-800 font-medium transition-colors"
+                                >
+                                  <span className="flex items-center gap-1.5">
+                                    <FileText className="h-3.5 w-3.5" />
+                                    {showRawMediaJson ? '收起原始内容' : '查看原始内容（开发者模式）'}
+                                  </span>
+                                  <span className="text-amber-600">{showRawMediaJson ? '▴' : '▾'}</span>
+                                </button>
+                                {showRawMediaJson && (
+                                  <pre className="whitespace-pre-wrap text-xs p-3 bg-gray-50 max-h-96 overflow-y-auto text-gray-700 border-t border-amber-200">
+                                    {typeof rawMedia === 'string' ? rawMedia : JSON.stringify(rawMedia, null, 2)}
+                                  </pre>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-2 pt-1">
+                                <Button size="sm" variant="outline" onClick={() => saveMultimodalContent('media', rawMedia)} disabled={saveStatus === 'saving'}>
+                                  {saveStatus === 'saving' ? '保存中...' : '保存到课程'}
+                                </Button>
+                                {saveStatus === 'success' && <span className="text-green-600 text-xs">✓ 已保存</span>}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()}
+
+                    <ContentQualityPanel report={qualityReport} />
 
                     <ContentSaveSyncPanel
                       courseId={selectedCourse ? parseInt(selectedCourse) : null}
@@ -2001,6 +2769,9 @@ export default function TeacherDashboard({ user, onLogout }) {
             onBack={() => setCurrentView('overview')}
           />
         )
+
+      case 'personalizationDemo':
+        return <PersonalizationComparisonDemo />
 
       case 'classMgmt':
         return (
@@ -3281,9 +4052,20 @@ export default function TeacherDashboard({ user, onLogout }) {
                       </h4>
                       <div className="space-y-1">
                         {courseDetail.videoList.map((v, i) => (
-                          <div key={v.id} className="flex items-center justify-between bg-[#f5f2ee] rounded px-3 py-2 text-sm">
-                            <span>{i + 1}. {v.title}</span>
-                            {v.duration && <span className="text-[#b5b0ab]">{Math.floor(v.duration / 60)}:{(v.duration % 60).toString().padStart(2, '0')}</span>}
+                          <div key={v.id} className="group flex items-center justify-between bg-[#f5f2ee] rounded px-3 py-2 text-sm">
+                            <span className="flex-1 truncate">{i + 1}. {v.title}</span>
+                            <div className="flex items-center gap-2">
+                              {v.duration && <span className="text-[#b5b0ab]">{Math.floor(v.duration / 60)}:{(v.duration % 60).toString().padStart(2, '0')}</span>}
+                              <button
+                                type="button"
+                                aria-label={`删除视频 ${v.title}`}
+                                onClick={() => handleDeleteVideoItem(v.id, v.title)}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 hover:bg-red-50 rounded p-1"
+                                title="删除"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -3294,16 +4076,31 @@ export default function TeacherDashboard({ user, onLogout }) {
                     <div>
                       <h4 className="font-semibold text-[#2d2a26] mb-2 flex items-center gap-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                         <Target className="h-4 w-4" /> 考核列表
+                        {courseDetail.assessments.some(a => a.generated_by_llm) && (
+                          <Badge className="bg-[#d4a853] text-white text-[10px] px-1.5 py-0 ml-1">含AI生成</Badge>
+                        )}
                       </h4>
                       <div className="space-y-1">
                         {courseDetail.assessments.map((a, i) => (
-                          <div key={a.id} className="flex items-center justify-between bg-[#f5f2ee] rounded px-3 py-2 text-sm">
-                            <span>{i + 1}. {a.title}</span>
+                          <div key={a.id} className={`group flex items-center justify-between rounded px-3 py-2 text-sm ${a.generated_by_llm ? 'bg-[#d4a8530a] border-l-2 border-[#d4a853]' : 'bg-[#f5f2ee]'}`}>
+                            <span className="flex-1 truncate flex items-center gap-2">
+                              {a.generated_by_llm && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-white bg-[#d4a853] px-1.5 py-0.5 rounded shrink-0">AI生成</span>
+                              )}
+                              {i + 1}. {a.title}
+                            </span>
                             <div className="flex items-center gap-2">
                               {a.is_recommended && <Badge className="bg-yellow-100 text-yellow-700 text-xs">推荐</Badge>}
-                              <Badge className={a.generated_by_llm ? 'bg-[#d4a85312] text-[#d4a853] text-xs' : 'bg-[#f5f2ee] text-[#6b6560] text-xs'}>
-                                {a.generated_by_llm ? 'AI生成' : '手动'}
-                              </Badge>
+                              {!a.generated_by_llm && <Badge className="bg-[#f5f2ee] text-[#6b6560] text-xs">手动</Badge>}
+                              <button
+                                type="button"
+                                aria-label={`删除考核 ${a.title}`}
+                                onClick={() => handleDeleteAssessmentItem(a.id, a.title)}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 hover:bg-red-50 rounded p-1"
+                                title="删除"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
                             </div>
                           </div>
                         ))}
@@ -3315,14 +4112,30 @@ export default function TeacherDashboard({ user, onLogout }) {
                     <div>
                       <h4 className="font-semibold text-[#2d2a26] mb-2 flex items-center gap-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                         <FileText className="h-4 w-4" /> 讲义列表
+                        {courseDetail.contents.some(c => c.generated_by_llm) && (
+                          <Badge className="bg-[#d4a853] text-white text-[10px] px-1.5 py-0 ml-1">含AI生成</Badge>
+                        )}
                       </h4>
                       <div className="space-y-1">
                         {courseDetail.contents.map((c, i) => (
-                          <div key={c.id} className="flex items-center justify-between bg-[#f5f2ee] rounded px-3 py-2 text-sm">
-                            <span>{i + 1}. {c.title}</span>
-                            {c.generated_by_llm && (
-                              <Badge className="bg-[#d4a85312] text-[#d4a853] text-xs">AI生成</Badge>
-                            )}
+                          <div key={c.id} className={`group flex items-center justify-between rounded px-3 py-2 text-sm ${c.generated_by_llm ? 'bg-[#d4a8530a] border-l-2 border-[#d4a853]' : 'bg-[#f5f2ee]'}`}>
+                            <span className="flex-1 truncate flex items-center gap-2">
+                              {c.generated_by_llm && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-white bg-[#d4a853] px-1.5 py-0.5 rounded shrink-0">AI生成</span>
+                              )}
+                              {i + 1}. {c.title}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                aria-label={`删除讲义 ${c.title}`}
+                                onClick={() => handleDeleteContentItem(c.id, c.title)}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 hover:bg-red-50 rounded p-1"
+                                title="删除"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>

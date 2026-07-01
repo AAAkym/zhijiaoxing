@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+const API_BASE_URL = (typeof process !== 'undefined' && process.env?.VITE_API_BASE_URL) || '/api'
 
 async function request(url, options = {}) {
   const config = {
@@ -16,7 +16,7 @@ async function request(url, options = {}) {
   const response = await fetch(`${API_BASE_URL}${url}`, config)
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Network error' }))
+    const error = await response.json().catch(() => ({}))
     throw new Error(error.error || 'Request failed')
   }
 
@@ -76,7 +76,7 @@ export const searchApi = {
     if (params.page) queryString.set('page', params.page)
     if (params.per_page) queryString.set('per_page', params.per_page)
 
-    return request(`/search/courses?${queryString.toString()}`)
+    return request(`/search/courses?${decodeURIComponent(queryString.toString())}`)
   },
 
   searchKnowledge: (params) => {

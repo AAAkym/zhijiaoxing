@@ -11,9 +11,11 @@ from typing import Any, Dict, List, Optional, Tuple
 from flask import Blueprint, jsonify, request, session
 from src.utils.auth import require_auth
 
-from src.models.course import Assessment, Course, MistakeRecord, ProgrammingSubmission
+from src.models.course import Assessment, Course, MistakeRecord, ProgrammingSubmission, LearningProgress
 from src.models.user import db
 from src.services.spark_service import spark_service
+from src.services.profile_sync_service import profile_sync_service
+from src.utils.code_safety import validate_python_code_safety, validate_js_code_safety
 
 logger = logging.getLogger(__name__)
 programming_bp = Blueprint('programming', __name__)
@@ -22,6 +24,10 @@ programming_bp = Blueprint('programming', __name__)
 SUPPORTED_LANGUAGES = ['python', 'javascript', 'java', 'cpp', 'c']
 RUNNABLE_LANGUAGES = {'python', 'javascript'}
 MAX_QUESTION_COUNT = 20
+
+
+def _format_topic_template(template: Any, topic: str) -> str:
+    return str(template).replace('{topic}', topic)
 
 
 def require_teacher(f):
@@ -202,10 +208,10 @@ FALLBACK_TEMPLATES = [
 def _fallback_question(topic: str, difficulty: str, language: str, index: int = 0) -> Dict[str, Any]:
     template_index = index % len(FALLBACK_TEMPLATES)
     tpl = FALLBACK_TEMPLATES[template_index]
-    title = tpl['title_template'].format(topic=topic)
-    description = tpl['description_template'].format(topic=topic)
-    explanation = tpl['explanation_template'].format(topic=topic)
-    knowledge_tags = [tag.format(topic=topic) for tag in tpl['knowledge_tags']]
+    title = _format_topic_template(tpl['title_template'], topic)
+    description = _format_topic_template(tpl['description_template'], topic)
+    explanation = _format_topic_template(tpl['explanation_template'], topic)
+    knowledge_tags = [_format_topic_template(tag, topic) for tag in tpl['knowledge_tags']]
     return {
         'id': index + 1,
         'type': 'programming',
@@ -408,37 +414,21 @@ def _get_programming_question(assessment: Assessment, question_index: int) -> Di
 
 _SANDBOX_DIR = os.path.join(tempfile.gettempdir(), 'edu_sandbox')
 _MAX_CODE_LENGTH = 10000
-_FORBIDDEN_PATTERNS = [
-    re.compile(r'\bimport\s+os\b'),
-    re.compile(r'\bimport\s+sys\b'),
-    re.compile(r'\bimport\s+subprocess\b'),
-    re.compile(r'\bimport\s+shutil\b'),
-    re.compile(r'\b__import__\b'),
-    re.compile(r'\bopen\s*\('),
-    re.compile(r'\beval\s*\('),
-    re.compile(r'\bexec\s*\('),
-    re.compile(r'\bcompile\s*\('),
-    re.compile(r'\bglobals\s*\(\s*\)'),
-    re.compile(r'\blocals\s*\(\s*\)'),
-    re.compile(r'\bgetattr\s*\('),
-    re.compile(r'\bsetattr\s*\('),
-    re.compile(r'\bdelattr\s*\('),
-    re.compile(r'\brequire\s*\(\s*[\'\"]fs[\'\"]'),
-    re.compile(r'\brequire\s*\(\s*[\'\"]child_process[\'\"]'),
-    re.compile(r'\brequire\s*\(\s*[\'\"]net[\'\"]'),
-    re.compile(r'\brequire\s*\(\s*[\'\"]http[\'\"]'),
-    re.compile(r'\bprocess\b'),
-]
 
 
 def _validate_code_safety(code: str, language: str) -> Optional[str]:
+    """校验代码安全性，按语言分发到 AST 或正则校验器。"""
     if not code or not code.strip():
         return '代码为空'
     if len(code) > _MAX_CODE_LENGTH:
         return f'代码长度超过限制（{_MAX_CODE_LENGTH}字符）'
-    for pattern in _FORBIDDEN_PATTERNS:
-        if pattern.search(code):
-            return f'代码包含不允许的操作'
+
+    lang = (language or '').lower()
+    if lang == 'python':
+        return validate_python_code_safety(code)
+    if lang == 'javascript':
+        return validate_js_code_safety(code)
+    # 其他语言（java/cpp/c）暂不在此端点执行，仅做长度限制
     return None
 
 
@@ -754,11 +744,51 @@ def submit_programming_solution():
         db.session.add(submission)
         mistake = _sync_programming_mistake(session['user_id'], assessment, question, question_index, code, standard, result)
         db.session.commit()
+
+        # 编程题完成算作一次考核：同步考核结果到学生画像与学习进度，确保数据一致性
+        # 1. 同步 StudentProfile（编程题得分、通过率、薄弱知识点进入画像体系）
+        sync_result = None
+        try:
+            sync_result = profile_sync_service.full_sync(session['user_id'])
+        except Exception as sync_err:
+            logger.warning(f"Profile sync after programming submit failed: {sync_err}")
+
+        # 2. 更新 LearningProgress（编程题通过情况反映到课程进度）
+        progress_updated = False
+        try:
+            progress = LearningProgress.query.filter_by(
+                user_id=session['user_id'], course_id=assessment.course_id
+            ).first()
+            if progress:
+                # 统计该课程下编程题通过率，作为进度的一个组成维度
+                course_subs = ProgrammingSubmission.query.filter_by(
+                    user_id=session['user_id'], course_id=assessment.course_id
+                ).all()
+                if course_subs:
+                    passed = sum(1 for s in course_subs if s.status == 'passed')
+                    # 通过的编程题占总题数的比例（去重 assessment_id+question_index）
+                    unique_questions = {(s.assessment_id, s.question_index) for s in course_subs}
+                    total_questions = len(unique_questions)
+                    passed_questions = len({(s.assessment_id, s.question_index) for s in course_subs if s.status == 'passed'})
+                    if total_questions > 0:
+                        # 进度不低于通过率，但不强制覆盖（取最大值，避免回退）
+                        programming_progress = int(passed_questions / total_questions * 100)
+                        progress.progress_percentage = max(progress.progress_percentage or 0, programming_progress)
+                        progress.last_accessed = datetime.utcnow()
+                        db.session.commit()
+                        progress_updated = True
+        except Exception as prog_err:
+            logger.warning(f"LearningProgress update after programming submit failed: {prog_err}")
+            db.session.rollback()
+
         return jsonify({
             'message': 'Programming submission reviewed',
             'submission': submission.to_dict(),
             'mistake_synced': bool(mistake),
             'mistake_id': mistake.id if mistake else None,
+            'assessment_recorded': True,
+            'profile_synced': bool(sync_result),
+            'progress_updated': progress_updated,
         }), 201
     except ValueError as e:
         return jsonify({'error': str(e)}), 400

@@ -1,9 +1,9 @@
-import React, { useMemo } from 'react'
+import React, { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Network, Filter, Layers, Route } from 'lucide-react'
+import { Network, Filter, Layers, Route, ChevronRight, ChevronLeft, X } from 'lucide-react'
 
 const NODE_TYPES = [
   { value: 'all', label: '全部类型' },
@@ -45,110 +45,124 @@ export default function GraphToolbar({
   onPathSelect,
   onResetView,
 }) {
+  const [expanded, setExpanded] = useState(true)
+
   return (
-    <div className="absolute top-4 left-4 z-10 flex flex-col gap-3 pointer-events-none">
-      {/* 过滤器 */}
-      <Card className="pointer-events-auto shadow-lg rounded-xl border-0 bg-white/90 backdrop-blur-sm">
-        <CardContent className="p-3">
-          <div className="flex items-center gap-2 mb-2">
-            <Filter className="w-4 h-4 text-[#d4a853]" />
-            <span className="text-sm font-medium text-[#2d2a26]">筛选</span>
-          </div>
-          <div className="flex gap-2">
-            <Select value={nodeFilter} onValueChange={onNodeFilterChange}>
-              <SelectTrigger className="w-[130px] h-8 text-xs rounded-lg">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {NODE_TYPES.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={edgeFilter} onValueChange={onEdgeFilterChange}>
-              <SelectTrigger className="w-[130px] h-8 text-xs rounded-lg">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {EDGE_TYPES.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 学习路径 */}
-      {learningPaths.length > 0 && (
-        <Card className="pointer-events-auto shadow-lg rounded-xl border-0 bg-white/90 backdrop-blur-sm">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <Route className="w-4 h-4 text-[#e07c4f]" />
-              <span className="text-sm font-medium text-[#2d2a26]">学习路径</span>
-            </div>
-            <Select value={selectedPathId || ''} onValueChange={onPathSelect}>
-              <SelectTrigger className="w-full h-8 text-xs rounded-lg">
-                <SelectValue placeholder="选择学习路径" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">不显示路径</SelectItem>
-                {learningPaths.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* 统计信息 */}
-      {stats && (
-        <Card className="pointer-events-auto shadow-lg rounded-xl border-0 bg-white/90 backdrop-blur-sm">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <Layers className="w-4 h-4 text-[#4a90d9]" />
-              <span className="text-sm font-medium text-[#2d2a26]">图谱概览</span>
-            </div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-              <span className="text-[#9a9590]">节点</span>
-              <span className="text-[#2d2a26] font-medium">{stats.nodeCount}</span>
-              <span className="text-[#9a9590]">连线</span>
-              <span className="text-[#2d2a26] font-medium">{stats.edgeCount}</span>
-              <span className="text-[#9a9590]">孤立节点</span>
-              <span className="text-[#2d2a26] font-medium">{stats.isolatedCount}</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* 图例 */}
-      <Card className="pointer-events-auto shadow-lg rounded-xl border-0 bg-white/90 backdrop-blur-sm">
-        <CardContent className="p-3">
-          <div className="flex items-center gap-2 mb-2">
-            <Network className="w-4 h-4 text-[#8b6fb0]" />
-            <span className="text-sm font-medium text-[#2d2a26]">图例</span>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {Object.entries(TYPE_COLORS).map(([type, color]) => (
-              <Badge key={type} variant="outline" className="text-[10px] py-0" style={{ borderColor: color, color }}>
-                <span className="w-2 h-2 rounded-full mr-1" style={{ backgroundColor: color }} />
-                {NODE_TYPES.find((t) => t.value === type)?.label || type}
-              </Badge>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 重置视角 */}
-      <Button
-        variant="outline"
-        size="sm"
-        className="pointer-events-auto rounded-xl bg-white/90 backdrop-blur-sm"
-        onClick={onResetView}
+    <div className="absolute top-4 right-4 z-10 flex items-start gap-2 pointer-events-none">
+      {/* 收起/展开按钮 */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="pointer-events-auto flex items-center justify-center w-8 h-8 rounded-lg bg-white/90 backdrop-blur-sm shadow-md border border-white/20 hover:bg-white transition-all duration-200"
+        title={expanded ? '收起侧栏' : '展开侧栏'}
       >
-        重置视角
-      </Button>
+        {expanded ? <ChevronRight className="w-4 h-4 text-[#6b6560]" /> : <ChevronLeft className="w-4 h-4 text-[#6b6560]" />}
+      </button>
+
+      {/* 侧栏内容 */}
+      <div className={`pointer-events-auto flex flex-col gap-2 transition-all duration-300 overflow-hidden ${expanded ? 'w-[200px] opacity-100' : 'w-0 opacity-0'}`}>
+        {/* 过滤器 */}
+        <Card className="shadow-lg rounded-xl border-0 bg-white/90 backdrop-blur-sm">
+          <CardContent className="p-2.5">
+            <div className="flex items-center gap-2 mb-1.5">
+              <Filter className="w-3.5 h-3.5 text-[#d4a853]" />
+              <span className="text-xs font-medium text-[#2d2a26]">筛选</span>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Select value={nodeFilter} onValueChange={onNodeFilterChange}>
+                <SelectTrigger className="w-full h-7 text-xs rounded-lg">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {NODE_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={edgeFilter} onValueChange={onEdgeFilterChange}>
+                <SelectTrigger className="w-full h-7 text-xs rounded-lg">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {EDGE_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 学习路径 */}
+        {learningPaths.length > 0 && (
+          <Card className="shadow-lg rounded-xl border-0 bg-white/90 backdrop-blur-sm">
+            <CardContent className="p-2.5">
+              <div className="flex items-center gap-2 mb-1.5">
+                <Route className="w-3.5 h-3.5 text-[#e07c4f]" />
+                <span className="text-xs font-medium text-[#2d2a26]">学习路径</span>
+              </div>
+              <Select value={selectedPathId || ''} onValueChange={onPathSelect}>
+                <SelectTrigger className="w-full h-7 text-xs rounded-lg">
+                  <SelectValue placeholder="选择学习路径" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">不显示路径</SelectItem>
+                  {learningPaths.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 统计信息 */}
+        {stats && (
+          <Card className="shadow-lg rounded-xl border-0 bg-white/90 backdrop-blur-sm">
+            <CardContent className="p-2.5">
+              <div className="flex items-center gap-2 mb-1.5">
+                <Layers className="w-3.5 h-3.5 text-[#4a90d9]" />
+                <span className="text-xs font-medium text-[#2d2a26]">图谱概览</span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs">
+                <span className="text-[#9a9590]">节点</span>
+                <span className="text-[#2d2a26] font-medium">{stats.nodeCount}</span>
+                <span className="text-[#9a9590]">连线</span>
+                <span className="text-[#2d2a26] font-medium">{stats.edgeCount}</span>
+                <span className="text-[#9a9590]">孤立节点</span>
+                <span className="text-[#2d2a26] font-medium">{stats.isolatedCount}</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 图例 */}
+        <Card className="shadow-lg rounded-xl border-0 bg-white/90 backdrop-blur-sm">
+          <CardContent className="p-2.5">
+            <div className="flex items-center gap-2 mb-1.5">
+              <Network className="w-3.5 h-3.5 text-[#8b6fb0]" />
+              <span className="text-xs font-medium text-[#2d2a26]">图例</span>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {Object.entries(TYPE_COLORS).map(([type, color]) => (
+                <Badge key={type} variant="outline" className="text-[10px] py-0 px-1.5" style={{ borderColor: color, color }}>
+                  <span className="w-1.5 h-1.5 rounded-full mr-0.5" style={{ backgroundColor: color }} />
+                  {NODE_TYPES.find((t) => t.value === type)?.label || type}
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 重置视角 */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-xl bg-white/90 backdrop-blur-sm text-xs h-7"
+          onClick={onResetView}
+        >
+          重置视角
+        </Button>
+      </div>
     </div>
   )
 }

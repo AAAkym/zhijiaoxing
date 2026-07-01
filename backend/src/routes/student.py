@@ -1,16 +1,127 @@
 from flask import Blueprint, request, jsonify, session
 from src.models.user import db
-from src.models.course import Course, LearningProgress, PracticeEvaluation, Assessment, MistakeRecord
+from src.models.course import Course, LearningProgress, PracticeEvaluation, Assessment, MistakeRecord, VideoLesson, VideoProgress, TeachingContent
 from sqlalchemy import func
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import logging
+import difflib
 
 from src.services.mistake_intelligence_service import normalize_option_answer
 
 logger = logging.getLogger(__name__)
 
 student_bp = Blueprint('student', __name__)
+
+
+def _enrich_practice_with_chapter_knowledge(practice):
+    """为练习记录补充章节归属与知识点掌握度评估。
+
+    避免审核流程仅关注"练习#X"形式化完成状态，转而基于章节教学目标和知识点要求
+    全面评估实际掌握程度。
+
+    返回字段：
+    - chapter: 章节归属（最匹配的 TeachingContent.title，找不到则用课程名）
+    - knowledge_points: 知识点掌握度列表 [{point, mastery, score}]
+    - question_count: 题目数量
+    - mastery_level: 整体掌握程度标签（已掌握/部分掌握/未掌握）
+    """
+    result = {
+        'chapter': None,
+        'knowledge_points': [],
+        'question_count': 0,
+        'mastery_level': '未知',
+    }
+    try:
+        assessment = Assessment.query.get(practice.assessment_id)
+        if not assessment:
+            return result
+
+        # 解析题目 JSON，提取知识点标签和题目数量
+        questions = []
+        if isinstance(assessment.questions, str):
+            try:
+                questions = json.loads(assessment.questions)
+            except json.JSONDecodeError:
+                questions = []
+        elif isinstance(assessment.questions, list):
+            questions = assessment.questions
+
+        result['question_count'] = len(questions) if isinstance(questions, list) else 0
+
+        # 收集所有知识点标签
+        all_tags = []
+        if isinstance(questions, list):
+            for q in questions:
+                if not isinstance(q, dict):
+                    continue
+                tags = q.get('knowledge_tags') or []
+                if isinstance(tags, str):
+                    try:
+                        tags = json.loads(tags)
+                    except (json.JSONDecodeError, TypeError):
+                        tags = [tags]
+                for tag in tags:
+                    tag_text = str(tag).strip()
+                    if tag_text and tag_text not in all_tags:
+                        all_tags.append(tag_text)
+
+        # 基于 score 评估每个知识点的掌握度
+        score = practice.score if practice.score is not None else 0
+        if score >= 90:
+            mastery_level = '已掌握'
+            mastery_desc = '掌握扎实'
+        elif score >= 60:
+            mastery_level = '部分掌握'
+            mastery_desc = '存在薄弱环节'
+        else:
+            mastery_level = '未掌握'
+            mastery_desc = '需要重点复习'
+        result['mastery_level'] = mastery_level
+
+        result['knowledge_points'] = [
+            {'point': tag, 'mastery': mastery_level, 'mastery_desc': mastery_desc, 'score': score}
+            for tag in all_tags[:8]  # 最多返回 8 个知识点，避免过长
+        ]
+
+        # 关联章节归属：在同课程下找标题最相似的 TeachingContent
+        course_contents = TeachingContent.query.filter_by(course_id=assessment.course_id).all()
+        if course_contents:
+            # 优先用 assessment.title 匹配，其次用知识点标签匹配
+            match_target = assessment.title or ''
+            best_match = None
+            best_ratio = 0.0
+            for tc in course_contents:
+                ratio = difflib.SequenceMatcher(None, match_target, tc.title or '').ratio()
+                # 标题匹配阈值 0.4
+                if ratio > best_ratio:
+                    best_ratio = ratio
+                    best_match = tc
+            # 如果标题匹配度低，尝试用知识点标签在 content 中搜索
+            if best_ratio < 0.4 and all_tags:
+                for tc in course_contents:
+                    content_text = (tc.content or '').lower()
+                    for tag in all_tags:
+                        if tag.lower() in content_text:
+                            best_match = tc
+                            best_ratio = 0.5  # 标记为中等匹配
+                            break
+                    if best_match:
+                        break
+            if best_match and best_ratio >= 0.3:
+                result['chapter'] = best_match.title
+            else:
+                # 兜底：用课程名 + "综合" 作为章节归属
+                course = Course.query.get(assessment.course_id)
+                result['chapter'] = f"{course.title}·综合" if course else '未分类'
+        else:
+            course = Course.query.get(assessment.course_id)
+            result['chapter'] = f"{course.title}·综合" if course else '未分类'
+
+    except Exception as e:
+        logger.warning(f"Enrich practice {practice.id} failed: {e}")
+
+    return result
 
 
 def _extract_correct_answer(question, answers=None, index=None):
@@ -44,28 +155,110 @@ def require_auth(f):
 @student_bp.route('/my_courses', methods=['GET'])
 @require_auth
 def get_my_courses():
-    """获取我的课程"""
+    """获取我的课程及基于视频完成状态的真实学习进度"""
     try:
         user_id = session['user_id']
-        
+        logger.info(f"[get_my_courses] user_id={user_id} 开始获取课程及视频进度")
+
         # 获取学生的学习进度记录
         progress_records = LearningProgress.query.filter_by(user_id=user_id).all()
-        
-        # 仅返回真实已加入/已分配课程，避免未分配课程误显示
+        logger.info(f"[get_my_courses] 找到 {len(progress_records)} 条学习进度记录")
+
         course_list = []
         for progress in progress_records:
             if not progress.course:
+                logger.warning(f"[get_my_courses] progress_id={progress.id} 无关联课程，跳过")
                 continue
-            course_dict = progress.course.to_dict()
-            course_dict['progress_percentage'] = progress.progress_percentage
+
+            course = progress.course
+            course_id = course.id
+
+            # 1. 获取该课程下所有已发布视频（作为章节/课时）
+            videos = VideoLesson.query.filter_by(
+                course_id=course_id,
+                status='published'
+            ).order_by(VideoLesson.order_index.asc(), VideoLesson.id.asc()).all()
+            total_videos = len(videos)
+            logger.info(f"[get_my_courses] course_id={course_id} 发布视频数={total_videos}")
+
+            # 2. 获取该用户在该课程下的所有视频观看进度
+            video_ids = [v.id for v in videos]
+            progress_map = {}
+            if video_ids:
+                vp_records = VideoProgress.query.filter(
+                    VideoProgress.user_id == user_id,
+                    VideoProgress.video_id.in_(video_ids)
+                ).all()
+                progress_map = {vp.video_id: vp for vp in vp_records}
+                logger.info(f"[get_my_courses] course_id={course_id} 视频进度记录数={len(progress_map)}")
+
+            # 3. 计算基于视频完成状态的真实进度
+            completed_count = sum(
+                1 for v in videos
+                if progress_map.get(v.id) and progress_map[v.id].completed
+            )
+            video_progress = round(
+                (completed_count / total_videos * 100) if total_videos > 0 else 0, 2
+            )
+            logger.info(f"[get_my_courses] course_id={course_id} 完成视频={completed_count}/{total_videos} 进度={video_progress}%")
+
+            # 4. 总时长（秒 -> 小时，保留一位小数）
+            total_duration_seconds = sum(v.duration or 0 for v in videos)
+            total_duration_hours = round(total_duration_seconds / 3600, 1)
+
+            # 5. 最近学习时间为所有视频进度的最后观看时间
+            last_watched_times = [
+                vp.last_watched for vp in progress_map.values()
+                if vp.last_watched
+            ]
+            latest_watch_time = max(last_watched_times) if last_watched_times else None
+
+            # 同时更新 LearningProgress 表，保持进度同步
+            try:
+                if video_progress != progress.progress_percentage or latest_watch_time != progress.last_accessed:
+                    progress.progress_percentage = video_progress
+                    if latest_watch_time:
+                        progress.last_accessed = latest_watch_time
+                    elif video_progress > 0 and not progress.last_accessed:
+                        progress.last_accessed = datetime.utcnow()
+                    db.session.commit()
+                    logger.info(f"[get_my_courses] course_id={course_id} 已同步 LearningProgress 进度={video_progress}%")
+            except Exception as sync_err:
+                db.session.rollback()
+                logger.warning(f"[get_my_courses] course_id={course_id} 同步 LearningProgress 失败: {sync_err}")
+
+            # 6. 下节课：找到第一个未完成的视频
+            next_video = None
+            for v in videos:
+                vp = progress_map.get(v.id)
+                if not vp or not vp.completed:
+                    next_video = v
+                    break
+            # 如果全部完成，默认推荐最后一个视频用于复习
+            if not next_video and videos:
+                next_video = videos[-1]
+
+            course_dict = course.to_dict()
+            course_dict['progress_percentage'] = video_progress
             course_dict['last_accessed'] = progress.last_accessed.isoformat() if progress.last_accessed else None
+            course_dict['video_stats'] = {
+                'total_videos': total_videos,
+                'completed_videos': completed_count,
+                'total_duration_seconds': total_duration_seconds,
+                'total_duration_hours': total_duration_hours,
+                'last_watched_at': latest_watch_time.isoformat() if latest_watch_time else None,
+                'next_video_title': next_video.title if next_video else None,
+                'next_video_id': next_video.id if next_video else None,
+            }
             course_list.append(course_dict)
-        
+
+        logger.info(f"[get_my_courses] user_id={user_id} 返回课程数={len(course_list)}")
         return jsonify({
             'courses': course_list
         }), 200
-        
+
     except Exception as e:
+        logger.exception(f"[get_my_courses] user_id={session.get('user_id')} 获取课程失败: {e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -232,9 +425,29 @@ def get_practice_stats():
         else:
             avg_score = max_score = min_score = 0
         
-        # 最近的练习记录
+        # 最近的练习记录（enriched：补充章节归属与知识点掌握度）
         recent_practices = evaluations[:10]  # 最近10次练习
-        
+
+        # 缓存课程名映射，避免重复查询
+        course_name_cache = {}
+        enriched_practices = []
+        for practice in recent_practices:
+            base = practice.to_dict()
+            enrichment = _enrich_practice_with_chapter_knowledge(practice)
+            base.update(enrichment)
+            # 补充 assessment_title 和 course_name（前端展示需要）
+            assessment = Assessment.query.get(practice.assessment_id) if practice.assessment_id else None
+            if assessment:
+                base['assessment_title'] = assessment.title
+                if assessment.course_id not in course_name_cache:
+                    course = Course.query.get(assessment.course_id)
+                    course_name_cache[assessment.course_id] = course.title if course else ''
+                base['course_name'] = course_name_cache.get(assessment.course_id, '')
+            else:
+                base['assessment_title'] = None
+                base['course_name'] = ''
+            enriched_practices.append(base)
+
         return jsonify({
             'practice_stats': {
                 'total_practices': total_practices,
@@ -242,7 +455,7 @@ def get_practice_stats():
                 'max_score': max_score,
                 'min_score': min_score
             },
-            'recent_practices': [practice.to_dict() for practice in recent_practices]
+            'recent_practices': enriched_practices
         }), 200
         
     except Exception as e:

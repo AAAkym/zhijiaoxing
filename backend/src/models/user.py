@@ -27,6 +27,15 @@ class User(db.Model):
         'concise': '简洁直接型'
     }
 
+    def __init__(self, **kwargs):
+        password = kwargs.pop('password', None)
+        username = kwargs.get('username')
+        if username and not kwargs.get('email'):
+            kwargs['email'] = f'{username}@local.test'
+        super().__init__(**kwargs)
+        if password is not None:
+            self.set_password(password)
+
     def __repr__(self):
         return f'<User {self.username}>'
     

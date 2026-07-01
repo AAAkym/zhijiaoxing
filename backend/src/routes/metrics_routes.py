@@ -3,8 +3,8 @@
 提供 Prometheus 指标端点
 """
 from flask import Blueprint, Response, jsonify
-from services.metrics_service import metrics_service
-from middleware.auth import require_auth
+from src.services.metrics_service import metrics_service
+from src.utils.auth import require_auth
 
 metrics_bp = Blueprint('metrics', __name__, url_prefix='/api/metrics')
 

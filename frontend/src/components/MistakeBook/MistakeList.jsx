@@ -102,7 +102,15 @@ export default function MistakeList({
 
   const truncateText = (text, maxLength = 100) => {
     if (!text) return ''
-    return text.length > maxLength ? text.slice(0, maxLength) + '...' : text
+    // 尝试解析JSON格式的题目内容
+    let displayText = text
+    try {
+      const parsed = JSON.parse(text)
+      displayText = parsed.title || parsed.description || parsed.question || text
+    } catch {
+      // 不是JSON，直接使用原文本
+    }
+    return displayText.length > maxLength ? displayText.slice(0, maxLength) + '...' : displayText
   }
 
   const handleCourseFilter = (value) => {

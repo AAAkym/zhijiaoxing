@@ -187,19 +187,14 @@ export default function TargetedTherapy({ myCourses = [], initialContext = null 
   }, [plan])
 
   const handleStartPractice = useCallback(() => {
-    const seenKnowledgePoints = new Set()
     const questions = filteredQuestions.map((q, idx) => {
-      const qType = q.question_type || q.type || 'choice'
-      const isProgramming = qType === 'programming'
       const knowledgeTags = q.knowledge_tags || q.matched_tags || []
-      const primaryTag = knowledgeTags[0] || ''
-
-      if (primaryTag && seenKnowledgePoints.has(primaryTag)) {
-        return null
-      }
-      if (primaryTag) {
-        seenKnowledgePoints.add(primaryTag)
-      }
+      const tagText = Array.isArray(knowledgeTags) ? knowledgeTags.join(' ') : String(knowledgeTags || '')
+      const qType = q.question_type || q.type || 'choice'
+      const isProgramming =
+        qType === 'programming' ||
+        /编程|代码|programming|code/i.test(tagText) ||
+        Boolean(q.starter_code || q.standard_answer || q.test_cases?.length)
 
       return {
         id: idx + 1,
@@ -261,7 +256,7 @@ export default function TargetedTherapy({ myCourses = [], initialContext = null 
       return
     }
 
-    const perQuestionScore = safeQuestions.length > 0 ? 100 / safeQuestions.length : 0
+    const perQuestionScore = practiceQuestions.length > 0 ? 100 / practiceQuestions.length : 0
     const results = practiceQuestions.map(q => {
       const userAnswer = answers[q.id]
       const isCorrect = checkAnswer(q, userAnswer)
@@ -457,6 +452,31 @@ export default function TargetedTherapy({ myCourses = [], initialContext = null 
             />
           </div>
 
+          {(plan.auto_summary || plan.target_tag_categories?.length > 0) && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-purple-500" />
+                  靶向分析总结
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {plan.auto_summary?.message && (
+                  <p className="text-sm text-gray-700">{plan.auto_summary.message}</p>
+                )}
+                {plan.target_tag_categories?.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {plan.target_tag_categories.map((item) => (
+                      <Badge key={item.category} variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                        {item.label} · {item.count}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {plan.target_tags && plan.target_tags.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
@@ -572,7 +592,24 @@ export default function TargetedTherapy({ myCourses = [], initialContext = null 
                                         {isProg ? '编程' : '选择'}
                                       </Badge>
                                     </div>
-                                    <p className="text-sm font-medium text-gray-800 line-clamp-2">{q.question_content || q.content || '题目内容缺失'}</p>
+                                    <p className="text-sm font-medium text-gray-800 line-clamp-2">
+                                      {(() => {
+                                        const content = q.question_content || q.content || ''
+                                        if (!content) return '题目内容缺失'
+                                        try {
+                                          const parsed = JSON.parse(content)
+                                          // 候选字段可能为对象（如 AI 误将测试用例对象放入 description），
+                                          // 必须确保返回字符串，否则 React 会抛 "Objects are not valid as a React child"
+                                          const candidates = [parsed.title, parsed.description, parsed.question, parsed.content]
+                                          for (const c of candidates) {
+                                            if (typeof c === 'string' && c.trim()) return c
+                                          }
+                                          return typeof content === 'string' ? content : String(content)
+                                        } catch {
+                                          return typeof content === 'string' ? content : String(content)
+                                        }
+                                      })()}
+                                    </p>
                                     <p className="text-xs text-gray-500 mt-0.5">知识点：{(q.matched_tags || q.knowledge_tags || []).join('、') || '暂无'}</p>
                                   </div>
                                 </div>
@@ -740,8 +777,8 @@ function PracticeView({ questions, currentIndex, answers, timeElapsed, showConfi
                 <p className="text-sm font-medium text-gray-600">示例：</p>
                 {currentQuestion.test_cases.slice(0, 2).map((tc, idx) => (
                   <div key={idx} className="bg-white rounded p-2 text-sm font-mono">
-                    <span className="text-gray-500">输入：</span>{tc.input}
-                    <span className="text-gray-500 ml-3">输出：</span>{tc.expected_output}
+                    <span className="text-gray-500">输入：</span>{String(tc.input ?? tc.input_data ?? '')}
+                    <span className="text-gray-500 ml-3">输出：</span>{String(tc.expected_output ?? tc.output ?? '')}
                   </div>
                 ))}
               </div>

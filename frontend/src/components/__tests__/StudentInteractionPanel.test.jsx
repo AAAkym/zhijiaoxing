@@ -1,12 +1,7 @@
-/**
- * 互动板块功能测试
- * 
- * 测试举手、问答、讨论功能的完整流程
- */
-
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals'
+import { render, waitFor } from '@testing-library/react'
+import StudentInteractionPanel from '../StudentInteractionPanel'
 
-// 模拟 WebSocket 服务
 const mockWebSocketService = {
   connect: jest.fn(),
   disconnect: jest.fn(),
@@ -17,7 +12,7 @@ const mockWebSocketService = {
   sendDiscussionEvent: jest.fn(),
   on: jest.fn(),
   off: jest.fn(),
-  isConnected: jest.fn(() => false)
+  isConnected: jest.fn(() => false),
 }
 
 jest.mock('../websocket', () => mockWebSocketService)
@@ -25,74 +20,61 @@ jest.mock('../websocket', () => mockWebSocketService)
 describe('StudentInteractionPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    localStorage.setItem('user', JSON.stringify({ id: 1 }))
   })
 
   afterEach(() => {
     jest.resetAllMocks()
+    localStorage.clear()
   })
 
-  it('should initialize WebSocket when component mounts', () => {
-    expect(mockWebSocketService.connect).toHaveBeenCalled()
-    expect(mockWebSocketService.joinCourse).toHaveBeenCalledWith(expect.any(Number))
+  it('initializes WebSocket when component mounts', async () => {
+    render(<StudentInteractionPanel courseId={1} videoId={1} />)
+
+    await waitFor(() => {
+      expect(mockWebSocketService.connect).toHaveBeenCalled()
+      expect(mockWebSocketService.joinCourse).toHaveBeenCalledWith(1)
+    })
   })
 
-  it('should leave course room when component unmounts', () => {
-    // 模拟组件卸载
-    expect(mockWebSocketService.leaveCourse).toHaveBeenCalledWith(expect.any(Number))
+  it('leaves course room when component unmounts', () => {
+    const { unmount } = render(<StudentInteractionPanel courseId={1} videoId={1} />)
+    unmount()
+
+    expect(mockWebSocketService.leaveCourse).toHaveBeenCalledWith(1)
   })
 
-  it('should handle hand raise creation', async () => {
-    // 测试举手功能
-    const mockHandRaise = {
-      id: 1,
-      course_id: 1,
-      user_id: 1,
-      status: 'waiting',
-      reason: '有问题需要帮助'
-    }
+  it('registers real-time update listeners', async () => {
+    render(<StudentInteractionPanel courseId={1} videoId={1} />)
 
-    expect(mockWebSocketService.sendHandRaiseEvent).toHaveBeenCalled()
-  })
-
-  it('should listen to real-time updates', () => {
-    // 验证 WebSocket 事件监听器已注册
-    expect(mockWebSocketService.on).toHaveBeenCalledWith(
-      'hand_raise_updated',
-      expect.any(Function)
-    )
-    expect(mockWebSocketService.on).toHaveBeenCalledWith(
-      'question_updated',
-      expect.any(Function)
-    )
-    expect(mockWebSocketService.on).toHaveBeenCalledWith(
-      'discussion_updated',
-      expect.any(Function)
-    )
+    await waitFor(() => {
+      expect(mockWebSocketService.on).toHaveBeenCalledWith('hand_raise_updated', expect.any(Function))
+      expect(mockWebSocketService.on).toHaveBeenCalledWith('question_updated', expect.any(Function))
+      expect(mockWebSocketService.on).toHaveBeenCalledWith('discussion_updated', expect.any(Function))
+    })
   })
 })
 
 describe('WebSocket Service', () => {
-  it('should connect to WebSocket server', () => {
-    mockWebSocketService.isConnected.mockReturnValue(false)
+  it('connects to WebSocket server', () => {
     mockWebSocketService.connect()
     expect(mockWebSocketService.connect).toHaveBeenCalled()
   })
 
-  it('should join course room', () => {
-    const courseId = 1
-    mockWebSocketService.joinCourse(courseId)
-    expect(mockWebSocketService.joinCourse).toHaveBeenCalledWith(courseId)
+  it('joins course room', () => {
+    mockWebSocketService.joinCourse(1)
+    expect(mockWebSocketService.joinCourse).toHaveBeenCalledWith(1)
   })
 
-  it('should send hand raise event', () => {
-    const courseId = 1
-    mockWebSocketService.sendHandRaiseEvent(courseId)
-    expect(mockWebSocketService.sendHandRaiseEvent).toHaveBeenCalledWith(courseId)
+  it('sends hand raise event', () => {
+    mockWebSocketService.sendHandRaiseEvent(1)
+    expect(mockWebSocketService.sendHandRaiseEvent).toHaveBeenCalledWith(1)
   })
 
-  it('should register event listeners', () => {
+  it('registers event listeners', () => {
     const callback = jest.fn()
     mockWebSocketService.on('test_event', callback)
     expect(mockWebSocketService.on).toHaveBeenCalledWith('test_event', callback)
   })
-})
+}
+)

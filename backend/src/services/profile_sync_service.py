@@ -3,7 +3,10 @@ import logging
 from datetime import datetime, timedelta
 from src.models.user import db
 from src.models.student_profile import StudentProfile
-from src.models.course import PracticeEvaluation, MistakeRecord, CourseQuestion, LearningProgress, VideoProgress
+from src.models.course import (
+    PracticeEvaluation, MistakeRecord, CourseQuestion,
+    LearningProgress, VideoProgress, ProgrammingSubmission, Assessment,
+)
 from src.services.spark_service import spark_service
 
 logger = logging.getLogger(__name__)
@@ -66,6 +69,112 @@ class ProfileSyncService:
         db.session.commit()
 
         return {"updated": True, "avg_score": avg_score, "trend": knowledge_base.get("_practice_trend")}
+
+    def sync_from_programming(self, user_id):
+        """从编程题提交记录同步学生画像。
+
+        编程题完成应算作一次考核，本方法将 ProgrammingSubmission 的得分趋势、
+        通过率、薄弱知识点同步到 StudentProfile，确保编程题数据进入画像体系。
+        """
+        profile = StudentProfile.query.filter_by(user_id=user_id).first()
+        if not profile:
+            profile = StudentProfile(user_id=user_id)
+            db.session.add(profile)
+
+        submissions = ProgrammingSubmission.query.filter_by(user_id=user_id).order_by(
+            ProgrammingSubmission.created_at.desc()
+        ).limit(30).all()
+
+        if not submissions:
+            db.session.commit()
+            return {"updated": False, "reason": "no_programming_data"}
+
+        scores = [s.score for s in submissions if s.score is not None]
+        recent_scores = scores[:5] if scores else []
+        passed_count = sum(1 for s in submissions if s.status == 'passed')
+        pass_rate = passed_count / len(submissions) if submissions else 0
+        avg_score = sum(scores) / len(scores) if scores else 0
+
+        knowledge_base = profile.get_knowledge_base()
+        # 编程题考核统计：作为一次考核记录计入画像
+        programming_stats = knowledge_base.get("_programming_stats") or {}
+        programming_stats.update({
+            "total_submissions": len(submissions),
+            "passed_count": passed_count,
+            "pass_rate": round(pass_rate, 2),
+            "avg_score": round(avg_score, 1),
+            "recent_scores": recent_scores,
+            "last_submission_at": submissions[0].created_at.isoformat() if submissions[0].created_at else None,
+        })
+        knowledge_base["_programming_stats"] = programming_stats
+
+        # 合并编程题得分到练习趋势（与普通练习一起影响 trend 判断）
+        practice_scores = knowledge_base.get("_recent_scores") or []
+        merged_recent = (recent_scores + practice_scores)[:5]
+        merged_avg = sum(merged_recent) / len(merged_recent) if merged_recent else 0
+        if merged_avg >= 80:
+            knowledge_base["_practice_trend"] = "strong"
+        elif merged_avg >= 60:
+            knowledge_base["_practice_trend"] = "moderate"
+        else:
+            knowledge_base["_practice_trend"] = "weak"
+        knowledge_base["_avg_score"] = round(merged_avg, 1)
+        knowledge_base["_recent_scores"] = merged_recent
+
+        # 从编程题的 knowledge_tags 统计薄弱知识点
+        kp_counts = {}
+        for sub in submissions:
+            if sub.status == 'passed':
+                continue  # 通过的题目不计入薄弱点
+            assessment = Assessment.query.get(sub.assessment_id)
+            if not assessment:
+                continue
+            try:
+                questions = json.loads(assessment.questions) if isinstance(assessment.questions, str) else assessment.questions
+                if isinstance(questions, list) and sub.question_index < len(questions):
+                    q = questions[sub.question_index] or {}
+                    tags = q.get('knowledge_tags') or []
+                    if isinstance(tags, str):
+                        try:
+                            tags = json.loads(tags)
+                        except (json.JSONDecodeError, TypeError):
+                            tags = [tags]
+                    for tag in tags:
+                        tag_text = str(tag).strip()
+                        if tag_text:
+                            kp_counts[tag_text] = kp_counts.get(tag_text, 0) + 1
+            except (json.JSONDecodeError, TypeError, IndexError):
+                continue
+
+        if kp_counts:
+            existing_weak = knowledge_base.get("_weak_knowledge_points") or []
+            existing_map = {w.get("point"): w.get("mistake_count", 0) for w in existing_weak if isinstance(w, dict)}
+            for kp, cnt in kp_counts.items():
+                existing_map[kp] = existing_map.get(kp, 0) + cnt
+            weak_points = sorted(existing_map.items(), key=lambda x: x[1], reverse=True)[:10]
+            knowledge_base["_weak_knowledge_points"] = [
+                {"point": p[0], "mistake_count": p[1]} for p in weak_points
+            ]
+
+        profile.set_knowledge_base(knowledge_base)
+
+        # 根据编程题通过率调整学习节奏
+        if pass_rate >= 0.8 and avg_score >= 85 and profile.learning_pace == "slow":
+            profile.learning_pace = "moderate"
+        elif pass_rate < 0.3 and profile.learning_pace == "fast":
+            profile.learning_pace = "moderate"
+
+        profile.update_source = "auto_sync_programming"
+        profile.last_updated = datetime.utcnow()
+        profile._recalculate_confidence()
+        db.session.commit()
+
+        return {
+            "updated": True,
+            "avg_score": round(avg_score, 1),
+            "pass_rate": round(pass_rate, 2),
+            "total_submissions": len(submissions),
+        }
 
     def sync_from_mistakes(self, user_id):
         profile = StudentProfile.query.filter_by(user_id=user_id).first()
@@ -206,9 +315,15 @@ class ProfileSyncService:
             results["practice"] = {"updated": False, "error": str(e)}
 
         try:
+            results["programming"] = self.sync_from_programming(user_id)
+        except Exception as e:
+            logger.error(f"Programming sync error for user {user_id}: {e}")
+            results["programming"] = {"updated": False, "error": str(e)}
+
+        try:
             results["mistakes"] = self.sync_from_mistakes(user_id)
         except Exception as e:
-            logger.error(f"Mistakes sync error for user {user_id}: {e}")
+            logger.error(f"Mistake sync error for user {user_id}: {e}")
             results["mistakes"] = {"updated": False, "error": str(e)}
 
         try:

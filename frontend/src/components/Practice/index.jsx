@@ -58,6 +58,14 @@ function PracticeContent({ myCourses, onBack }) {
             const submission = review?.submission
             const aiFeedback = submission?.ai_feedback || {}
             const aiDetailed = aiFeedback.ai_detailed_analysis || null
+            // 防御性解析：后端可能返回JSON字符串或已解析的对象
+            const safeParse = (val) => {
+              if (!val) return {}
+              if (typeof val === 'string') {
+                try { return JSON.parse(val) } catch { return {} }
+              }
+              return val
+            }
             return {
               ...r,
               isCorrect: (submission?.score || 0) >= 90,
@@ -66,15 +74,15 @@ function PracticeContent({ myCourses, onBack }) {
               programmingFeedback: {
                 score: submission?.score || 0,
                 dimensions: {
-                  compile: submission?.compile_result || {},
-                  runtime: submission?.runtime_result || {},
-                  io_match: submission?.io_match_result || {},
-                  syntax: submission?.syntax_result || {},
-                  logic: submission?.logic_result || {},
-                  efficiency: submission?.efficiency_result || {},
+                  compile: safeParse(submission?.compile_result),
+                  runtime: safeParse(submission?.runtime_result),
+                  io_match: safeParse(submission?.io_match_result),
+                  syntax: safeParse(submission?.syntax_result),
+                  logic: safeParse(submission?.logic_result),
+                  efficiency: safeParse(submission?.efficiency_result),
                 },
-                lineComparison: submission?.line_comparison || [],
-                aiFeedback: aiFeedback,
+                lineComparison: safeParse(submission?.line_comparison),
+                aiFeedback: typeof aiFeedback === 'string' ? safeParse(aiFeedback) : aiFeedback,
                 aiDetailedAnalysis: aiDetailed,
               }
             }

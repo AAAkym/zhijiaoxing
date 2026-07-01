@@ -60,6 +60,10 @@ class Config:
     if _is_sqlite:
         SQLALCHEMY_ENGINE_OPTIONS = {
             'pool_pre_ping': DB_POOL_PRE_PING,
+            'connect_args': {
+                'timeout': 30,
+                'check_same_thread': False,
+            },
             'echo': False,
             'echo_pool': False,
         }
@@ -219,12 +223,16 @@ class TestingConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.environ.get('TEST_DATABASE_URL') or \
         'postgresql://zhijiaoxing_user:zhijiaoxing_password@localhost:5432/zhijiaoxing_test_db'
 
-    # 测试环境较小的连接池
-    SQLALCHEMY_ENGINE_OPTIONS = {
-        **Config.SQLALCHEMY_ENGINE_OPTIONS,
-        'pool_size': 5,
-        'max_overflow': 10,
-    }
+    # 根据数据库类型设置引擎选项 - SQLite不支持连接池参数
+    _test_is_sqlite = 'sqlite' in (SQLALCHEMY_DATABASE_URI or '').lower()
+    if _test_is_sqlite:
+        SQLALCHEMY_ENGINE_OPTIONS = Config.SQLALCHEMY_ENGINE_OPTIONS
+    else:
+        SQLALCHEMY_ENGINE_OPTIONS = {
+            **Config.SQLALCHEMY_ENGINE_OPTIONS,
+            'pool_size': 5,
+            'max_overflow': 10,
+        }
 
     # 测试环境使用NullCache (禁用缓存，确保测试准确性)
     CACHE_TYPE = 'NullCache'

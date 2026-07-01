@@ -15,6 +15,7 @@ from src.models.course import (
     PracticeEvaluation,
 )
 from src.models.student_profile import StudentProfile
+from src.models.system_settings import SystemSetting
 from src.services.spark_service import spark_service
 
 logger = logging.getLogger(__name__)
@@ -1366,9 +1367,19 @@ class AITutorService:
         course_id: int = None,
     ) -> Dict[str, Any]:
         try:
-            current = self.diagnose_knowledge_mastery(user_id, course_id)
+            # 读取上次诊断时间戳（持久化于 SystemSetting），用于界定"上次诊断"的数据窗口
+            # 修复前: cutoff = datetime.utcnow() 导致 previous 与 current 使用相同数据窗口，delta 恒为 0
+            setting_key = f"last_diagnosis_at:{user_id}:{course_id or 'all'}"
+            last_setting = SystemSetting.query.filter_by(key=setting_key).first()
+            last_diagnosis_at = None
+            if last_setting and last_setting.value:
+                try:
+                    last_diagnosis_at = datetime.fromisoformat(last_setting.value)
+                except (ValueError, TypeError):
+                    last_diagnosis_at = None
 
-            previous = self._get_previous_diagnosis(user_id, course_id)
+            current = self.diagnose_knowledge_mastery(user_id, course_id)
+            previous = self._get_previous_diagnosis(user_id, course_id, cutoff=last_diagnosis_at)
 
             deltas = []
             current_map = {kp["name"]: kp for kp in current.get("knowledge_points", [])}
@@ -1409,6 +1420,23 @@ class AITutorService:
                         "priority": "low",
                     })
 
+            # 更新上次诊断时间戳为当前时间，供下次对比使用
+            now_iso = datetime.utcnow().isoformat()
+            try:
+                if last_setting:
+                    last_setting.value = now_iso
+                else:
+                    db.session.add(SystemSetting(
+                        key=setting_key,
+                        value=now_iso,
+                        category='diagnosis',
+                        description=f'上次诊断时间戳 - 用户{user_id} 课程{course_id or "全部"}',
+                    ))
+                db.session.commit()
+            except Exception as commit_err:
+                db.session.rollback()
+                logger.warning("更新上次诊断时间戳失败: %s", commit_err)
+
             return {
                 "current": current,
                 "previous": previous,
@@ -1424,13 +1452,21 @@ class AITutorService:
                 "strategy_adjustments": [],
             }
 
-    def _get_previous_diagnosis(self, user_id: int, course_id: int = None) -> Dict[str, Any]:
+    def _get_previous_diagnosis(
+        self,
+        user_id: int,
+        course_id: int = None,
+        cutoff: Optional[datetime] = None,
+    ) -> Dict[str, Any]:
         try:
+            # 首次诊断（无截止时间戳）时返回空数据，避免与 current 重复导致 delta 恒为 0
+            if cutoff is None:
+                return {"knowledge_points": [], "weak_points": [], "radar_data": []}
+
             mistake_query = MistakeRecord.query.filter_by(user_id=user_id)
             if course_id:
                 mistake_query = mistake_query.filter_by(course_id=course_id)
 
-            cutoff = datetime.utcnow()
             previous_mistakes = mistake_query.filter(
                 MistakeRecord.updated_at < cutoff
             ).order_by(desc(MistakeRecord.updated_at)).limit(100).all()
