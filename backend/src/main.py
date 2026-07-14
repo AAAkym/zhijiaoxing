@@ -47,6 +47,7 @@ from src.routes.knowledge_base_routes import kb_bp
 from src.routes.knowledge_graph_routes import knowledge_graph_bp
 from src.routes.code_execution import code_execution_bp
 from src.routes.content_review import content_review_bp
+from src.routes.ppt import ppt_bp
 from src.services.websocket_service import init_socketio
 
 config = get_config()
@@ -120,6 +121,7 @@ app.register_blueprint(kb_bp, url_prefix='/api')
 app.register_blueprint(knowledge_graph_bp, url_prefix='/api')
 app.register_blueprint(code_execution_bp, url_prefix='/api')
 app.register_blueprint(content_review_bp, url_prefix='/api/content-review')
+app.register_blueprint(ppt_bp, url_prefix='/api')
 
 db.init_app(app)
 
@@ -142,6 +144,7 @@ LEGACY_UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads', 'video
 AVATAR_UPLOAD_FOLDER = os.path.join(PROJECT_ROOT, 'uploads', 'avatars')
 LEGACY_AVATAR_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads', 'avatars')
 NOTES_UPLOAD_FOLDER = os.path.join(PROJECT_ROOT, 'uploads', 'notes')
+PPT_UPLOAD_FOLDER = os.path.join(PROJECT_ROOT, 'uploads', 'ppt')
 
 
 from werkzeug.utils import secure_filename
@@ -157,6 +160,22 @@ def serve_video(filename):
         if os.path.exists(file_path):
             return _serve_video_with_range(file_path, safe_name)
     return jsonify({'error': 'Video not found'}), 404
+
+
+@app.route('/uploads/ppt/<filename>')
+def serve_ppt(filename):
+    """提供PPT文件下载/预览服务。
+
+    Office Online Viewer 需通过公网URL访问.pptx文件，
+    此路由将 /uploads/ppt/<filename> 映射到本地 uploads/ppt/ 目录。
+    """
+    safe_name = secure_filename(filename)
+    if not safe_name:
+        return jsonify({'error': 'Invalid filename'}), 400
+    file_path = os.path.join(PPT_UPLOAD_FOLDER, safe_name)
+    if not os.path.exists(file_path):
+        return jsonify({'error': 'PPT file not found'}), 404
+    return send_from_directory(PPT_UPLOAD_FOLDER, safe_name)
 
 
 def _serve_video_with_range(file_path, filename):

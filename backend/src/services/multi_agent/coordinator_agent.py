@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import re
 import time
 import uuid
@@ -23,6 +24,7 @@ from src.services.multi_agent.document_agent import DocumentAgent
 from src.services.multi_agent.media_agent import MediaAgent
 from src.services.multi_agent.recommendation_agent import RecommendationAgent
 from src.services.multi_agent.project_agent import ProjectAgent
+from src.services.multi_agent.ppt_agent import PPTAgent
 from src.services.knowledge_base_service import knowledge_base_service
 from src.services.content_converter_service import content_converter_service
 from src.services.rag_citation_service import rag_citation_service
@@ -87,6 +89,7 @@ RESOURCE_TYPE_AGENT_MAP = {
     "project": "project_agent",
     "mindmap": "document_agent",
     "layered_exercise": "exercise_agent",
+    "ppt": "ppt_agent",
 }
 
 RESOURCE_TYPE_TASK_MAP = {
@@ -97,6 +100,7 @@ RESOURCE_TYPE_TASK_MAP = {
     "project": "generate_coding_project",
     "mindmap": "generate_mindmap_content",
     "layered_exercise": "generate_layered_exercises",
+    "ppt": "generate_ppt",
 }
 
 
@@ -117,6 +121,7 @@ class CoordinatorAgent(AgentBase):
         self.media_agent = MediaAgent(spark_service)
         self.recommendation_agent = RecommendationAgent(spark_service)
         self.project_agent = ProjectAgent(spark_service)
+        self.ppt_agent = PPTAgent(spark_service)
 
         self._agents = {
             "exercise_agent": self.exercise_agent,
@@ -124,6 +129,7 @@ class CoordinatorAgent(AgentBase):
             "media_agent": self.media_agent,
             "recommendation_agent": self.recommendation_agent,
             "project_agent": self.project_agent,
+            "ppt_agent": self.ppt_agent,
         }
 
         # 不再共享单个线程池：并发请求（如个性化对比演示同时发起3个请求）
@@ -335,13 +341,50 @@ class CoordinatorAgent(AgentBase):
                 except Exception as e:
                     logger.warning(f"Auto-conversion failed for {rtype}: {e}")
 
+        # PPT生成后保存到TeachingContent（content_type='ppt'），
+        # 使其立即出现在学生端PPTViewer和教师端PPT预览中
+        if "ppt" in results and course_id:
+            try:
+                from src.models.user import db
+                from src.models.course import TeachingContent
+                ppt_result = results["ppt"]
+                if isinstance(ppt_result, dict) and ppt_result.get("file_name") and "error" not in ppt_result:
+                    # 检查同课程同标题是否已存在，避免重复保存
+                    existing = TeachingContent.query.filter_by(
+                        course_id=course_id, content_type='ppt', title=topic
+                    ).first()
+                    if not existing:
+                        meta = json.dumps({
+                            'query': topic,
+                            'sid': ppt_result.get('sid', ''),
+                            'file_name': ppt_result['file_name'],
+                            'original_ppt_url': ppt_result.get('ppt_url', ''),
+                            'outline': ppt_result.get('outline', ''),
+                            'generated_at': datetime.utcnow().isoformat(),
+                        }, ensure_ascii=False)
+                        tc = TeachingContent(
+                            course_id=course_id,
+                            title=topic,
+                            content=meta,
+                            generated_by_llm=True,
+                            content_type='ppt',
+                        )
+                        db.session.add(tc)
+                        db.session.commit()
+                        ppt_result['content_id'] = tc.id
+                        logger.info("PPT已保存到TeachingContent: course=%s title=%s", course_id, topic)
+            except Exception as e:
+                logger.warning(f"保存PPT到数据库失败(非关键): {e}")
+                db.session.rollback()
+
         citation_reports = {}
         if rag_required and course_id:
             for rtype, resource in list(results.items()):
                 # 视频脚本为创意教学制品：台词不应插入 [n] 引用标记，否则破坏可读性。
                 # 其事实性由知识点覆盖与结构完整性评估（见 _score_factuality 的 media 分支），
                 # 此处跳过 RAG 引用附加，避免污染脚本内容并产生失真的低分。
-                if rtype == "media":
+                # PPT同样为视觉制品，跳过RAG引用附加。
+                if rtype in ("media", "ppt"):
                     continue
                 evidence = rag_evidence or rag_citation_service.retrieve(
                     course_id=course_id,
@@ -703,6 +746,14 @@ class CoordinatorAgent(AgentBase):
         elif resource_type == "mindmap":
             base_task.update({
                 "depth": options.get("mindmap_depth", 3),
+            })
+        elif resource_type == "ppt":
+            # PPT生成：将topic作为query，指定.pptx保存目录
+            project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+            base_task.update({
+                "query": topic,
+                "save_dir": os.path.join(project_root, 'uploads', 'ppt'),
+                "title": topic,
             })
         elif resource_type == "layered_exercise":
             base_task.update({

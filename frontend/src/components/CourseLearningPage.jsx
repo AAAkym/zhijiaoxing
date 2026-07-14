@@ -7,6 +7,7 @@ import VideoNotesPanel from './StudyNotes/VideoNotesPanel'
 import { AITutorPanel } from '@/components/AITutor'
 import InteractiveMindMap from './ui/InteractiveMindMap'
 import CodePlayground from './ui/CodePlayground'
+import PPTViewer from './PPTViewer'
 
 export default function CourseLearningPage({ user }) {
   const { courseId } = useParams()
@@ -275,10 +276,25 @@ export default function CourseLearningPage({ user }) {
     }))
 
   // 从课程教学内容中筛选视频脚本（content_type='media'）
-  // 教师在多模态生成卡片中保存的视频脚本会落库为 TeachingContent，按课程维度同步到此右侧栏
+  // 按当前播放视频过滤：优先匹配 video_id，其次按标题关联（标题去除" - 视频脚本"后缀后与视频标题匹配）
   const videoScripts = React.useMemo(() => {
+    if (!currentVideo) return []
+    const videoTitle = (currentVideo.title || '').toLowerCase().trim()
     return (teachingContents || [])
       .filter(c => c.content_type === 'media')
+      .filter(c => {
+        // 1. video_id 精确匹配
+        if (c.video_id && c.video_id === currentVideo.id) return true
+        // 2. 无 video_id 时按标题关联
+        if (!c.video_id) {
+          const contentTitle = (c.title || '').toLowerCase().trim()
+          const cleanTitle = contentTitle.replace(/\s*[-—]\s*视频脚本\s*$/, '').trim()
+          if (cleanTitle && videoTitle) {
+            if (videoTitle.includes(cleanTitle) || cleanTitle.includes(videoTitle)) return true
+          }
+        }
+        return false
+      })
       .map(c => {
         // content 字段为格式化后的 Markdown 文本；尝试解析为结构化 JSON 以便分镜交互展示
         let parsed = null
@@ -292,7 +308,12 @@ export default function CourseLearningPage({ user }) {
         }
         return { ...c, parsed }
       })
-  }, [teachingContents])
+  }, [teachingContents, currentVideo])
+
+  // 当前视频切换时重置脚本选择，避免残留旧视频的脚本ID
+  React.useEffect(() => {
+    setActiveVideoScriptId(null)
+  }, [currentVideo?.id])
 
   // 当前选中的视频脚本（默认取第一条）
   const activeVideoScript = React.useMemo(() => {
@@ -687,6 +708,47 @@ export default function CourseLearningPage({ user }) {
               </div>
             )}
 
+            {/* PPT课件展示区：在思维导图与课程目录之间展示教师生成的PPT */}
+            {currentVideo && (
+              <div style={{
+                backgroundColor: '#fff',
+                padding: '20px',
+                borderRadius: '8px',
+                border: '2px solid #0891b2',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '16px'
+                }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#0e7490', margin: 0 }}>
+                    📊 课件PPT
+                  </h3>
+                  {course && (
+                    <span style={{
+                      fontSize: '11px',
+                      padding: '2px 8px',
+                      borderRadius: '10px',
+                      backgroundColor: '#ecfeff',
+                      color: '#0891b2',
+                      border: '1px solid #a5f3fc',
+                      fontWeight: 500,
+                    }}>
+                      {course.title}
+                    </span>
+                  )}
+                </div>
+                <PPTViewer
+                  courseId={parseInt(courseId)}
+                  allowEdit={false}
+                  defaultTitle={currentVideo?.title || course?.title || ''}
+                  defaultQuery={currentVideo?.title || course?.title || ''}
+                />
+              </div>
+            )}
+
             {/* 课程目录 */}
             <div style={{ backgroundColor: '#fff', padding: '24px', borderRadius: '8px' }}>
               <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '16px' }}>课程目录</h3>
@@ -814,6 +876,16 @@ export default function CourseLearningPage({ user }) {
                   const stageBgColors = { '引入': '#fef3c7', '讲解': '#dbeafe', '演示': '#f3e8ff', '总结': '#dcfce7', '引入阶段': '#fef3c7', '讲解阶段': '#dbeafe', '演示阶段': '#f3e8ff', '总结阶段': '#dcfce7' }
                   const hasStructured = scenes.length > 0 || media.presentation_style
                   // 轻量 Markdown 渲染（结构化解析失败时的回退，避免原始 pre 文本）
+                  const renderInline = (text) => {
+                    if (!text) return null
+                    const parts = text.split(/(\*\*.+?\*\*)/g)
+                    return parts.map((p, j) => {
+                      if (p.startsWith('**') && p.endsWith('**')) {
+                        return <strong key={j} style={{ fontWeight: 600, color: '#374151' }}>{p.slice(2, -2)}</strong>
+                      }
+                      return <span key={j}>{p}</span>
+                    })
+                  }
                   const renderMarkdown = (md) => {
                     if (!md) return null
                     const lines = md.split('\n')
@@ -823,16 +895,16 @@ export default function CourseLearningPage({ user }) {
                       if (t.startsWith('### ')) return <div key={i} style={{ fontWeight: 600, color: '#374151', fontSize: '13px', margin: '6px 0 3px' }}>{t.slice(4)}</div>
                       if (t.startsWith('## ')) return <div key={i} style={{ fontWeight: 700, color: '#1f2937', fontSize: '14px', margin: '8px 0 4px' }}>{t.slice(3)}</div>
                       if (t.startsWith('# ')) return <div key={i} style={{ fontWeight: 700, color: '#111827', fontSize: '15px', margin: '4px 0 6px' }}>{t.slice(2)}</div>
-                      if (t.startsWith('> ')) return <div key={i} style={{ paddingLeft: '8px', borderLeft: '2px solid #c7d2fe', color: '#4b5563', fontStyle: 'italic', margin: '2px 0' }}>{t.slice(2)}</div>
+                      if (t.startsWith('> ')) return <div key={i} style={{ paddingLeft: '8px', borderLeft: '2px solid #c7d2fe', color: '#4b5563', fontStyle: 'italic', margin: '2px 0' }}>{renderInline(t.slice(2))}</div>
                       if (t.startsWith('- ')) {
                         const m = t.slice(2)
                         const boldMatch = m.match(/^\*\*(.+?)\*\*：?(.*)$/)
                         return <div key={i} style={{ color: '#4b5563', paddingLeft: '10px', position: 'relative' }}>
                           <span style={{ position: 'absolute', left: 0, color: '#9ca3af' }}>•</span>
-                          {boldMatch ? <><span style={{ fontWeight: 600, color: '#6b7280' }}>{boldMatch[1]}：</span>{boldMatch[2]}</> : m}
+                          {boldMatch ? <><span style={{ fontWeight: 600, color: '#6b7280' }}>{boldMatch[1]}：</span>{renderInline(boldMatch[2])}</> : renderInline(m)}
                         </div>
                       }
-                      return <div key={i} style={{ color: '#4b5563' }}>{t}</div>
+                      return <div key={i} style={{ color: '#4b5563' }}>{renderInline(t)}</div>
                     })
                   }
                   return (
@@ -840,27 +912,27 @@ export default function CourseLearningPage({ user }) {
                       <button
                         onClick={() => setVideoScriptExpanded(!videoScriptExpanded)}
                         style={{
-                          width: '100%', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                          backgroundColor: '#f9fafb', border: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: 600, color: '#374151',
+                          width: '100%', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          backgroundColor: '#f9fafb', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: '#374151',
                         }}
                       >
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
                           <span>🎬</span>
                           <span>视频脚本</span>
-                          {videoScripts.length > 1 && (
-                            <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 400 }}>（{videoScripts.length} 份）</span>
+                          {currentVideo?.title && (
+                            <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>— {currentVideo.title}</span>
                           )}
                         </span>
-                        <span style={{ fontSize: '12px', color: '#9ca3af' }}>{videoScriptExpanded ? '▾' : '▸'}</span>
+                        <span style={{ fontSize: '12px', color: '#9ca3af', flexShrink: 0 }}>{videoScriptExpanded ? '▾' : '▸'}</span>
                       </button>
                       {videoScriptExpanded && (
-                        <div style={{ padding: '12px 16px', maxHeight: '480px', overflowY: 'auto' }}>
+                        <div style={{ padding: '10px 14px', maxHeight: '480px', overflowY: 'auto' }}>
                           {/* 多份脚本切换 */}
                           {videoScripts.length > 1 && (
                             <select
                               value={script?.id || ''}
                               onChange={(e) => setActiveVideoScriptId(Number(e.target.value))}
-                              style={{ width: '100%', marginBottom: '10px', padding: '6px 8px', borderRadius: '6px', border: '1px solid #e5e7eb', fontSize: '12px' }}
+                              style={{ width: '100%', marginBottom: '8px', padding: '5px 8px', borderRadius: '6px', border: '1px solid #e5e7eb', fontSize: '12px' }}
                             >
                               {videoScripts.map(s => (
                                 <option key={s.id} value={s.id}>{s.title}</option>

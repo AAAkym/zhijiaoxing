@@ -26,6 +26,7 @@ import AIAnalysisDashboard from './AIAnalysisDashboard'
 import TokenUsage from './TokenUsage'
 import AgentMonitorCenter from './AgentMonitorCenter'
 import { useNavigate } from 'react-router-dom'
+import zhijiaoXingSymbol from '@/assets/zhijiaoxing-symbol.svg'
 
 export default function AdminDashboard({ user, onLogout }) {
   const navigate = useNavigate()
@@ -282,11 +283,8 @@ export default function AdminDashboard({ user, onLogout }) {
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-[#d4a853] rounded-[10px] flex items-center justify-center">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z" fill="white" opacity="0.9"/>
-                    <path d="M6 4V18L12 15L18 18V4" stroke="white" strokeWidth="1.5" fill="none" opacity="0.6"/>
-                  </svg>
+                <div className="w-8 h-8 bg-white border border-[#eadfca] rounded-[10px] flex items-center justify-center">
+                  <img src={zhijiaoXingSymbol} alt="智教星标志" className="w-5 h-5" width="20" height="20" />
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>智教星</h1>

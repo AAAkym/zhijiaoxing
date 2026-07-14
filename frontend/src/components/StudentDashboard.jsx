@@ -52,6 +52,7 @@ import StudyNotes from './StudyNotes'
 import AchievementPanel from './AchievementPanel'
 import ProfileBuilder from './ProfileBuilder'
 import { KnowledgeGraph3D } from '@/components/KnowledgeGraph3D'
+import zhijiaoXingSymbol from '@/assets/zhijiaoxing-symbol.svg'
 
 const AI_REQUEST_TIMEOUT = 30000
 const ASSESSMENT_POLL_INTERVAL = 2000
@@ -1819,11 +1820,8 @@ export default function StudentDashboard({ user, onLogout }) {
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-[#d4a853] rounded-[10px] flex items-center justify-center">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2L14.09 8.26L20.18 8.63L15.54 12.74L16.91 19.02L12 15.77L7.09 19.02L8.46 12.74L3.82 8.63L9.91 8.26L12 2Z" fill="white" stroke="white" strokeWidth="1"/>
-                    <path d="M6 20V14L12 18L18 14V20L12 22L6 20Z" fill="white" stroke="white" strokeWidth="0.5"/>
-                  </svg>
+                <div className="w-8 h-8 bg-white border border-[#eadfca] rounded-[10px] flex items-center justify-center">
+                  <img src={zhijiaoXingSymbol} alt="智教星标志" className="w-5 h-5" width="20" height="20" />
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>智教星</h1>
@@ -1898,4 +1896,3 @@ export default function StudentDashboard({ user, onLogout }) {
     </div>
   )
 }
-

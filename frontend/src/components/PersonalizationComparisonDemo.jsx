@@ -37,6 +37,7 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { courseGeneration } from '@/services/api'
+import RagReliabilityPanel from './RagReliabilityPanel'
 
 const PROFILE_PRESETS = [
   {
@@ -436,6 +437,8 @@ function ResultColumn({ preset, result, highlightKeys }) {
             </div>
           </div>
         )}
+
+        <RagReliabilityPanel data={result} title="引用可靠性" />
 
         <div className="rounded-md border bg-muted/20 p-3">
           <p className="mb-2 text-sm font-medium">生成内容摘要</p>

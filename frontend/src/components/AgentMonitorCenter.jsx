@@ -101,10 +101,26 @@ const RADAR_DIMENSIONS = ['响应速度', '成功率', '质量评分', 'Token效
 
 const REFRESH_INTERVAL = 5000
 
+// 将后端 ISO 时间串解析为 Date 对象。
+// 后端 datetime.utcnow().isoformat() 返回不带时区标记的 UTC 时间（如 2026-07-12T10:00:00.123456），
+// 浏览器 new Date() 会按本地时区解析，导致中国 UTC+8 用户看到的相对时间偏差 8 小时。
+// 这里识别无时区标记的 ISO 串并补 'Z'，让浏览器正确按 UTC 解析。
+function parseServerTime(iso) {
+  if (!iso) return null
+  let normalized = iso
+  if (typeof iso === 'string') {
+    // 已带 Z 或 ±HH:MM 时区偏移的不再补，避免重复
+    if (!/Z$|[+-]\d{2}:?\d{2}$/.test(iso)) {
+      normalized = iso + 'Z'
+    }
+  }
+  const d = new Date(normalized)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
 function formatRelativeTime(iso) {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return '—'
+  const d = parseServerTime(iso)
+  if (!d) return '—'
   const diff = Date.now() - d.getTime()
   if (diff < 0) return '刚刚'
   const sec = Math.floor(diff / 1000)
@@ -118,9 +134,8 @@ function formatRelativeTime(iso) {
 }
 
 function formatTimestamp(iso) {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return '—'
+  const d = parseServerTime(iso)
+  if (!d) return '—'
   return d.toLocaleString('zh-CN', {
     month: '2-digit',
     day: '2-digit',

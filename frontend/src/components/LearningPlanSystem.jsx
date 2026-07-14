@@ -1054,14 +1054,21 @@ function PlanView({ plans, onGenerate, loading, errorMsg }) {
                       <span style={{ fontSize: '13px', color: '#64748b' }}>交付：{ms.deliverable}</span>
                     </div>
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                      {ms.tasks?.map((task, j) => (
-                        <span key={j} style={{
-                          padding: '2px 8px', borderRadius: '4px', fontSize: '12px',
-                          backgroundColor: '#eff6ff', color: '#3b82f6',
-                        }}>
-                          ✓ {task}
-                        </span>
-                      ))}
+                      {ms.tasks?.map((task, j) => {
+                        // AI 偶发生成对象型 task（如 {expected_output, input_data}），
+                        // 必须确保只渲染字符串，否则 React 抛 "Objects are not valid as a React child"
+                        const taskText = typeof task === 'string'
+                          ? task
+                          : (task?.title || task?.name || task?.description || (task ? JSON.stringify(task) : ''))
+                        return (
+                          <span key={j} style={{
+                            padding: '2px 8px', borderRadius: '4px', fontSize: '12px',
+                            backgroundColor: '#eff6ff', color: '#3b82f6',
+                          }}>
+                            ✓ {taskText}
+                          </span>
+                        )
+                      })}
                     </div>
                   </div>
                 ))}

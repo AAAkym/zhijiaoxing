@@ -434,6 +434,11 @@ def get_resource_types():
             "description": "设计含完整代码、注释及运行说明的代码实操案例",
             "agent": "实践项目设计专家",
         },
+        "ppt": {
+            "name": "课件PPT",
+            "description": "调用讯飞智能PPT接口生成含模板与配图的完整幻灯片",
+            "agent": "PPT生成专家",
+        },
     }
 
     for rtype, desc in descriptions.items():

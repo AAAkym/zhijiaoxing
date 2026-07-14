@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Sparkles, ArrowLeft, User, Mail, Lock, UserCheck, Shield, Users, GraduationCap, Eye, EyeOff, BookOpen, Brain, BarChart3 } from 'lucide-react'
 import { auth } from '../services/api'
+import zhijiaoXingSymbol from '@/assets/zhijiaoxing-symbol.svg'
 
 const easeOut = [0.22, 1, 0.36, 1]
 
@@ -135,8 +136,8 @@ export default function LoginPage({ onLogin }) {
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.6, ease: easeOut }}
           >
-            <div className="w-16 h-16 rounded-2xl bg-[#d4a853] flex items-center justify-center shadow-lg shadow-[#d4a853]/20">
-              <Sparkles className="w-8 h-8 text-white" />
+            <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow-lg shadow-[#d4a853]/20 border border-[#eadfca]">
+              <img src={zhijiaoXingSymbol} alt="智教星标志" className="w-10 h-10" width="40" height="40" />
             </div>
           </motion.div>
 
@@ -187,8 +188,8 @@ export default function LoginPage({ onLogin }) {
       <div className="w-full lg:w-[45%] bg-[#ffffff] flex flex-col min-h-screen relative">
         {/* 移动端顶部品牌小条 */}
         <div className="lg:hidden flex items-center gap-3 px-6 py-4 border-b border-[#e8e4df] bg-[#faf8f5]">
-          <div className="w-8 h-8 rounded-lg bg-[#d4a853] flex items-center justify-center">
-            <Sparkles className="w-4 h-4 text-white" />
+          <div className="w-8 h-8 rounded-lg bg-white border border-[#eadfca] flex items-center justify-center">
+            <img src={zhijiaoXingSymbol} alt="智教星标志" className="w-5 h-5" width="20" height="20" />
           </div>
           <div>
             <span

@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { courseGeneration, knowledgeGraph } from '../services/api'
+import RagReliabilityPanel from './RagReliabilityPanel'
 
 const NODE_TYPES = ['all', 'course', 'chapter', 'knowledge_point', 'objective', 'skill', 'case', 'exercise', 'resource']
 const EDGE_TYPES = ['all', 'contains', 'prerequisite', 'related', 'supports_objective', 'applies_to', 'assesses', 'recommended_after']
@@ -51,6 +52,9 @@ export default function KnowledgeGraphWorkspace({ courses = [] }) {
   const [evidence, setEvidence] = useState([])
   const [loading, setLoading] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [ragRequired, setRagRequired] = useState(true)
+  const [citationStyle, setCitationStyle] = useState('bracket')
+  const [importResult, setImportResult] = useState(null)
 
   useEffect(() => {
     if (!selectedCourse && courses[0]?.id) setSelectedCourse(String(courses[0].id))
@@ -94,10 +98,13 @@ export default function KnowledgeGraphWorkspace({ courses = [] }) {
     if (!selectedCourse || !syllabusText.trim()) return
     setImporting(true)
     try {
-      await knowledgeGraph.importSyllabus(selectedCourse, {
+      const result = await knowledgeGraph.importSyllabus(selectedCourse, {
         input_type: inputType,
         content: inputType === 'json' ? JSON.parse(syllabusText) : syllabusText,
+        rag_required: ragRequired,
+        citation_style: citationStyle,
       })
+      setImportResult(result)
       await loadWorkspace()
     } catch (err) {
       alert(`导入失败：${err.message}`)
@@ -162,10 +169,26 @@ export default function KnowledgeGraphWorkspace({ courses = [] }) {
                 rows={8}
                 placeholder="粘贴课程大纲：章节、课程目标、知识点、先修要求、参考资料..."
               />
+              <label className="flex items-center justify-between gap-3 rounded border bg-white p-2 text-sm">
+                <span>强制 RAG 引用校验</span>
+                <input type="checkbox" checked={ragRequired} onChange={(event) => setRagRequired(event.target.checked)} />
+              </label>
+              <div className="space-y-1">
+                <Label>引用风格</Label>
+                <Select value={citationStyle} onValueChange={setCitationStyle}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bracket">方括号 [S1]</SelectItem>
+                    <SelectItem value="footnote">脚注</SelectItem>
+                    <SelectItem value="inline">行内来源</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <Button className="w-full bg-[#d4a853] hover:bg-[#c49a48]" onClick={importSyllabus} disabled={importing || !selectedCourse}>
                 {importing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Network className="w-4 h-4 mr-2" />}
                 构建知识图谱
               </Button>
+              <RagReliabilityPanel data={importResult} title="本次导入引用可靠性" />
             </CardContent>
           </Card>
 

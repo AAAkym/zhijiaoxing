@@ -77,6 +77,13 @@ export async function request(url, options = {}) {
   }
   
   if (!response.ok) {
+    const contentType = response.headers.get('content-type') || ''
+    if (contentType.includes('text/html')) {
+      const requestError = new Error(`服务端返回HTML而非JSON（HTTP ${response.status}），请确认后端已重启并加载最新路由`)
+      requestError.status = response.status
+      requestError.isHtmlResponse = true
+      throw requestError
+    }
     const error = await response.json().catch(() => ({ error: 'Network error' }))
     const message = error.detail ? `${error.error || 'Request failed'}：${error.detail}` : (error.error || 'Request failed')
     const requestError = new Error(message)
@@ -84,6 +91,15 @@ export async function request(url, options = {}) {
     requestError.errorDetail = error.error
     requestError.detail = error.detail
     requestError.code = error.code
+    throw requestError
+  }
+
+  // 检测HTML响应（后端返回404页面或SPA回退index.html时会发生）
+  const responseContentType = response.headers.get('content-type') || ''
+  if (responseContentType.includes('text/html')) {
+    const requestError = new Error('服务端返回HTML而非JSON，请确认后端已重启并加载最新路由')
+    requestError.status = response.status
+    requestError.isHtmlResponse = true
     throw requestError
   }
 
@@ -1175,6 +1191,12 @@ export const teacher = {
     const queryString = new URLSearchParams(params).toString()
     return request(`/teacher/token-usage/recent${queryString ? `?${queryString}` : ''}`)
   },
+
+  // AI 教学数据分析报告：调用 learning_analytics_service，由 LLM 生成总结
+  generateAiReport: (payload = {}) => request('/learning-analytics/ai-report', {
+    method: 'POST',
+    body: payload,
+  }),
 }
 
 export const programming = {
@@ -1477,3 +1499,37 @@ export const aiTutor = {
     return blob
   },
 }
+
+// PPT生成与管理（讯飞智能PPT生成接口集成）
+export const pptApi = {
+  // 查询PPT功能是否可用（凭证是否配置）
+  getStatus: () => request('/ppt/status'),
+
+  // 生成PPT（同步等待结果，可能耗时30秒-3分钟）
+  generate: (data) => request('/ppt/generate', {
+    method: 'POST',
+    body: data,
+    // PPT生成耗时较长，放宽前端超时到5分钟
+    timeout: 300000,
+  }),
+
+  // 列出课程的所有PPT
+  list: (courseId) => request(`/ppt/list/${courseId}`),
+
+  // 获取PPT详情（含Office Online预览URL）
+  get: (contentId) => request(`/ppt/${contentId}`),
+
+  // 下载.pptx文件（返回下载URL，前端用a标签触发）
+  getDownloadUrl: (contentId) => `${API_BASE_URL}/ppt/${contentId}/download`,
+
+  // 编辑主题后重新生成
+  regenerate: (contentId, data) => request(`/ppt/${contentId}/regenerate`, {
+    method: 'PUT',
+    body: data,
+    timeout: 300000,
+  }),
+
+  // 删除PPT
+  delete: (contentId) => request(`/ppt/${contentId}`, { method: 'DELETE' }),
+}
+

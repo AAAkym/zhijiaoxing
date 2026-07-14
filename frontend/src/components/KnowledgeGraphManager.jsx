@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useCallback, useRef, useEffect, useMemo, Suspense } from 'react'
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import React, { useState, useCallback, useRef, useEffect, useMemo, Suspense } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { Button } from '@/components/ui/button'
@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog'
 import { knowledgeGraph } from '@/services/api'
 import KnowledgeGraphScene from './KnowledgeGraph3D/KnowledgeGraphScene'
+import RagReliabilityPanel from './RagReliabilityPanel'
 import {
   Upload, FileText, Trash2, AlertCircle, CheckCircle2, Loader2, Network, FileUp, Maximize2, Minimize2,
   Layers, Link2, BookOpen, Target, Info, Route,
@@ -79,11 +80,13 @@ function resumeKey(courseId, file, contentHash) {
   return `${RESUME_KEY_PREFIX}${courseId}:${file.name}:${file.size}:${contentHash}`
 }
 
-async function uploadFileOnce(courseId, file, inputType, { onProgress }) {
+async function uploadFileOnce(courseId, file, inputType, { onProgress, ragRequired, citationStyle }) {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('filename', file.name)
   formData.append('input_type', inputType)
+  formData.append('rag_required', String(Boolean(ragRequired)))
+  formData.append('citation_style', citationStyle || 'bracket')
   onProgress?.(15, '正在上传文件')
   const result = await knowledgeGraph.importSyllabus(courseId, formData)
   onProgress?.(100, '解析完成')
@@ -108,7 +111,7 @@ async function uploadChunkWithRetry(courseId, uploadId, chunkIndex, blob, signal
   throw lastError
 }
 
-async function uploadFileInChunks(courseId, file, { onProgress }) {
+async function uploadFileInChunks(courseId, file, { onProgress, ragRequired, citationStyle }) {
   onProgress?.(3, '计算文件校验码')
   const contentHash = await sha256File(file)
   const key = resumeKey(courseId, file, contentHash)
@@ -139,6 +142,8 @@ async function uploadFileInChunks(courseId, file, { onProgress }) {
       chunk_size: CHUNK_SIZE,
       total_chunks: totalChunks,
       content_hash: contentHash,
+      rag_required: Boolean(ragRequired),
+      citation_style: citationStyle || 'bracket',
     })
     localStorage.setItem(key, JSON.stringify({ upload_id: session.upload_id, created_at: Date.now() }))
   }
@@ -260,6 +265,8 @@ export default function KnowledgeGraphManager({ courses = [], onRefresh }) {
   const [showPreview, setShowPreview] = useState(true)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedFileName, setSelectedFileName] = useState('')
+  const [ragRequired, setRagRequired] = useState(true)
+  const [citationStyle, setCitationStyle] = useState('bracket')
   const [previewRefreshKey, setPreviewRefreshKey] = useState(0)
   const fileInputRef = useRef(null)
 
@@ -296,12 +303,16 @@ export default function KnowledgeGraphManager({ courses = [], onRefresh }) {
       const useChunkedUpload = file.size >= CHUNK_UPLOAD_THRESHOLD
       const result = useChunkedUpload
         ? await uploadFileInChunks(selectedCourse, file, {
+            ragRequired,
+            citationStyle,
             onProgress: (progress, stage) => {
               setUploadProgress(progress)
               setUploadStage(stage)
             },
           })
         : await uploadFileOnce(selectedCourse, file, inputType, {
+            ragRequired,
+            citationStyle,
             onProgress: (progress, stage) => {
               setUploadProgress(progress)
               setUploadStage(stage)
@@ -319,7 +330,7 @@ export default function KnowledgeGraphManager({ courses = [], onRefresh }) {
     } finally {
       setUploading(false)
     }
-  }, [selectedCourse, validateFile, onRefresh])
+  }, [selectedCourse, validateFile, onRefresh, ragRequired, citationStyle])
 
   const handleDelete = useCallback(async () => {
     if (!selectedCourse) return
@@ -431,6 +442,33 @@ export default function KnowledgeGraphManager({ courses = [], onRefresh }) {
                 </div>
               </div>
 
+              <div className="grid gap-3 rounded-xl border border-[#e5e0db] bg-[#faf8f5] p-3 md:grid-cols-[1fr_180px]">
+                <label className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-sm">
+                  <span>
+                    <span className="block font-medium text-[#2d2a26]">强制 RAG 引用校验</span>
+                    <span className="text-xs text-[#6b6560]">导入后检查未引用句子，并在证据不足时标记自动降级。</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={ragRequired}
+                    onChange={(event) => setRagRequired(event.target.checked)}
+                    className="h-4 w-4"
+                  />
+                </label>
+                <label className="text-sm">
+                  <span className="mb-1 block text-xs text-[#6b6560]">引用风格</span>
+                  <select
+                    value={citationStyle}
+                    onChange={(event) => setCitationStyle(event.target.value)}
+                    className="h-10 w-full rounded-lg border border-[#e5e0db] bg-white px-3 text-sm text-[#2d2a26]"
+                  >
+                    <option value="bracket">方括号 [S1]</option>
+                    <option value="footnote">脚注</option>
+                    <option value="inline">行内来源</option>
+                  </select>
+                </label>
+              </div>
+
               {selectedFileName && (
                 <div className="flex items-center gap-2 p-3 bg-[#f5f2ee] rounded-lg">
                   <FileText className="w-4 h-4 text-[#d4a853]" />
@@ -479,6 +517,10 @@ export default function KnowledgeGraphManager({ courses = [], onRefresh }) {
                     )}
                   </div>
                 </div>
+              )}
+
+              {uploadResult && !uploadResult.isDelete && (
+                <RagReliabilityPanel data={uploadResult} title="图谱导入引用可靠性" />
               )}
             </CardContent>
           </Card>

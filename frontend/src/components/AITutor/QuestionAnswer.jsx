@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import {
   Send,
   Image,
@@ -25,28 +24,6 @@ function fileToBase64(file) {
     reader.onerror = reject
     reader.readAsDataURL(file)
   })
-}
-
-function WeakPointBanner({ weakPoints }) {
-  if (!weakPoints || weakPoints.length === 0) return null
-
-  return (
-    <div className="mx-4 mt-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 flex items-center gap-2 animate-fade-in">
-      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-      <span className="text-sm text-amber-800">
-        复习薄弱点:
-        {weakPoints.map((point, idx) => (
-          <Badge
-            key={idx}
-            variant="outline"
-            className="ml-1.5 text-xs border-amber-300 text-amber-700 bg-amber-100/60"
-          >
-            {typeof point === 'string' ? point : point.name || point.topic}
-          </Badge>
-        ))}
-      </span>
-    </div>
-  )
 }
 
 function QuickSuggestions({ weakPoints, recentTopics, onSelect }) {
@@ -504,7 +481,6 @@ export default function QuestionAnswer({
 
   return (
     <div className="flex flex-col h-full">
-      <WeakPointBanner weakPoints={weakPoints} />
 
       <div className="flex-1 overflow-y-auto px-4 py-3">
         {showEmptyState && (

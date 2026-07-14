@@ -134,6 +134,21 @@ class Config:
     # 默认选用已开通的 Spark Lite，如需更高规格请在环境变量中改成已授权的模型名
     SPARK_MODEL = os.environ.get('SPARK_MODEL', 'lite')
     SPARK_API_URL = os.environ.get('SPARK_API_URL', 'https://spark-api-open.xf-yun.com/v1/chat/completions')
+
+    # ============================================
+    # 讯飞智能PPT生成 API配置（zwapi.xfyun.cn）
+    # 内置默认凭证以支持开箱即用，可通过环境变量覆盖
+    # 如需更换为自己的凭证，请在 .env 中设置 XFYUN_PPT_APP_ID / XFYUN_PPT_API_SECRET
+    # ============================================
+    XFYUN_PPT_APP_ID = os.environ.get('XFYUN_PPT_APP_ID', '0fd0c783')
+    XFYUN_PPT_API_SECRET = os.environ.get('XFYUN_PPT_API_SECRET', 'ZTYyNDg4YmQ0ZWQzMWEwNDQxNzAwN2Ex')
+    XFYUN_PPT_API_BASE = os.environ.get('XFYUN_PPT_API_BASE', 'https://zwapi.xfyun.cn')
+    # PPT生成进度轮询间隔（秒），官方限流3秒/次
+    XFYUN_PPT_POLL_INTERVAL = int(os.environ.get('XFYUN_PPT_POLL_INTERVAL', 3))
+    # PPT生成最大等待时间（秒），超时返回当前进度
+    XFYUN_PPT_MAX_WAIT = int(os.environ.get('XFYUN_PPT_MAX_WAIT', 180))
+    # 后端对外可访问基础URL，用于拼接PPT文件公网下载链接供Office Online预览
+    PUBLIC_BASE_URL = os.environ.get('PUBLIC_BASE_URL', 'http://localhost:5000')
     
     # ============================================
     # Elasticsearch配置

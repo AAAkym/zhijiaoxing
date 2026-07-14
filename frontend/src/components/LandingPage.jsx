@@ -11,6 +11,7 @@ import {
   FileText, Presentation, TrendingUp, Layers,
   ChevronLeft, ChevronRight, Quote, Activity, Award
 } from 'lucide-react'
+import zhijiaoXingSymbol from '@/assets/zhijiaoxing-symbol.svg'
 
 function ParticleBackground() {
   const canvasRef = useRef(null)
@@ -729,14 +730,10 @@ export default function LandingPage() {
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             >
               <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center"
-                style={{ backgroundColor: brandColors.primary }}
+                className="w-8 h-8 rounded-lg flex items-center justify-center bg-white"
+                style={{ boxShadow: '0 8px 20px rgba(212, 168, 83, 0.18)' }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 2L14.5 9H22L16 13.5L18 21L12 17L6 21L8 13.5L2 9H9.5L12 2Z" fill="white" fillOpacity="0.9" />
-                  <path d="M4 19V14C4 12.5 5.5 11 7 11C8.5 11 9 12 9 12" stroke="white" strokeOpacity="0.5" strokeWidth="1.5" strokeLinecap="round" />
-                  <path d="M20 19V14C20 12.5 18.5 11 17 11C15.5 11 15 12 15 12" stroke="white" strokeOpacity="0.5" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
+                <img src={zhijiaoXingSymbol} alt="智教星标志" className="w-5 h-5" width="20" height="20" />
               </div>
               <span
                 className="text-lg font-bold tracking-tight"
@@ -937,8 +934,8 @@ export default function LandingPage() {
                       {/* Brand header */}
                       <div className="p-3 pb-3 border-b border-white/10">
                         <div className="flex items-center gap-2.5 mb-2">
-                          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: brandColors.primary }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2L14.5 9H22L16 13.5L18 21L12 17L6 21L8 13.5L2 9H9.5L12 2Z" fill="white" /></svg>
+                          <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center">
+                            <img src={zhijiaoXingSymbol} alt="智教星标志" className="w-4 h-4" width="16" height="16" />
                           </div>
                           <div>
                             <p className="text-[11px] font-bold text-white leading-tight">智教星</p>
@@ -1425,14 +1422,10 @@ export default function LandingPage() {
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
               <div
-                className="w-7 h-7 rounded-lg flex items-center justify-center"
-                style={{ backgroundColor: brandColors.primary }}
+                className="w-7 h-7 rounded-lg bg-white flex items-center justify-center"
+                style={{ boxShadow: '0 8px 20px rgba(212, 168, 83, 0.14)' }}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 2L14.5 9H22L16 13.5L18 21L12 17L6 21L8 13.5L2 9H9.5L12 2Z" fill="white" fillOpacity="0.9" />
-                  <path d="M4 19V14C4 12.5 5.5 11 7 11C8.5 11 9 12 9 12" stroke="white" strokeOpacity="0.5" strokeWidth="1.5" strokeLinecap="round" />
-                  <path d="M20 19V14C20 12.5 18.5 11 17 11C15.5 11 15 12 15 12" stroke="white" strokeOpacity="0.5" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
+                <img src={zhijiaoXingSymbol} alt="智教星标志" className="w-4 h-4" width="16" height="16" />
               </div>
               <span
                 className="text-sm font-bold tracking-tight"

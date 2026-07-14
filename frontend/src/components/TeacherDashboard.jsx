@@ -29,12 +29,15 @@ import {
   Zap,
   Network,
   GitCompare,
-  AlertCircle
+  AlertCircle,
+  Presentation,
+  Download
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area } from 'recharts'
-import { courses, content, ai, auth, videos, teacher as teacherApi, programming, courseGeneration } from '../services/api'
+import { courses, content, ai, auth, videos, teacher as teacherApi, programming, courseGeneration, pptApi } from '../services/api'
 import ErrorBoundary from './ErrorBoundary'
 import VideoLessonManager from './VideoLessonManager'
+import PPTViewer from './PPTViewer'
 import CourseGenerationWizard from './CourseGenerationWizard'
 import PersonalizationComparisonDemo from './PersonalizationComparisonDemo'
 import ClassManagement from './ClassManagement'
@@ -44,9 +47,11 @@ import CodePlayground from './ui/CodePlayground'
 import ContentSaveSyncPanel from './ui/ContentSaveSyncPanel'
 import AgentCollaborationProgress from './AgentCollaborationProgress'
 import ContentQualityPanel from './ContentQualityPanel'
+import RagReliabilityPanel from './RagReliabilityPanel'
 import KnowledgeGraphManager from './KnowledgeGraphManager'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useNavigate } from 'react-router-dom'
+import zhijiaoXingSymbol from '@/assets/zhijiaoxing-symbol.svg'
 
 /**
  * 检测代码字符串是否为占位文字而非真实代码。
@@ -123,9 +128,10 @@ export default function TeacherDashboard({ user, onLogout }) {
   const [multimodalResults, setMultimodalResults] = useState(null)
   const [isGeneratingMultimodal, setIsGeneratingMultimodal] = useState(false)
   const [activeMultimodalTab, setActiveMultimodalTab] = useState('document')
-  const [selectedResourceTypes, setSelectedResourceTypes] = useState(['document', 'mindmap', 'project', 'recommendation', 'media'])
+  const [selectedResourceTypes, setSelectedResourceTypes] = useState(['document', 'mindmap', 'project', 'recommendation', 'media', 'ppt'])
   const [agentProgress, setAgentProgress] = useState(null)
   const [qualityReport, setQualityReport] = useState(null)
+  const [ragReliabilityResult, setRagReliabilityResult] = useState(null)
   // 视频脚本解析失败时，控制原始 JSON 折叠展示
   const [showRawMediaJson, setShowRawMediaJson] = useState(false)
 
@@ -135,6 +141,7 @@ export default function TeacherDashboard({ user, onLogout }) {
     { value: 'project', label: '代码实操案例', icon: Target, description: '可执行的代码演示，含语法注释和实现细节' },
     { value: 'recommendation', label: '拓展阅读推荐', icon: BookOpen, description: '相关学习资源和延伸材料推荐' },
     { value: 'media', label: '视频脚本', icon: Video, description: '教学视频脚本，含分镜规划、台词、拍摄形式与视觉元素' },
+    { value: 'ppt', label: '课件PPT', icon: Presentation, description: '调用讯飞智能PPT接口生成完整幻灯片，含模板与配图' },
   ]
 
   const toggleResourceType = (type) => {
@@ -431,6 +438,10 @@ export default function TeacherDashboard({ user, onLogout }) {
     { name: '01/07', pv: 4300, uv: 2100 }
   ])
   const [recentActivities, setRecentActivities] = useState([])
+  // AI 教学数据分析报告相关状态
+  const [aiReport, setAiReport] = useState(null)
+  const [aiReportLoading, setAiReportLoading] = useState(false)
+  const [aiReportError, setAiReportError] = useState(null)
 
   const menuItems = [
     { id: 'overview', label: '概览', icon: BarChart3 },
@@ -805,12 +816,15 @@ export default function TeacherDashboard({ user, onLogout }) {
       })),
     })
     setQualityReport(null)
+    setRagReliabilityResult(null)
     try {
       const res = await courseGeneration.generatePersonalizedResources({
         course_id: parseInt(selectedCourse, 10),
         topic: contentTopic,
         student_profile: { major: '', weaknesses: [], learning_needs: [] },
         resource_types: selectedResourceTypes,
+        rag_required: true,
+        citation_style: 'bracket',
       })
       const resources = res.resources || res
       setMultimodalResults(resources)
@@ -820,6 +834,11 @@ export default function TeacherDashboard({ user, onLogout }) {
       if (res.content_quality_report) {
         setQualityReport(res.content_quality_report)
       }
+      setRagReliabilityResult({
+        resources,
+        verification_report: res.verification_report,
+        metadata: res.metadata,
+      })
       const firstAvailable = selectedResourceTypes.find(t => resources[t])
       if (firstAvailable) setActiveMultimodalTab(firstAvailable)
     } catch (error) {
@@ -843,7 +862,7 @@ export default function TeacherDashboard({ user, onLogout }) {
     if (!selectedCourse) return
     setSaveStatus('saving')
     try {
-      const typeLabels = { document: '核心概念文档', mindmap: '知识点思维导图', project: '代码实操案例', recommendation: '拓展阅读材料', media: '视频脚本' }
+      const typeLabels = { document: '核心概念文档', mindmap: '知识点思维导图', project: '代码实操案例', recommendation: '拓展阅读材料', media: '视频脚本', ppt: '课件PPT' }
       const label = typeLabels[type] || type
 
       // 根据内容类型提取格式化后的文本内容，避免存储原始 JSON
@@ -1553,6 +1572,36 @@ export default function TeacherDashboard({ user, onLogout }) {
     }
   }
 
+  // 生成 AI 教学数据分析报告：调用 learning_analytics_service，由 LLM 输出总结
+  const handleGenerateAiReport = async () => {
+    setAiReportLoading(true)
+    setAiReportError(null)
+    try {
+      const res = await teacherApi.generateAiReport({ report_type: 'comprehensive' })
+      // request 函数返回解析后的 JSON；后端返回报告对象或 {error: ...}
+      if (res && res.error) {
+        setAiReportError(res.error)
+        return
+      }
+      setAiReport(res)
+    } catch (error) {
+      console.error('生成AI教学分析报告失败:', error)
+      let msg = error?.message || '未知错误'
+      if (error?.isNetworkError) {
+        msg = '网络连接失败，请检查网络后重试'
+      } else if (error?.isHtmlResponse) {
+        msg = '服务端返回HTML而非JSON，请确认后端已重启并加载最新路由'
+      } else if (error?.status === 403) {
+        msg = '仅教师可生成教学分析报告'
+      } else if (error?.status === 401) {
+        msg = '登录已失效，请重新登录后再试'
+      }
+      setAiReportError(msg)
+    } finally {
+      setAiReportLoading(false)
+    }
+  }
+
   const renderContent = () => {
     switch (currentView) {
       case 'courses':
@@ -1884,6 +1933,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                         {multimodalResults.project && <TabsTrigger value="project">代码实操</TabsTrigger>}
                         {multimodalResults.recommendation && <TabsTrigger value="recommendation">拓展推荐</TabsTrigger>}
                         {multimodalResults.media && <TabsTrigger value="media">视频脚本</TabsTrigger>}
+                        {multimodalResults.ppt && <TabsTrigger value="ppt">课件PPT</TabsTrigger>}
                       </TabsList>
                     </Tabs>
 
@@ -2620,7 +2670,87 @@ export default function TeacherDashboard({ user, onLogout }) {
                       )
                     })()}
 
+                    {multimodalResults.ppt && (() => {
+                      const ppt = multimodalResults.ppt
+                      const hasError = ppt && typeof ppt === 'object' && ppt.error
+                      const contentId = ppt?.content_id
+                      return (
+                        <div className={activeMultimodalTab === 'ppt' ? '' : 'hidden'}>
+                          {hasError ? (
+                            <div className="border rounded-lg p-4 bg-red-50 border-red-200">
+                              <div className="flex items-center gap-2 text-red-700">
+                                <AlertCircle className="w-5 h-5" />
+                                <span className="font-medium">PPT生成失败</span>
+                              </div>
+                              <p className="text-sm text-red-600 mt-2">{ppt.error}</p>
+                            </div>
+                          ) : (
+                            <div className="border rounded-lg p-4 bg-white space-y-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <Presentation className="w-5 h-5 text-cyan-600" />
+                                  <h3 className="text-lg font-bold">{contentTopic || '课件PPT'}</h3>
+                                </div>
+                                <Badge className="bg-green-100 text-green-700">✓ 已生成</Badge>
+                              </div>
+                              {ppt?.file_name && (
+                                <p className="text-xs text-gray-500">文件: {ppt.file_name}</p>
+                              )}
+                              {ppt?.ppt_url && (() => {
+                                const previewUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(ppt.ppt_url)}`
+                                return (
+                                  <div className="space-y-1.5">
+                                    <div
+                                      className="relative w-full rounded-lg overflow-hidden border border-gray-200 bg-gray-50"
+                                      style={{ paddingTop: '56.25%' }}
+                                    >
+                                      <iframe
+                                        src={previewUrl}
+                                        className="absolute top-0 left-0 w-full h-full"
+                                        frameBorder="0"
+                                        title={contentTopic || 'PPT预览'}
+                                        allow="fullscreen"
+                                      />
+                                    </div>
+                                    <p className="text-xs text-gray-400 text-center">
+                                      由 Microsoft Office Online 提供预览，加载可能需要几秒钟
+                                    </p>
+                                  </div>
+                                )
+                              })()}
+                              {ppt?.outline && (
+                                <div className="text-sm text-gray-700 bg-gray-50 rounded p-3 max-h-48 overflow-y-auto">
+                                  <p className="font-medium mb-1">大纲概览:</p>
+                                  <p className="whitespace-pre-wrap">{ppt.outline}</p>
+                                </div>
+                              )}
+                              <div className="flex items-center gap-2 pt-1">
+                                {contentId && (
+                                  <a
+                                    href={pptApi.getDownloadUrl(contentId)}
+                                    download
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-cyan-600 text-white rounded-md hover:bg-cyan-700 transition-colors"
+                                  >
+                                    <Download className="w-3.5 h-3.5" />
+                                    下载 .pptx
+                                  </a>
+                                )}
+                                <span className="text-xs text-gray-400">
+                                  PPT已保存到课程，学生可在学习页面查看
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()}
+
                     <ContentQualityPanel report={qualityReport} />
+
+                    <RagReliabilityPanel
+                      data={ragReliabilityResult || { resources: multimodalResults }}
+                      title="资源生成引用可靠性"
+                    />
 
                     <ContentSaveSyncPanel
                       courseId={selectedCourse ? parseInt(selectedCourse) : null}
@@ -2715,6 +2845,25 @@ export default function TeacherDashboard({ user, onLogout }) {
                 
                 {selectedCourse && (
                   <VideoLessonManager courseId={parseInt(selectedCourse)} />
+                )}
+
+                {selectedCourse && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <span>📊</span>
+                        <span>课件PPT预览与生成</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <PPTViewer
+                        courseId={parseInt(selectedCourse)}
+                        allowEdit={true}
+                        defaultTitle={courseList.find(c => c.id === parseInt(selectedCourse))?.title || ''}
+                        defaultQuery={courseList.find(c => c.id === parseInt(selectedCourse))?.title || ''}
+                      />
+                    </CardContent>
+                  </Card>
                 )}
               </div>
             )}
@@ -3654,6 +3803,170 @@ export default function TeacherDashboard({ user, onLogout }) {
               <p className="text-[#6b6560]">学生学习情况和趋势分析</p>
             </div>
 
+            {/* AI 教学数据分析报告：调用 learning_analytics_service 由 LLM 生成 */}
+            <Card>
+              <CardHeader>
+                <CardTitle>AI 教学数据分析报告</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <p className="text-sm text-[#6b6560]">
+                    点击下方按钮，AI 将基于班级学情数据生成关键指标分析、学生学习评估与教学改进建议。
+                  </p>
+                  <Button
+                    className="bg-[#8b6fb0] hover:bg-[#7a5e9d] flex-shrink-0"
+                    onClick={handleGenerateAiReport}
+                    disabled={aiReportLoading}
+                  >
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    {aiReportLoading ? '生成中...' : '生成AI分析报告'}
+                  </Button>
+                </div>
+
+                {aiReportLoading && (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#8b6fb0] mr-3" />
+                    <span className="text-[#6b6560]">AI 正在分析学情数据，请稍候...</span>
+                  </div>
+                )}
+
+                {aiReportError && !aiReportLoading && (
+                  <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
+                    <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-red-700">{aiReportError}</p>
+                  </div>
+                )}
+
+                {aiReport && !aiReportLoading && (
+                  <div className="space-y-4 pt-2">
+                    {/* 总体概述 */}
+                    {aiReport.summary && (
+                      <div className="p-3 bg-[#faf8f5] border-l-4 border-[#8b6fb0] rounded-r-md">
+                        <p className="text-sm text-[#2d2a26] leading-relaxed">{aiReport.summary}</p>
+                      </div>
+                    )}
+
+                    {/* 关键教学指标分析 */}
+                    {Array.isArray(aiReport.key_findings) && aiReport.key_findings.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-semibold text-[#2d2a26] flex items-center">
+                          <TrendingUp className="w-4 h-4 mr-2 text-[#5a9e6f]" />
+                          关键教学指标分析
+                        </h4>
+                        <ul className="space-y-1.5">
+                          {aiReport.key_findings.map((item, idx) => (
+                            <li key={idx} className="text-sm text-[#3d3a36] flex items-start">
+                              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#5a9e6f] mt-2 mr-2 flex-shrink-0" />
+                              <span>{typeof item === 'string' ? item : JSON.stringify(item)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* 学生学习情况评估 - 风险预警 */}
+                    {Array.isArray(aiReport.risk_warnings) && aiReport.risk_warnings.length > 0 && (
+                      <div className="space-y-2 p-3 bg-red-50 border border-red-200 rounded-md">
+                        <h4 className="text-sm font-semibold text-[#2d2a26] flex items-center">
+                          <AlertCircle className="w-4 h-4 mr-2 text-red-600" />
+                          学生学习情况评估（风险预警）
+                        </h4>
+                        <ul className="space-y-1.5">
+                          {aiReport.risk_warnings.map((item, idx) => (
+                            <li key={idx} className="text-sm text-red-700 flex items-start">
+                              <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 mt-2 mr-2 flex-shrink-0" />
+                              <span>{typeof item === 'string' ? item : JSON.stringify(item)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* 教学改进建议 */}
+                    {Array.isArray(aiReport.teaching_suggestions) && aiReport.teaching_suggestions.length > 0 && (
+                      <div className="space-y-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                        <h4 className="text-sm font-semibold text-[#2d2a26] flex items-center">
+                          <Brain className="w-4 h-4 mr-2 text-blue-600" />
+                          教学改进建议
+                        </h4>
+                        <ul className="space-y-1.5">
+                          {aiReport.teaching_suggestions.map((item, idx) => (
+                            <li key={idx} className="text-sm text-blue-700 flex items-start">
+                              <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 mt-2 mr-2 flex-shrink-0" />
+                              <span>{typeof item === 'string' ? item : JSON.stringify(item)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* 资源建议 */}
+                    {Array.isArray(aiReport.resource_recommendations) && aiReport.resource_recommendations.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-semibold text-[#2d2a26] flex items-center">
+                          <BookOpen className="w-4 h-4 mr-2 text-[#d4a853]" />
+                          资源建议
+                        </h4>
+                        <ul className="space-y-1.5">
+                          {aiReport.resource_recommendations.map((item, idx) => (
+                            <li key={idx} className="text-sm text-[#3d3a36] flex items-start">
+                              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#d4a853] mt-2 mr-2 flex-shrink-0" />
+                              <span>{typeof item === 'string' ? item : JSON.stringify(item)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* 下一步行动 */}
+                    {Array.isArray(aiReport.next_steps) && aiReport.next_steps.length > 0 && (
+                      <div className="space-y-2 p-3 bg-green-50 border border-green-200 rounded-md">
+                        <h4 className="text-sm font-semibold text-[#2d2a26] flex items-center">
+                          <CheckCircle className="w-4 h-4 mr-2 text-green-600" />
+                          下一步行动
+                        </h4>
+                        <ul className="space-y-1.5">
+                          {aiReport.next_steps.map((item, idx) => (
+                            <li key={idx} className="text-sm text-green-700 flex items-start">
+                              <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500 mt-2 mr-2 flex-shrink-0" />
+                              <span>{typeof item === 'string' ? item : JSON.stringify(item)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* 兜底：LLM 未按 JSON 格式返回时展示原始分析文本 */}
+                    {aiReport.raw_analysis && !aiReport.summary && (
+                      <div className="p-3 bg-[#faf8f5] border-l-4 border-[#8b6fb0] rounded-r-md">
+                        <p className="text-sm text-[#2d2a26] whitespace-pre-wrap leading-relaxed">{aiReport.raw_analysis}</p>
+                      </div>
+                    )}
+
+                    {/* 报告元信息 */}
+                    <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-[#e5e0db] text-xs text-[#9a9590]">
+                      {aiReport.generated_at && (
+                        <span className="flex items-center">
+                          <Clock className="w-3 h-3 mr-1" />
+                          生成时间：{(() => {
+                            // 后端 datetime.utcnow().isoformat() 无时区标记，
+                            // 浏览器按本地时区解析会导致 UTC+8 用户看到 8 小时偏差，需补 'Z' 视为 UTC
+                            const ts = aiReport.generated_at
+                            const normalized = /Z$|[+-]\d{2}:?\d{2}$/.test(ts) ? ts : ts + 'Z'
+                            const d = new Date(normalized)
+                            return Number.isNaN(d.getTime()) ? ts : d.toLocaleString('zh-CN')
+                          })()}
+                        </span>
+                      )}
+                      {aiReport.report_type && (
+                        <Badge variant="secondary">类型：{aiReport.report_type}</Badge>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card>
                 <CardHeader>
@@ -3904,11 +4217,8 @@ export default function TeacherDashboard({ user, onLogout }) {
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-[#d4a853] rounded-xl flex items-center justify-center">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2L14.09 8.26L20 9.27L15.55 13.97L16.91 20L12 16.9L7.09 20L8.45 13.97L4 9.27L9.91 8.26L12 2Z" fill="white" stroke="white" strokeWidth="0.5"/>
-                    <path d="M6 6V18C6 18 8 16 12 16C16 16 18 18 18 18V6C18 6 16 8 12 8C8 8 6 6 6 6Z" fill="rgba(255,255,255,0.4)" stroke="white" strokeWidth="0.8"/>
-                  </svg>
+                <div className="w-8 h-8 bg-white border border-[#eadfca] rounded-xl flex items-center justify-center">
+                  <img src={zhijiaoXingSymbol} alt="智教星标志" className="w-5 h-5" width="20" height="20" />
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>智教星</h1>
