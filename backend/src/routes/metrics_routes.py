@@ -2,14 +2,16 @@
 监控指标路由
 提供 Prometheus 指标端点
 """
-from flask import Blueprint, Response, jsonify
+from flask import Blueprint, Response, jsonify, request, session
 from src.services.metrics_service import metrics_service
-from src.utils.auth import require_auth
+from src.utils.auth import require_auth, require_role
 
 metrics_bp = Blueprint('metrics', __name__, url_prefix='/api/metrics')
 
 
 @metrics_bp.route('/prometheus', methods=['GET'])
+@require_auth
+@require_role(('admin',))
 def prometheus_metrics():
     """
     Prometheus 指标端点
@@ -29,14 +31,27 @@ def health_check():
     Returns:
         应用健康状态
     """
+    from sqlalchemy import text
+    from src.models.user import db
+    from src.services.personalized_notification_service import personalized_notification_service
+    database = {'available': False, 'message': '数据库连接失败'}
+    try:
+        db.session.execute(text('SELECT 1'))
+        database = {'available': True, 'message': '数据库连接正常'}
+    except Exception as exc:
+        database['message'] = f'数据库连接失败：{type(exc).__name__}'
+    scheduler = personalized_notification_service.scheduler_status()
     return jsonify({
-        'status': 'healthy',
-        'timestamp': __import__('time').time()
-    })
+        'status': 'healthy' if database['available'] else 'degraded',
+        'database': database,
+        'scheduler': scheduler,
+        'timestamp': __import__('time').time(),
+    }), 200 if database['available'] else 503
 
 
 @metrics_bp.route('/dashboard', methods=['GET'])
 @require_auth
+@require_role(('admin', 'teacher'))
 def get_dashboard_data():
     """
     获取监控仪表板数据
@@ -44,25 +59,17 @@ def get_dashboard_data():
     Returns:
         关键指标摘要
     """
-    return jsonify({
-        'api_requests': {
-            'total': '从 Prometheus 获取',
-            'description': '使用 /api/metrics/prometheus 端点获取详细指标'
-        },
-        'active_users': {
-            'description': '当前活跃用户数量'
-        },
-        'error_rate': {
-            'description': '错误率统计'
-        },
-        'response_time': {
-            'description': '平均响应时间'
-        }
-    })
+    try:
+        days = int(request.args.get('days', 30))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'days格式不正确', 'code': 'METRICS_FILTER_INVALID'}), 400
+    owner_id = session['user_id'] if session.get('user_role') == 'teacher' else None
+    return jsonify(metrics_service.workflow_dashboard(owner_id=owner_id, days=days))
 
 
 @metrics_bp.route('/active-users', methods=['GET'])
 @require_auth
+@require_role(('admin',))
 def get_active_users():
     """
     获取活跃用户统计

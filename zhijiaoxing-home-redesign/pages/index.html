@@ -1,0 +1,1537 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智教星 — 自适应错题诊疗系统</title>
+    <style id="theme-vars">
+/* ============================================================
+   智教星 ZhiJiaoXing — Editorial Light Theme
+   编辑杂志感 · 浅色干净底 · 衬线标题 · 极简克制
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Serif+SC:wght@400;500;600;700;900&display=swap');
+
+:root {
+  /* ---- Core surfaces (warm off-white) ---- */
+  --zx-background: #FAFAF7;
+  --zx-foreground: #1A1A18;
+
+  --zx-card: #FFFFFF;
+  --zx-card-foreground: #1A1A18;
+
+  --zx-popover: #FFFFFF;
+  --zx-popover-foreground: #1A1A18;
+
+  /* ---- Brand accent (restrained dark gold, used sparingly) ---- */
+  --zx-primary: #8B6914;
+  --zx-primary-foreground: #FAFAF7;
+
+  --zx-muted: #F2F0EB;
+  --zx-muted-foreground: #6B6862;
+
+  --zx-border: #E2DFD8;
+  --zx-input: #D8D5CE;
+  --zx-ring: #8B6914;
+
+  /* ---- Radius scale (restrained, editorial = sharper) ---- */
+  --zx-radius-sm: 2px;
+  --zx-radius-md: 4px;
+  --zx-radius-lg: 8px;
+
+  /* ---- State colors ---- */
+  --zx-state-success: #2D7A3E;
+  --zx-state-warning: #B8860B;
+  --zx-state-error: #B23A2E;
+  --zx-state-info: #1E4A6F;
+
+  /* ---- Ink palette (editorial grays) ---- */
+  --zx-ink-0: #FAFAF7;
+  --zx-ink-1: #F2F0EB;
+  --zx-ink-2: #E8E5DF;
+  --zx-ink-3: #D2CFC7;
+  --zx-ink-4: #A09D96;
+  --zx-ink-5: #6B6862;
+  --zx-ink-6: #3D3B36;
+  --zx-ink-7: #1A1A18;
+  --zx-ink-8: #0D0D0C;
+
+  /* ---- Accent (muted, used only for emphasis) ---- */
+  --zx-accent: #8B6914;
+  --zx-accent-light: #B8901F;
+  --zx-accent-muted: rgba(139, 105, 20, 0.08);
+
+  /* ---- Typography ---- */
+  --zx-font-display: 'Fraunces', 'Noto Serif SC', 'Songti SC', 'STSong', serif;
+  --zx-font-serif: 'Noto Serif SC', 'Songti SC', 'STSong', 'Fraunces', serif;
+  --zx-font-sans: 'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --zx-font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --zx-font-cn-serif: 'Noto Serif SC', 'Songti SC', 'STSong', serif;
+  --zx-font-cn-sans: 'PingFang SC', 'Microsoft YaHei', 'Inter', sans-serif;
+
+  /* ---- Rule lines (editorial dividers) ---- */
+  --zx-rule: #1A1A18;
+  --zx-rule-subtle: #E2DFD8;
+  --zx-rule-medium: #C4C1BA;
+
+  /* ---- Shadows (minimal, editorial = almost flat) ---- */
+  --zx-shadow-sm: 0 1px 2px rgba(26, 26, 24, 0.04);
+  --zx-shadow-md: 0 2px 8px rgba(26, 26, 24, 0.06);
+  --zx-shadow-lg: 0 8px 24px rgba(26, 26, 24, 0.08);
+}
+
+/* ---- No dark mode variant; this is a light-only editorial theme ---- */
+.dark {
+  --zx-background: #FAFAF7;
+  --zx-foreground: #1A1A18;
+  --zx-card: #FFFFFF;
+  --zx-card-foreground: #1A1A18;
+  --zx-popover: #FFFFFF;
+  --zx-popover-foreground: #1A1A18;
+  --zx-primary: #8B6914;
+  --zx-primary-foreground: #FAFAF7;
+  --zx-muted: #F2F0EB;
+  --zx-muted-foreground: #6B6862;
+  --zx-border: #E2DFD8;
+  --zx-input: #D8D5CE;
+  --zx-ring: #8B6914;
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--zx-background);
+    --color-foreground: var(--zx-foreground);
+    --color-card: var(--zx-card);
+    --color-card-foreground: var(--zx-card-foreground);
+    --color-popover: var(--zx-popover);
+    --color-popover-foreground: var(--zx-popover-foreground);
+    --color-primary: var(--zx-primary);
+    --color-primary-foreground: var(--zx-primary-foreground);
+    --color-muted: var(--zx-muted);
+    --color-muted-foreground: var(--zx-muted-foreground);
+    --color-border: var(--zx-border);
+    --color-input: var(--zx-input);
+    --color-ring: var(--zx-ring);
+    --radius-sm: var(--zx-radius-sm);
+    --radius-md: var(--zx-radius-md);
+    --radius-lg: var(--zx-radius-lg);
+  }
+  @layer base {
+    body { background: var(--zx-background); color: var(--zx-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style id="semantic-token-fallback">
+      .bg-background { background-color: var(--zx-background); }
+      .text-background { color: var(--zx-background); }
+      .border-background { border-color: var(--zx-background); }
+      .ring-background { --tw-ring-color: var(--zx-background); }
+      .bg-foreground { background-color: var(--zx-foreground); }
+      .text-foreground { color: var(--zx-foreground); }
+      .border-foreground { border-color: var(--zx-foreground); }
+      .ring-foreground { --tw-ring-color: var(--zx-foreground); }
+      .bg-card { background-color: var(--zx-card); }
+      .text-card { color: var(--zx-card); }
+      .border-card { border-color: var(--zx-card); }
+      .ring-card { --tw-ring-color: var(--zx-card); }
+      .bg-card-foreground { background-color: var(--zx-card-foreground); }
+      .text-card-foreground { color: var(--zx-card-foreground); }
+      .border-card-foreground { border-color: var(--zx-card-foreground); }
+      .ring-card-foreground { --tw-ring-color: var(--zx-card-foreground); }
+      .bg-popover { background-color: var(--zx-popover); }
+      .text-popover { color: var(--zx-popover); }
+      .border-popover { border-color: var(--zx-popover); }
+      .ring-popover { --tw-ring-color: var(--zx-popover); }
+      .bg-popover-foreground { background-color: var(--zx-popover-foreground); }
+      .text-popover-foreground { color: var(--zx-popover-foreground); }
+      .border-popover-foreground { border-color: var(--zx-popover-foreground); }
+      .ring-popover-foreground { --tw-ring-color: var(--zx-popover-foreground); }
+      .bg-primary { background-color: var(--zx-primary); }
+      .text-primary { color: var(--zx-primary); }
+      .border-primary { border-color: var(--zx-primary); }
+      .ring-primary { --tw-ring-color: var(--zx-primary); }
+      .bg-primary-foreground { background-color: var(--zx-primary-foreground); }
+      .text-primary-foreground { color: var(--zx-primary-foreground); }
+      .border-primary-foreground { border-color: var(--zx-primary-foreground); }
+      .ring-primary-foreground { --tw-ring-color: var(--zx-primary-foreground); }
+      .bg-muted { background-color: var(--zx-muted); }
+      .text-muted { color: var(--zx-muted); }
+      .border-muted { border-color: var(--zx-muted); }
+      .ring-muted { --tw-ring-color: var(--zx-muted); }
+      .bg-muted-foreground { background-color: var(--zx-muted-foreground); }
+      .text-muted-foreground { color: var(--zx-muted-foreground); }
+      .border-muted-foreground { border-color: var(--zx-muted-foreground); }
+      .ring-muted-foreground { --tw-ring-color: var(--zx-muted-foreground); }
+      .bg-border { background-color: var(--zx-border); }
+      .text-border { color: var(--zx-border); }
+      .border-border { border-color: var(--zx-border); }
+      .ring-border { --tw-ring-color: var(--zx-border); }
+      .bg-input { background-color: var(--zx-input); }
+      .text-input { color: var(--zx-input); }
+      .border-input { border-color: var(--zx-input); }
+      .ring-input { --tw-ring-color: var(--zx-input); }
+      .bg-ring { background-color: var(--zx-ring); }
+      .text-ring { color: var(--zx-ring); }
+      .border-ring { border-color: var(--zx-ring); }
+      .ring-ring { --tw-ring-color: var(--zx-ring); }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+
+      /* ===== Editorial typography ===== */
+      .zx-display { font-family: var(--zx-font-display); }
+      .zx-serif { font-family: var(--zx-font-cn-serif); }
+      .zx-mono { font-family: var(--zx-font-mono); }
+      .label-mono { font-family: var(--zx-font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em; color: #6B6862; font-weight: 500; line-height: 1; }
+      .label-caps { font-family: var(--zx-font-sans); font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: #6B6862; }
+      .secnum { font-family: var(--zx-font-mono); font-size: 12px; letter-spacing: 0.15em; color: #8B6914; font-weight: 600; }
+
+      /* ===== Editorial text links (underline on hover) ===== */
+      .zx-link { position: relative; display: inline-block; transition: color .2s ease; }
+      .zx-link::after { content: ''; position: absolute; left: 0; right: 0; bottom: -3px; height: 1px; background: currentColor; transform: scaleX(0); transform-origin: left; transition: transform .3s ease; }
+      .zx-link:hover::after { transform: scaleX(1); }
+
+      /* ===== Flat surfaces: white + thin border, hover darkens ===== */
+      .zx-surface { background: #FFFFFF; border: 1px solid #E2DFD8; transition: border-color .25s ease; }
+      .zx-surface:hover { border-color: #1A1A18; }
+
+      /* ===== Scroll reveal (subtle) ===== */
+      .reveal { opacity: 0; transform: translateY(12px); transition: opacity .6s ease, transform .6s ease; }
+      .reveal.is-visible { opacity: 1; transform: translateY(0); }
+      @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
+
+      /* ===== Nav masthead ===== */
+      .masthead-inner { transition: height .3s ease; }
+
+      /* ===== Flat progress bars (2px, no radius) ===== */
+      .zx-bar { height: 2px; background: #E2DFD8; position: relative; }
+      .zx-bar > span { position: absolute; left: 0; top: 0; bottom: 0; background: #1A1A18; }
+
+      /* ===== Accent underline for headline ===== */
+      .zx-underline-accent { text-decoration: underline; text-decoration-color: #8B6914; text-decoration-thickness: 2px; text-underline-offset: 7px; }
+
+      /* ===== Architecture diagram ===== */
+      .arch-scroll { overflow-x: auto; }
+      .arch-stage { position: relative; width: 900px; height: 520px; margin: 0 auto; }
+      .arch-lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+      .arch-node { position: absolute; width: 132px; padding: 12px 10px; background: #FFFFFF; border: 1px solid #E2DFD8; text-align: center; transition: border-color .25s ease; }
+      .arch-node:hover { border-color: #1A1A18; }
+      .arch-node.is-center { border-color: #1A1A18; border-width: 1.5px; }
+
+      /* ===== Vertical rule ===== */
+      .v-rule { width: 1px; background: #E2DFD8; align-self: stretch; }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased bg-background text-foreground">
+    <main>
+<!-- ============ 01 · MASTHEAD + NAV ============ -->
+<header id="top" class="sticky top-0 z-50" style="background:rgba(250,250,247,0.92);backdrop-filter:saturate(1.1);border-bottom:1px solid #E2DFD8">
+  <div class="max-w-[1320px] mx-auto px-6 md:px-8 flex items-center justify-between" style="height:56px">
+    <a href="#top" class="flex items-center gap-2.5">
+      <span class="flex items-center justify-center" style="width:26px;height:26px;background:#1A1A18;border-radius:4px"><i data-lucide="hexagon" class="w-4 h-4" style="color:#B8901F"></i></span>
+      <span class="zx-serif" style="font-size:19px;font-weight:700;letter-spacing:0.01em">智教星</span>
+      <span class="zx-mono" style="font-size:10px;color:#6B6862;letter-spacing:0.18em">ZHIJIAOXING</span>
+    </a>
+    <nav class="hidden md:flex items-center gap-8" style="font-size:13px;color:#3D3B36">
+      <a class="zx-link" href="#features">功能</a>
+      <a class="zx-link" href="#product">产品</a>
+      <a class="zx-link" href="#enterprise">企业</a>
+      <a class="zx-link" href="#dashboard">看板</a>
+      <a class="zx-link" href="#testimonials">评价</a>
+    </nav>
+    <div class="flex items-center gap-3">
+      <span class="zx-mono hidden md:inline" style="font-size:10px;color:#6B6862;letter-spacing:0.14em">ISSUE 01 / 2026</span>
+      <a href="#cta" class="zx-mono" style="font-size:12px;font-weight:600;color:#FAFAF7;background:#1A1A18;padding:7px 14px;border-radius:4px">开始使用 →</a>
+    </div>
+  </div>
+</header>
+
+<!-- ============ 02 · HERO ============ -->
+<section class="py-10 md:py-14" style="background:#FAFAF7;border-bottom:1px solid #E2DFD8">
+  <div class="max-w-[1320px] mx-auto px-6 md:px-8">
+    <div class="grid grid-cols-1 lg:grid-cols-[1fr_1.18fr] gap-10 lg:gap-12 items-start">
+      <!-- LEFT -->
+      <div class="reveal">
+        <div class="flex items-center gap-3 mb-5">
+          <span class="zx-mono" style="font-size:11px;letter-spacing:0.18em;color:#8B6914;font-weight:600">ISSUE 01 — 2026 / 教育智能</span>
+          <span style="height:1px;flex:1;background:#E2DFD8"></span>
+        </div>
+        <h1 class="zx-serif" style="font-size:60px;line-height:1.02;font-weight:700;letter-spacing:-0.02em;color:#1A1A18">
+          <span class="zx-underline-accent">自适应</span><br>
+          错题诊疗系统
+        </h1>
+        <p class="mt-6" style="font-size:15px;line-height:1.6;color:#3D3B36;max-width:30rem">
+          智教星——基于多智能体的自适应错题诊疗系统，精准诊断错因，靶向推送练习，让每个学生获得个性化学习路径。
+        </p>
+        <div class="flex items-center gap-5 mt-7">
+          <a href="#cta" class="zx-mono inline-flex items-center gap-2" style="font-size:13px;font-weight:600;color:#FAFAF7;background:#8B6914;padding:11px 20px;border-radius:4px">开始使用 →</a>
+          <a href="#features" class="zx-link inline-flex items-center gap-1.5" style="font-size:13px;font-weight:600;color:#1A1A18"><i data-lucide="play-circle" class="w-4 h-4"></i>观看演示</a>
+        </div>
+        <!-- stats row -->
+        <div class="grid grid-cols-4 gap-3 mt-9 pt-6" style="border-top:1px solid #E2DFD8">
+          <div><div class="zx-serif countup" data-target="8" style="font-size:30px;font-weight:700;color:#1A1A18">8</div><div class="label-mono mt-1">智能体</div></div>
+          <div><div class="zx-serif countup" data-target="8" style="font-size:30px;font-weight:700;color:#1A1A18">8</div><div class="label-mono mt-1">维画像</div></div>
+          <div><div class="zx-serif countup" data-target="7" style="font-size:30px;font-weight:700;color:#1A1A18">7</div><div class="label-mono mt-1">种资源</div></div>
+          <div><div class="zx-serif" style="font-size:30px;font-weight:700;color:#1A1A18">3D</div><div class="label-mono mt-1">图谱</div></div>
+        </div>
+        <div class="flex items-center gap-4 mt-6" style="font-size:11px;color:#6B6862">
+          <span class="zx-mono" style="letter-spacing:0.1em">· 多智能体协同</span>
+          <span class="zx-mono" style="letter-spacing:0.1em">· Spark4.0 Ultra</span>
+          <span class="zx-mono" style="letter-spacing:0.1em">· 实时诊疗</span>
+        </div>
+      </div>
+
+      <!-- RIGHT · DASHBOARD MOCKUP -->
+      <div class="reveal" style="transition-delay:.1s">
+        <div class="zx-surface" style="border-radius:8px;overflow:hidden;box-shadow:0 8px 24px rgba(26,26,24,0.08)">
+          <!-- window top bar -->
+          <div class="flex items-center gap-2 px-3" style="height:32px;background:#1A1A18">
+            <span style="width:8px;height:8px;border-radius:50%;background:#B23A2E"></span>
+            <span style="width:8px;height:8px;border-radius:50%;background:#B8860B"></span>
+            <span style="width:8px;height:8px;border-radius:50%;background:#2D7A3E"></span>
+            <span class="zx-mono ml-2" style="font-size:10px;color:#FAFAF7;letter-spacing:0.12em">智教星 · 教学控制台</span>
+            <span class="zx-mono ml-auto" style="font-size:10px;color:#A09D96">14:23:08</span>
+          </div>
+          <div class="flex" style="height:566px">
+            <!-- sidebar -->
+            <aside class="py-3 px-2.5" style="width:158px;background:#F2F0EB;border-right:1px solid #E2DFD8;flex-shrink:0">
+              <div class="flex items-center gap-1.5 px-1.5 mb-3">
+                <span class="flex items-center justify-center" style="width:18px;height:18px;background:#1A1A18;border-radius:3px"><i data-lucide="hexagon" class="w-3 h-3" style="color:#B8901F"></i></span>
+                <span class="zx-serif" style="font-size:13px;font-weight:700">智教星</span>
+              </div>
+              <div class="label-mono px-1.5 mb-1.5" style="font-size:9px">导航</div>
+              <ul style="font-size:11.5px;color:#3D3B36">
+                <li class="flex items-center gap-2 px-1.5 py-1.5" style="background:#1A1A18;color:#FAFAF7;border-radius:3px;margin-bottom:1px"><i data-lucide="stethoscope" class="w-3.5 h-3.5"></i>错题诊疗</li>
+                <li class="flex items-center gap-2 px-1.5 py-1.5"><i data-lucide="activity" class="w-3.5 h-3.5" style="color:#8B6914"></i>智能诊断</li>
+                <li class="flex items-center gap-2 px-1.5 py-1.5"><i data-lucide="target" class="w-3.5 h-3.5"></i>靶向练习</li>
+                <li class="flex items-center gap-2 px-1.5 py-1.5"><i data-lucide="user-search" class="w-3.5 h-3.5"></i>学情画像</li>
+                <li class="flex items-center gap-2 px-1.5 py-1.5"><i data-lucide="book-open" class="w-3.5 h-3.5"></i>课程学习</li>
+                <li class="flex items-center gap-2 px-1.5 py-1.5"><i data-lucide="bot" class="w-3.5 h-3.5"></i>AI助教</li>
+                <li class="flex items-center gap-2 px-1.5 py-1.5"><i data-lucide="notebook-pen" class="w-3.5 h-3.5"></i>学习笔记</li>
+                <li class="flex items-center gap-2 px-1.5 py-1.5"><i data-lucide="award" class="w-3.5 h-3.5"></i>学习成就</li>
+              </ul>
+              <div class="mt-4 px-1.5 py-2" style="background:#FFFFFF;border:1px solid #E2DFD8;border-radius:3px">
+                <div class="label-mono" style="font-size:9px">本周掌握</div>
+                <div class="zx-serif" style="font-size:20px;font-weight:700;color:#2D7A3E">+38%</div>
+                <div class="zx-bar mt-1.5" style="height:3px"><span style="width:72%;background:#2D7A3E"></span></div>
+              </div>
+            </aside>
+
+            <!-- main panel -->
+            <div class="flex-1 p-3" style="background:#FFFFFF;min-width:0">
+              <!-- 4 stat tiles -->
+              <div class="grid grid-cols-4 gap-2">
+                <div class="px-2.5 py-2" style="background:#FAFAF7;border:1px solid #E2DFD8;border-left:2px solid #B23A2E;border-radius:4px">
+                  <div class="label-mono" style="font-size:9px">待诊疗</div>
+                  <div class="flex items-end justify-between"><span class="zx-serif" style="font-size:22px;font-weight:700;color:#B23A2E">23</span>
+                  <svg viewBox="0 0 60 20" width="42" height="14"><polyline points="0,14 10,12 20,15 30,9 40,11 50,6 60,8" fill="none" stroke="#B23A2E" stroke-width="1.5"/></svg></div>
+                </div>
+                <div class="px-2.5 py-2" style="background:#FAFAF7;border:1px solid #E2DFD8;border-left:2px solid #2D7A3E;border-radius:4px">
+                  <div class="label-mono" style="font-size:9px">已攻克</div>
+                  <div class="flex items-end justify-between"><span class="zx-serif" style="font-size:22px;font-weight:700;color:#2D7A3E">156</span>
+                  <svg viewBox="0 0 60 20" width="42" height="14"><polyline points="0,16 10,13 20,14 30,10 40,7 50,5 60,3" fill="none" stroke="#2D7A3E" stroke-width="1.5"/></svg></div>
+                </div>
+                <div class="px-2.5 py-2" style="background:#FAFAF7;border:1px solid #E2DFD8;border-left:2px solid #8B6914;border-radius:4px">
+                  <div class="label-mono" style="font-size:9px">诊断准确率</div>
+                  <div class="flex items-end justify-between"><span class="zx-serif" style="font-size:22px;font-weight:700;color:#8B6914">94%</span>
+                  <svg viewBox="0 0 60 20" width="42" height="14"><polyline points="0,12 10,10 20,11 30,8 40,9 50,6 60,5" fill="none" stroke="#8B6914" stroke-width="1.5"/></svg></div>
+                </div>
+                <div class="px-2.5 py-2" style="background:#FAFAF7;border:1px solid #E2DFD8;border-left:2px solid #1E4A6F;border-radius:4px">
+                  <div class="label-mono" style="font-size:9px">掌握度提升</div>
+                  <div class="flex items-end justify-between"><span class="zx-serif" style="font-size:22px;font-weight:700;color:#1E4A6F">+38%</span>
+                  <svg viewBox="0 0 60 20" width="42" height="14"><polyline points="0,15 10,13 20,12 30,9 40,8 50,5 60,4" fill="none" stroke="#1E4A6F" stroke-width="1.5"/></svg></div>
+                </div>
+              </div>
+
+              <!-- middle: table | right column -->
+              <div class="grid grid-cols-2 gap-2.5 mt-2.5">
+                <!-- AI 错因诊断 table -->
+                <div style="background:#FAFAF7;border:1px solid #E2DFD8;border-radius:4px;min-width:0">
+                  <div class="flex items-center justify-between px-2.5 py-1.5" style="border-bottom:1px solid #E2DFD8">
+                    <span class="zx-serif" style="font-size:12px;font-weight:700">AI 错因诊断</span>
+                    <span class="zx-mono" style="font-size:9px;color:#6B6862">5 条 · 实时</span>
+                  </div>
+                  <table class="w-full" style="font-size:10.5px;border-collapse:collapse">
+                    <thead><tr style="color:#6B6862"><th class="text-left px-2 py-1 label-mono" style="font-size:8.5px">题目</th><th class="text-left px-1 py-1 label-mono" style="font-size:8.5px">错因</th><th class="text-left px-1 py-1 label-mono" style="font-size:8.5px">智能体</th><th class="text-left px-1 py-1 label-mono" style="font-size:8.5px">级别</th></tr></thead>
+                    <tbody>
+                      <tr style="border-top:1px solid #E2DFD8"><td class="px-2 py-1.5">f(x)=x²+2x-3 极值</td><td class="px-1">概念理解偏差</td><td class="px-1">诊断</td><td class="px-1"><span style="color:#B23A2E;font-weight:700">high</span></td></tr>
+                      <tr style="border-top:1px solid #E2DFD8"><td class="px-2 py-1.5">∫sin²x dx</td><td class="px-1">公式记忆错误</td><td class="px-1">分析</td><td class="px-1"><span style="color:#B8860B;font-weight:700">medium</span></td></tr>
+                      <tr style="border-top:1px solid #E2DFD8"><td class="px-2 py-1.5">P(A|B) 条件概率</td><td class="px-1">审题不清</td><td class="px-1">归因</td><td class="px-1"><span style="color:#2D7A3E;font-weight:700">low</span></td></tr>
+                      <tr style="border-top:1px solid #E2DFD8"><td class="px-2 py-1.5">矩阵运算</td><td class="px-1">计算失误</td><td class="px-1">诊断</td><td class="px-1"><span style="color:#B8860B;font-weight:700">medium</span></td></tr>
+                      <tr style="border-top:1px solid #E2DFD8"><td class="px-2 py-1.5">概率分布</td><td class="px-1">概念混淆</td><td class="px-1">分析</td><td class="px-1"><span style="color:#B23A2E;font-weight:700">high</span></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <!-- right column: practice + graph -->
+                <div class="flex flex-col gap-2.5" style="min-width:0">
+                  <!-- 靶向练习 -->
+                  <div class="px-2.5 py-2" style="background:#FAFAF7;border:1px solid #E2DFD8;border-radius:4px">
+                    <div class="flex items-center justify-between mb-1.5"><span class="zx-serif" style="font-size:12px;font-weight:700">靶向练习</span><span class="zx-mono" style="font-size:9px;color:#6B6862">掌握度</span></div>
+                    <div class="space-y-1.5">
+                      <div><div class="flex justify-between" style="font-size:10px"><span>函数极值</span><span class="zx-mono" style="color:#B23A2E">35%</span></div><div class="zx-bar mt-0.5" style="height:3px"><span style="width:35%;background:#B23A2E"></span></div></div>
+                      <div><div class="flex justify-between" style="font-size:10px"><span>积分公式</span><span class="zx-mono" style="color:#B8860B">60%</span></div><div class="zx-bar mt-0.5" style="height:3px"><span style="width:60%;background:#B8860B"></span></div></div>
+                      <div><div class="flex justify-between" style="font-size:10px"><span>条件概率</span><span class="zx-mono" style="color:#2D7A3E">82%</span></div><div class="zx-bar mt-0.5" style="height:3px"><span style="width:82%;background:#2D7A3E"></span></div></div>
+                      <div><div class="flex justify-between" style="font-size:10px"><span>矩阵运算</span><span class="zx-mono" style="color:#1E4A6F">45%</span></div><div class="zx-bar mt-0.5" style="height:3px"><span style="width:45%;background:#1E4A6F"></span></div></div>
+                    </div>
+                  </div>
+                  <!-- 知识图谱 donut + legend -->
+                  <div class="px-2.5 py-2 flex items-center gap-2.5" style="background:#FAFAF7;border:1px solid #E2DFD8;border-radius:4px">
+                    <div class="relative" style="width:54px;height:54px;flex-shrink:0">
+                      <svg viewBox="0 0 40 40" width="54" height="54"><circle cx="20" cy="20" r="16" fill="none" stroke="#E2DFD8" stroke-width="5"/><circle cx="20" cy="20" r="16" fill="none" stroke="#8B6914" stroke-width="5" stroke-dasharray="72.4 100" stroke-dashoffset="25" transform="rotate(-90 20 20)"/></svg>
+                      <div class="absolute inset-0 flex items-center justify-center"><span class="zx-serif" style="font-size:14px;font-weight:700">72%</span></div>
+                    </div>
+                    <div class="flex-1 space-y-1" style="min-width:0">
+                      <div class="label-mono" style="font-size:8.5px">知识图谱</div>
+                      <div class="flex items-center gap-1.5" style="font-size:9.5px"><span style="width:6px;height:6px;background:#8B6914"></span>函数<div class="zx-bar flex-1" style="height:3px"><span style="width:85%;background:#8B6914"></span></div><span class="zx-mono">85%</span></div>
+                      <div class="flex items-center gap-1.5" style="font-size:9.5px"><span style="width:6px;height:6px;background:#6B3FA0"></span>导数<div class="zx-bar flex-1" style="height:3px"><span style="width:68%;background:#6B3FA0"></span></div><span class="zx-mono">68%</span></div>
+                      <div class="flex items-center gap-1.5" style="font-size:9.5px"><span style="width:6px;height:6px;background:#2A7B7B"></span>积分<div class="zx-bar flex-1" style="height:3px"><span style="width:54%;background:#2A7B7B"></span></div><span class="zx-mono">54%</span></div>
+                      <div class="flex items-center gap-1.5" style="font-size:9.5px"><span style="width:6px;height:6px;background:#1E4A6F"></span>矩阵<div class="zx-bar flex-1" style="height:3px"><span style="width:61%;background:#1E4A6F"></span></div><span class="zx-mono">61%</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- bottom: agent status | line chart -->
+              <div class="grid grid-cols-2 gap-2.5 mt-2.5">
+                <!-- agent status strip -->
+                <div class="px-2.5 py-2" style="background:#FAFAF7;border:1px solid #E2DFD8;border-radius:4px">
+                  <div class="flex items-center justify-between mb-1.5"><span class="zx-serif" style="font-size:12px;font-weight:700">智能体状态</span><span class="zx-mono" style="font-size:9px;color:#2D7A3E">2 active</span></div>
+                  <div class="space-y-1.5">
+                    <div class="flex items-center justify-between" style="font-size:10.5px"><span class="flex items-center gap-1.5"><span style="width:6px;height:6px;border-radius:50%;background:#2D7A3E;box-shadow:0 0 0 2px rgba(45,122,62,0.2)"></span>诊断智能体</span><span class="zx-mono" style="font-size:9px;color:#2D7A3E">active</span></div>
+                    <div class="flex items-center justify-between" style="font-size:10.5px"><span class="flex items-center gap-1.5"><span style="width:6px;height:6px;border-radius:50%;background:#2D7A3E;box-shadow:0 0 0 2px rgba(45,122,62,0.2)"></span>分析智能体</span><span class="zx-mono" style="font-size:9px;color:#2D7A3E">active</span></div>
+                    <div class="flex items-center justify-between" style="font-size:10.5px"><span class="flex items-center gap-1.5"><span style="width:6px;height:6px;border-radius:50%;background:#A09D96"></span>归因智能体</span><span class="zx-mono" style="font-size:9px;color:#6B6862">idle</span></div>
+                  </div>
+                </div>
+                <!-- mini line chart -->
+                <div class="px-2.5 py-2" style="background:#FAFAF7;border:1px solid #E2DFD8;border-radius:4px">
+                  <div class="flex items-center justify-between mb-1"><span class="zx-serif" style="font-size:12px;font-weight:700">掌握度趋势</span><span class="zx-mono" style="font-size:9px;color:#6B6862">7 days</span></div>
+                  <svg viewBox="0 0 200 56" width="100%" height="56">
+                    <line x1="0" y1="14" x2="200" y2="14" stroke="#E2DFD8" stroke-width="0.5"/><line x1="0" y1="28" x2="200" y2="28" stroke="#E2DFD8" stroke-width="0.5"/><line x1="0" y1="42" x2="200" y2="42" stroke="#E2DFD8" stroke-width="0.5"/>
+                    <polyline points="0,44 33,38 66,40 100,28 133,24 166,16 200,12" fill="none" stroke="#8B6914" stroke-width="1.8"/>
+                    <circle cx="200" cy="12" r="2.5" fill="#8B6914"/>
+                  </svg>
+                  <div class="flex justify-between zx-mono" style="font-size:8px;color:#6B6862"><span>D1</span><span>D2</span><span>D3</span><span>D4</span><span>D5</span><span>D6</span><span>D7</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- caption under mockup -->
+        <div class="flex items-center justify-between mt-3" style="font-size:11px;color:#6B6862">
+          <span class="zx-mono" style="letter-spacing:0.12em">FIG. 01 · 教学控制台实时界面</span>
+          <span class="zx-mono">v2.6 · 多智能体协同</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 03 · PARTNER STRIP ============ -->
+<section class="py-5" style="background:#FFFFFF;border-bottom:1px solid #E2DFD8">
+  <div class="max-w-[1320px] mx-auto px-6 md:px-8 flex items-center gap-5 flex-wrap">
+    <span class="label-mono" style="flex-shrink:0">合作院校</span>
+    <span style="width:20px;height:1px;background:#C4C1BA"></span>
+    <div class="flex items-center gap-5 flex-wrap zx-serif" style="font-size:13px;color:#6B6862;font-weight:500">
+      <span>清华大学</span><span style="color:#D2CFC7">/</span>
+      <span>北京大学</span><span style="color:#D2CFC7">/</span>
+      <span>复旦大学</span><span style="color:#D2CFC7">/</span>
+      <span>上海交通大学</span><span style="color:#D2CFC7">/</span>
+      <span>浙江大学</span><span style="color:#D2CFC7">/</span>
+      <span>南京大学</span><span style="color:#D2CFC7">/</span>
+      <span>中国科大</span><span style="color:#D2CFC7">/</span>
+      <span>人民大学</span>
+    </div>
+    <span class="zx-mono ml-auto" style="font-size:11px;color:#8B6914">5000+ 教学团队 · 985/211 覆盖</span>
+  </div>
+</section>
+
+<!-- ============ 04 · STATS BAND ============ -->
+<section class="py-10 md:py-14" style="background:#F2F0EB">
+  <div class="max-w-[1320px] mx-auto px-6 md:px-8">
+    <div class="flex items-end justify-between mb-7 reveal">
+      <div>
+        <div class="zx-mono" style="font-size:30px;font-weight:700;color:#8B6914;letter-spacing:0.04em">№ 02</div>
+        <h2 class="zx-serif mt-1" style="font-size:40px;font-weight:700;line-height:1.08;letter-spacing:-0.01em">规模与成效</h2>
+        <p class="mt-2" style="font-size:15px;color:#6B6862">数字背后，是真实的教学场景与可量化的提升。</p>
+      </div>
+      <span class="label-mono hidden md:inline">SCALE / IMPACT</span>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="reveal zx-surface px-5 py-5" style="border-left:2px solid #8B6914;border-radius:4px">
+        <div class="label-mono">教学团队</div>
+        <div class="flex items-end gap-2 mt-2"><span class="zx-serif countup" data-target="5000" data-suffix="+" style="font-size:36px;font-weight:700;color:#1A1A18">5000+</span></div>
+        <svg viewBox="0 0 120 28" width="100%" height="28" class="mt-2"><polyline points="0,24 20,20 40,22 60,14 80,16 100,8 120,6" fill="none" stroke="#8B6914" stroke-width="1.8"/></svg>
+        <div class="zx-mono mt-1" style="font-size:10px;color:#2D7A3E">↗ +18% YoY</div>
+      </div>
+      <div class="reveal zx-surface px-5 py-5" style="border-left:2px solid #6B3FA0;border-radius:4px">
+        <div class="label-mono">课件生成</div>
+        <div class="flex items-end gap-2 mt-2"><span class="zx-serif countup" data-target="120" data-suffix="万+" style="font-size:36px;font-weight:700;color:#1A1A18">120万+</span></div>
+        <svg viewBox="0 0 120 28" width="100%" height="28" class="mt-2"><polyline points="0,26 20,22 40,18 60,16 80,10 100,7 120,3" fill="none" stroke="#6B3FA0" stroke-width="1.8"/></svg>
+        <div class="zx-mono mt-1" style="font-size:10px;color:#2D7A3E">↗ +42% QoQ</div>
+      </div>
+      <div class="reveal zx-surface px-5 py-5" style="border-left:2px solid #2D7A3E;border-radius:4px">
+        <div class="label-mono">用户满意度</div>
+        <div class="flex items-end gap-2 mt-2"><span class="zx-serif countup" data-target="98.6" data-decimals="1" data-suffix="%" style="font-size:36px;font-weight:700;color:#1A1A18">98.6%</span></div>
+        <svg viewBox="0 0 120 28" width="100%" height="28" class="mt-2"><polyline points="0,14 20,12 40,13 60,10 80,9 100,7 120,6" fill="none" stroke="#2D7A3E" stroke-width="1.8"/></svg>
+        <div class="zx-mono mt-1" style="font-size:10px;color:#6B6862">NPS 72 · 稳定</div>
+      </div>
+      <div class="reveal zx-surface px-5 py-5" style="border-left:2px solid #1E4A6F;border-radius:4px">
+        <div class="label-mono">备课时间节省</div>
+        <div class="flex items-end gap-2 mt-2"><span class="zx-serif countup" data-target="60" data-suffix="%" style="font-size:36px;font-weight:700;color:#1A1A18">60%</span></div>
+        <svg viewBox="0 0 120 28" width="100%" height="28" class="mt-2"><polyline points="0,6 20,8 40,12 60,11 80,16 100,18 120,22" fill="none" stroke="#1E4A6F" stroke-width="1.8"/></svg>
+        <div class="zx-mono mt-1" style="font-size:10px;color:#2D7A3E">↘ 备课耗时下降</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 05 · MULTI-AGENT ARCHITECTURE ============ -->
+<section id="product" class="py-10 md:py-14" style="background:#FAFAF7;border-top:1px solid #E2DFD8;border-bottom:1px solid #E2DFD8">
+  <div class="max-w-[1320px] mx-auto px-6 md:px-8">
+    <div class="flex items-end justify-between mb-7 reveal">
+      <div>
+        <div class="zx-mono" style="font-size:30px;font-weight:700;color:#8B6914;letter-spacing:0.04em">№ 03</div>
+        <h2 class="zx-serif mt-1" style="font-size:40px;font-weight:700;line-height:1.08;letter-spacing:-0.01em">多智能体协同架构</h2>
+        <p class="mt-2" style="font-size:15px;color:#6B6862">8 个专业智能体各司其职，协同生成 7 类教学资源，实时响应教学需求。</p>
+      </div>
+      <span class="label-mono hidden md:inline">8 AGENTS · 7 RESOURCES</span>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-[1.55fr_1fr] gap-5">
+      <!-- LEFT: architecture diagram -->
+      <div class="reveal zx-surface p-4" style="border-radius:6px">
+        <div class="flex items-center justify-between mb-3">
+          <span class="zx-serif" style="font-size:14px;font-weight:700">智能体拓扑</span>
+          <div class="flex items-center gap-3 zx-mono" style="font-size:10px">
+            <span class="flex items-center gap-1"><span style="width:7px;height:7px;border-radius:50%;background:#2D7A3E"></span>active</span>
+            <span class="flex items-center gap-1"><span style="width:7px;height:7px;border-radius:50%;background:#A09D96"></span>idle</span>
+            <span class="flex items-center gap-1"><span style="width:7px;height:7px;border-radius:50%;background:#8B6914"></span>coordinator</span>
+          </div>
+        </div>
+        <div class="arch-scroll" style="overflow-x:auto">
+          <div class="arch-stage" style="position:relative;width:900px;height:520px;margin:0 auto">
+            <!-- connection lines + labels (SVG) -->
+            <svg class="arch-lines" viewBox="0 0 900 520" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%">
+              <g stroke="#C4C1BA" stroke-width="1" fill="none">
+                <line x1="450" y1="260" x2="450" y2="60"/>
+                <line x1="450" y1="260" x2="605" y2="134"/>
+                <line x1="450" y1="260" x2="644" y2="307"/>
+                <line x1="450" y1="260" x2="538" y2="437"/>
+                <line x1="450" y1="260" x2="362" y2="437"/>
+                <line x1="450" y1="260" x2="256" y2="307"/>
+                <line x1="450" y1="260" x2="295" y2="134"/>
+              </g>
+              <!-- data flow labels -->
+              <g font-family="JetBrains Mono, monospace" font-size="9" fill="#6B6862">
+                <rect x="430" y="150" width="40" height="13" fill="#FAFAF7" stroke="#E2DFD8"/><text x="450" y="160" text-anchor="middle">课程数据</text>
+                <rect x="510" y="186" width="40" height="13" fill="#FAFAF7" stroke="#E2DFD8"/><text x="530" y="196" text-anchor="middle">习题请求</text>
+                <rect x="540" y="276" width="40" height="13" fill="#FAFAF7" stroke="#E2DFD8"/><text x="560" y="286" text-anchor="middle">课件任务</text>
+                <rect x="470" y="338" width="40" height="13" fill="#FAFAF7" stroke="#E2DFD8"/><text x="490" y="348" text-anchor="middle">推荐回调</text>
+                <rect x="360" y="338" width="40" height="13" fill="#FAFAF7" stroke="#E2DFD8"/><text x="380" y="348" text-anchor="middle">项目任务</text>
+                <rect x="330" y="276" width="40" height="13" fill="#FAFAF7" stroke="#E2DFD8"/><text x="350" y="286" text-anchor="middle">画像数据</text>
+                <rect x="360" y="186" width="40" height="13" fill="#FAFAF7" stroke="#E2DFD8"/><text x="380" y="196" text-anchor="middle">图谱节点</text>
+              </g>
+            </svg>
+            <!-- center coordinator node -->
+            <div class="arch-node is-center" style="position:absolute;left:450px;top:260px;transform:translate(-50%,-50%);width:150px;border-color:#1A1A18;background:#1A1A18;color:#FAFAF7">
+              <i data-lucide="cpu" class="w-5 h-5" style="color:#B8901F"></i>
+              <div class="zx-serif" style="font-size:13px;font-weight:700;margin-top:4px">Coordinator</div>
+              <div class="zx-mono" style="font-size:9px;color:#B8901F">协调 · center</div>
+            </div>
+            <!-- 7 agent nodes -->
+            <div class="arch-node" style="position:absolute;left:450px;top:60px;transform:translate(-50%,-50%);width:138px"><i data-lucide="file-text" class="w-5 h-5" style="color:#1A1A18"></i><div class="zx-serif" style="font-size:12px;font-weight:700;margin-top:3px">Document 文档</div><div style="font-size:9.5px;color:#6B6862">教学文档与笔记</div><span style="position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:#2D7A3E"></span></div>
+            <div class="arch-node" style="position:absolute;left:605px;top:134px;transform:translate(-50%,-50%);width:138px"><i data-lucide="pen-tool" class="w-5 h-5" style="color:#1A1A18"></i><div class="zx-serif" style="font-size:12px;font-weight:700;margin-top:3px">Exercise 习题</div><div style="font-size:9.5px;color:#6B6862">配套习题与测评</div><span style="position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:#2D7A3E"></span></div>
+            <div class="arch-node" style="position:absolute;left:644px;top:307px;transform:translate(-50%,-50%);width:138px"><i data-lucide="presentation" class="w-5 h-5" style="color:#1A1A18"></i><div class="zx-serif" style="font-size:12px;font-weight:700;margin-top:3px">Media 多媒体</div><div style="font-size:9.5px;color:#6B6862">课件与可视化</div><span style="position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:#2D7A3E"></span></div>
+            <div class="arch-node" style="position:absolute;left:538px;top:437px;transform:translate(-50%,-50%);width:138px"><i data-lucide="layers" class="w-5 h-5" style="color:#1A1A18"></i><div class="zx-serif" style="font-size:12px;font-weight:700;margin-top:3px">Recommendation 推荐</div><div style="font-size:9.5px;color:#6B6862">个性化资源推荐</div><span style="position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:#A09D96"></span></div>
+            <div class="arch-node" style="position:absolute;left:362px;top:437px;transform:translate(-50%,-50%);width:138px"><i data-lucide="git-branch" class="w-5 h-5" style="color:#1A1A18"></i><div class="zx-serif" style="font-size:12px;font-weight:700;margin-top:3px">Project 项目</div><div style="font-size:9.5px;color:#6B6862">实践项目任务</div><span style="position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:#2D7A3E"></span></div>
+            <div class="arch-node" style="position:absolute;left:256px;top:307px;transform:translate(-50%,-50%);width:138px"><i data-lucide="users" class="w-5 h-5" style="color:#1A1A18"></i><div class="zx-serif" style="font-size:12px;font-weight:700;margin-top:3px">Profile 画像</div><div style="font-size:9.5px;color:#6B6862">8维学生画像</div><span style="position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:#A09D96"></span></div>
+            <div class="arch-node" style="position:absolute;left:295px;top:134px;transform:translate(-50%,-50%);width:138px"><i data-lucide="network" class="w-5 h-5" style="color:#1A1A18"></i><div class="zx-serif" style="font-size:12px;font-weight:700;margin-top:3px">KnowledgeGraph 图谱</div><div style="font-size:9.5px;color:#6B6862">3D知识图谱</div><span style="position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:#2D7A3E"></span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: side panel (current tasks) + activity log -->
+      <div class="flex flex-col gap-5">
+        <div class="reveal zx-surface p-4" style="border-radius:6px">
+          <div class="flex items-center justify-between mb-3"><span class="zx-serif" style="font-size:14px;font-weight:700">智能体当前任务</span><span class="zx-mono" style="font-size:10px;color:#6B6862">实时</span></div>
+          <div class="space-y-2.5">
+            <div><div class="flex justify-between" style="font-size:12px"><span class="font-semibold">Document</span><span class="zx-mono" style="font-size:10px;color:#6B6862">68%</span></div><div style="font-size:11px;color:#6B6862">生成高中数学第3章笔记</div><div class="zx-bar mt-1" style="height:3px"><span style="width:68%;background:#1E4A6F"></span></div></div>
+            <div><div class="flex justify-between" style="font-size:12px"><span class="font-semibold">Exercise</span><span class="zx-mono" style="font-size:10px;color:#6B6862">42%</span></div><div style="font-size:11px;color:#6B6862">生成导数习题 10 题</div><div class="zx-bar mt-1" style="height:3px"><span style="width:42%;background:#8B6914"></span></div></div>
+            <div><div class="flex justify-between" style="font-size:12px"><span class="font-semibold">Media</span><span class="zx-mono" style="font-size:10px;color:#6B6862">85%</span></div><div style="font-size:11px;color:#6B6862">渲染概率分布课件</div><div class="zx-bar mt-1" style="height:3px"><span style="width:85%;background:#6B3FA0"></span></div></div>
+            <div><div class="flex justify-between" style="font-size:12px"><span class="font-semibold">Project</span><span class="zx-mono" style="font-size:10px;color:#6B6862">30%</span></div><div style="font-size:11px;color:#6B6862">编排矩阵运算实践项目</div><div class="zx-bar mt-1" style="height:3px"><span style="width:30%;background:#2A7B7B"></span></div></div>
+            <div><div class="flex justify-between" style="font-size:12px"><span class="font-semibold">Profile</span><span class="zx-mono" style="font-size:10px;color:#6B6862">55%</span></div><div style="font-size:11px;color:#6B6862">更新 8 维学情画像</div><div class="zx-bar mt-1" style="height:3px"><span style="width:55%;background:#B8860B"></span></div></div>
+            <div><div class="flex justify-between" style="font-size:12px"><span class="font-semibold">KnowledgeGraph</span><span class="zx-mono" style="font-size:10px;color:#6B6862">72%</span></div><div style="font-size:11px;color:#6B6862">补充函数→导数前置依赖</div><div class="zx-bar mt-1" style="height:3px"><span style="width:72%;background:#2D7A3E"></span></div></div>
+            <div><div class="flex justify-between" style="font-size:12px"><span class="font-semibold">Recommendation</span><span class="zx-mono" style="font-size:10px;color:#6B6862">idle</span></div><div style="font-size:11px;color:#6B6862">等待画像回调 · 待命</div><div class="zx-bar mt-1" style="height:3px"><span style="width:0%;background:#A09D96"></span></div></div>
+          </div>
+        </div>
+        <!-- activity log -->
+        <div class="reveal zx-surface p-4" style="border-radius:6px;border-left:2px solid #1E4A6F">
+          <div class="flex items-center justify-between mb-3"><span class="zx-serif" style="font-size:14px;font-weight:700">实时活动日志</span><span class="zx-mono" style="font-size:10px;color:#2D7A3E">● live</span></div>
+          <div class="space-y-1.5 zx-mono" style="font-size:11px">
+            <div class="flex gap-2"><span style="color:#6B6862;flex-shrink:0">14:23:01</span><span><span style="color:#8B6914">Coordinator</span> 分配文档生成任务</span></div>
+            <div class="flex gap-2"><span style="color:#6B6862;flex-shrink:0">14:23:15</span><span><span style="color:#1E4A6F">Document</span> 开始解析教材 PDF</span></div>
+            <div class="flex gap-2"><span style="color:#6B6862;flex-shrink:0">14:23:42</span><span><span style="color:#8B6914">Exercise</span> 生成导数习题 10 题</span></div>
+            <div class="flex gap-2"><span style="color:#6B6862;flex-shrink:0">14:24:08</span><span><span style="color:#6B3FA0">Media</span> 渲染概率分布可视化</span></div>
+            <div class="flex gap-2"><span style="color:#6B6862;flex-shrink:0">14:24:33</span><span><span style="color:#2D7A3E">Profile</span> 写入 8 维画像数据</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- resource output matrix -->
+    <div class="reveal zx-surface mt-5 p-5" style="border-radius:6px">
+      <div class="flex items-center justify-between mb-4"><span class="zx-serif" style="font-size:14px;font-weight:700">资源产出矩阵</span><span class="zx-mono" style="font-size:10px;color:#6B6862">7 类资源 · 完成度</span></div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3">
+        <div><div class="flex justify-between" style="font-size:12px"><span class="font-semibold">教学大纲</span><span class="zx-mono">92%</span></div><div class="zx-bar mt-1" style="height:4px"><span style="width:92%;background:#2D7A3E"></span></div></div>
+        <div><div class="flex justify-between" style="font-size:12px"><span class="font-semibold">核心内容</span><span class="zx-mono">78%</span></div><div class="zx-bar mt-1" style="height:4px"><span style="width:78%;background:#8B6914"></span></div></div>
+        <div><div class="flex justify-between" style="font-size:12px"><span class="font-semibold">配套习题</span><span class="zx-mono">85%</span></div><div class="zx-bar mt-1" style="height:4px"><span style="width:85%;background:#1E4A6F"></span></div></div>
+        <div><div class="flex justify-between" style="font-size:12px"><span class="font-semibold">课件材料</span><span class="zx-mono">64%</span></div><div class="zx-bar mt-1" style="height:4px"><span style="width:64%;background:#6B3FA0"></span></div></div>
+        <div><div class="flex justify-between" style="font-size:12px"><span class="font-semibold">实践项目</span><span class="zx-mono">47%</span></div><div class="zx-bar mt-1" style="height:4px"><span style="width:47%;background:#B8860B"></span></div></div>
+        <div><div class="flex justify-between" style="font-size:12px"><span class="font-semibold">知识图谱</span><span class="zx-mono">88%</span></div><div class="zx-bar mt-1" style="height:4px"><span style="width:88%;background:#2A7B7B"></span></div></div>
+        <div><div class="flex justify-between" style="font-size:12px"><span class="font-semibold">学习笔记</span><span class="zx-mono">71%</span></div><div class="zx-bar mt-1" style="height:4px"><span style="width:71%;background:#2D7A3E"></span></div></div>
+        <div><div class="flex justify-between" style="font-size:12px"><span class="font-semibold">综合校验</span><span class="zx-mono">96%</span></div><div class="zx-bar mt-1" style="height:4px"><span style="width:96%;background:#2D7A3E"></span></div></div>
+      </div>
+    </div>
+    <!-- agent load -->
+    <div class="reveal zx-surface mt-5 p-5" style="border-radius:6px;border-left:2px solid #1E4A6F">
+      <div class="flex items-center justify-between mb-4"><span class="zx-serif" style="font-size:14px;font-weight:700">智能体负载</span><span class="zx-mono" style="font-size:10px;color:#6B6862">8 agents · 实时 CPU</span></div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3">
+        <div><div class="flex justify-between" style="font-size:12px"><span class="font-semibold">Coordinator</span><span class="zx-mono">64%</span></div><div class="zx-bar mt-1" style="height:4px"><span style="width:64%;background:#8B6914"></span></div></div>
+        <div><div class="flex justify-between" style="font-size:12px"><span class="font-semibold">Document</span><span class="zx-mono">81%</span></div><div class="zx-bar mt-1" style="height:4px"><span style="width:81%;background:#1E4A6F"></span></div></div>
+        <div><div class="flex justify-between" style="font-size:12px"><span class="font-semibold">Exercise</span><span class="zx-mono">55%</span></div><div class="zx-bar mt-1" style="height:4px"><span style="width:55%;background:#8B6914"></span></div></div>
+        <div><div class="flex justify-between" style="font-size:12px"><span class="font-semibold">Media</span><span class="zx-mono">73%</span></div><div class="zx-bar mt-1" style="height:4px"><span style="width:73%;background:#6B3FA0"></span></div></div>
+        <div><div class="flex justify-between" style="font-size:12px"><span class="font-semibold">Recommendation</span><span class="zx-mono">22%</span></div><div class="zx-bar mt-1" style="height:4px"><span style="width:22%;background:#A09D96"></span></div></div>
+        <div><div class="flex justify-between" style="font-size:12px"><span class="font-semibold">Project</span><span class="zx-mono">38%</span></div><div class="zx-bar mt-1" style="height:4px"><span style="width:38%;background:#2A7B7B"></span></div></div>
+        <div><div class="flex justify-between" style="font-size:12px"><span class="font-semibold">Profile</span><span class="zx-mono">60%</span></div><div class="zx-bar mt-1" style="height:4px"><span style="width:60%;background:#B8860B"></span></div></div>
+        <div><div class="flex justify-between" style="font-size:12px"><span class="font-semibold">KnowledgeGraph</span><span class="zx-mono">77%</span></div><div class="zx-bar mt-1" style="height:4px"><span style="width:77%;background:#2D7A3E"></span></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 06 · CORE FEATURES 2x2 ============ -->
+<section id="features" class="py-10 md:py-14" style="background:#F2F0EB">
+  <div class="max-w-[1320px] mx-auto px-6 md:px-8">
+    <div class="flex items-end justify-between mb-7 reveal">
+      <div>
+        <div class="zx-mono" style="font-size:30px;font-weight:700;color:#8B6914;letter-spacing:0.04em">№ 04</div>
+        <h2 class="zx-serif mt-1" style="font-size:40px;font-weight:700;line-height:1.08;letter-spacing:-0.01em">核心功能</h2>
+        <p class="mt-2" style="font-size:15px;color:#6B6862">从课程生成到错题诊疗，四模块覆盖教学全链路。</p>
+      </div>
+      <span class="label-mono hidden md:inline">4 MODULES</span>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- F1: AI 课程生成向导 -->
+      <div class="reveal zx-surface p-5" style="border-radius:6px;border-left:2px solid #8B6914">
+        <div class="flex items-center gap-2.5 mb-2"><i data-lucide="wand-sparkles" class="w-5 h-5" style="color:#8B6914"></i><span class="label-mono">MODULE 01</span></div>
+        <h3 class="zx-serif" style="font-size:20px;font-weight:700">AI 课程生成向导</h3>
+        <p class="mt-1.5" style="font-size:13px;line-height:1.55;color:#3D3B36">三阶段智能生成：参数配置 → 内容生成 → 审核优化，一键产出完整课程体系。</p>
+        <div class="flex flex-wrap gap-1.5 mt-2.5">
+          <span class="zx-mono px-2 py-0.5" style="font-size:10px;background:#FFFFFF;border:1px solid #E2DFD8;border-radius:2px">参数配置</span>
+          <span class="zx-mono px-2 py-0.5" style="font-size:10px;background:#FFFFFF;border:1px solid #E2DFD8;border-radius:2px">内容生成</span>
+          <span class="zx-mono px-2 py-0.5" style="font-size:10px;background:#FFFFFF;border:1px solid #E2DFD8;border-radius:2px">审核优化</span>
+        </div>
+        <!-- mockup: 3-step progress + resource checklist -->
+        <div class="mt-4 p-3.5" style="background:#FFFFFF;border:1px solid #E2DFD8;border-radius:5px">
+          <div class="flex items-center justify-between mb-3">
+            <span class="zx-mono" style="font-size:10px;color:#6B6862">生成进度</span>
+            <span class="zx-mono" style="font-size:10px;color:#2D7A3E">阶段 2/3</span>
+          </div>
+          <div class="flex items-center gap-2 mb-4">
+            <div class="flex items-center gap-1.5"><span class="flex items-center justify-center" style="width:20px;height:20px;background:#1A1A18;border-radius:50%"><i data-lucide="check" class="w-3 h-3" style="color:#FAFAF7"></i></span><span style="font-size:11px;font-weight:600">参数配置</span></div>
+            <span style="flex:1;height:2px;background:#1A1A18"></span>
+            <div class="flex items-center gap-1.5"><span class="flex items-center justify-center" style="width:20px;height:20px;background:#8B6914;border-radius:50%"><span style="width:6px;height:6px;background:#FAFAF7;border-radius:50%"></span></span><span style="font-size:11px;font-weight:600">内容生成</span></div>
+            <span style="flex:1;height:2px;background:#E2DFD8"></span>
+            <div class="flex items-center gap-1.5"><span class="flex items-center justify-center" style="width:20px;height:20px;background:#FAFAF7;border:1px solid #C4C1BA;border-radius:50%"><span class="zx-mono" style="font-size:10px;color:#6B6862">3</span></span><span style="font-size:11px;color:#6B6862">审核优化</span></div>
+          </div>
+          <div class="label-mono mb-2" style="font-size:9px">资源清单</div>
+          <div class="grid grid-cols-1 gap-1.5" style="font-size:12px">
+            <div class="flex items-center justify-between"><span class="flex items-center gap-2"><i data-lucide="check" class="w-3.5 h-3.5" style="color:#2D7A3E"></i>教学大纲</span><span class="zx-mono" style="font-size:10px;color:#2D7A3E">完成</span></div>
+            <div class="flex items-center justify-between"><span class="flex items-center gap-2"><i data-lucide="check" class="w-3.5 h-3.5" style="color:#2D7A3E"></i>核心内容</span><span class="zx-mono" style="font-size:10px;color:#2D7A3E">完成</span></div>
+            <div class="flex items-center justify-between"><span class="flex items-center gap-2"><i data-lucide="check" class="w-3.5 h-3.5" style="color:#2D7A3E"></i>配套习题</span><span class="zx-mono" style="font-size:10px;color:#2D7A3E">完成</span></div>
+            <div class="flex items-center justify-between"><span class="flex items-center gap-2"><span style="width:14px;height:14px;border:1.5px solid #C4C1BA;border-radius:50%"></span>课件材料</span><span class="zx-mono" style="font-size:10px;color:#B8860B">生成中 64%</span></div>
+            <div class="flex items-center justify-between"><span class="flex items-center gap-2"><span style="width:14px;height:14px;border:1.5px solid #C4C1BA;border-radius:50%"></span>实践项目</span><span class="zx-mono" style="font-size:10px;color:#6B6862">待生成</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- F2: AI 智能助教 -->
+      <div class="reveal zx-surface p-5" style="border-radius:6px;border-left:2px solid #6B3FA0">
+        <div class="flex items-center gap-2.5 mb-2"><i data-lucide="bot" class="w-5 h-5" style="color:#6B3FA0"></i><span class="label-mono">MODULE 02</span></div>
+        <h3 class="zx-serif" style="font-size:20px;font-weight:700">AI 智能助教</h3>
+        <p class="mt-1.5" style="font-size:13px;line-height:1.55;color:#3D3B36">四合一助教：答疑、讲解、引导、诊断。基于 Spark4.0 Ultra 大模型实时响应。</p>
+        <div class="flex flex-wrap gap-1.5 mt-2.5">
+          <span class="zx-mono px-2 py-0.5" style="font-size:10px;background:#FFFFFF;border:1px solid #E2DFD8;border-radius:2px">答疑</span>
+          <span class="zx-mono px-2 py-0.5" style="font-size:10px;background:#FFFFFF;border:1px solid #E2DFD8;border-radius:2px">讲解</span>
+          <span class="zx-mono px-2 py-0.5" style="font-size:10px;background:#FFFFFF;border:1px solid #E2DFD8;border-radius:2px">引导诊断</span>
+        </div>
+        <!-- mockup: chat -->
+        <div class="mt-4 p-3.5" style="background:#FFFFFF;border:1px solid #E2DFD8;border-radius:5px">
+          <div class="flex gap-1 mb-3" style="font-size:10.5px">
+            <span class="px-2 py-1" style="background:#1A1A18;color:#FAFAF7;border-radius:3px">答疑</span>
+            <span class="px-2 py-1" style="background:#FAFAF7;border:1px solid #E2DFD8;border-radius:3px">讲解</span>
+            <span class="px-2 py-1" style="background:#FAFAF7;border:1px solid #E2DFD8;border-radius:3px">引导</span>
+            <span class="px-2 py-1" style="background:#FAFAF7;border:1px solid #E2DFD8;border-radius:3px">诊断</span>
+          </div>
+          <div class="space-y-2.5">
+            <div class="flex gap-2"><span style="width:22px;height:22px;background:#1E4A6F;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#FAFAF7;font-size:10px;font-weight:700">我</span><div><div class="px-2.5 py-1.5" style="background:#F2F0EB;border-radius:3px;font-size:12px">f(x)=x²+2x-3 极值点?</div><div class="zx-mono mt-0.5" style="font-size:9px;color:#6B6862">14:21:03</div></div></div>
+            <div class="flex gap-2"><span style="width:22px;height:22px;background:#6B3FA0;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#FAFAF7;font-size:10px;font-weight:700">AI</span><div><div class="px-2.5 py-1.5" style="background:#FFFFFF;border:1px solid #E2DFD8;border-radius:3px;font-size:12px">f'(x)=2x+2，令 f'(x)=0，得 <b>x=-1</b>，极小值点。</div><div class="zx-mono mt-0.5" style="font-size:9px;color:#6B3FA0">Spark4.0 Ultra · 14:21:05</div></div></div>
+            <div class="flex gap-2"><span style="width:22px;height:22px;background:#6B3FA0;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#FAFAF7;font-size:10px;font-weight:700">AI</span><div class="px-2.5 py-1.5 inline-flex items-center gap-1" style="background:#FFFFFF;border:1px solid #E2DFD8;border-radius:3px;font-size:12px;color:#6B6862">正在输入<span class="zx-mono">···</span></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- F3: 智能错题本 -->
+      <div class="reveal zx-surface p-5" style="border-radius:6px;border-left:2px solid #B23A2E">
+        <div class="flex items-center gap-2.5 mb-2"><i data-lucide="notebook-pen" class="w-5 h-5" style="color:#B23A2E"></i><span class="label-mono">MODULE 03</span></div>
+        <h3 class="zx-serif" style="font-size:20px;font-weight:700">智能错题本</h3>
+        <p class="mt-1.5" style="font-size:13px;line-height:1.55;color:#3D3B36">AI 自动分析错因，靶向推送练习。编程题支持代码 Diff 对比，支持导出与复习出题。</p>
+        <div class="flex flex-wrap gap-1.5 mt-2.5">
+          <span class="zx-mono px-2 py-0.5" style="font-size:10px;background:#FFFFFF;border:1px solid #E2DFD8;border-radius:2px">错因归因</span>
+          <span class="zx-mono px-2 py-0.5" style="font-size:10px;background:#FFFFFF;border:1px solid #E2DFD8;border-radius:2px">Diff对比</span>
+          <span class="zx-mono px-2 py-0.5" style="font-size:10px;background:#FFFFFF;border:1px solid #E2DFD8;border-radius:2px">复习出题</span>
+        </div>
+        <!-- mockup: error pie + error list bars -->
+        <div class="mt-4 p-3.5 flex gap-3.5" style="background:#FFFFFF;border:1px solid #E2DFD8;border-radius:5px">
+          <div style="flex-shrink:0">
+            <div class="label-mono mb-1.5" style="font-size:9px">错因分布</div>
+            <svg viewBox="0 0 40 40" width="86" height="86">
+              <circle cx="20" cy="20" r="16" fill="none" stroke="#B23A2E" stroke-width="7" stroke-dasharray="30.4 100.5" stroke-dashoffset="0" transform="rotate(-90 20 20)"/>
+              <circle cx="20" cy="20" r="16" fill="none" stroke="#B8860B" stroke-width="7" stroke-dasharray="22.9 100.5" stroke-dashoffset="-30.4" transform="rotate(-90 20 20)"/>
+              <circle cx="20" cy="20" r="16" fill="none" stroke="#1E4A6F" stroke-width="7" stroke-dasharray="17.2 100.5" stroke-dashoffset="-53.3" transform="rotate(-90 20 20)"/>
+              <circle cx="20" cy="20" r="16" fill="none" stroke="#2A7B7B" stroke-width="7" stroke-dasharray="30 100.5" stroke-dashoffset="-70.5" transform="rotate(-90 20 20)"/>
+            </svg>
+          </div>
+          <div class="flex-1 space-y-2" style="min-width:0">
+            <div><div class="flex justify-between" style="font-size:11px"><span class="flex items-center gap-1.5"><span style="width:7px;height:7px;background:#B23A2E"></span>概念理解偏差</span><span class="zx-mono">30%</span></div><div class="zx-bar mt-1" style="height:4px"><span style="width:30%;background:#B23A2E"></span></div></div>
+            <div><div class="flex justify-between" style="font-size:11px"><span class="flex items-center gap-1.5"><span style="width:7px;height:7px;background:#B8860B"></span>公式记忆错误</span><span class="zx-mono">23%</span></div><div class="zx-bar mt-1" style="height:4px"><span style="width:23%;background:#B8860B"></span></div></div>
+            <div><div class="flex justify-between" style="font-size:11px"><span class="flex items-center gap-1.5"><span style="width:7px;height:7px;background:#1E4A6F"></span>审题不清</span><span class="zx-mono">17%</span></div><div class="zx-bar mt-1" style="height:4px"><span style="width:17%;background:#1E4A6F"></span></div></div>
+            <div><div class="flex justify-between" style="font-size:11px"><span class="flex items-center gap-1.5"><span style="width:7px;height:7px;background:#2A7B7B"></span>计算失误</span><span class="zx-mono">30%</span></div><div class="zx-bar mt-1" style="height:4px"><span style="width:30%;background:#2A7B7B"></span></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- F4: 学习画像构建 -->
+      <div class="reveal zx-surface p-5" style="border-radius:6px;border-left:2px solid #1E4A6F">
+        <div class="flex items-center gap-2.5 mb-2"><i data-lucide="user-search" class="w-5 h-5" style="color:#1E4A6F"></i><span class="label-mono">MODULE 04</span></div>
+        <h3 class="zx-serif" style="font-size:20px;font-weight:700">学习画像构建</h3>
+        <p class="mt-1.5" style="font-size:13px;line-height:1.55;color:#3D3B36">对话式采集多维数据，生成雷达图画像，驱动个性化学习路径推荐。</p>
+        <div class="flex flex-wrap gap-1.5 mt-2.5">
+          <span class="zx-mono px-2 py-0.5" style="font-size:10px;background:#FFFFFF;border:1px solid #E2DFD8;border-radius:2px">对话采集</span>
+          <span class="zx-mono px-2 py-0.5" style="font-size:10px;background:#FFFFFF;border:1px solid #E2DFD8;border-radius:2px">八维画像</span>
+          <span class="zx-mono px-2 py-0.5" style="font-size:10px;background:#FFFFFF;border:1px solid #E2DFD8;border-radius:2px">路径推荐</span>
+        </div>
+        <!-- mockup: radar + dimension bars -->
+        <div class="mt-4 p-3.5 flex gap-3.5 items-center" style="background:#FFFFFF;border:1px solid #E2DFD8;border-radius:5px">
+          <div style="flex-shrink:0">
+            <svg viewBox="0 0 200 200" width="120" height="120">
+              <g fill="none" stroke="#E2DFD8" stroke-width="0.8">
+                <polygon points="100,40 142.4,57.6 160,100 142.4,142.4 100,160 57.6,142.4 40,100 57.6,57.6"/>
+                <polygon points="100,60 128.3,71.7 140,100 128.3,128.3 100,140 71.7,128.3 60,100 71.7,71.7"/>
+                <polygon points="100,80 114.1,85.9 120,100 114.1,114.1 100,120 85.9,114.1 80,100 85.9,85.9"/>
+              </g>
+              <g stroke="#C4C1BA" stroke-width="0.6"><line x1="100" y1="100" x2="100" y2="40"/><line x1="100" y1="100" x2="142.4" y2="57.6"/><line x1="100" y1="100" x2="160" y2="100"/><line x1="100" y1="100" x2="142.4" y2="142.4"/><line x1="100" y1="100" x2="100" y2="160"/><line x1="100" y1="100" x2="57.6" y2="142.4"/><line x1="100" y1="100" x2="40" y2="100"/><line x1="100" y1="100" x2="57.6" y2="57.6"/></g>
+              <polygon points="100,48 134,66 150,100 138,134 100,150 66,138 52,100 70,68" fill="rgba(30,74,111,0.18)" stroke="#1E4A6F" stroke-width="1.6"/>
+              <g fill="#1E4A6F"><circle cx="100" cy="48" r="2.2"/><circle cx="134" cy="66" r="2.2"/><circle cx="150" cy="100" r="2.2"/><circle cx="138" cy="134" r="2.2"/><circle cx="100" cy="150" r="2.2"/><circle cx="66" cy="138" r="2.2"/><circle cx="52" cy="100" r="2.2"/><circle cx="70" cy="68" r="2.2"/></g>
+            </svg>
+          </div>
+          <div class="flex-1 space-y-1.5" style="min-width:0">
+            <div><div class="flex justify-between" style="font-size:11px"><span>知识基础</span><span class="zx-mono">85</span></div><div class="zx-bar mt-0.5" style="height:3px"><span style="width:85%;background:#1E4A6F"></span></div></div>
+            <div><div class="flex justify-between" style="font-size:11px"><span>认知风格</span><span class="zx-mono">62</span></div><div class="zx-bar mt-0.5" style="height:3px"><span style="width:62%;background:#6B3FA0"></span></div></div>
+            <div><div class="flex justify-between" style="font-size:11px"><span>学习节奏</span><span class="zx-mono">73</span></div><div class="zx-bar mt-0.5" style="height:3px"><span style="width:73%;background:#2A7B7B"></span></div></div>
+            <div><div class="flex justify-between" style="font-size:11px"><span>互动偏好</span><span class="zx-mono">52</span></div><div class="zx-bar mt-0.5" style="height:3px"><span style="width:52%;background:#B8860B"></span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 07 · 8-DIM STUDENT PROFILE ============ -->
+<section class="py-10 md:py-14" style="background:#FFFFFF">
+  <div class="max-w-[1320px] mx-auto px-6 md:px-8">
+    <div class="flex items-end justify-between mb-7 reveal">
+      <div>
+        <div class="zx-mono" style="font-size:30px;font-weight:700;color:#8B6914;letter-spacing:0.04em">№ 05</div>
+        <h2 class="zx-serif mt-1" style="font-size:40px;font-weight:700;line-height:1.08;letter-spacing:-0.01em">8 维学生画像</h2>
+        <p class="mt-2" style="font-size:15px;color:#6B6862">多维数据建模，刻画每个独一无二的学习者。</p>
+      </div>
+      <span class="zx-mono px-2.5 py-1" style="font-size:11px;background:#FAFAF7;border:1px solid #8B6914;color:#8B6914;border-radius:3px;letter-spacing:0.05em">超出赛题 6 维度要求</span>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6">
+      <!-- radar -->
+      <div class="reveal zx-surface p-5" style="border-radius:6px;border-left:2px solid #1E4A6F">
+        <div class="flex items-center justify-between mb-2"><span class="zx-serif" style="font-size:14px;font-weight:700">画像雷达</span><span class="zx-mono" style="font-size:10px;color:#6B6862">8 axes</span></div>
+        <div class="flex justify-center">
+          <svg viewBox="0 0 200 200" width="320" height="320">
+            <g fill="none" stroke="#E2DFD8" stroke-width="0.8">
+              <polygon points="100,20 156.57,43.43 180,100 156.57,156.57 100,180 43.43,156.57 20,100 43.43,43.43"/>
+              <polygon points="100,40 142.4,57.6 160,100 142.4,142.4 100,160 57.6,142.4 40,100 57.6,57.6"/>
+              <polygon points="100,60 128.3,71.7 140,100 128.3,128.3 100,140 71.7,128.3 60,100 71.7,71.7"/>
+              <polygon points="100,80 114.1,85.9 120,100 114.1,114.1 100,120 85.9,114.1 80,100 85.9,85.9"/>
+            </g>
+            <g stroke="#C4C1BA" stroke-width="0.6"><line x1="100" y1="100" x2="100" y2="20"/><line x1="100" y1="100" x2="156.57" y2="43.43"/><line x1="100" y1="100" x2="180" y2="100"/><line x1="100" y1="100" x2="156.57" y2="156.57"/><line x1="100" y1="100" x2="100" y2="180"/><line x1="100" y1="100" x2="43.43" y2="156.57"/><line x1="100" y1="100" x2="20" y2="100"/><line x1="100" y1="100" x2="43.43" y2="43.43"/></g>
+            <polygon points="100,32 135.1,64.9 138.4,100 141.3,141.3 100,146.4 54.7,145.3 47.2,100 70.6,70.6" fill="rgba(139,105,20,0.15)" stroke="#8B6914" stroke-width="1.8"/>
+            <g fill="#8B6914"><circle cx="100" cy="32" r="2.6"/><circle cx="135.1" cy="64.9" r="2.6"/><circle cx="138.4" cy="100" r="2.6"/><circle cx="141.3" cy="141.3" r="2.6"/><circle cx="100" cy="146.4" r="2.6"/><circle cx="54.7" cy="145.3" r="2.6"/><circle cx="47.2" cy="100" r="2.6"/><circle cx="70.6" cy="70.6" r="2.6"/></g>
+            <g font-family="JetBrains Mono, monospace" font-size="8" fill="#6B6862"><text x="100" y="14" text-anchor="middle">01</text><text x="166" y="40" text-anchor="middle">02</text><text x="188" y="103" text-anchor="middle">03</text><text x="166" y="166" text-anchor="middle">04</text><text x="100" y="194" text-anchor="middle">05</text><text x="34" y="166" text-anchor="middle">06</text><text x="12" y="103" text-anchor="middle">07</text><text x="34" y="40" text-anchor="middle">08</text></g>
+          </svg>
+        </div>
+        <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-2 zx-mono" style="font-size:10px;color:#6B6862">
+          <div class="flex justify-between"><span>均值</span><span style="color:#1A1A18;font-weight:700">65.5</span></div>
+          <div class="flex justify-between"><span>覆盖</span><span style="color:#1A1A18;font-weight:700">8/8</span></div>
+        </div>
+      </div>
+
+      <!-- data table -->
+      <div class="reveal zx-surface" style="border-radius:6px;overflow:hidden">
+        <div class="flex items-center justify-between px-4 py-2.5" style="background:#F2F0EB;border-bottom:1px solid #E2DFD8">
+          <span class="zx-serif" style="font-size:14px;font-weight:700">维度数据表</span>
+          <span class="zx-mono" style="font-size:10px;color:#6B6862">DIMENSION ANALYTICS</span>
+        </div>
+        <div class="overflow-x-auto">
+        <table class="w-full" style="font-size:12.5px;border-collapse:collapse">
+          <thead>
+            <tr style="background:#FFFFFF;border-bottom:1px solid #E2DFD8">
+              <th class="text-left px-4 py-2 label-mono">维度</th>
+              <th class="text-left px-3 py-2 label-mono">当前得分</th>
+              <th class="text-left px-3 py-2 label-mono">目标</th>
+              <th class="text-left px-3 py-2 label-mono">差距</th>
+              <th class="text-left px-3 py-2 label-mono">趋势</th>
+              <th class="text-left px-3 py-2 label-mono">状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid #E2DFD8">
+              <td class="px-4 py-2.5"><div class="font-semibold">01 知识基础</div><div style="font-size:10.5px;color:#6B6862">学科知识点掌握程度与薄弱分布</div></td>
+              <td class="px-3"><div class="flex items-center gap-2"><div class="zx-bar" style="height:5px;width:90px"><span style="width:85%;background:#2D7A3E"></span></div><span class="zx-mono" style="font-size:11px">85</span></div></td>
+              <td class="px-3 zx-mono">90</td><td class="px-3 zx-mono" style="color:#B8860B">-5</td><td class="px-3"><span style="color:#2D7A3E">▲ +6</span></td><td class="px-3"><span class="zx-mono px-1.5 py-0.5" style="font-size:10px;background:rgba(45,122,62,0.12);color:#2D7A3E;border-radius:2px">优秀</span></td>
+            </tr>
+            <tr style="border-bottom:1px solid #E2DFD8">
+              <td class="px-4 py-2.5"><div class="font-semibold">02 认知风格</div><div style="font-size:10.5px;color:#6B6862">视觉型听觉型实践型偏好</div></td>
+              <td class="px-3"><div class="flex items-center gap-2"><div class="zx-bar" style="height:5px;width:90px"><span style="width:62%;background:#8B6914"></span></div><span class="zx-mono" style="font-size:11px">62</span></div></td>
+              <td class="px-3 zx-mono">75</td><td class="px-3 zx-mono" style="color:#B23A2E">-13</td><td class="px-3"><span style="color:#2D7A3E">▲ +3</span></td><td class="px-3"><span class="zx-mono px-1.5 py-0.5" style="font-size:10px;background:rgba(184,134,11,0.14);color:#B8860B;border-radius:2px">待提升</span></td>
+            </tr>
+            <tr style="border-bottom:1px solid #E2DFD8">
+              <td class="px-4 py-2.5"><div class="font-semibold">03 易错点</div><div style="font-size:10.5px;color:#6B6862">高频错因归因与重复出错记录</div></td>
+              <td class="px-3"><div class="flex items-center gap-2"><div class="zx-bar" style="height:5px;width:90px"><span style="width:48%;background:#B23A2E"></span></div><span class="zx-mono" style="font-size:11px">48</span></div></td>
+              <td class="px-3 zx-mono">70</td><td class="px-3 zx-mono" style="color:#B23A2E">-22</td><td class="px-3"><span style="color:#2D7A3E">▲ +9</span></td><td class="px-3"><span class="zx-mono px-1.5 py-0.5" style="font-size:10px;background:rgba(178,58,46,0.12);color:#B23A2E;border-radius:2px">薄弱</span></td>
+            </tr>
+            <tr style="border-bottom:1px solid #E2DFD8">
+              <td class="px-4 py-2.5"><div class="font-semibold">04 学习节奏</div><div style="font-size:10.5px;color:#6B6862">单位时间吸收量与最佳学习时段</div></td>
+              <td class="px-3"><div class="flex items-center gap-2"><div class="zx-bar" style="height:5px;width:90px"><span style="width:73%;background:#2D7A3E"></span></div><span class="zx-mono" style="font-size:11px">73</span></div></td>
+              <td class="px-3 zx-mono">80</td><td class="px-3 zx-mono" style="color:#B8860B">-7</td><td class="px-3"><span style="color:#6B6862">— 0</span></td><td class="px-3"><span class="zx-mono px-1.5 py-0.5" style="font-size:10px;background:rgba(45,122,62,0.12);color:#2D7A3E;border-radius:2px">良好</span></td>
+            </tr>
+            <tr style="border-bottom:1px solid #E2DFD8">
+              <td class="px-4 py-2.5"><div class="font-semibold">05 兴趣领域</div><div style="font-size:10.5px;color:#6B6862">偏好的学科方向与拓展主题</div></td>
+              <td class="px-3"><div class="flex items-center gap-2"><div class="zx-bar" style="height:5px;width:90px"><span style="width:58%;background:#8B6914"></span></div><span class="zx-mono" style="font-size:11px">58</span></div></td>
+              <td class="px-3 zx-mono">70</td><td class="px-3 zx-mono" style="color:#B8860B">-12</td><td class="px-3"><span style="color:#2D7A3E">▲ +4</span></td><td class="px-3"><span class="zx-mono px-1.5 py-0.5" style="font-size:10px;background:rgba(184,134,11,0.14);color:#B8860B;border-radius:2px">待提升</span></td>
+            </tr>
+            <tr style="border-bottom:1px solid #E2DFD8">
+              <td class="px-4 py-2.5"><div class="font-semibold">06 目标导向</div><div style="font-size:10.5px;color:#6B6862">升学提分兴趣等学习目标</div></td>
+              <td class="px-3"><div class="flex items-center gap-2"><div class="zx-bar" style="height:5px;width:90px"><span style="width:80%;background:#2D7A3E"></span></div><span class="zx-mono" style="font-size:11px">80</span></div></td>
+              <td class="px-3 zx-mono">85</td><td class="px-3 zx-mono" style="color:#B8860B">-5</td><td class="px-3"><span style="color:#2D7A3E">▲ +7</span></td><td class="px-3"><span class="zx-mono px-1.5 py-0.5" style="font-size:10px;background:rgba(45,122,62,0.12);color:#2D7A3E;border-radius:2px">优秀</span></td>
+            </tr>
+            <tr style="border-bottom:1px solid #E2DFD8">
+              <td class="px-4 py-2.5"><div class="font-semibold">07 时间可用性</div><div style="font-size:10.5px;color:#6B6862">每日可投入学习时长与稳定性</div></td>
+              <td class="px-3"><div class="flex items-center gap-2"><div class="zx-bar" style="height:5px;width:90px"><span style="width:66%;background:#8B6914"></span></div><span class="zx-mono" style="font-size:11px">66</span></div></td>
+              <td class="px-3 zx-mono">75</td><td class="px-3 zx-mono" style="color:#B8860B">-9</td><td class="px-3"><span style="color:#B23A2E">▼ -2</span></td><td class="px-3"><span class="zx-mono px-1.5 py-0.5" style="font-size:10px;background:rgba(184,134,11,0.14);color:#B8860B;border-radius:2px">待提升</span></td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2.5"><div class="font-semibold">08 互动偏好</div><div style="font-size:10.5px;color:#6B6862">问答练习视频等交互倾向</div></td>
+              <td class="px-3"><div class="flex items-center gap-2"><div class="zx-bar" style="height:5px;width:90px"><span style="width:52%;background:#B8860B"></span></div><span class="zx-mono" style="font-size:11px">52</span></div></td>
+              <td class="px-3 zx-mono">70</td><td class="px-3 zx-mono" style="color:#B23A2E">-18</td><td class="px-3"><span style="color:#2D7A3E">▲ +5</span></td><td class="px-3"><span class="zx-mono px-1.5 py-0.5" style="font-size:10px;background:rgba(178,58,46,0.12);color:#B23A2E;border-radius:2px">薄弱</span></td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 08 · ENTERPRISE CAPABILITIES ============ -->
+<section id="enterprise" class="py-10 md:py-14" style="background:#F2F0EB">
+  <div class="max-w-[1320px] mx-auto px-6 md:px-8">
+    <div class="flex items-end justify-between mb-7 reveal">
+      <div>
+        <div class="zx-mono" style="font-size:30px;font-weight:700;color:#8B6914;letter-spacing:0.04em">№ 06</div>
+        <h2 class="zx-serif mt-1" style="font-size:40px;font-weight:700;line-height:1.08;letter-spacing:-0.01em">企业级能力</h2>
+        <p class="mt-2" style="font-size:15px;color:#6B6862">面向机构部署的进阶能力，支撑规模化、可持续的教学运营。</p>
+      </div>
+      <span class="label-mono hidden md:inline">6 CAPABILITIES</span>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <!-- E1 -->
+      <div class="reveal zx-surface p-5" style="border-radius:6px">
+        <div class="flex items-center gap-2.5 mb-2"><i data-lucide="bar-chart-3" class="w-5 h-5" style="color:#1A1A18"></i><h3 class="zx-serif" style="font-size:16px;font-weight:700">AI 智能分析</h3></div>
+        <p style="font-size:12.5px;line-height:1.55;color:#3D3B36">流失预测、内容趋势、教学归因、资源优化等多维洞察，支持周报/月报/季报。</p>
+        <div class="mt-3 p-3 flex items-center gap-3" style="background:#FFFFFF;border:1px solid #E2DFD8;border-radius:5px">
+          <svg viewBox="0 0 60 30" width="64" height="34"><path d="M5,28 A25,25 0 0,1 55,28" fill="none" stroke="#E2DFD8" stroke-width="4"/><path d="M5,28 A25,25 0 0,1 40,8" fill="none" stroke="#2D7A3E" stroke-width="4"/></svg>
+          <div><div class="label-mono" style="font-size:9px">洞察覆盖</div><div class="zx-serif" style="font-size:22px;font-weight:700;color:#2D7A3E">76%</div></div>
+        </div>
+      </div>
+      <!-- E2 -->
+      <div class="reveal zx-surface p-5" style="border-radius:6px">
+        <div class="flex items-center gap-2.5 mb-2"><i data-lucide="shield" class="w-5 h-5" style="color:#1A1A18"></i><h3 class="zx-serif" style="font-size:16px;font-weight:700">AI 内容审核</h3></div>
+        <p style="font-size:12.5px;line-height:1.55;color:#3D3B36">质量评分、版本对比、审核机制、操作日志，确保内容质量与安全。</p>
+        <div class="mt-3 p-3" style="background:#FFFFFF;border:1px solid #E2DFD8;border-radius:5px">
+          <div class="flex justify-between" style="font-size:11px"><span class="label-mono" style="font-size:9px">质量评分</span><span class="zx-mono">92 / 100</span></div>
+          <div class="zx-bar mt-1.5" style="height:5px"><span style="width:92%;background:#2D7A3E"></span></div>
+          <div class="grid grid-cols-3 gap-1.5 mt-2 zx-mono" style="font-size:9px;color:#6B6862"><span>版本对比</span><span>审核机制</span><span>操作日志</span></div>
+        </div>
+      </div>
+      <!-- E3 -->
+      <div class="reveal zx-surface p-5" style="border-radius:6px">
+        <div class="flex items-center gap-2.5 mb-2"><i data-lucide="users" class="w-5 h-5" style="color:#1A1A18"></i><h3 class="zx-serif" style="font-size:16px;font-weight:700">实时课堂互动</h3></div>
+        <p style="font-size:12.5px;line-height:1.55;color:#3D3B36">WebSocket 举手提问、问答讨论，教师端与学生端实时双向通信。</p>
+        <div class="mt-3 p-3" style="background:#FFFFFF;border:1px solid #E2DFD8;border-radius:5px">
+          <svg viewBox="0 0 120 44" width="100%" height="44">
+            <line x1="60" y1="10" x2="20" y2="34" stroke="#C4C1BA" stroke-width="1"/><line x1="60" y1="10" x2="60" y2="34" stroke="#C4C1BA" stroke-width="1"/><line x1="60" y1="10" x2="100" y2="34" stroke="#C4C1BA" stroke-width="1"/>
+            <circle cx="60" cy="10" r="5" fill="#1A1A18"/><circle cx="20" cy="34" r="4" fill="#8B6914"/><circle cx="60" cy="34" r="4" fill="#1E4A6F"/><circle cx="100" cy="34" r="4" fill="#6B3FA0"/>
+            <text x="60" y="6" font-family="JetBrains Mono" font-size="6" fill="#6B6862" text-anchor="middle">教师</text>
+          </svg>
+          <div class="zx-mono mt-1" style="font-size:9px;color:#2D7A3E">● 双向通信 · 延迟 < 80ms</div>
+        </div>
+      </div>
+      <!-- E4 -->
+      <div class="reveal zx-surface p-5" style="border-radius:6px">
+        <div class="flex items-center gap-2.5 mb-2"><i data-lucide="clock" class="w-5 h-5" style="color:#1A1A18"></i><h3 class="zx-serif" style="font-size:16px;font-weight:700">视频笔记联动</h3></div>
+        <p style="font-size:12.5px;line-height:1.55;color:#3D3B36">视频播放器与笔记系统深度联动，时间轴标记笔记点，点击即跳转。</p>
+        <div class="mt-3 p-3" style="background:#FFFFFF;border:1px solid #E2DFD8;border-radius:5px">
+          <div style="position:relative;height:26px;background:#1A1A18;border-radius:3px">
+            <div style="position:absolute;left:0;top:0;bottom:0;width:62%;background:rgba(139,105,20,0.55);border-radius:3px"></div>
+            <span style="position:absolute;left:12%;top:50%;transform:translateY(-50%);width:5px;height:5px;background:#8B6914;border-radius:50%"></span>
+            <span style="position:absolute;left:34%;top:50%;transform:translateY(-50%);width:5px;height:5px;background:#6B3FA0;border-radius:50%"></span>
+            <span style="position:absolute;left:54%;top:50%;transform:translateY(-50%);width:5px;height:5px;background:#2A7B7B;border-radius:50%"></span>
+          </div>
+          <div class="flex justify-between zx-mono mt-1.5" style="font-size:9px;color:#6B6862"><span>00:00</span><span>笔记点 ×3</span><span>12:48</span></div>
+        </div>
+      </div>
+      <!-- E5 -->
+      <div class="reveal zx-surface p-5" style="border-radius:6px">
+        <div class="flex items-center gap-2.5 mb-2"><i data-lucide="book-open" class="w-5 h-5" style="color:#1A1A18"></i><h3 class="zx-serif" style="font-size:16px;font-weight:700">个性化学习路径</h3></div>
+        <p style="font-size:12.5px;line-height:1.55;color:#3D3B36">AI 驱动学习规划，按优先级/类型/状态过滤，推荐资源与图谱节点。</p>
+        <div class="mt-3 p-3" style="background:#FFFFFF;border:1px solid #E2DFD8;border-radius:5px">
+          <svg viewBox="0 0 160 40" width="100%" height="40">
+            <line x1="20" y1="20" x2="60" y2="20" stroke="#8B6914" stroke-width="1.2"/><line x1="80" y1="20" x2="120" y2="20" stroke="#8B6914" stroke-width="1.2"/>
+            <rect x="2" y="11" width="18" height="18" fill="#1A1A18" rx="2"/><rect x="62" y="11" width="18" height="18" fill="#8B6914" rx="2"/><rect x="122" y="11" width="18" height="18" fill="#2D7A3E" rx="2"/>
+            <text x="11" y="34" font-family="JetBrains Mono" font-size="7" fill="#6B6862" text-anchor="middle">起点</text><text x="71" y="34" font-family="JetBrains Mono" font-size="7" fill="#6B6862" text-anchor="middle">练习</text><text x="131" y="34" font-family="JetBrains Mono" font-size="7" fill="#6B6862" text-anchor="middle">掌握</text>
+          </svg>
+          <div class="flex gap-1 mt-1 zx-mono" style="font-size:9px;color:#6B6862"><span class="px-1.5 py-0.5" style="background:#FAFAF7;border:1px solid #E2DFD8;border-radius:2px">优先级</span><span class="px-1.5 py-0.5" style="background:#FAFAF7;border:1px solid #E2DFD8;border-radius:2px">类型</span><span class="px-1.5 py-0.5" style="background:#FAFAF7;border:1px solid #E2DFD8;border-radius:2px">状态</span></div>
+        </div>
+      </div>
+      <!-- E6 -->
+      <div class="reveal zx-surface p-5" style="border-radius:6px">
+        <div class="flex items-center gap-2.5 mb-2"><i data-lucide="award" class="w-5 h-5" style="color:#1A1A18"></i><h3 class="zx-serif" style="font-size:16px;font-weight:700">学习成就系统</h3></div>
+        <p style="font-size:12.5px;line-height:1.55;color:#3D3B36">多类别多等级成就徽章，学习时长/练习/正确率/错题攻克全面追踪。</p>
+        <div class="mt-3 p-3 flex items-center gap-3" style="background:#FFFFFF;border:1px solid #E2DFD8;border-radius:5px">
+          <div class="flex gap-1.5">
+            <span class="flex items-center justify-center" style="width:26px;height:26px;background:#8B6914;border-radius:50%"><i data-lucide="medal" class="w-3.5 h-3.5" style="color:#FAFAF7"></i></span>
+            <span class="flex items-center justify-center" style="width:26px;height:26px;background:#6B3FA0;border-radius:50%"><i data-lucide="flame" class="w-3.5 h-3.5" style="color:#FAFAF7"></i></span>
+            <span class="flex items-center justify-center" style="width:26px;height:26px;background:#2A7B7B;border-radius:50%"><i data-lucide="trophy" class="w-3.5 h-3.5" style="color:#FAFAF7"></i></span>
+            <span class="flex items-center justify-center" style="width:26px;height:26px;background:#1E4A6F;border-radius:50%"><i data-lucide="star" class="w-3.5 h-3.5" style="color:#FAFAF7"></i></span>
+          </div>
+          <div><div class="label-mono" style="font-size:9px">已解锁</div><div class="zx-serif" style="font-size:20px;font-weight:700">24<span style="font-size:12px;color:#6B6862">/30</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 09 · DATA DASHBOARD (NEW) ============ -->
+<section id="dashboard" class="py-10 md:py-14" style="background:#FAFAF7;border-top:1px solid #E2DFD8;border-bottom:1px solid #E2DFD8">
+  <div class="max-w-[1320px] mx-auto px-6 md:px-8">
+    <div class="flex items-end justify-between mb-7 reveal">
+      <div>
+        <div class="zx-mono" style="font-size:30px;font-weight:700;color:#8B6914;letter-spacing:0.04em">№ 07</div>
+        <h2 class="zx-serif mt-1" style="font-size:40px;font-weight:700;line-height:1.08;letter-spacing:-0.01em">数据看板</h2>
+        <p class="mt-2" style="font-size:15px;color:#6B6862">实时追踪学习数据，可视化教学全景。</p>
+      </div>
+      <span class="label-mono hidden md:inline">LIVE ANALYTICS</span>
+    </div>
+
+    <!-- KPI row -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+      <div class="reveal zx-surface px-4 py-3.5" style="border-left:2px solid #1E4A6F;border-radius:5px">
+        <div class="label-mono">活跃学生</div>
+        <div class="flex items-end justify-between mt-1"><span class="zx-serif countup" data-target="1247" style="font-size:30px;font-weight:700">1,247</span>
+        <svg viewBox="0 0 60 20" width="54" height="18"><polyline points="0,16 10,14 20,15 30,10 40,11 50,7 60,5" fill="none" stroke="#1E4A6F" stroke-width="1.5"/></svg></div>
+        <div class="zx-mono mt-1" style="font-size:10px;color:#2D7A3E">↗ +6.2% DoD</div>
+      </div>
+      <div class="reveal zx-surface px-4 py-3.5" style="border-left:2px solid #8B6914;border-radius:5px">
+        <div class="label-mono">今日练习</div>
+        <div class="flex items-end justify-between mt-1"><span class="zx-serif countup" data-target="3892" style="font-size:30px;font-weight:700">3,892</span>
+        <svg viewBox="0 0 60 20" width="54" height="18"><polyline points="0,15 10,13 20,12 30,9 40,10 50,6 60,4" fill="none" stroke="#8B6914" stroke-width="1.5"/></svg></div>
+        <div class="zx-mono mt-1" style="font-size:10px;color:#2D7A3E">↗ +11.4% DoD</div>
+      </div>
+      <div class="reveal zx-surface px-4 py-3.5" style="border-left:2px solid #2D7A3E;border-radius:5px">
+        <div class="label-mono">平均正确率</div>
+        <div class="flex items-end justify-between mt-1"><span class="zx-serif countup" data-target="76.8" data-decimals="1" data-suffix="%" style="font-size:30px;font-weight:700">76.8%</span>
+        <svg viewBox="0 0 60 20" width="54" height="18"><polyline points="0,14 10,12 20,13 30,11 40,9 50,8 60,7" fill="none" stroke="#2D7A3E" stroke-width="1.5"/></svg></div>
+        <div class="zx-mono mt-1" style="font-size:10px;color:#2D7A3E">↗ +2.1pp</div>
+      </div>
+      <div class="reveal zx-surface px-4 py-3.5" style="border-left:2px solid #6B3FA0;border-radius:5px">
+        <div class="label-mono">本周提升</div>
+        <div class="flex items-end justify-between mt-1"><span class="zx-serif countup" data-target="12.4" data-decimals="1" data-suffix="%" style="font-size:30px;font-weight:700">+12.4%</span>
+        <svg viewBox="0 0 60 20" width="54" height="18"><polyline points="0,17 10,15 20,13 30,12 40,9 50,6 60,3" fill="none" stroke="#6B3FA0" stroke-width="1.5"/></svg></div>
+        <div class="zx-mono mt-1" style="font-size:10px;color:#2D7A3E">↗ +12.4% WoW</div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-4">
+      <!-- area chart -->
+      <div class="reveal zx-surface p-5" style="border-radius:6px">
+        <div class="flex items-center justify-between mb-3"><span class="zx-serif" style="font-size:14px;font-weight:700">7 日掌握度趋势</span><div class="flex items-center gap-2 zx-mono" style="font-size:10px"><span class="flex items-center gap-1"><span style="width:8px;height:2px;background:#8B6914"></span>掌握度</span><span class="flex items-center gap-1"><span style="width:8px;height:2px;background:#C4C1BA"></span>基线</span></div></div>
+        <svg viewBox="0 0 400 150" width="100%" height="180" preserveAspectRatio="none">
+          <g stroke="#E2DFD8" stroke-width="0.5"><line x1="0" y1="30" x2="400" y2="30"/><line x1="0" y1="60" x2="400" y2="60"/><line x1="0" y1="90" x2="400" y2="90"/><line x1="0" y1="120" x2="400" y2="120"/></g>
+          <polyline points="0,110 57,108 114,100 171,95 228,82 285,70 342,55 400,42" fill="none" stroke="#C4C1BA" stroke-width="1" stroke-dasharray="3 3"/>
+          <path d="M0,110 L57,100 L114,105 L171,80 L228,88 L285,55 L342,62 L400,40 L400,150 L0,150 Z" fill="rgba(139,105,20,0.12)"/>
+          <polyline points="0,110 57,100 114,105 171,80 228,88 285,55 342,62 400,40" fill="none" stroke="#8B6914" stroke-width="2"/>
+          <g fill="#8B6914"><circle cx="0" cy="110" r="2.5"/><circle cx="57" cy="100" r="2.5"/><circle cx="114" cy="105" r="2.5"/><circle cx="171" cy="80" r="2.5"/><circle cx="228" cy="88" r="2.5"/><circle cx="285" cy="55" r="2.5"/><circle cx="342" cy="62" r="2.5"/><circle cx="400" cy="40" r="2.5"/></g>
+        </svg>
+        <div class="flex justify-between zx-mono mt-1" style="font-size:10px;color:#6B6862"><span>周一</span><span>周二</span><span>周三</span><span>周四</span><span>周五</span><span>周六</span><span>周日</span><span>次周一</span></div>
+      </div>
+
+      <!-- student progress donut -->
+      <div class="reveal zx-surface p-5" style="border-radius:6px">
+        <div class="flex items-center justify-between mb-3"><span class="zx-serif" style="font-size:14px;font-weight:700">学生进度分布</span><span class="zx-mono" style="font-size:10px;color:#6B6862">N=1247</span></div>
+        <div class="flex items-center gap-4">
+          <div class="relative" style="width:120px;height:120px;flex-shrink:0">
+            <svg viewBox="0 0 40 40" width="120" height="120">
+              <circle cx="20" cy="20" r="16" fill="none" stroke="#E2DFD8" stroke-width="6"/>
+              <circle cx="20" cy="20" r="16" fill="none" stroke="#2D7A3E" stroke-width="6" stroke-dasharray="42.2 100.5" stroke-dashoffset="0" transform="rotate(-90 20 20)"/>
+              <circle cx="20" cy="20" r="16" fill="none" stroke="#8B6914" stroke-width="6" stroke-dasharray="35.2 100.5" stroke-dashoffset="-42.2" transform="rotate(-90 20 20)"/>
+              <circle cx="20" cy="20" r="16" fill="none" stroke="#B23A2E" stroke-width="6" stroke-dasharray="23.1 100.5" stroke-dashoffset="-77.4" transform="rotate(-90 20 20)"/>
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center"><span class="zx-serif" style="font-size:20px;font-weight:700">1247</span><span class="zx-mono" style="font-size:9px;color:#6B6862">学生</span></div>
+          </div>
+          <div class="flex-1 space-y-2" style="min-width:0">
+            <div class="flex items-center justify-between" style="font-size:12px"><span class="flex items-center gap-1.5"><span style="width:8px;height:8px;background:#2D7A3E"></span>已掌握</span><span class="zx-mono font-semibold">42%</span></div>
+            <div class="zx-bar" style="height:3px"><span style="width:42%;background:#2D7A3E"></span></div>
+            <div class="flex items-center justify-between" style="font-size:12px"><span class="flex items-center gap-1.5"><span style="width:8px;height:8px;background:#8B6914"></span>巩固中</span><span class="zx-mono font-semibold">35%</span></div>
+            <div class="zx-bar" style="height:3px"><span style="width:35%;background:#8B6914"></span></div>
+            <div class="flex items-center justify-between" style="font-size:12px"><span class="flex items-center gap-1.5"><span style="width:8px;height:8px;background:#B23A2E"></span>待提升</span><span class="zx-mono font-semibold">23%</span></div>
+            <div class="zx-bar" style="height:3px"><span style="width:23%;background:#B23A2E"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+      <!-- heatmap -->
+      <div class="reveal zx-surface p-5" style="border-radius:6px">
+        <div class="flex items-center justify-between mb-3"><span class="zx-serif" style="font-size:14px;font-weight:700">学习活跃热力图</span><span class="zx-mono" style="font-size:10px;color:#6B6862">7 日 × 5 时段</span></div>
+        <div style="display:grid;grid-template-columns:40px repeat(7,1fr);gap:5px">
+          <span></span><span class="zx-mono text-center" style="font-size:9px;color:#6B6862">一</span><span class="zx-mono text-center" style="font-size:9px;color:#6B6862">二</span><span class="zx-mono text-center" style="font-size:9px;color:#6B6862">三</span><span class="zx-mono text-center" style="font-size:9px;color:#6B6862">四</span><span class="zx-mono text-center" style="font-size:9px;color:#6B6862">五</span><span class="zx-mono text-center" style="font-size:9px;color:#6B6862">六</span><span class="zx-mono text-center" style="font-size:9px;color:#6B6862">日</span>
+          <span class="zx-mono" style="font-size:9px;color:#6B6862;align-self:center">早</span>
+          <div style="aspect-ratio:1;background:rgba(139,105,20,0.25);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.35);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.2);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.4);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.3);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.12);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.1);border-radius:2px"></div>
+          <span class="zx-mono" style="font-size:9px;color:#6B6862;align-self:center">上</span>
+          <div style="aspect-ratio:1;background:rgba(139,105,20,0.6);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.75);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.55);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.8);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.7);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.4);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.35);border-radius:2px"></div>
+          <span class="zx-mono" style="font-size:9px;color:#6B6862;align-self:center">午</span>
+          <div style="aspect-ratio:1;background:rgba(139,105,20,0.45);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.5);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.4);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.55);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.45);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.25);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.2);border-radius:2px"></div>
+          <span class="zx-mono" style="font-size:9px;color:#6B6862;align-self:center">下</span>
+          <div style="aspect-ratio:1;background:rgba(139,105,20,0.85);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.9);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.8);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.85);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.9);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.6);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.5);border-radius:2px"></div>
+          <span class="zx-mono" style="font-size:9px;color:#6B6862;align-self:center">晚</span>
+          <div style="aspect-ratio:1;background:rgba(139,105,20,0.95);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.9);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.95);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.9);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.85);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.7);border-radius:2px"></div><div style="aspect-ratio:1;background:rgba(139,105,20,0.65);border-radius:2px"></div>
+        </div>
+        <div class="flex items-center justify-end gap-1.5 mt-2 zx-mono" style="font-size:9px;color:#6B6862">少<span style="width:10px;height:10px;background:rgba(139,105,20,0.15);border-radius:2px"></span><span style="width:10px;height:10px;background:rgba(139,105,20,0.45);border-radius:2px"></span><span style="width:10px;height:10px;background:rgba(139,105,20,0.75);border-radius:2px"></span><span style="width:10px;height:10px;background:rgba(139,105,20,0.95);border-radius:2px"></span>多</div>
+      </div>
+
+      <!-- top-5 error types -->
+      <div class="reveal zx-surface p-5" style="border-radius:6px">
+        <div class="flex items-center justify-between mb-3"><span class="zx-serif" style="font-size:14px;font-weight:700">Top 5 错误类型</span><span class="zx-mono" style="font-size:10px;color:#6B6862">本周</span></div>
+        <div class="space-y-2.5">
+          <div><div class="flex justify-between" style="font-size:12px"><span class="flex items-center gap-2"><span class="zx-mono" style="color:#6B6862;width:14px">01</span>概念理解</span><span class="zx-mono font-semibold">32%</span></div><div class="zx-bar mt-1" style="height:5px"><span style="width:32%;background:#B23A2E"></span></div></div>
+          <div><div class="flex justify-between" style="font-size:12px"><span class="flex items-center gap-2"><span class="zx-mono" style="color:#6B6862;width:14px">02</span>计算失误</span><span class="zx-mono font-semibold">24%</span></div><div class="zx-bar mt-1" style="height:5px"><span style="width:24%;background:#B8860B"></span></div></div>
+          <div><div class="flex justify-between" style="font-size:12px"><span class="flex items-center gap-2"><span class="zx-mono" style="color:#6B6862;width:14px">03</span>公式记忆</span><span class="zx-mono font-semibold">18%</span></div><div class="zx-bar mt-1" style="height:5px"><span style="width:18%;background:#1E4A6F"></span></div></div>
+          <div><div class="flex justify-between" style="font-size:12px"><span class="flex items-center gap-2"><span class="zx-mono" style="color:#6B6862;width:14px">04</span>审题不清</span><span class="zx-mono font-semibold">15%</span></div><div class="zx-bar mt-1" style="height:5px"><span style="width:15%;background:#6B3FA0"></span></div></div>
+          <div><div class="flex justify-between" style="font-size:12px"><span class="flex items-center gap-2"><span class="zx-mono" style="color:#6B6862;width:14px">05</span>逻辑错误</span><span class="zx-mono font-semibold">11%</span></div><div class="zx-bar mt-1" style="height:5px"><span style="width:11%;background:#2A7B7B"></span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+      <!-- subject mastery distribution -->
+      <div class="reveal zx-surface p-5" style="border-radius:6px;border-left:2px solid #6B3FA0">
+        <div class="flex items-center justify-between mb-3"><span class="zx-serif" style="font-size:14px;font-weight:700">学科掌握度分布</span><span class="zx-mono" style="font-size:10px;color:#6B6862">7 学科 · 全校均值</span></div>
+        <div class="space-y-2">
+          <div><div class="flex justify-between" style="font-size:12px"><span class="flex items-center gap-2"><span class="zx-mono" style="color:#6B6862;width:28px">数学</span>函数与导数</span><span class="zx-mono font-semibold">88</span></div><div class="zx-bar mt-1" style="height:5px"><span style="width:88%;background:#2D7A3E"></span></div></div>
+          <div><div class="flex justify-between" style="font-size:12px"><span class="flex items-center gap-2"><span class="zx-mono" style="color:#6B6862;width:28px">生物</span>遗传与进化</span><span class="zx-mono font-semibold">81</span></div><div class="zx-bar mt-1" style="height:5px"><span style="width:81%;background:#2D7A3E"></span></div></div>
+          <div><div class="flex justify-between" style="font-size:12px"><span class="flex items-center gap-2"><span class="zx-mono" style="color:#6B6862;width:28px">物理</span>力学与电磁</span><span class="zx-mono font-semibold">76</span></div><div class="zx-bar mt-1" style="height:5px"><span style="width:76%;background:#8B6914"></span></div></div>
+          <div><div class="flex justify-between" style="font-size:12px"><span class="flex items-center gap-2"><span class="zx-mono" style="color:#6B6862;width:28px">化学</span>反应原理</span><span class="zx-mono font-semibold">72</span></div><div class="zx-bar mt-1" style="height:5px"><span style="width:72%;background:#8B6914"></span></div></div>
+          <div><div class="flex justify-between" style="font-size:12px"><span class="flex items-center gap-2"><span class="zx-mono" style="color:#6B6862;width:28px">语文</span>阅读与写作</span><span class="zx-mono font-semibold">69</span></div><div class="zx-bar mt-1" style="height:5px"><span style="width:69%;background:#B8860B"></span></div></div>
+          <div><div class="flex justify-between" style="font-size:12px"><span class="flex items-center gap-2"><span class="zx-mono" style="color:#6B6862;width:28px">英语</span>听说读写</span><span class="zx-mono font-semibold">64</span></div><div class="zx-bar mt-1" style="height:5px"><span style="width:64%;background:#B8860B"></span></div></div>
+          <div><div class="flex justify-between" style="font-size:12px"><span class="flex items-center gap-2"><span class="zx-mono" style="color:#6B6862;width:28px">历史</span>中外通史</span><span class="zx-mono font-semibold">58</span></div><div class="zx-bar mt-1" style="height:5px"><span style="width:58%;background:#B23A2E"></span></div></div>
+        </div>
+      </div>
+
+      <!-- weekly comparison -->
+      <div class="reveal zx-surface p-5" style="border-radius:6px;border-left:2px solid #1E4A6F">
+        <div class="flex items-center justify-between mb-3"><span class="zx-serif" style="font-size:14px;font-weight:700">周环比练习量对比</span><div class="flex items-center gap-2 zx-mono" style="font-size:10px"><span class="flex items-center gap-1"><span style="width:8px;height:8px;background:#C4C1BA"></span>上周</span><span class="flex items-center gap-1"><span style="width:8px;height:8px;background:#1E4A6F"></span>本周</span></div></div>
+        <div class="space-y-1.5">
+          <div class="flex items-center gap-2"><span class="zx-mono" style="font-size:10px;color:#6B6862;width:22px">周一</span><div class="flex-1 space-y-0.5"><div class="zx-bar" style="height:4px"><span style="width:62%;background:#C4C1BA"></span></div><div class="zx-bar" style="height:4px"><span style="width:79%;background:#1E4A6F"></span></div></div><span class="zx-mono" style="font-size:10px;width:46px;text-align:right">410</span></div>
+          <div class="flex items-center gap-2"><span class="zx-mono" style="font-size:10px;color:#6B6862;width:22px">周二</span><div class="flex-1 space-y-0.5"><div class="zx-bar" style="height:4px"><span style="width:73%;background:#C4C1BA"></span></div><div class="zx-bar" style="height:4px"><span style="width:81%;background:#1E4A6F"></span></div></div><span class="zx-mono" style="font-size:10px;width:46px;text-align:right">420</span></div>
+          <div class="flex items-center gap-2"><span class="zx-mono" style="font-size:10px;color:#6B6862;width:22px">周三</span><div class="flex-1 space-y-0.5"><div class="zx-bar" style="height:4px"><span style="width:67%;background:#C4C1BA"></span></div><div class="zx-bar" style="height:4px"><span style="width:75%;background:#1E4A6F"></span></div></div><span class="zx-mono" style="font-size:10px;width:46px;text-align:right">390</span></div>
+          <div class="flex items-center gap-2"><span class="zx-mono" style="font-size:10px;color:#6B6862;width:22px">周四</span><div class="flex-1 space-y-0.5"><div class="zx-bar" style="height:4px"><span style="width:79%;background:#C4C1BA"></span></div><div class="zx-bar" style="height:4px"><span style="width:92%;background:#1E4A6F"></span></div></div><span class="zx-mono" style="font-size:10px;width:46px;text-align:right">480</span></div>
+          <div class="flex items-center gap-2"><span class="zx-mono" style="font-size:10px;color:#6B6862;width:22px">周五</span><div class="flex-1 space-y-0.5"><div class="zx-bar" style="height:4px"><span style="width:87%;background:#C4C1BA"></span></div><div class="zx-bar" style="height:4px"><span style="width:100%;background:#1E4A6F"></span></div></div><span class="zx-mono" style="font-size:10px;width:46px;text-align:right">520</span></div>
+          <div class="flex items-center gap-2"><span class="zx-mono" style="font-size:10px;color:#6B6862;width:22px">周六</span><div class="flex-1 space-y-0.5"><div class="zx-bar" style="height:4px"><span style="width:54%;background:#C4C1BA"></span></div><div class="zx-bar" style="height:4px"><span style="width:65%;background:#1E4A6F"></span></div></div><span class="zx-mono" style="font-size:10px;width:46px;text-align:right">340</span></div>
+          <div class="flex items-center gap-2"><span class="zx-mono" style="font-size:10px;color:#6B6862;width:22px">周日</span><div class="flex-1 space-y-0.5"><div class="zx-bar" style="height:4px"><span style="width:42%;background:#C4C1BA"></span></div><div class="zx-bar" style="height:4px"><span style="width:56%;background:#1E4A6F"></span></div></div><span class="zx-mono" style="font-size:10px;width:46px;text-align:right">290</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 10 · THREE ROLES ============ -->
+<section class="py-10 md:py-14" style="background:#FFFFFF">
+  <div class="max-w-[1320px] mx-auto px-6 md:px-8">
+    <div class="flex items-end justify-between mb-7 reveal">
+      <div>
+        <div class="zx-mono" style="font-size:30px;font-weight:700;color:#8B6914;letter-spacing:0.04em">№ 08</div>
+        <h2 class="zx-serif mt-1" style="font-size:40px;font-weight:700;line-height:1.08;letter-spacing:-0.01em">三端协同</h2>
+        <p class="mt-2" style="font-size:15px;color:#6B6862">教师、学生、管理三端联动，覆盖教与学全流程。</p>
+      </div>
+      <span class="label-mono hidden md:inline">3 ROLES</span>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <!-- 教师 -->
+      <div class="reveal zx-surface p-5" style="border-radius:6px;border-top:3px solid #8B6914">
+        <div class="flex items-center gap-3 mb-3"><span class="flex items-center justify-center" style="width:36px;height:36px;background:#FAFAF7;border:1px solid #E2DFD8;border-radius:6px"><i data-lucide="graduation-cap" class="w-5 h-5" style="color:#8B6914"></i></span><h3 class="zx-serif" style="font-size:18px;font-weight:700">教师端</h3></div>
+        <ul class="space-y-1.5" style="font-size:12.5px;color:#3D3B36">
+          <li class="flex items-center gap-2"><i data-lucide="dot" class="w-3 h-3" style="color:#8B6914"></i>AI 课程生成</li>
+          <li class="flex items-center gap-2"><i data-lucide="dot" class="w-3 h-3" style="color:#8B6914"></i>智能错题诊疗</li>
+          <li class="flex items-center gap-2"><i data-lucide="dot" class="w-3 h-3" style="color:#8B6914"></i>课堂互动</li>
+          <li class="flex items-center gap-2"><i data-lucide="dot" class="w-3 h-3" style="color:#8B6914"></i>学情分析</li>
+        </ul>
+        <div class="mt-4 pt-4" style="border-top:1px solid #E2DFD8">
+          <div class="label-mono mb-2.5">工作流</div>
+          <svg viewBox="0 0 240 56" width="100%" height="56">
+            <line x1="50" y1="20" x2="86" y2="20" stroke="#8B6914" stroke-width="1.2" marker-end="url(#ar1)"/>
+            <line x1="110" y1="20" x2="146" y2="20" stroke="#8B6914" stroke-width="1.2"/>
+            <line x1="170" y1="20" x2="206" y2="20" stroke="#8B6914" stroke-width="1.2"/>
+            <defs><marker id="ar1" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6" fill="#8B6914"/></marker></defs>
+            <rect x="6" y="10" width="44" height="20" fill="#1A1A18" rx="3"/><text x="28" y="23" font-family="Inter,sans-serif" font-size="9" fill="#FAFAF7" text-anchor="middle">课程生成</text>
+            <rect x="86" y="10" width="44" height="20" fill="#8B6914" rx="3"/><text x="108" y="23" font-family="Inter,sans-serif" font-size="9" fill="#FAFAF7" text-anchor="middle">错题诊疗</text>
+            <rect x="146" y="10" width="44" height="20" fill="#FAFAF7" stroke="#C4C1BA" rx="3"/><text x="168" y="23" font-family="Inter,sans-serif" font-size="9" fill="#3D3B36" text-anchor="middle">课堂互动</text>
+            <rect x="206" y="10" width="32" height="20" fill="#FAFAF7" stroke="#C4C1BA" rx="3"/><text x="222" y="23" font-family="Inter,sans-serif" font-size="9" fill="#3D3B36" text-anchor="middle">学情</text>
+          </svg>
+        </div>
+      </div>
+      <!-- 学生 -->
+      <div class="reveal zx-surface p-5" style="border-radius:6px;border-top:3px solid #6B3FA0">
+        <div class="flex items-center gap-3 mb-3"><span class="flex items-center justify-center" style="width:36px;height:36px;background:#FAFAF7;border:1px solid #E2DFD8;border-radius:6px"><i data-lucide="book-open" class="w-5 h-5" style="color:#6B3FA0"></i></span><h3 class="zx-serif" style="font-size:18px;font-weight:700">学生端</h3></div>
+        <ul class="space-y-1.5" style="font-size:12.5px;color:#3D3B36">
+          <li class="flex items-center gap-2"><i data-lucide="dot" class="w-3 h-3" style="color:#6B3FA0"></i>个性化学习路径</li>
+          <li class="flex items-center gap-2"><i data-lucide="dot" class="w-3 h-3" style="color:#6B3FA0"></i>AI助教答疑</li>
+          <li class="flex items-center gap-2"><i data-lucide="dot" class="w-3 h-3" style="color:#6B3FA0"></i>错题本</li>
+          <li class="flex items-center gap-2"><i data-lucide="dot" class="w-3 h-3" style="color:#6B3FA0"></i>学习成就</li>
+        </ul>
+        <div class="mt-4 pt-4" style="border-top:1px solid #E2DFD8">
+          <div class="label-mono mb-2.5">工作流</div>
+          <svg viewBox="0 0 240 56" width="100%" height="56">
+            <defs><marker id="ar2" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6" fill="#6B3FA0"/></marker></defs>
+            <line x1="50" y1="20" x2="86" y2="20" stroke="#6B3FA0" stroke-width="1.2" marker-end="url(#ar2)"/>
+            <line x1="110" y1="20" x2="146" y2="20" stroke="#6B3FA0" stroke-width="1.2" marker-end="url(#ar2)"/>
+            <line x1="170" y1="20" x2="206" y2="20" stroke="#6B3FA0" stroke-width="1.2" marker-end="url(#ar2)"/>
+            <rect x="6" y="10" width="44" height="20" fill="#6B3FA0" rx="3"/><text x="28" y="23" font-family="Inter,sans-serif" font-size="9" fill="#FAFAF7" text-anchor="middle">学习路径</text>
+            <rect x="86" y="10" width="44" height="20" fill="#1A1A18" rx="3"/><text x="108" y="23" font-family="Inter,sans-serif" font-size="9" fill="#FAFAF7" text-anchor="middle">AI答疑</text>
+            <rect x="146" y="10" width="44" height="20" fill="#FAFAF7" stroke="#C4C1BA" rx="3"/><text x="168" y="23" font-family="Inter,sans-serif" font-size="9" fill="#3D3B36" text-anchor="middle">错题练习</text>
+            <rect x="206" y="10" width="32" height="20" fill="#FAFAF7" stroke="#C4C1BA" rx="3"/><text x="222" y="23" font-family="Inter,sans-serif" font-size="9" fill="#3D3B36" text-anchor="middle">成就</text>
+          </svg>
+        </div>
+      </div>
+      <!-- 管理 -->
+      <div class="reveal zx-surface p-5" style="border-radius:6px;border-top:3px solid #1E4A6F">
+        <div class="flex items-center gap-3 mb-3"><span class="flex items-center justify-center" style="width:36px;height:36px;background:#FAFAF7;border:1px solid #E2DFD8;border-radius:6px"><i data-lucide="shield" class="w-5 h-5" style="color:#1E4A6F"></i></span><h3 class="zx-serif" style="font-size:18px;font-weight:700">管理端</h3></div>
+        <ul class="space-y-1.5" style="font-size:12.5px;color:#3D3B36">
+          <li class="flex items-center gap-2"><i data-lucide="dot" class="w-3 h-3" style="color:#1E4A6F"></i>数据看板</li>
+          <li class="flex items-center gap-2"><i data-lucide="dot" class="w-3 h-3" style="color:#1E4A6F"></i>用户管理</li>
+          <li class="flex items-center gap-2"><i data-lucide="dot" class="w-3 h-3" style="color:#1E4A6F"></i>内容审核</li>
+          <li class="flex items-center gap-2"><i data-lucide="dot" class="w-3 h-3" style="color:#1E4A6F"></i>系统监控</li>
+        </ul>
+        <div class="mt-4 pt-4" style="border-top:1px solid #E2DFD8">
+          <div class="label-mono mb-2.5">工作流</div>
+          <svg viewBox="0 0 240 56" width="100%" height="56">
+            <defs><marker id="ar3" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6" fill="#1E4A6F"/></marker></defs>
+            <line x1="50" y1="20" x2="86" y2="20" stroke="#1E4A6F" stroke-width="1.2" marker-end="url(#ar3)"/>
+            <line x1="110" y1="20" x2="146" y2="20" stroke="#1E4A6F" stroke-width="1.2" marker-end="url(#ar3)"/>
+            <line x1="170" y1="20" x2="206" y2="20" stroke="#1E4A6F" stroke-width="1.2" marker-end="url(#ar3)"/>
+            <rect x="6" y="10" width="44" height="20" fill="#1E4A6F" rx="3"/><text x="28" y="23" font-family="Inter,sans-serif" font-size="9" fill="#FAFAF7" text-anchor="middle">数据监控</text>
+            <rect x="86" y="10" width="44" height="20" fill="#1A1A18" rx="3"/><text x="108" y="23" font-family="Inter,sans-serif" font-size="9" fill="#FAFAF7" text-anchor="middle">用户管理</text>
+            <rect x="146" y="10" width="44" height="20" fill="#FAFAF7" stroke="#C4C1BA" rx="3"/><text x="168" y="23" font-family="Inter,sans-serif" font-size="9" fill="#3D3B36" text-anchor="middle">内容审核</text>
+            <rect x="206" y="10" width="32" height="20" fill="#FAFAF7" stroke="#C4C1BA" rx="3"/><text x="222" y="23" font-family="Inter,sans-serif" font-size="9" fill="#3D3B36" text-anchor="middle">维护</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 11 · TECH STACK ============ -->
+<section class="py-10 md:py-14" style="background:#F2F0EB">
+  <div class="max-w-[1320px] mx-auto px-6 md:px-8">
+    <div class="flex items-end justify-between mb-7 reveal">
+      <div>
+        <div class="zx-mono" style="font-size:30px;font-weight:700;color:#8B6914;letter-spacing:0.04em">№ 09</div>
+        <h2 class="zx-serif mt-1" style="font-size:40px;font-weight:700;line-height:1.08;letter-spacing:-0.01em">技术栈</h2>
+        <p class="mt-2" style="font-size:15px;color:#6B6862">分层架构，AI 引擎驱动，前后端与基础设施协同。</p>
+      </div>
+      <span class="label-mono hidden md:inline">4 LAYERS</span>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="reveal zx-surface p-4" style="border-radius:6px;border-left:2px solid #6B3FA0">
+        <div class="flex items-center justify-between mb-3"><span class="zx-serif" style="font-size:15px;font-weight:700">AI 引擎</span><span class="zx-mono px-1.5 py-0.5" style="font-size:10px;background:rgba(107,63,160,0.12);color:#6B3FA0;border-radius:2px">1</span></div>
+        <div class="space-y-2">
+          <div class="flex items-center justify-between" style="font-size:12.5px"><span class="flex items-center gap-2"><i data-lucide="cpu" class="w-4 h-4" style="color:#6B3FA0"></i>讯飞 Spark4.0 Ultra</span><span class="zx-mono" style="font-size:10px;color:#6B6862">LLM</span></div>
+          <div class="zx-bar" style="height:3px"><span style="width:95%;background:#6B3FA0"></span></div>
+        </div>
+      </div>
+      <div class="reveal zx-surface p-4" style="border-radius:6px;border-left:2px solid #1E4A6F">
+        <div class="flex items-center justify-between mb-3"><span class="zx-serif" style="font-size:15px;font-weight:700">前端</span><span class="zx-mono px-1.5 py-0.5" style="font-size:10px;background:rgba(30,74,111,0.12);color:#1E4A6F;border-radius:2px">2</span></div>
+        <div class="space-y-2.5">
+          <div class="flex items-center justify-between" style="font-size:12.5px"><span class="flex items-center gap-2"><i data-lucide="code-2" class="w-4 h-4" style="color:#1E4A6F"></i>React 19</span><span class="zx-mono" style="font-size:10px;color:#6B6862">UI</span></div>
+          <div class="flex items-center justify-between" style="font-size:12.5px"><span class="flex items-center gap-2"><i data-lucide="box" class="w-4 h-4" style="color:#1E4A6F"></i>Three.js</span><span class="zx-mono" style="font-size:10px;color:#6B6862">3D</span></div>
+          <div class="zx-bar" style="height:3px"><span style="width:88%;background:#1E4A6F"></span></div>
+        </div>
+      </div>
+      <div class="reveal zx-surface p-4" style="border-radius:6px;border-left:2px solid #2D7A3E">
+        <div class="flex items-center justify-between mb-3"><span class="zx-serif" style="font-size:15px;font-weight:700">后端</span><span class="zx-mono px-1.5 py-0.5" style="font-size:10px;background:rgba(45,122,62,0.12);color:#2D7A3E;border-radius:2px">4</span></div>
+        <div class="space-y-2">
+          <div class="flex items-center justify-between" style="font-size:12.5px"><span class="flex items-center gap-2"><i data-lucide="server" class="w-4 h-4" style="color:#2D7A3E"></i>Flask 2.3</span><span class="zx-mono" style="font-size:10px;color:#6B6862">API</span></div>
+          <div class="flex items-center justify-between" style="font-size:12.5px"><span class="flex items-center gap-2"><i data-lucide="terminal" class="w-4 h-4" style="color:#2D7A3E"></i>Python 3.11</span><span class="zx-mono" style="font-size:10px;color:#6B6862">RT</span></div>
+          <div class="flex items-center justify-between" style="font-size:12.5px"><span class="flex items-center gap-2"><i data-lucide="list-checks" class="w-4 h-4" style="color:#2D7A3E"></i>Celery</span><span class="zx-mono" style="font-size:10px;color:#6B6862">Queue</span></div>
+          <div class="flex items-center justify-between" style="font-size:12.5px"><span class="flex items-center gap-2"><i data-lucide="database" class="w-4 h-4" style="color:#2D7A3E"></i>Redis</span><span class="zx-mono" style="font-size:10px;color:#6B6862">Cache</span></div>
+          <div class="zx-bar" style="height:3px"><span style="width:82%;background:#2D7A3E"></span></div>
+        </div>
+      </div>
+      <div class="reveal zx-surface p-4" style="border-radius:6px;border-left:2px solid #B8860B">
+        <div class="flex items-center justify-between mb-3"><span class="zx-serif" style="font-size:15px;font-weight:700">基础设施</span><span class="zx-mono px-1.5 py-0.5" style="font-size:10px;background:rgba(184,134,11,0.14);color:#B8860B;border-radius:2px">3</span></div>
+        <div class="space-y-2">
+          <div class="flex items-center justify-between" style="font-size:12.5px"><span class="flex items-center gap-2"><i data-lucide="search" class="w-4 h-4" style="color:#B8860B"></i>Elasticsearch</span><span class="zx-mono" style="font-size:10px;color:#6B6862">Search</span></div>
+          <div class="flex items-center justify-between" style="font-size:12.5px"><span class="flex items-center gap-2"><i data-lucide="radio" class="w-4 h-4" style="color:#B8860B"></i>WebSocket</span><span class="zx-mono" style="font-size:10px;color:#6B6862">RT</span></div>
+          <div class="flex items-center justify-between" style="font-size:12.5px"><span class="flex items-center gap-2"><i data-lucide="hard-drive" class="w-4 h-4" style="color:#B8860B"></i>SQLite/PostgreSQL</span><span class="zx-mono" style="font-size:10px;color:#6B6862">DB</span></div>
+          <div class="zx-bar" style="height:3px"><span style="width:76%;background:#B8860B"></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- ============ 12 · TESTIMONIALS ============ -->
+<section id="testimonials" class="py-10 md:py-14" style="background:#FFFFFF">
+  <div class="max-w-[1320px] mx-auto px-6 md:px-8">
+    <div class="flex items-end justify-between mb-7 reveal">
+      <div>
+        <div class="zx-mono" style="font-size:30px;font-weight:700;color:#8B6914;letter-spacing:0.04em">№ 10</div>
+        <h2 class="zx-serif mt-1" style="font-size:40px;font-weight:700;line-height:1.08;letter-spacing:-0.01em">用户评价</h2>
+        <p class="mt-2" style="font-size:15px;color:#6B6862">来自一线教师、学生与管理者的真实反馈。</p>
+      </div>
+      <span class="label-mono hidden md:inline">5 VOICES</span>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <!-- T1 -->
+      <div class="reveal zx-surface p-5" style="border-radius:6px;border-left:2px solid #8B6914">
+        <div class="flex items-center gap-1 mb-2">
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.3 7.3 14.5 2.2 9.8l6.9-.7z" fill="#8B6914"/></svg>
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.3 7.3 14.5 2.2 9.8l6.9-.7z" fill="#8B6914"/></svg>
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.3 7.3 14.5 2.2 9.8l6.9-.7z" fill="#8B6914"/></svg>
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.3 7.3 14.5 2.2 9.8l6.9-.7z" fill="#8B6914"/></svg>
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.3 7.3 14.5 2.2 9.8l6.9-.7z" fill="#8B6914"/></svg>
+        </div>
+        <p class="zx-serif" style="font-size:14px;line-height:1.6;color:#1A1A18">"智教星的错题诊疗功能精准定位了学生的知识薄弱点，靶向练习让复习效率提升了3倍！"</p>
+        <div class="flex items-center justify-between mt-4 pt-3" style="border-top:1px solid #E2DFD8">
+          <div><div style="font-size:13px;font-weight:700">张明华</div><div class="zx-mono" style="font-size:10px;color:#6B6862">高中数学教师 · 使用6个月</div></div>
+          <div class="text-right"><div class="label-mono" style="font-size:9px">推荐度</div><div class="zx-serif" style="font-size:18px;font-weight:700;color:#2D7A3E">98</div></div>
+        </div>
+        <div class="zx-bar mt-2" style="height:3px"><span style="width:98%;background:#2D7A3E"></span></div>
+      </div>
+      <!-- T2 -->
+      <div class="reveal zx-surface p-5" style="border-radius:6px;border-left:2px solid #6B3FA0">
+        <div class="flex items-center gap-1 mb-2">
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.3 7.3 14.5 2.2 9.8l6.9-.7z" fill="#8B6914"/></svg>
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.3 7.3 14.5 2.2 9.8l6.9-.7z" fill="#8B6914"/></svg>
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.3 7.3 14.5 2.2 9.8l6.9-.7z" fill="#8B6914"/></svg>
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.3 7.3 14.5 2.2 9.8l6.9-.7z" fill="#8B6914"/></svg>
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.3 7.3 14.5 2.2 9.8l6.9-.7z" fill="#8B6914"/></svg>
+        </div>
+        <p class="zx-serif" style="font-size:14px;line-height:1.6;color:#1A1A18">"个性化学习路径和AI问答功能帮我快速提升了数学成绩。感觉就像有一个24小时在线的私人辅导老师。"</p>
+        <div class="flex items-center justify-between mt-4 pt-3" style="border-top:1px solid #E2DFD8">
+          <div><div style="font-size:13px;font-weight:700">李思远</div><div class="zx-mono" style="font-size:10px;color:#6B6862">高三学生 · 使用4个月</div></div>
+          <div class="text-right"><div class="label-mono" style="font-size:9px">推荐度</div><div class="zx-serif" style="font-size:18px;font-weight:700;color:#2D7A3E">96</div></div>
+        </div>
+        <div class="zx-bar mt-2" style="height:3px"><span style="width:96%;background:#2D7A3E"></span></div>
+      </div>
+      <!-- T3 -->
+      <div class="reveal zx-surface p-5" style="border-radius:6px;border-left:2px solid #B8860B">
+        <div class="flex items-center gap-1 mb-2">
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.3 7.3 14.5 2.2 9.8l6.9-.7z" fill="#8B6914"/></svg>
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.3 7.3 14.5 2.2 9.8l6.9-.7z" fill="#8B6914"/></svg>
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.3 7.3 14.5 2.2 9.8l6.9-.7z" fill="#8B6914"/></svg>
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.3 7.3 14.5 2.2 9.8l6.9-.7z" fill="#8B6914"/></svg>
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.3 7.3 14.5 2.2 9.8l6.9-.7z" fill="#D2CFC7"/></svg>
+        </div>
+        <p class="zx-serif" style="font-size:14px;line-height:1.6;color:#1A1A18">"数据面板让我能够实时掌握全校教学情况，管理效率大幅提升。决策有了数据支撑，更有信心了。"</p>
+        <div class="flex items-center justify-between mt-4 pt-3" style="border-top:1px solid #E2DFD8">
+          <div><div style="font-size:13px;font-weight:700">王建国</div><div class="zx-mono" style="font-size:10px;color:#6B6862">学校管理员 · 使用8个月</div></div>
+          <div class="text-right"><div class="label-mono" style="font-size:9px">推荐度</div><div class="zx-serif" style="font-size:18px;font-weight:700;color:#B8860B">89</div></div>
+        </div>
+        <div class="zx-bar mt-2" style="height:3px"><span style="width:89%;background:#B8860B"></span></div>
+      </div>
+      <!-- T4 -->
+      <div class="reveal zx-surface p-5" style="border-radius:6px;border-left:2px solid #2A7B7B">
+        <div class="flex items-center gap-1 mb-2">
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.3 7.3 14.5 2.2 9.8l6.9-.7z" fill="#8B6914"/></svg>
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.3 7.3 14.5 2.2 9.8l6.9-.7z" fill="#8B6914"/></svg>
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.3 7.3 14.5 2.2 9.8l6.9-.7z" fill="#8B6914"/></svg>
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.3 7.3 14.5 2.2 9.8l6.9-.7z" fill="#8B6914"/></svg>
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.3 7.3 14.5 2.2 9.8l6.9-.7z" fill="#8B6914"/></svg>
+        </div>
+        <p class="zx-serif" style="font-size:14px;line-height:1.6;color:#1A1A18">"多智能体协同的诊断报告比我自己分析还准确，每个学生都能得到真正个性化的学习方案。"</p>
+        <div class="flex items-center justify-between mt-4 pt-3" style="border-top:1px solid #E2DFD8">
+          <div><div style="font-size:13px;font-weight:700">陈晓琳</div><div class="zx-mono" style="font-size:10px;color:#6B6862">初中英语教师 · 使用5个月</div></div>
+          <div class="text-right"><div class="label-mono" style="font-size:9px">推荐度</div><div class="zx-serif" style="font-size:18px;font-weight:700;color:#2D7A3E">95</div></div>
+        </div>
+        <div class="zx-bar mt-2" style="height:3px"><span style="width:95%;background:#2A7B7B"></span></div>
+      </div>
+      <!-- T5 -->
+      <div class="reveal zx-surface p-5" style="border-radius:6px;border-left:2px solid #1E4A6F">
+        <div class="flex items-center gap-1 mb-2">
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.3 7.3 14.5 2.2 9.8l6.9-.7z" fill="#8B6914"/></svg>
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.3 7.3 14.5 2.2 9.8l6.9-.7z" fill="#8B6914"/></svg>
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.3 7.3 14.5 2.2 9.8l6.9-.7z" fill="#8B6914"/></svg>
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.3 7.3 14.5 2.2 9.8l6.9-.7z" fill="#8B6914"/></svg>
+          <svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 2l2.9 6.3 6.9.7-5.1 4.7 1.4 6.8L12 17.8 5.9 21.3 7.3 14.5 2.2 9.8l6.9-.7z" fill="#8B6914"/></svg>
+        </div>
+        <p class="zx-serif" style="font-size:14px;line-height:1.6;color:#1A1A18">"智教星将我们零散的错题管理变成了系统化的诊疗流程，自适应推送让每个学生都在最合适的难度上练习。"</p>
+        <div class="flex items-center justify-between mt-4 pt-3" style="border-top:1px solid #E2DFD8">
+          <div><div style="font-size:13px;font-weight:700">赵伟</div><div class="zx-mono" style="font-size:10px;color:#6B6862">教育局教研员 · 使用3个月</div></div>
+          <div class="text-right"><div class="label-mono" style="font-size:9px">推荐度</div><div class="zx-serif" style="font-size:18px;font-weight:700;color:#2D7A3E">93</div></div>
+        </div>
+        <div class="zx-bar mt-2" style="height:3px"><span style="width:93%;background:#1E4A6F"></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- ============ 13 · CTA ============ -->
+<section id="cta" class="py-12 md:py-16" style="background:#1A1A18">
+  <div class="max-w-[1320px] mx-auto px-6 md:px-8 text-center">
+    <div class="reveal">
+      <div class="zx-mono" style="font-size:11px;letter-spacing:0.2em;color:#B8901F">№ 11 — 开始</div>
+      <h2 class="zx-serif mt-3" style="font-size:44px;font-weight:700;line-height:1.05;color:#FAFAF7;letter-spacing:-0.01em">准备好开始了吗</h2>
+      <p class="mt-3 mx-auto" style="font-size:15px;color:#A09D96;max-width:32rem">加入数万名教育工作者，体验AI驱动的智能教学。</p>
+      <div class="flex items-center justify-center gap-4 mt-7">
+        <a href="#top" class="zx-mono inline-flex items-center gap-2" style="font-size:13px;font-weight:600;color:#1A1A18;background:#B8901F;padding:12px 24px;border-radius:4px">免费开始 →</a>
+        <a href="#features" class="zx-link inline-flex items-center gap-1.5" style="font-size:13px;font-weight:600;color:#FAFAF7">了解更多</a>
+      </div>
+      <div class="flex items-center justify-center gap-6 mt-9 pt-7" style="border-top:1px solid #3D3B36">
+        <span class="zx-mono" style="font-size:10px;color:#6B6862;letter-spacing:0.1em">8 智能体</span>
+        <span class="zx-mono" style="font-size:10px;color:#6B6862;letter-spacing:0.1em">·</span>
+        <span class="zx-mono" style="font-size:10px;color:#6B6862;letter-spacing:0.1em">8 维画像</span>
+        <span class="zx-mono" style="font-size:10px;color:#6B6862;letter-spacing:0.1em">·</span>
+        <span class="zx-mono" style="font-size:10px;color:#6B6862;letter-spacing:0.1em">7 种资源</span>
+        <span class="zx-mono" style="font-size:10px;color:#6B6862;letter-spacing:0.1em">·</span>
+        <span class="zx-mono" style="font-size:10px;color:#6B6862;letter-spacing:0.1em">3D 图谱</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 14 · FOOTER / COLOPHON ============ -->
+<footer class="py-10" style="background:#FAFAF7;border-top:1px solid #E2DFD8">
+  <div class="max-w-[1320px] mx-auto px-6 md:px-8">
+    <div class="grid grid-cols-1 md:grid-cols-[1.4fr_1fr_1fr_1fr] gap-8">
+      <div>
+        <div class="flex items-center gap-2.5">
+          <span class="flex items-center justify-center" style="width:28px;height:28px;background:#1A1A18;border-radius:5px"><i data-lucide="hexagon" class="w-4 h-4" style="color:#B8901F"></i></span>
+          <span class="zx-serif" style="font-size:22px;font-weight:700">智教星</span>
+        </div>
+        <p class="zx-mono mt-2" style="font-size:11px;color:#6B6862;letter-spacing:0.12em">ZHIJIAOXING · 自适应错题诊疗系统</p>
+        <p class="mt-3" style="font-size:12.5px;line-height:1.6;color:#3D3B36;max-width:22rem">基于多智能体协同的自适应错题诊疗系统，精准诊断错因，靶向推送练习。</p>
+      </div>
+      <div>
+        <div class="label-mono mb-3">功能</div>
+        <ul class="space-y-1.5" style="font-size:12.5px;color:#3D3B36">
+          <li><a class="zx-link" href="#features">课程生成向导</a></li>
+          <li><a class="zx-link" href="#features">AI 智能助教</a></li>
+          <li><a class="zx-link" href="#features">智能错题本</a></li>
+          <li><a class="zx-link" href="#features">学习画像构建</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="label-mono mb-3">产品</div>
+        <ul class="space-y-1.5" style="font-size:12.5px;color:#3D3B36">
+          <li><a class="zx-link" href="#product">多智能体架构</a></li>
+          <li><a class="zx-link" href="#dashboard">数据看板</a></li>
+          <li><a class="zx-link" href="#enterprise">企业能力</a></li>
+          <li><a class="zx-link" href="#top">三端协同</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="label-mono mb-3">企业</div>
+        <ul class="space-y-1.5" style="font-size:12.5px;color:#3D3B36">
+          <li><a class="zx-link" href="#enterprise">智能分析</a></li>
+          <li><a class="zx-link" href="#enterprise">内容审核</a></li>
+          <li><a class="zx-link" href="#testimonials">用户评价</a></li>
+          <li><a class="zx-link" href="#cta">开始使用</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mt-9 pt-6" style="border-top:1px solid #E2DFD8">
+      <span class="zx-mono" style="font-size:11px;color:#6B6862;letter-spacing:0.1em">© 2026 智教星</span>
+      <span class="zx-mono" style="font-size:10px;color:#A09D96;letter-spacing:0.12em">SET IN FRAUNCES, NOTO SERIF SC &amp; INTER · BUILT WITH 多智能体协同</span>
+    </div>
+  </div>
+</footer>
+</main>
+<style id="zx-dense">
+  /* ===== Scroll reveal (0.5s fade + 8px translateY) — overrides head default ===== */
+  .reveal { opacity: 0; transform: translateY(8px); transition: opacity .5s ease, transform .5s ease; }
+  .reveal.is-visible { opacity: 1; transform: translateY(0); }
+  @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
+
+  /* ===== Density / typography polish ===== */
+  body { -webkit-font-smoothing: antialiased; }
+  .zx-surface { box-shadow: 0 1px 2px rgba(26,26,24,0.04); }
+  td, th { vertical-align: middle; }
+  table { font-variant-numeric: tabular-nums; }
+  .zx-mono, .label-mono { font-variant-numeric: tabular-nums; }
+
+  /* ===== Semantic data colors (functional, not decorative) ===== */
+  .c-success { color: #2D7A3E; } .bg-success { background: #2D7A3E; }
+  .c-error   { color: #B23A2E; } .bg-error   { background: #B23A2E; }
+  .c-warning { color: #B8860B; } .bg-warning { background: #B8860B; }
+  .c-info    { color: #1E4A6F; } .bg-info    { background: #1E4A6F; }
+  .c-purple  { color: #6B3FA0; } .bg-purple  { background: #6B3FA0; }
+  .c-teal    { color: #2A7B7B; } .bg-teal    { background: #2A7B7B; }
+
+  /* thin colored left-border accents already applied inline; helper available */
+  .bl-success { border-left: 2px solid #2D7A3E; }
+  .bl-error   { border-left: 2px solid #B23A2E; }
+  .bl-info    { border-left: 2px solid #1E4A6F; }
+  .bl-purple  { border-left: 2px solid #6B3FA0; }
+  .bl-warning { border-left: 2px solid #B8860B; }
+
+  /* ===== Architecture diagram node base (used inline; refine hover) ===== */
+  .arch-node { border-radius: 4px; box-shadow: 0 1px 2px rgba(26,26,24,0.05); }
+
+  /* ===== Bars: crisp 1px corners ===== */
+  .zx-bar { border-radius: 1px; overflow: hidden; }
+  .zx-bar > span { display: block; border-radius: 1px; transition: width .8s cubic-bezier(.2,.7,.2,1); }
+
+  /* ===== Heatmap cells anti-alias ===== */
+  [style*="aspect-ratio:1"] { box-shadow: inset 0 0 0 0.5px rgba(26,26,24,0.04); }
+
+  /* ===== Nav link color ===== */
+  header nav a { color: #3D3B36; }
+  header nav a:hover { color: #1A1A18; }
+
+  /* ===== Sticky masthead subtle bottom hairline ===== */
+  header { box-shadow: 0 1px 0 rgba(26,26,24,0.04); }
+
+  /* ===== Section rhythm helpers ===== */
+  section + section { /* spacing handled by py utilities */ }
+
+  /* ===== Count-up number alignment ===== */
+  .countup { font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+
+  /* ===== Reduce harshness of default th breaks ===== */
+  th { font-weight: 600; }
+</style>
+<script>
+(function () {
+  'use strict';
+
+  /* ===== Scroll reveal: 0.5s fade + 8px translateY ===== */
+  var reveals = document.querySelectorAll('.reveal');
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add('is-visible'); io.unobserve(e.target); }
+      });
+    }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+    reveals.forEach(function (el) { io.observe(el); });
+  } else {
+    reveals.forEach(function (el) { el.classList.add('is-visible'); });
+  }
+
+  /* ===== Count-up for big numbers ===== */
+  function animateCount(el) {
+    var target = parseFloat(el.getAttribute('data-target'));
+    if (isNaN(target)) return;
+    var decimals = parseInt(el.getAttribute('data-decimals') || '0', 10);
+    var suffix = el.getAttribute('data-suffix') || '';
+    var prefix = el.getAttribute('data-prefix') || '';
+    var dur = 1200, start = null;
+    function fmt(v) {
+      var s = v.toFixed(decimals);
+      // thousands separator for integers without decimals
+      if (decimals === 0) { s = Number(v).toLocaleString('en-US'); }
+      return prefix + s + suffix;
+    }
+    function tick(ts) {
+      if (start === null) start = ts;
+      var p = Math.min((ts - start) / dur, 1);
+      var eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = fmt(target * eased);
+      if (p < 1) { requestAnimationFrame(tick); } else { el.textContent = fmt(target); }
+    }
+    requestAnimationFrame(tick);
+  }
+  var counters = document.querySelectorAll('.countup');
+  if ('IntersectionObserver' in window) {
+    var io2 = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { animateCount(e.target); io2.unobserve(e.target); }
+      });
+    }, { threshold: 0.5 });
+    counters.forEach(function (el) { io2.observe(el); });
+  } else {
+    counters.forEach(animateCount);
+  }
+
+  /* ===== Animate .zx-bar widths on reveal (grow from 0) ===== */
+  var bars = document.querySelectorAll('.zx-bar > span');
+  bars.forEach(function (sp) { sp.dataset.w = sp.style.width; sp.style.width = '0%'; });
+  if ('IntersectionObserver' in window) {
+    var io3 = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          var sps = e.target.querySelectorAll('.zx-bar > span');
+          sps.forEach(function (sp) { if (sp.dataset.w) { sp.style.width = sp.dataset.w; } });
+          io3.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.15 });
+    document.querySelectorAll('.reveal').forEach(function (el) { io3.observe(el); });
+  } else {
+    bars.forEach(function (sp) { if (sp.dataset.w) sp.style.width = sp.dataset.w; });
+  }
+
+  /* ===== Lucide icons ===== */
+  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+    window.lucide.createIcons();
+  }
+})();
+</script>
+</body>
+</html>

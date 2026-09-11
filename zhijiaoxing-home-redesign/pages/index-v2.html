@@ -1,0 +1,1645 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智教星 — 多智能体自适应错题诊疗系统</title>
+    <style id="theme-vars">
+/* ============================================================
+   智教星 ZhiJiaoXing — Dark Product Theater Theme
+   深色产品剧场感 · 全幅居中 · 产品UI为主角 · 暖琥珀单点强调
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,900&family=JetBrains+Mono:wght@400;500;600&family=Noto+Serif+SC:wght@400;500;600;700;900&display=swap');
+
+:root {
+  /* ---- Core surfaces (warm near-black) ---- */
+  --zx-background: #0B0B0D;
+  --zx-foreground: #EDEAE3;
+
+  --zx-card: #141417;
+  --zx-card-foreground: #EDEAE3;
+
+  --zx-popover: #1B1C20;
+  --zx-popover-foreground: #EDEAE3;
+
+  /* ---- Brand accent (warm amber, used sparingly on data/key numbers) ---- */
+  --zx-primary: #E8B547;
+  --zx-primary-foreground: #0B0B0D;
+
+  --zx-secondary: #1B1C20;
+  --zx-secondary-foreground: #EDEAE3;
+
+  --zx-muted: #1B1C20;
+  --zx-muted-foreground: #8A8780;
+
+  --zx-accent: #E8B547;
+  --zx-accent-foreground: #0B0B0D;
+
+  --zx-destructive: #FF6B5B;
+  --zx-destructive-foreground: #0B0B0D;
+
+  --zx-border: #2A2A2E;
+  --zx-input: #2A2A2E;
+  --zx-ring: #E8B547;
+
+  /* ---- Radius scale (sharper = more editorial) ---- */
+  --zx-radius-sm: 3px;
+  --zx-radius-md: 6px;
+  --zx-radius-lg: 10px;
+
+  /* ---- State colors ---- */
+  --zx-state-success: #5BCC7B;
+  --zx-state-warning: #E8B547;
+  --zx-state-error: #FF6B5B;
+  --zx-state-info: #6BA8E8;
+
+  /* ---- Ink palette (warm dark grays) ---- */
+  --zx-ink-0: #0B0B0D;
+  --zx-ink-1: #141417;
+  --zx-ink-2: #1B1C20;
+  --zx-ink-3: #2A2A2E;
+  --zx-ink-4: #3D3D42;
+  --zx-ink-5: #5A5A5F;
+  --zx-ink-6: #8A8780;
+  --zx-ink-7: #B5B2AB;
+  --zx-ink-8: #EDEAE3;
+
+  /* ---- Accent (warm amber, restrained) ---- */
+  --zx-accent-light: #F0C569;
+  --zx-accent-muted: rgba(232, 181, 71, 0.1);
+
+  /* ---- Typography ---- */
+  --zx-font-display: 'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --zx-font-serif: 'Fraunces', 'Noto Serif SC', 'Songti SC', serif;
+  --zx-font-sans: 'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --zx-font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --zx-font-cn-serif: 'Noto Serif SC', 'Songti SC', serif;
+  --zx-font-cn-sans: 'PingFang SC', 'Microsoft YaHei', 'Inter', sans-serif;
+
+  /* ---- Rule lines ---- */
+  --zx-rule: #2A2A2E;
+  --zx-rule-subtle: #1B1C20;
+  --zx-rule-medium: #3D3D42;
+
+  /* ---- Shadows (subtle on dark) ---- */
+  --zx-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --zx-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --zx-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
+
+  /* ---- Glow (for accent elements on dark) ---- */
+  --zx-glow-accent: 0 0 24px rgba(232, 181, 71, 0.15);
+  --zx-glow-success: 0 0 24px rgba(91, 204, 123, 0.15);
+}
+
+/* Dark mode is the default; .light variant kept for contract compatibility */
+.light {
+  --zx-background: #0B0B0D;
+  --zx-foreground: #EDEAE3;
+  --zx-card: #141417;
+  --zx-card-foreground: #EDEAE3;
+  --zx-popover: #1B1C20;
+  --zx-popover-foreground: #EDEAE3;
+  --zx-primary: #E8B547;
+  --zx-primary-foreground: #0B0B0D;
+  --zx-muted: #1B1C20;
+  --zx-muted-foreground: #8A8780;
+  --zx-border: #2A2A2E;
+  --zx-input: #2A2A2E;
+  --zx-ring: #E8B547;
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--zx-background);
+    --color-foreground: var(--zx-foreground);
+    --color-card: var(--zx-card);
+    --color-card-foreground: var(--zx-card-foreground);
+    --color-popover: var(--zx-popover);
+    --color-popover-foreground: var(--zx-popover-foreground);
+    --color-primary: var(--zx-primary);
+    --color-primary-foreground: var(--zx-primary-foreground);
+    --color-secondary: var(--zx-secondary);
+    --color-secondary-foreground: var(--zx-secondary-foreground);
+    --color-muted: var(--zx-muted);
+    --color-muted-foreground: var(--zx-muted-foreground);
+    --color-accent: var(--zx-accent);
+    --color-accent-foreground: var(--zx-accent-foreground);
+    --color-destructive: var(--zx-destructive);
+    --color-destructive-foreground: var(--zx-destructive-foreground);
+    --color-border: var(--zx-border);
+    --color-input: var(--zx-input);
+    --color-ring: var(--zx-ring);
+    --radius-sm: var(--zx-radius-sm);
+    --radius-md: var(--zx-radius-md);
+    --radius-lg: var(--zx-radius-lg);
+  }
+  @layer base {
+    body { background: var(--zx-background); color: var(--zx-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style id="semantic-token-fallback">
+      .bg-background { background-color: var(--zx-background); }
+      .text-background { color: var(--zx-background); }
+      .border-background { border-color: var(--zx-background); }
+      .ring-background { --tw-ring-color: var(--zx-background); }
+      .bg-foreground { background-color: var(--zx-foreground); }
+      .text-foreground { color: var(--zx-foreground); }
+      .border-foreground { border-color: var(--zx-foreground); }
+      .ring-foreground { --tw-ring-color: var(--zx-foreground); }
+      .bg-card { background-color: var(--zx-card); }
+      .text-card { color: var(--zx-card); }
+      .border-card { border-color: var(--zx-card); }
+      .ring-card { --tw-ring-color: var(--zx-card); }
+      .bg-card-foreground { background-color: var(--zx-card-foreground); }
+      .text-card-foreground { color: var(--zx-card-foreground); }
+      .border-card-foreground { border-color: var(--zx-card-foreground); }
+      .ring-card-foreground { --tw-ring-color: var(--zx-card-foreground); }
+      .bg-popover { background-color: var(--zx-popover); }
+      .text-popover { color: var(--zx-popover); }
+      .border-popover { border-color: var(--zx-popover); }
+      .ring-popover { --tw-ring-color: var(--zx-popover); }
+      .bg-popover-foreground { background-color: var(--zx-popover-foreground); }
+      .text-popover-foreground { color: var(--zx-popover-foreground); }
+      .border-popover-foreground { border-color: var(--zx-popover-foreground); }
+      .ring-popover-foreground { --tw-ring-color: var(--zx-popover-foreground); }
+      .bg-primary { background-color: var(--zx-primary); }
+      .text-primary { color: var(--zx-primary); }
+      .border-primary { border-color: var(--zx-primary); }
+      .ring-primary { --tw-ring-color: var(--zx-primary); }
+      .bg-primary-foreground { background-color: var(--zx-primary-foreground); }
+      .text-primary-foreground { color: var(--zx-primary-foreground); }
+      .border-primary-foreground { border-color: var(--zx-primary-foreground); }
+      .ring-primary-foreground { --tw-ring-color: var(--zx-primary-foreground); }
+      .bg-secondary { background-color: var(--zx-secondary); }
+      .text-secondary { color: var(--zx-secondary); }
+      .border-secondary { border-color: var(--zx-secondary); }
+      .ring-secondary { --tw-ring-color: var(--zx-secondary); }
+      .bg-secondary-foreground { background-color: var(--zx-secondary-foreground); }
+      .text-secondary-foreground { color: var(--zx-secondary-foreground); }
+      .border-secondary-foreground { border-color: var(--zx-secondary-foreground); }
+      .ring-secondary-foreground { --tw-ring-color: var(--zx-secondary-foreground); }
+      .bg-muted { background-color: var(--zx-muted); }
+      .text-muted { color: var(--zx-muted); }
+      .border-muted { border-color: var(--zx-muted); }
+      .ring-muted { --tw-ring-color: var(--zx-muted); }
+      .bg-muted-foreground { background-color: var(--zx-muted-foreground); }
+      .text-muted-foreground { color: var(--zx-muted-foreground); }
+      .border-muted-foreground { border-color: var(--zx-muted-foreground); }
+      .ring-muted-foreground { --tw-ring-color: var(--zx-muted-foreground); }
+      .bg-accent { background-color: var(--zx-accent); }
+      .text-accent { color: var(--zx-accent); }
+      .border-accent { border-color: var(--zx-accent); }
+      .ring-accent { --tw-ring-color: var(--zx-accent); }
+      .bg-accent-foreground { background-color: var(--zx-accent-foreground); }
+      .text-accent-foreground { color: var(--zx-accent-foreground); }
+      .border-accent-foreground { border-color: var(--zx-accent-foreground); }
+      .ring-accent-foreground { --tw-ring-color: var(--zx-accent-foreground); }
+      .bg-destructive { background-color: var(--zx-destructive); }
+      .text-destructive { color: var(--zx-destructive); }
+      .border-destructive { border-color: var(--zx-destructive); }
+      .ring-destructive { --tw-ring-color: var(--zx-destructive); }
+      .bg-destructive-foreground { background-color: var(--zx-destructive-foreground); }
+      .text-destructive-foreground { color: var(--zx-destructive-foreground); }
+      .border-destructive-foreground { border-color: var(--zx-destructive-foreground); }
+      .ring-destructive-foreground { --tw-ring-color: var(--zx-destructive-foreground); }
+      .bg-border { background-color: var(--zx-border); }
+      .text-border { color: var(--zx-border); }
+      .border-border { border-color: var(--zx-border); }
+      .ring-border { --tw-ring-color: var(--zx-border); }
+      .bg-input { background-color: var(--zx-input); }
+      .text-input { color: var(--zx-input); }
+      .border-input { border-color: var(--zx-input); }
+      .ring-input { --tw-ring-color: var(--zx-input); }
+      .bg-ring { background-color: var(--zx-ring); }
+      .text-ring { color: var(--zx-ring); }
+      .border-ring { border-color: var(--zx-ring); }
+      .ring-ring { --tw-ring-color: var(--zx-ring); }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body class="antialiased">
+
+<!-- ============ 0. NAV ============ -->
+<nav class="sticky top-0 z-50" style="background:rgba(11,12,14,.9);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line);">
+  <div class="container-x flex items-center justify-between h-16">
+    <div class="flex items-center gap-9">
+      <a href="#top" class="flex items-baseline gap-2">
+        <span class="serif text-[21px] font-bold text-ink tracking-tight">智教星</span>
+        <span class="mono text-[10px] text-ink-3 border border-line px-1.5 py-0.5 rounded">v2.6</span>
+      </a>
+      <div class="hidden lg:flex items-center gap-7 text-[13.5px]">
+        <a href="#product" class="nav-link">产品</a>
+        <a href="#features" class="nav-link">功能</a>
+        <a href="#profile" class="nav-link">画像</a>
+        <a href="#roles" class="nav-link">三端</a>
+        <a href="#tech" class="nav-link">技术</a>
+      </div>
+    </div>
+    <div class="flex items-center gap-4">
+      <a href="#cta" class="hidden sm:flex items-center gap-1.5 text-[13.5px] text-ink-2 hover:text-ink transition-colors">
+        <i data-lucide="play" class="w-3.5 h-3.5"></i> 观看演示
+      </a>
+      <a href="#cta" class="inline-flex items-center px-4 py-2 rounded-md text-[13.5px] font-semibold transition-transform hover:-translate-y-0.5" style="background:var(--accent);color:var(--bg);">开始使用</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ============ 1. HERO — 42/58 asymmetric, product UI as hero ============ -->
+<section id="product" class="relative overflow-hidden" style="background:var(--bg);">
+  <span id="top" class="block" style="position:absolute;top:-80px;"></span>
+  <div class="container-x py-14 lg:py-24">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-start">
+
+      <!-- LEFT col-span-5 (42%) -->
+      <div class="lg:col-span-5 reveal pt-2">
+        <div class="eyebrow mb-4">ISSUE 01 — 2026 / 多智能体教育</div>
+        <div class="w-12 h-px mb-8" style="background:var(--accent);"></div>
+
+        <h1 class="font-sans font-extrabold text-ink" style="font-size:clamp(40px,6.2vw,88px);line-height:.98;letter-spacing:-.035em;">
+          八个智能体，<br>
+          <span class="serif italic font-light" style="color:var(--text-2);letter-spacing:-.02em;">协同诊疗</span>每一道错题。
+        </h1>
+
+        <p class="mt-7 text-[15px] leading-[1.65] max-w-md" style="color:var(--text-2);">
+          智教星 —— 基于多智能体的自适应错题诊疗系统，精准定位错因，靶向推送练习，为每个学生生成个性化成长路径。
+        </p>
+
+        <div class="mt-8 flex flex-wrap items-center gap-3.5">
+          <a href="#cta" class="inline-flex items-center gap-2 px-5 py-3 rounded-md text-[14px] font-semibold transition-transform hover:-translate-y-0.5" style="background:var(--accent);color:var(--bg);">
+            开始使用 <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </a>
+          <a href="#features" class="inline-flex items-center gap-2 px-5 py-3 rounded-md text-[14px] transition-colors" style="color:var(--text);border:1px solid var(--line);">
+            <i data-lucide="play" class="w-3.5 h-3.5"></i> 观看 90 秒演示
+          </a>
+        </div>
+
+        <!-- editorial numbered strip -->
+        <div class="mt-10 pt-6" style="border-top:1px solid var(--line);">
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-2 mono text-[10.5px] uppercase" style="letter-spacing:.16em;color:var(--text-3);">
+            <span style="color:var(--accent);">01</span><span style="color:var(--text-2);">学情诊断</span>
+            <span>·</span>
+            <span>02</span><span>路径规划</span>
+            <span>·</span>
+            <span>03</span><span>内容生成</span>
+            <span>·</span>
+            <span>04</span><span>实时辅导</span>
+            <span>·</span>
+            <span>05</span><span>错题诊疗</span>
+            <span>·</span>
+            <span>06</span><span>画像构建</span>
+            <span>·</span>
+            <span>07</span><span>效果评估</span>
+            <span>·</span>
+            <span>08</span><span>成长追踪</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT col-span-7 (58%) — product UI mockup -->
+      <div class="lg:col-span-7 reveal">
+        <div class="relative">
+          <!-- accent glow -->
+          <div class="absolute -inset-6 rounded-2xl pointer-events-none" style="background:radial-gradient(58% 52% at 72% 18%, rgba(200,242,74,.10), transparent 70%);filter:blur(22px);"></div>
+
+          <div class="relative rounded-lg overflow-hidden" style="background:var(--bg-1);border:1px solid var(--line);box-shadow:0 20px 60px rgba(0,0,0,.5),0 1px 0 rgba(255,255,255,.03) inset;">
+
+            <!-- title bar -->
+            <div class="flex items-center gap-2 px-4 h-9" style="background:var(--bg-2);border-bottom:1px solid var(--line);">
+              <span class="w-2.5 h-2.5 rounded-full" style="background:#3a3d44;"></span>
+              <span class="w-2.5 h-2.5 rounded-full" style="background:#3a3d44;"></span>
+              <span class="w-2.5 h-2.5 rounded-full" style="background:#3a3d44;"></span>
+              <span class="mono text-[11px] ml-3" style="color:var(--text-3);">智教星 · 教学控制台</span>
+              <span class="mono text-[11px] ml-auto" style="color:var(--text-3);">14:23:08</span>
+            </div>
+
+            <!-- body -->
+            <div class="flex" style="min-height:440px;">
+
+              <!-- slim sidebar -->
+              <div class="w-36 shrink-0 p-3 hidden md:block" style="background:var(--bg-1);border-right:1px solid var(--line);">
+                <div class="mono text-[9.5px] uppercase mb-2.5" style="letter-spacing:.16em;color:var(--text-3);">导航</div>
+                <nav class="space-y-0.5">
+                  <a class="flex items-center gap-2 px-2 py-1.5 rounded text-[12px]" style="background:var(--accent-dim);color:var(--accent);"><i data-lucide="stethoscope" class="w-3.5 h-3.5"></i> 错题诊疗</a>
+                  <a class="flex items-center gap-2 px-2 py-1.5 rounded text-[12px] hover:bg-bg-3 transition-colors" style="color:var(--text-2);"><i data-lucide="scan-search" class="w-3.5 h-3.5"></i> 智能诊断</a>
+                  <a class="flex items-center gap-2 px-2 py-1.5 rounded text-[12px] hover:bg-bg-3 transition-colors" style="color:var(--text-2);"><i data-lucide="target" class="w-3.5 h-3.5"></i> 靶向练习</a>
+                  <a class="flex items-center gap-2 px-2 py-1.5 rounded text-[12px] hover:bg-bg-3 transition-colors" style="color:var(--text-2);"><i data-lucide="radar" class="w-3.5 h-3.5"></i> 学情画像</a>
+                  <a class="flex items-center gap-2 px-2 py-1.5 rounded text-[12px] hover:bg-bg-3 transition-colors" style="color:var(--text-2);"><i data-lucide="book-open" class="w-3.5 h-3.5"></i> 课程学习</a>
+                  <a class="flex items-center gap-2 px-2 py-1.5 rounded text-[12px] hover:bg-bg-3 transition-colors" style="color:var(--text-2);"><i data-lucide="bot" class="w-3.5 h-3.5"></i> AI 助教</a>
+                </nav>
+
+                <div class="mt-4 p-2.5 rounded-md" style="background:var(--bg-2);border:1px solid var(--line);">
+                  <div class="mono text-[9.5px] uppercase mb-1" style="letter-spacing:.14em;color:var(--text-3);">本周掌握</div>
+                  <div class="flex items-baseline gap-0.5">
+                    <span class="serif text-[22px] font-bold text-ink" data-count="38" data-prefix="+" data-suffix="%">+38%</span>
+                  </div>
+                  <div class="mt-2 h-1.5 rounded-full overflow-hidden" style="background:var(--bg-3);">
+                    <div class="h-full rounded-full" style="width:38%;background:var(--accent);"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- main panel -->
+              <div class="flex-1 min-w-0 p-3.5 space-y-3">
+
+                <!-- stat tiles -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                  <div class="p-2.5 rounded-md" style="background:var(--bg-2);border:1px solid var(--line);border-left:2px solid var(--accent);">
+                    <div class="mono text-[9.5px] uppercase" style="letter-spacing:.12em;color:var(--text-3);">待诊疗</div>
+                    <div class="flex items-end justify-between gap-2">
+                      <span class="serif text-[19px] font-bold text-ink" data-count="23">23</span>
+                      <svg viewBox="0 0 50 18" class="w-12 h-4 shrink-0" preserveAspectRatio="none"><polyline points="0,14 10,10 20,12 30,6 40,9 50,3" fill="none" stroke="#C8F24A" stroke-width="1.4"/></svg>
+                    </div>
+                  </div>
+                  <div class="p-2.5 rounded-md" style="background:var(--bg-2);border:1px solid var(--line);border-left:2px solid var(--ok);">
+                    <div class="mono text-[9.5px] uppercase" style="letter-spacing:.12em;color:var(--text-3);">已攻克</div>
+                    <div class="flex items-end justify-between gap-2">
+                      <span class="serif text-[19px] font-bold text-ink" data-count="156">156</span>
+                      <svg viewBox="0 0 50 18" class="w-12 h-4 shrink-0" preserveAspectRatio="none"><polyline points="0,15 10,12 20,13 30,8 40,6 50,2" fill="none" stroke="#4ADE80" stroke-width="1.4"/></svg>
+                    </div>
+                  </div>
+                  <div class="p-2.5 rounded-md" style="background:var(--bg-2);border:1px solid var(--line);border-left:2px solid var(--warm);">
+                    <div class="mono text-[9.5px] uppercase" style="letter-spacing:.12em;color:var(--text-3);">诊断准确率</div>
+                    <div class="flex items-end justify-between gap-2">
+                      <span class="serif text-[19px] font-bold text-ink" data-count="94" data-suffix="%">94%</span>
+                      <svg viewBox="0 0 50 18" class="w-12 h-4 shrink-0" preserveAspectRatio="none"><polyline points="0,10 10,8 20,9 30,7 40,5 50,4" fill="none" stroke="#F5B056" stroke-width="1.4"/></svg>
+                    </div>
+                  </div>
+                  <div class="p-2.5 rounded-md" style="background:var(--bg-2);border:1px solid var(--line);border-left:2px solid var(--text-2);">
+                    <div class="mono text-[9.5px] uppercase" style="letter-spacing:.12em;color:var(--text-3);">掌握度提升</div>
+                    <div class="flex items-end justify-between gap-2">
+                      <span class="serif text-[19px] font-bold text-ink" data-count="38" data-prefix="+" data-suffix="%">+38%</span>
+                      <svg viewBox="0 0 50 18" class="w-12 h-4 shrink-0" preserveAspectRatio="none"><polyline points="0,16 10,13 20,11 30,9 40,5 50,2" fill="none" stroke="#A7A9B0" stroke-width="1.4"/></svg>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- AI 错因诊断 table -->
+                <div class="rounded-md overflow-hidden" style="background:var(--bg-2);border:1px solid var(--line);">
+                  <div class="flex items-center justify-between px-3 py-2" style="border-bottom:1px solid var(--line);">
+                    <span class="mono text-[10.5px] uppercase" style="letter-spacing:.12em;color:var(--text-2);">AI 错因诊断</span>
+                    <span class="flex items-center gap-1.5 mono text-[9.5px]" style="color:var(--text-3);"><span class="w-1.5 h-1.5 rounded-full dot-active" style="background:var(--accent);"></span>实时</span>
+                  </div>
+                  <div>
+                    <div class="grid grid-cols-12 gap-2 px-3 py-2 items-center text-[11px]" style="border-bottom:1px solid var(--line);">
+                      <span class="col-span-5 text-ink truncate">f(x)=x²+2x−3 极值</span>
+                      <span class="col-span-3 truncate" style="color:var(--text-2);">概念理解偏差</span>
+                      <span class="col-span-2 mono" style="color:var(--text-3);">诊断</span>
+                      <span class="col-span-2 flex justify-end"><span class="px-1.5 py-0.5 rounded text-[9.5px] mono" style="background:rgba(248,113,113,.12);color:var(--err);">high</span></span>
+                    </div>
+                    <div class="grid grid-cols-12 gap-2 px-3 py-2 items-center text-[11px]" style="border-bottom:1px solid var(--line);">
+                      <span class="col-span-5 text-ink truncate">∫sin²x dx</span>
+                      <span class="col-span-3 truncate" style="color:var(--text-2);">公式记忆错误</span>
+                      <span class="col-span-2 mono" style="color:var(--text-3);">分析</span>
+                      <span class="col-span-2 flex justify-end"><span class="px-1.5 py-0.5 rounded text-[9.5px] mono" style="background:rgba(251,191,36,.12);color:var(--warn);">medium</span></span>
+                    </div>
+                    <div class="grid grid-cols-12 gap-2 px-3 py-2 items-center text-[11px]" style="border-bottom:1px solid var(--line);">
+                      <span class="col-span-5 text-ink truncate">P(A|B) 条件概率</span>
+                      <span class="col-span-3 truncate" style="color:var(--text-2);">审题不清</span>
+                      <span class="col-span-2 mono" style="color:var(--text-3);">归因</span>
+                      <span class="col-span-2 flex justify-end"><span class="px-1.5 py-0.5 rounded text-[9.5px] mono" style="background:rgba(74,222,128,.12);color:var(--ok);">low</span></span>
+                    </div>
+                    <div class="grid grid-cols-12 gap-2 px-3 py-2 items-center text-[11px]">
+                      <span class="col-span-5 text-ink truncate">矩阵转置运算</span>
+                      <span class="col-span-3 truncate" style="color:var(--text-2);">步骤遗漏</span>
+                      <span class="col-span-2 mono" style="color:var(--text-3);">诊断</span>
+                      <span class="col-span-2 flex justify-end"><span class="px-1.5 py-0.5 rounded text-[9.5px] mono" style="background:rgba(251,191,36,.12);color:var(--warn);">medium</span></span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- two panels -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-2">
+                  <div class="rounded-md p-3" style="background:var(--bg-2);border:1px solid var(--line);">
+                    <div class="mono text-[10.5px] uppercase mb-2.5" style="letter-spacing:.12em;color:var(--text-2);">靶向练习</div>
+                    <div class="space-y-2.5">
+                      <div>
+                        <div class="flex justify-between text-[11px] mb-1"><span style="color:var(--text-2);">函数极值</span><span class="mono" style="color:var(--text-3);">35%</span></div>
+                        <div class="h-1 rounded-full overflow-hidden" style="background:var(--bg-3);"><div class="h-full rounded-full" style="width:35%;background:var(--accent);"></div></div>
+                      </div>
+                      <div>
+                        <div class="flex justify-between text-[11px] mb-1"><span style="color:var(--text-2);">积分公式</span><span class="mono" style="color:var(--text-3);">60%</span></div>
+                        <div class="h-1 rounded-full overflow-hidden" style="background:var(--bg-3);"><div class="h-full rounded-full" style="width:60%;background:var(--accent);"></div></div>
+                      </div>
+                      <div>
+                        <div class="flex justify-between text-[11px] mb-1"><span style="color:var(--text-2);">条件概率</span><span class="mono" style="color:var(--text-3);">82%</span></div>
+                        <div class="h-1 rounded-full overflow-hidden" style="background:var(--bg-3);"><div class="h-full rounded-full" style="width:82%;background:var(--accent);"></div></div>
+                      </div>
+                      <div>
+                        <div class="flex justify-between text-[11px] mb-1"><span style="color:var(--text-2);">矩阵运算</span><span class="mono" style="color:var(--text-3);">45%</span></div>
+                        <div class="h-1 rounded-full overflow-hidden" style="background:var(--bg-3);"><div class="h-full rounded-full" style="width:45%;background:var(--accent);"></div></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="rounded-md p-3" style="background:var(--bg-2);border:1px solid var(--line);">
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="mono text-[10.5px] uppercase" style="letter-spacing:.12em;color:var(--text-2);">掌握度趋势</span>
+                      <span class="mono text-[10px]" style="color:var(--accent);">+38%</span>
+                    </div>
+                    <svg viewBox="0 0 200 64" class="w-full h-16" preserveAspectRatio="none">
+                      <defs>
+                        <linearGradient id="heroSpark" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stop-color="#C8F24A" stop-opacity=".28"/>
+                          <stop offset="100%" stop-color="#C8F24A" stop-opacity="0"/>
+                        </linearGradient>
+                      </defs>
+                      <polyline points="0,54 20,48 40,50 60,40 80,42 100,30 120,34 140,22 160,26 180,12 200,8" fill="none" stroke="#C8F24A" stroke-width="1.6" stroke-linejoin="round"/>
+                      <polygon points="0,54 20,48 40,50 60,40 80,42 100,30 120,34 140,22 160,26 180,12 200,8 200,64 0,64" fill="url(#heroSpark)"/>
+                    </svg>
+                    <div class="flex justify-between mono text-[9px] mt-1" style="color:var(--text-3);">
+                      <span>W1</span><span>W2</span><span>W3</span><span>W4</span><span>W5</span><span>W6</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- agent status strip -->
+                <div class="flex flex-wrap items-center gap-x-5 gap-y-1.5 px-1 pt-0.5">
+                  <span class="mono text-[9.5px] uppercase" style="letter-spacing:.14em;color:var(--text-3);">智能体状态</span>
+                  <span class="flex items-center gap-1.5 text-[11px]" style="color:var(--text-2);"><span class="w-1.5 h-1.5 rounded-full dot-active" style="background:var(--accent);"></span>诊断 active</span>
+                  <span class="flex items-center gap-1.5 text-[11px]" style="color:var(--text-2);"><span class="w-1.5 h-1.5 rounded-full dot-active" style="background:var(--accent);"></span>分析 active</span>
+                  <span class="flex items-center gap-1.5 text-[11px]" style="color:var(--text-3);"><span class="w-1.5 h-1.5 rounded-full" style="background:var(--text-3);"></span>归因 idle</span>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          <!-- caption -->
+          <div class="flex items-center justify-between mt-3 mono text-[10px] uppercase" style="letter-spacing:.15em;color:var(--text-3);">
+            <span>FIG. 01 · 教学控制台实时界面</span>
+            <span>v2.6 · 多智能体协同</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2. DATA-PROOF BAND (replaces logo wall) — editorial, asymmetric 4/8 ============ -->
+<section style="background:var(--bg-1);border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
+  <div class="container-x py-16 lg:py-20">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
+
+      <!-- LEFT col-span-4 -->
+      <div class="lg:col-span-4 reveal">
+        <div class="eyebrow mb-4">DATA — 真实场景验证</div>
+        <p class="serif text-ink" style="font-size:clamp(30px,3.6vw,46px);line-height:1.06;letter-spacing:-.02em;">
+          真实场景里，<br>错题重复率<br>
+          <span class="serif font-bold" style="color:var(--accent);font-size:clamp(64px,8.2vw,98px);line-height:1;display:inline-block;margin-top:.1em;" data-count="41" data-prefix="−" data-suffix="%">−41%</span>
+        </p>
+        <div class="mono text-[11px] mt-4 uppercase" style="letter-spacing:.15em;color:var(--text-3);">某实验中学 · 接入 3 个月</div>
+      </div>
+
+      <!-- RIGHT col-span-8 — varied editorial rows -->
+      <div class="lg:col-span-8 reveal">
+        <!-- row 1: number left (7) / context right (5) -->
+        <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 sm:gap-6 items-baseline pb-7" style="border-bottom:1px solid var(--line);">
+          <div class="sm:col-span-7">
+            <div class="serif font-bold text-ink" style="font-size:clamp(34px,4vw,52px);line-height:1;letter-spacing:-.02em;">
+              <span data-count="120" data-suffix="万+">120万+</span> <span class="text-[18px] font-normal align-middle" style="color:var(--text-2);">课件被生成</span>
+            </div>
+          </div>
+          <div class="sm:col-span-5 sm:text-right">
+            <div class="text-[14px] leading-[1.6]" style="color:var(--text-2);">教师备课时间下降 <span class="serif font-bold text-ink" data-count="60" data-suffix="%">60%</span></div>
+            <div class="mono text-[10.5px] mt-1 uppercase" style="letter-spacing:.14em;color:var(--text-3);">全省 312 所学校</div>
+          </div>
+        </div>
+
+        <!-- row 2: context left (5) / number right (7) -->
+        <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 sm:gap-6 items-baseline py-7" style="border-bottom:1px solid var(--line);">
+          <div class="sm:col-span-5 sm:order-1 order-2">
+            <div class="text-[14px] leading-[1.6]" style="color:var(--text-2);">NPS <span class="serif font-bold text-ink" data-count="72">72</span>，覆盖 985/211 院校</div>
+            <div class="mono text-[10.5px] mt-1 uppercase" style="letter-spacing:.14em;color:var(--text-3);">用户满意度调研</div>
+          </div>
+          <div class="sm:col-span-7 sm:order-2 order-1 sm:text-right">
+            <div class="serif font-bold text-ink" style="font-size:clamp(34px,4vw,52px);line-height:1;letter-spacing:-.02em;">
+              <span data-count="98.6" data-decimals="1" data-suffix="%">98.6%</span> <span class="text-[18px] font-normal align-middle" style="color:var(--text-2);">用户满意度</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- row 3: number left (8) / context right (4) -->
+        <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 sm:gap-6 items-baseline pt-7">
+          <div class="sm:col-span-8">
+            <div class="serif font-bold text-ink" style="font-size:clamp(34px,4vw,52px);line-height:1;letter-spacing:-.02em;">
+              <span data-count="94" data-suffix="%">94%</span> <span class="text-[18px] font-normal align-middle" style="color:var(--text-2);">错因诊断准确率</span>
+            </div>
+          </div>
+          <div class="sm:col-span-4 sm:text-right">
+            <div class="text-[14px] leading-[1.6]" style="color:var(--text-2);"><span class="serif font-bold text-ink" data-count="8">8</span> 智能体实时协同</div>
+            <div class="mono text-[10.5px] mt-1 uppercase" style="letter-spacing:.14em;color:var(--text-3);">毫秒级调度</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3. EIGHT-AGENT SYSTEM — editorial spec-sheet table ============ -->
+<section id="agents" style="background:var(--bg);">
+  <div class="container-x py-20 lg:py-28">
+
+    <!-- header -->
+    <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-12 reveal">
+      <div>
+        <div class="num-tag mb-3">№ 02</div>
+        <h2 class="serif font-bold text-ink" style="font-size:clamp(32px,4vw,50px);letter-spacing:-.02em;line-height:1.05;">多智能体协同架构</h2>
+        <p class="mt-4 text-[15px] max-w-xl" style="color:var(--text-2);">8 个专业智能体各司其职，协同生成 7 类教学资源。任务调度由协调智能体统一编排，错题诊疗链路在毫秒级完成。</p>
+      </div>
+      <div class="mono text-[11px] uppercase self-start rounded px-3 py-1.5" style="letter-spacing:.15em;color:var(--text-3);border:1px solid var(--line);">8 AGENTS · 7 RESOURCES</div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-6">
+
+      <!-- LEFT col-span-3 sticky -->
+      <div class="lg:col-span-3 reveal">
+        <div class="lg:sticky lg:top-24 flex lg:flex-col flex-row lg:items-start items-center gap-6 lg:gap-0">
+          <div class="serif text-ink font-bold select-none" style="writing-mode:vertical-rl;font-size:15px;letter-spacing:.22em;color:var(--text-2);">AGENT&nbsp;/&nbsp;TOPOLOGY</div>
+          <div class="lg:mt-8 space-y-2.5">
+            <div class="eyebrow mb-2 lg:block hidden">图例</div>
+            <div class="flex items-center gap-2 text-[12px]" style="color:var(--text-2);"><span class="w-2 h-2 rounded-full dot-active" style="background:var(--accent);"></span>active · 工作中</div>
+            <div class="flex items-center gap-2 text-[12px]" style="color:var(--text-3);"><span class="w-2 h-2 rounded-full" style="background:var(--text-3);"></span>idle · 待命</div>
+            <div class="flex items-center gap-2 text-[12px]" style="color:var(--text-2);"><span class="w-2 h-2 rounded-full" style="background:var(--warm);"></span>coordinator · 协调</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT col-span-9 table -->
+      <div class="lg:col-span-9 reveal">
+        <div class="overflow-x-auto -mx-1 px-1">
+          <div class="min-w-[680px]">
+
+            <!-- column headers -->
+            <div class="grid grid-cols-12 gap-3 px-4 py-2 mono text-[10px] uppercase" style="letter-spacing:.15em;color:var(--text-3);border-bottom:1px solid var(--line);">
+              <span class="col-span-1">编号</span>
+              <span class="col-span-3">智能体</span>
+              <span class="col-span-4">角色</span>
+              <span class="col-span-3">协同输出</span>
+              <span class="col-span-1 text-right">状态</span>
+            </div>
+
+            <!-- 01 active coordinator -->
+            <div class="agent-row grid grid-cols-12 gap-3 px-4 py-3.5 items-center" style="border-bottom:1px solid var(--line);border-left:2px solid var(--warm);">
+              <span class="col-span-1 mono text-[12px]" style="color:var(--text-3);">01</span>
+              <span class="col-span-3 serif font-bold text-ink text-[15px]">协调智能体 <span class="mono text-[10px] font-normal block" style="color:var(--text-3);">Coordinator</span></span>
+              <span class="col-span-4 text-[13px]" style="color:var(--text-2);">任务调度与资源分配</span>
+              <span class="col-span-3"><span class="mono text-[10px] px-2 py-0.5 rounded" style="background:var(--bg-3);color:var(--text-2);">全链路编排</span></span>
+              <span class="col-span-1 flex justify-end"><span class="w-2 h-2 rounded-full dot-active" style="background:var(--warm);"></span></span>
+            </div>
+
+            <!-- 02 active -->
+            <div class="agent-row grid grid-cols-12 gap-3 px-4 py-3.5 items-center" style="border-bottom:1px solid var(--line);border-left:2px solid var(--accent);">
+              <span class="col-span-1 mono text-[12px]" style="color:var(--text-3);">02</span>
+              <span class="col-span-3 serif font-bold text-ink text-[15px]">诊断智能体 <span class="mono text-[10px] font-normal block" style="color:var(--text-3);">Diagnosis</span></span>
+              <span class="col-span-4 text-[13px]" style="color:var(--text-2);">错因诊断与知识漏洞定位</span>
+              <span class="col-span-3"><span class="mono text-[10px] px-2 py-0.5 rounded" style="background:var(--bg-3);color:var(--text-2);">错因报告</span></span>
+              <span class="col-span-1 flex justify-end"><span class="w-2 h-2 rounded-full dot-active" style="background:var(--accent);"></span></span>
+            </div>
+
+            <!-- 03 active -->
+            <div class="agent-row grid grid-cols-12 gap-3 px-4 py-3.5 items-center" style="border-bottom:1px solid var(--line);border-left:2px solid var(--accent);">
+              <span class="col-span-1 mono text-[12px]" style="color:var(--text-3);">03</span>
+              <span class="col-span-3 serif font-bold text-ink text-[15px]">分析智能体 <span class="mono text-[10px] font-normal block" style="color:var(--text-3);">Analysis</span></span>
+              <span class="col-span-4 text-[13px]" style="color:var(--text-2);">学情数据多维分析</span>
+              <span class="col-span-3"><span class="mono text-[10px] px-2 py-0.5 rounded" style="background:var(--bg-3);color:var(--text-2);">学情画像</span></span>
+              <span class="col-span-1 flex justify-end"><span class="w-2 h-2 rounded-full dot-active" style="background:var(--accent);"></span></span>
+            </div>
+
+            <!-- 04 idle -->
+            <div class="agent-row grid grid-cols-12 gap-3 px-4 py-3.5 items-center" style="border-bottom:1px solid var(--line);border-left:2px solid transparent;">
+              <span class="col-span-1 mono text-[12px]" style="color:var(--text-3);">04</span>
+              <span class="col-span-3 serif font-bold text-ink text-[15px]">归因智能体 <span class="mono text-[10px] font-normal block" style="color:var(--text-3);">Attribution</span></span>
+              <span class="col-span-4 text-[13px]" style="color:var(--text-2);">学习行为根因归因</span>
+              <span class="col-span-3"><span class="mono text-[10px] px-2 py-0.5 rounded" style="background:var(--bg-3);color:var(--text-2);">归因链路</span></span>
+              <span class="col-span-1 flex justify-end"><span class="w-2 h-2 rounded-full" style="background:var(--text-3);"></span></span>
+            </div>
+
+            <!-- 05 idle -->
+            <div class="agent-row grid grid-cols-12 gap-3 px-4 py-3.5 items-center" style="border-bottom:1px solid var(--line);border-left:2px solid transparent;">
+              <span class="col-span-1 mono text-[12px]" style="color:var(--text-3);">05</span>
+              <span class="col-span-3 serif font-bold text-ink text-[15px]">文档智能体 <span class="mono text-[10px] font-normal block" style="color:var(--text-3);">Document</span></span>
+              <span class="col-span-4 text-[13px]" style="color:var(--text-2);">课件与教学文档生成</span>
+              <span class="col-span-3"><span class="mono text-[10px] px-2 py-0.5 rounded" style="background:var(--bg-3);color:var(--text-2);">课件 / 教案</span></span>
+              <span class="col-span-1 flex justify-end"><span class="w-2 h-2 rounded-full" style="background:var(--text-3);"></span></span>
+            </div>
+
+            <!-- 06 idle -->
+            <div class="agent-row grid grid-cols-12 gap-3 px-4 py-3.5 items-center" style="border-bottom:1px solid var(--line);border-left:2px solid transparent;">
+              <span class="col-span-1 mono text-[12px]" style="color:var(--text-3);">06</span>
+              <span class="col-span-3 serif font-bold text-ink text-[15px]">练习智能体 <span class="mono text-[10px] font-normal block" style="color:var(--text-3);">Exercise</span></span>
+              <span class="col-span-4 text-[13px]" style="color:var(--text-2);">靶向练习智能推送</span>
+              <span class="col-span-3"><span class="mono text-[10px] px-2 py-0.5 rounded" style="background:var(--bg-3);color:var(--text-2);">习题 / 测试</span></span>
+              <span class="col-span-1 flex justify-end"><span class="w-2 h-2 rounded-full" style="background:var(--text-3);"></span></span>
+            </div>
+
+            <!-- 07 idle -->
+            <div class="agent-row grid grid-cols-12 gap-3 px-4 py-3.5 items-center" style="border-bottom:1px solid var(--line);border-left:2px solid transparent;">
+              <span class="col-span-1 mono text-[12px]" style="color:var(--text-3);">07</span>
+              <span class="col-span-3 serif font-bold text-ink text-[15px]">辅导智能体 <span class="mono text-[10px] font-normal block" style="color:var(--text-3);">Tutoring</span></span>
+              <span class="col-span-4 text-[13px]" style="color:var(--text-2);">实时个性化辅导</span>
+              <span class="col-span-3"><span class="mono text-[10px] px-2 py-0.5 rounded" style="background:var(--bg-3);color:var(--text-2);">辅导记录</span></span>
+              <span class="col-span-1 flex justify-end"><span class="w-2 h-2 rounded-full" style="background:var(--text-3);"></span></span>
+            </div>
+
+            <!-- 08 idle -->
+            <div class="agent-row grid grid-cols-12 gap-3 px-4 py-3.5 items-center" style="border-left:2px solid transparent;">
+              <span class="col-span-1 mono text-[12px]" style="color:var(--text-3);">08</span>
+              <span class="col-span-3 serif font-bold text-ink text-[15px]">评估智能体 <span class="mono text-[10px] font-normal block" style="color:var(--text-3);">Assessment</span></span>
+              <span class="col-span-4 text-[13px]" style="color:var(--text-2);">学习效果评估与画像更新</span>
+              <span class="col-span-3"><span class="mono text-[10px] px-2 py-0.5 rounded" style="background:var(--bg-3);color:var(--text-2);">成长报告</span></span>
+              <span class="col-span-1 flex justify-end"><span class="w-2 h-2 rounded-full" style="background:var(--text-3);"></span></span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 4. EIGHT-DIMENSION STUDENT PROFILE — bento grid, varied cells ============ -->
+<section id="profile" style="background:var(--bg-1);">
+  <div class="container-x py-20 lg:py-28">
+
+    <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-10 reveal">
+      <div>
+        <div class="num-tag mb-3">№ 03</div>
+        <h2 class="serif font-bold text-ink" style="font-size:clamp(32px,4vw,50px);letter-spacing:-.02em;line-height:1.05;">8 维学生画像</h2>
+        <p class="mt-4 text-[15px] max-w-xl" style="color:var(--text-2);">从知识到习惯，构建每个学生的完整学习数字孪生。8 个维度持续更新，让每一道错题都有归处。</p>
+      </div>
+      <div class="mono text-[11px] uppercase self-start rounded px-3 py-1.5" style="letter-spacing:.15em;color:var(--text-3);border:1px solid var(--line);">DIGITAL TWIN · 8 DIM</div>
+    </div>
+
+    <div class="bento grid grid-cols-1 gap-3">
+
+      <!-- Cell A: radar (7 cols x 2 rows) -->
+      <div class="bento-cell b-a p-5 rounded-lg flex flex-col" style="background:var(--bg-2);border:1px solid var(--line);">
+        <div class="flex items-center justify-between mb-2">
+          <div>
+            <div class="mono text-[10px] uppercase mb-1" style="letter-spacing:.15em;color:var(--text-3);">维度 01</div>
+            <h3 class="serif font-bold text-ink text-[20px]">知识掌握度</h3>
+          </div>
+          <span class="mono text-[10.5px]" style="color:var(--accent);">综合 0.70</span>
+        </div>
+        <div class="flex-1 flex items-center justify-center min-h-0">
+          <svg viewBox="0 0 220 220" class="w-full max-w-[340px] h-auto" role="img" aria-label="8 维知识掌握雷达图">
+            <!-- rings -->
+            <polygon points="110,20 173.6,46.4 200,110 173.6,173.6 110,200 46.4,173.6 20,110 46.4,46.4" fill="none" stroke="#262A32" stroke-width="1"/>
+            <polygon points="110,42.5 151.7,62.3 172.5,110 151.7,157.7 110,177.5 68.3,157.7 47.5,110 68.3,62.3" fill="none" stroke="#262A32" stroke-width="1"/>
+            <polygon points="110,65 129.8,78.2 145,110 129.8,141.8 110,155 90.2,141.8 75,110 90.2,78.2" fill="none" stroke="#262A32" stroke-width="1"/>
+            <polygon points="110,87.5 107.9,94.1 117.5,110 107.9,125.9 110,132.5 112.1,125.9 102.5,110 112.1,94.1" fill="none" stroke="#262A32" stroke-width="1"/>
+            <!-- axes -->
+            <g stroke="#262A32" stroke-width="1">
+              <line x1="110" y1="110" x2="110" y2="20"/>
+              <line x1="110" y1="110" x2="173.6" y2="46.4"/>
+              <line x1="110" y1="110" x2="200" y2="110"/>
+              <line x1="110" y1="110" x2="173.6" y2="173.6"/>
+              <line x1="110" y1="110" x2="110" y2="200"/>
+              <line x1="110" y1="110" x2="46.4" y2="173.6"/>
+              <line x1="110" y1="110" x2="20" y2="110"/>
+              <line x1="110" y1="110" x2="46.4" y2="46.4"/>
+            </g>
+            <!-- data polygon -->
+            <polygon points="110,36.2 146.9,73.1 173,110 138,138 110,144.2 68,152 60.5,110 60.4,60.4" fill="rgba(200,242,74,.16)" stroke="#C8F24A" stroke-width="1.6" stroke-linejoin="round"/>
+            <!-- data points -->
+            <g fill="#C8F24A">
+              <circle cx="110" cy="36.2" r="2.4"/><circle cx="146.9" cy="73.1" r="2.4"/>
+              <circle cx="173" cy="110" r="2.4"/><circle cx="138" cy="138" r="2.4"/>
+              <circle cx="110" cy="144.2" r="2.4"/><circle cx="68" cy="152" r="2.4"/>
+              <circle cx="60.5" cy="110" r="2.4"/><circle cx="60.4" cy="60.4" r="2.4"/>
+            </g>
+            <!-- labels -->
+            <g font-family="JetBrains Mono,monospace" font-size="9" fill="#6A6C74">
+              <text x="110" y="12" text-anchor="middle">知识</text>
+              <text x="184" y="40" text-anchor="middle">风格</text>
+              <text x="212" y="113" text-anchor="middle">认知</text>
+              <text x="184" y="188" text-anchor="middle">错误</text>
+              <text x="110" y="216" text-anchor="middle">进步</text>
+              <text x="36" y="188" text-anchor="middle">专注</text>
+              <text x="8" y="113" text-anchor="middle">动力</text>
+              <text x="36" y="40" text-anchor="middle">兴趣</text>
+            </g>
+          </svg>
+        </div>
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 pt-3" style="border-top:1px solid var(--line);">
+          <span class="flex items-center gap-1.5 text-[11px]" style="color:var(--text-2);"><span class="w-2 h-2 rounded-sm" style="background:var(--accent);"></span>当前掌握</span>
+          <span class="flex items-center gap-1.5 text-[11px]" style="color:var(--text-3);"><span class="w-2 h-2 rounded-sm" style="background:var(--line-2);"></span>目标基线</span>
+          <span class="mono text-[10.5px] ml-auto" style="color:var(--text-3);">8 axes · 实时</span>
+        </div>
+      </div>
+
+      <!-- Cell B: learning style bars (5 x 1) -->
+      <div class="bento-cell b-b p-5 rounded-lg flex flex-col" style="background:var(--bg-2);border:1px solid var(--line);">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <div class="mono text-[10px] uppercase mb-1" style="letter-spacing:.15em;color:var(--text-3);">维度 02</div>
+            <h3 class="serif font-bold text-ink text-[18px]">学习风格</h3>
+          </div>
+          <span class="mono text-[10px] px-2 py-0.5 rounded" style="background:var(--bg-3);color:var(--text-2);">视觉型主导</span>
+        </div>
+        <div class="space-y-2.5 mt-auto">
+          <div>
+            <div class="flex justify-between text-[12px] mb-1"><span style="color:var(--text);">视觉型</span><span class="mono" style="color:var(--accent);">62%</span></div>
+            <div class="h-1.5 rounded-full overflow-hidden" style="background:var(--bg-3);"><div class="h-full rounded-full" style="width:62%;background:var(--accent);"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-[12px] mb-1"><span style="color:var(--text-2);">听觉型</span><span class="mono" style="color:var(--text-3);">28%</span></div>
+            <div class="h-1.5 rounded-full overflow-hidden" style="background:var(--bg-3);"><div class="h-full rounded-full" style="width:28%;background:var(--warm);"></div></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-[12px] mb-1"><span style="color:var(--text-2);">动手型</span><span class="mono" style="color:var(--text-3);">10%</span></div>
+            <div class="h-1.5 rounded-full overflow-hidden" style="background:var(--bg-3);"><div class="h-full rounded-full" style="width:10%;background:var(--text-2);"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cell C: cognitive donut + 3 metrics (5 x 1) -->
+      <div class="bento-cell b-c p-5 rounded-lg flex flex-col" style="background:var(--bg-2);border:1px solid var(--line);">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <div class="mono text-[10px] uppercase mb-1" style="letter-spacing:.15em;color:var(--text-3);">维度 03</div>
+            <h3 class="serif font-bold text-ink text-[18px]">认知能力</h3>
+          </div>
+        </div>
+        <div class="flex items-center gap-4 mt-auto">
+          <svg viewBox="0 0 36 36" class="w-[72px] h-[72px] shrink-0" role="img" aria-label="认知能力综合 78">
+            <circle cx="18" cy="18" r="15.9" fill="none" stroke="#1C2027" stroke-width="3.4"/>
+            <circle cx="18" cy="18" r="15.9" fill="none" stroke="#C8F24A" stroke-width="3.4" stroke-dasharray="78 100" stroke-linecap="round" transform="rotate(-90 18 18)"/>
+            <text x="18" y="20.5" text-anchor="middle" font-family="Fraunces,serif" font-size="9.5" font-weight="700" fill="#EDEAE2">78</text>
+          </svg>
+          <div class="flex-1 grid grid-cols-3 gap-2">
+            <div><div class="mono text-[9.5px] uppercase" style="color:var(--text-3);">记忆</div><div class="serif font-bold text-ink text-[16px]">78</div></div>
+            <div><div class="mono text-[9.5px] uppercase" style="color:var(--text-3);">理解</div><div class="serif font-bold text-ink text-[16px]">65</div></div>
+            <div><div class="mono text-[9.5px] uppercase" style="color:var(--text-3);">应用</div><div class="serif font-bold text-ink text-[16px]">52</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cell D: error heatmap (4 x 1) -->
+      <div class="bento-cell b-d p-5 rounded-lg flex flex-col" style="background:var(--bg-2);border:1px solid var(--line);">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <div class="mono text-[10px] uppercase mb-1" style="letter-spacing:.15em;color:var(--text-3);">维度 04</div>
+            <h3 class="serif font-bold text-ink text-[18px]">错误模式</h3>
+          </div>
+          <span class="mono text-[10px]" style="color:var(--text-3);">7×4</span>
+        </div>
+        <div class="grid grid-cols-7 gap-1 mt-auto" aria-label="错误热力图">
+          <!-- row1 -->
+          <div class="aspect-square rounded-sm" style="background:rgba(200,242,74,.10);"></div>
+          <div class="aspect-square rounded-sm" style="background:rgba(200,242,74,.30);"></div>
+          <div class="aspect-square rounded-sm" style="background:rgba(200,242,74,.55);"></div>
+          <div class="aspect-square rounded-sm" style="background:rgba(200,242,74,.20);"></div>
+          <div class="aspect-square rounded-sm" style="background:rgba(200,242,74,.40);"></div>
+          <div class="aspect-square rounded-sm" style="background:rgba(200,242,74,.75);"></div>
+          <div class="aspect-square rounded-sm" style="background:rgba(200,242,74,.15);"></div>
+          <!-- row2 -->
+          <div class="aspect-square rounded-sm" style="background:rgba(200,242,74,.25);"></div>
+          <div class="aspect-square rounded-sm" style="background:rgba(200,242,74,.60);"></div>
+          <div class="aspect-square rounded-sm" style="background:rgba(200,242,74,.35);"></div>
+          <div class="aspect-square rounded-sm" style="background:rgba(200,242,74,.85);"></div>
+          <div class="aspect-square rounded-sm" style="background:rgba(200,242,74,.45);"></div>
+          <div class="aspect-square rounded-sm" style="background:rgba(200,242,74,.20);"></div>
+          <div class="aspect-square rounded-sm" style="background:rgba(200,242,74,.50);"></div>
+          <!-- row3 -->
+          <div class="aspect-square rounded-sm" style="background:rgba(200,242,74,.65);"></div>
+          <div class="aspect-square rounded-sm" style="background:rgba(200,242,74,.15);"></div>
+          <div class="aspect-square rounded-sm" style="background:rgba(200,242,74,.40);"></div>
+          <div class="aspect-square rounded-sm" style="background:rgba(200,242,74,.30);"></div>
+          <div class="aspect-square rounded-sm" style="background:rgba(200,242,74,.70);"></div>
+          <div class="aspect-square rounded-sm" style="background:rgba(200,242,74,.10);"></div>
+          <div class="aspect-square rounded-sm" style="background:rgba(200,242,74,.55);"></div>
+          <!-- row4 -->
+          <div class="aspect-square rounded-sm" style="background:rgba(200,242,74,.35);"></div>
+          <div class="aspect-square rounded-sm" style="background:rgba(200,242,74,.50);"></div>
+          <div class="aspect-square rounded-sm" style="background:rgba(200,242,74,.80);"></div>
+          <div class="aspect-square rounded-sm" style="background:rgba(200,242,74,.25);"></div>
+          <div class="aspect-square rounded-sm" style="background:rgba(200,242,74,.15);"></div>
+          <div class="aspect-square rounded-sm" style="background:rgba(200,242,74,.45);"></div>
+          <div class="aspect-square rounded-sm" style="background:rgba(200,242,74,.60);"></div>
+        </div>
+        <div class="flex items-center justify-between mono text-[9.5px] mt-2" style="color:var(--text-3);">
+          <span>低</span><span>高频错点 · 周分布</span><span>高</span>
+        </div>
+      </div>
+
+      <!-- Cell E: progress sparkline +38% (4 x 1) -->
+      <div class="bento-cell b-e p-5 rounded-lg flex flex-col" style="background:var(--bg-2);border:1px solid var(--line);">
+        <div class="mono text-[10px] uppercase mb-1" style="letter-spacing:.15em;color:var(--text-3);">维度 05</div>
+        <h3 class="serif font-bold text-ink text-[18px]">进步速率</h3>
+        <div class="serif font-bold mt-2" style="color:var(--accent);font-size:38px;line-height:1;" data-count="38" data-prefix="+" data-suffix="%">+38%</div>
+        <svg viewBox="0 0 200 40" class="w-full h-10 mt-auto" preserveAspectRatio="none">
+          <polyline points="0,34 25,30 50,31 75,22 100,24 125,14 150,16 175,7 200,4" fill="none" stroke="#C8F24A" stroke-width="1.6" stroke-linejoin="round"/>
+        </svg>
+        <div class="mono text-[9.5px] mt-1" style="color:var(--text-3);">近 8 周掌握度增速</div>
+      </div>
+
+      <!-- Cell F: focus duration weekday bars (4 x 1) -->
+      <div class="bento-cell b-f p-5 rounded-lg flex flex-col" style="background:var(--bg-2);border:1px solid var(--line);">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <div class="mono text-[10px] uppercase mb-1" style="letter-spacing:.15em;color:var(--text-3);">维度 06</div>
+            <h3 class="serif font-bold text-ink text-[18px]">专注时长</h3>
+          </div>
+          <span class="serif font-bold text-ink text-[16px]">52<span class="mono text-[10px] font-normal" style="color:var(--text-3);"> min/日</span></span>
+        </div>
+        <div class="flex items-end gap-1.5 h-16 mt-auto">
+          <div class="flex-1 flex flex-col items-center gap-1"><div class="w-full rounded-t-sm" style="height:40%;background:rgba(200,242,74,.45);"></div><span class="mono text-[8.5px]" style="color:var(--text-3);">一</span></div>
+          <div class="flex-1 flex flex-col items-center gap-1"><div class="w-full rounded-t-sm" style="height:65%;background:rgba(200,242,74,.55);"></div><span class="mono text-[8.5px]" style="color:var(--text-3);">二</span></div>
+          <div class="flex-1 flex flex-col items-center gap-1"><div class="w-full rounded-t-sm" style="height:50%;background:rgba(200,242,74,.50);"></div><span class="mono text-[8.5px]" style="color:var(--text-3);">三</span></div>
+          <div class="flex-1 flex flex-col items-center gap-1"><div class="w-full rounded-t-sm" style="height:80%;background:var(--accent);"></div><span class="mono text-[8.5px]" style="color:var(--text-3);">四</span></div>
+          <div class="flex-1 flex flex-col items-center gap-1"><div class="w-full rounded-t-sm" style="height:35%;background:rgba(200,242,74,.40);"></div><span class="mono text-[8.5px]" style="color:var(--text-3);">五</span></div>
+          <div class="flex-1 flex flex-col items-center gap-1"><div class="w-full rounded-t-sm" style="height:70%;background:rgba(200,242,74,.55);"></div><span class="mono text-[8.5px]" style="color:var(--text-3);">六</span></div>
+          <div class="flex-1 flex flex-col items-center gap-1"><div class="w-full rounded-t-sm" style="height:55%;background:rgba(200,242,74,.50);"></div><span class="mono text-[8.5px]" style="color:var(--text-3);">日</span></div>
+        </div>
+      </div>
+
+      <!-- Cell G: motivation gauge (6 x 1) -->
+      <div class="bento-cell b-g p-5 rounded-lg flex items-center gap-5" style="background:var(--bg-2);border:1px solid var(--line);">
+        <div class="shrink-0">
+          <div class="mono text-[10px] uppercase mb-1" style="letter-spacing:.15em;color:var(--text-3);">维度 07</div>
+          <h3 class="serif font-bold text-ink text-[18px]">学习动力</h3>
+        </div>
+        <svg viewBox="0 0 120 70" class="w-[150px] h-[88px] shrink-0" role="img" aria-label="学习动力 68%">
+          <path d="M10,62 A50,50 0 0,1 110,62" fill="none" stroke="#1C2027" stroke-width="7" stroke-linecap="round"/>
+          <path d="M10,62 A50,50 0 0,1 110,62" fill="none" stroke="#C8F24A" stroke-width="7" stroke-linecap="round" stroke-dasharray="106.8 157.08"/>
+          <text x="60" y="56" text-anchor="middle" font-family="Fraunces,serif" font-size="22" font-weight="700" fill="#EDEAE2">68</text>
+          <text x="60" y="68" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="7" fill="#6A6C74">/ 100</text>
+        </svg>
+        <div class="flex-1 min-w-0">
+          <div class="text-[12.5px] leading-[1.5]" style="color:var(--text-2);">内驱型学习者，目标感强；建议增加挑战性任务维持心流。</div>
+          <div class="flex gap-2 mt-2">
+            <span class="mono text-[9.5px] px-2 py-0.5 rounded" style="background:var(--bg-3);color:var(--text-2);">目标感 高</span>
+            <span class="mono text-[9.5px] px-2 py-0.5 rounded" style="background:var(--bg-3);color:var(--text-2);">抗压 中</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cell H: interest chips (6 x 1) -->
+      <div class="bento-cell b-h p-5 rounded-lg flex flex-col" style="background:var(--bg-2);border:1px solid var(--line);">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <div class="mono text-[10px] uppercase mb-1" style="letter-spacing:.15em;color:var(--text-3);">维度 08</div>
+            <h3 class="serif font-bold text-ink text-[18px]">兴趣偏好</h3>
+          </div>
+          <span class="mono text-[10px]" style="color:var(--text-3);">TOP 9</span>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 mt-auto">
+          <span class="px-2.5 py-1 rounded text-[13px] font-medium" style="background:var(--accent-dim);color:var(--accent);">数学分析</span>
+          <span class="px-2.5 py-1 rounded text-[13px]" style="background:var(--bg-3);color:var(--text);">物理建模</span>
+          <span class="px-2 py-1 rounded text-[11.5px]" style="background:var(--bg-3);color:var(--text-2);">编程算法</span>
+          <span class="px-2.5 py-1 rounded text-[12.5px]" style="background:var(--bg-3);color:var(--text);">经济学</span>
+          <span class="px-2 py-1 rounded text-[11.5px]" style="background:var(--bg-3);color:var(--text-2);">化学</span>
+          <span class="px-2 py-1 rounded text-[11px]" style="background:var(--bg-3);color:var(--text-3);">历史</span>
+          <span class="px-2 py-1 rounded text-[11px]" style="background:var(--bg-3);color:var(--text-3);">天文</span>
+          <span class="px-2 py-1 rounded text-[11px]" style="background:var(--bg-3);color:var(--text-3);">逻辑推理</span>
+          <span class="px-2 py-1 rounded text-[11px]" style="background:var(--bg-3);color:var(--text-3);">设计</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============ 5. THREE ROLES — asymmetric 5/4/3 ============ -->
+<section id="roles" style="background:var(--bg);">
+  <div class="container-x py-20 lg:py-28">
+
+    <div class="mb-12 reveal">
+      <div class="num-tag mb-3">№ 04</div>
+      <h2 class="serif font-bold text-ink" style="font-size:clamp(32px,4vw,50px);letter-spacing:-.02em;line-height:1.05;">三端协同</h2>
+      <p class="mt-4 text-[15px] max-w-xl" style="color:var(--text-2);">教师、学生、管理员，各自的工作台。同一套智能体，三套视角。</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 reveal">
+
+      <!-- 教师端 col-span-5 -->
+      <div class="lg:col-span-5 lg:pr-8 pb-10 lg:pb-0" style="border-bottom:1px solid var(--line);border-right:none;">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="w-2 h-2 rounded-full dot-active" style="background:var(--accent);"></span>
+          <span class="mono text-[11px] uppercase" style="letter-spacing:.15em;color:var(--text-3);">ROLE · 教师</span>
+        </div>
+        <h3 class="serif font-bold text-ink text-[26px] mb-2">教师端</h3>
+        <p class="text-[14px] leading-[1.6] mb-5" style="color:var(--text-2);">一句话生成完整备课，智能体自动产出课件、教案与分层测试，把备课时间还给教研。</p>
+
+        <div class="rounded-lg p-3.5" style="background:var(--bg-1);border:1px solid var(--line);">
+          <div class="flex items-center justify-between mb-3">
+            <span class="mono text-[10.5px] uppercase" style="letter-spacing:.12em;color:var(--text-2);">AI 备课 · 导数应用</span>
+            <span class="mono text-[9.5px]" style="color:var(--accent);">生成中</span>
+          </div>
+          <div class="space-y-2">
+            <div class="flex items-center gap-2.5 p-2 rounded" style="background:var(--bg-2);">
+              <span class="w-5 h-5 rounded-full flex items-center justify-center mono text-[10px] font-semibold" style="background:var(--accent);color:var(--bg);">1</span>
+              <span class="text-[12.5px] text-ink flex-1">分析教学目标与学情基线</span>
+              <i data-lucide="check" class="w-3.5 h-3.5" style="color:var(--accent);"></i>
+            </div>
+            <div class="flex items-center gap-2.5 p-2 rounded" style="background:var(--bg-2);">
+              <span class="w-5 h-5 rounded-full flex items-center justify-center mono text-[10px] font-semibold" style="background:var(--accent);color:var(--bg);">2</span>
+              <span class="text-[12.5px] text-ink flex-1">生成课件 18 页 + 教案</span>
+              <i data-lucide="check" class="w-3.5 h-3.5" style="color:var(--accent);"></i>
+            </div>
+            <div class="flex items-center gap-2.5 p-2 rounded" style="background:var(--bg-2);border:1px solid var(--accent-dim);">
+              <span class="w-5 h-5 rounded-full flex items-center justify-center mono text-[10px] font-semibold" style="background:var(--bg-3);color:var(--accent);">3</span>
+              <span class="text-[12.5px] flex-1" style="color:var(--text-2);">分层测试题组生成中…</span>
+              <span class="w-3.5 h-3.5 rounded-full border-2 border-transparent animate-spin" style="border-top-color:var(--accent);border-right-color:var(--accent);"></span>
+            </div>
+            <div class="flex items-center gap-2.5 p-2 rounded opacity-60" style="background:var(--bg-2);">
+              <span class="w-5 h-5 rounded-full flex items-center justify-center mono text-[10px]" style="background:var(--bg-3);color:var(--text-3);">4</span>
+              <span class="text-[12.5px] flex-1" style="color:var(--text-3);">同步至学生端错题本</span>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-1.5 mt-3 pt-3" style="border-top:1px solid var(--line);">
+            <span class="mono text-[9.5px] px-2 py-0.5 rounded" style="background:var(--bg-3);color:var(--text-2);">课件</span>
+            <span class="mono text-[9.5px] px-2 py-0.5 rounded" style="background:var(--bg-3);color:var(--text-2);">教案</span>
+            <span class="mono text-[9.5px] px-2 py-0.5 rounded" style="background:var(--bg-3);color:var(--text-2);">测试</span>
+            <span class="mono text-[9.5px] px-2 py-0.5 rounded" style="background:var(--bg-3);color:var(--text-2);">学情快照</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 学生端 col-span-4 -->
+      <div class="lg:col-span-4 lg:px-8 py-10 lg:py-0" style="border-bottom:1px solid var(--line);">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="w-2 h-2 rounded-full" style="background:var(--warm);"></span>
+          <span class="mono text-[11px] uppercase" style="letter-spacing:.15em;color:var(--text-3);">ROLE · 学生</span>
+        </div>
+        <h3 class="serif font-bold text-ink text-[26px] mb-2">学生端</h3>
+        <p class="text-[14px] leading-[1.6] mb-5" style="color:var(--text-2);">错题不再只是抄写，每道题都有诊断、归因与下一步该练什么。</p>
+
+        <div class="rounded-lg p-3.5" style="background:var(--bg-1);border:1px solid var(--line);">
+          <div class="flex items-center justify-between mb-3">
+            <span class="mono text-[10.5px] uppercase" style="letter-spacing:.12em;color:var(--text-2);">我的错题本</span>
+            <span class="mono text-[9.5px]" style="color:var(--text-3);">本周 +7</span>
+          </div>
+          <div class="space-y-2">
+            <div class="p-2 rounded" style="background:var(--bg-2);">
+              <div class="flex items-center justify-between mb-1"><span class="text-[12px] text-ink truncate">求导：ln(x²+1)</span><span class="mono text-[9px] px-1.5 py-0.5 rounded" style="background:rgba(248,113,113,.12);color:var(--err);">high</span></div>
+              <div class="mono text-[9.5px]" style="color:var(--text-3);">链式法则遗漏</div>
+            </div>
+            <div class="p-2 rounded" style="background:var(--bg-2);">
+              <div class="flex items-center justify-between mb-1"><span class="text-[12px] text-ink truncate">向量点积夹角</span><span class="mono text-[9px] px-1.5 py-0.5 rounded" style="background:rgba(251,191,36,.12);color:var(--warn);">med</span></div>
+              <div class="mono text-[9.5px]" style="color:var(--text-3);">公式记忆错误</div>
+            </div>
+            <div class="p-2 rounded" style="background:var(--bg-2);">
+              <div class="flex items-center justify-between mb-1"><span class="text-[12px] text-ink truncate">二项分布期望</span><span class="mono text-[9px] px-1.5 py-0.5 rounded" style="background:rgba(74,222,128,.12);color:var(--ok);">low</span></div>
+              <div class="mono text-[9.5px]" style="color:var(--text-3);">审题不清</div>
+            </div>
+          </div>
+          <div class="mt-3 pt-3" style="border-top:1px solid var(--line);">
+            <div class="flex justify-between text-[11px] mb-1"><span style="color:var(--text-2);">本章掌握度</span><span class="mono" style="color:var(--accent);">72%</span></div>
+            <div class="h-1.5 rounded-full overflow-hidden" style="background:var(--bg-3);"><div class="h-full rounded-full" style="width:72%;background:var(--accent);"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 管理端 col-span-3 -->
+      <div class="lg:col-span-3 lg:pl-8 pt-10 lg:pt-0">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="w-2 h-2 rounded-full" style="background:var(--text-2);"></span>
+          <span class="mono text-[11px] uppercase" style="letter-spacing:.15em;color:var(--text-3);">ROLE · 管理</span>
+        </div>
+        <h3 class="serif font-bold text-ink text-[26px] mb-2">管理端</h3>
+        <p class="text-[14px] leading-[1.6] mb-5" style="color:var(--text-2);">全校学情一屏掌握，资源调度有据可依。</p>
+
+        <div class="rounded-lg p-3.5" style="background:var(--bg-1);border:1px solid var(--line);">
+          <div class="mono text-[10.5px] uppercase mb-3" style="letter-spacing:.12em;color:var(--text-2);">全校看板</div>
+          <div class="space-y-3">
+            <div>
+              <div class="serif font-bold text-ink" style="font-size:28px;line-height:1;">2,486</div>
+              <div class="mono text-[9.5px] mt-0.5" style="color:var(--text-3);">活跃学生</div>
+            </div>
+            <div>
+              <div class="serif font-bold" style="font-size:28px;line-height:1;color:var(--accent);">+38%</div>
+              <div class="mono text-[9.5px] mt-0.5" style="color:var(--text-3);">平均掌握度</div>
+            </div>
+            <div class="pt-2" style="border-top:1px solid var(--line);">
+              <svg viewBox="0 0 120 30" class="w-full h-7" preserveAspectRatio="none">
+                <polyline points="0,26 15,22 30,24 45,16 60,18 75,10 90,12 105,5 120,3" fill="none" stroke="#C8F24A" stroke-width="1.5"/>
+              </svg>
+              <div class="mono text-[9px] mt-1" style="color:var(--text-3);">学期趋势</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============ 6. CORE FEATURES — scroll narrative, alternating ratios ============ -->
+<section id="features">
+
+  <!-- Feature 1: 30/70 (text 4 / UI 8) -->
+  <div class="py-16 lg:py-24" style="background:var(--bg-1);">
+    <div class="container-x">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
+        <div class="lg:col-span-4 reveal">
+          <div class="mono text-[11px] uppercase mb-3" style="letter-spacing:.18em;color:var(--accent);">FEATURE · 01</div>
+          <h3 class="serif font-bold text-ink" style="font-size:30px;letter-spacing:-.02em;line-height:1.1;">AI 课程生成向导</h3>
+          <p class="mt-4 text-[15px] leading-[1.65]" style="color:var(--text-2);">输入教学目标与学情，向导自动拆解为可执行步骤，逐步产出完整课程包。每一步可干预、可回溯。</p>
+          <div class="flex flex-wrap gap-1.5 mt-5">
+            <span class="mono text-[10px] px-2 py-1 rounded" style="background:var(--bg-3);color:var(--text-2);">目标解析</span>
+            <span class="mono text-[10px] px-2 py-1 rounded" style="background:var(--bg-3);color:var(--text-2);">课件生成</span>
+            <span class="mono text-[10px] px-2 py-1 rounded" style="background:var(--bg-3);color:var(--text-2);">分层测试</span>
+          </div>
+        </div>
+        <div class="lg:col-span-8 reveal">
+          <div class="rounded-lg overflow-hidden" style="background:var(--bg-2);border:1px solid var(--line);box-shadow:0 20px 60px rgba(0,0,0,.4);">
+            <div class="flex items-center gap-2 px-4 h-9" style="background:var(--bg-3);border-bottom:1px solid var(--line);">
+              <span class="w-2.5 h-2.5 rounded-full" style="background:#3a3d44;"></span><span class="w-2.5 h-2.5 rounded-full" style="background:#3a3d44;"></span><span class="w-2.5 h-2.5 rounded-full" style="background:#3a3d44;"></span>
+              <span class="mono text-[11px] ml-3" style="color:var(--text-3);">课程生成向导 · 高二数学 / 导数应用</span>
+            </div>
+            <div class="p-5">
+              <!-- progress -->
+              <div class="flex items-center gap-2 mb-5">
+                <div class="h-1 flex-1 rounded-full overflow-hidden" style="background:var(--bg-3);"><div class="h-full rounded-full" style="width:62%;background:var(--accent);"></div></div>
+                <span class="mono text-[10.5px]" style="color:var(--text-3);">3 / 5</span>
+              </div>
+              <div class="space-y-2.5">
+                <div class="flex items-center gap-3 p-3 rounded-md" style="background:var(--bg-1);border:1px solid var(--line);">
+                  <span class="w-6 h-6 rounded-full flex items-center justify-center mono text-[11px] font-semibold shrink-0" style="background:var(--accent);color:var(--bg);">1</span>
+                  <div class="flex-1 min-w-0"><div class="text-[13px] text-ink">解析教学目标</div><div class="mono text-[10px]" style="color:var(--text-3);">高二 · 导数应用 · 40min</div></div>
+                  <i data-lucide="check" class="w-4 h-4" style="color:var(--accent);"></i>
+                </div>
+                <div class="flex items-center gap-3 p-3 rounded-md" style="background:var(--bg-1);border:1px solid var(--line);">
+                  <span class="w-6 h-6 rounded-full flex items-center justify-center mono text-[11px] font-semibold shrink-0" style="background:var(--accent);color:var(--bg);">2</span>
+                  <div class="flex-1 min-w-0"><div class="text-[13px] text-ink">匹配学情基线</div><div class="mono text-[10px]" style="color:var(--text-3);">班级均分 71 · 薄弱点 极值</div></div>
+                  <i data-lucide="check" class="w-4 h-4" style="color:var(--accent);"></i>
+                </div>
+                <div class="flex items-center gap-3 p-3 rounded-md" style="background:var(--bg-1);border:1px solid var(--accent-dim);">
+                  <span class="w-6 h-6 rounded-full flex items-center justify-center mono text-[11px] font-semibold shrink-0" style="background:var(--bg-3);color:var(--accent);">3</span>
+                  <div class="flex-1 min-w-0"><div class="text-[13px] text-ink">生成课件 18 页</div><div class="mono text-[10px]" style="color:var(--text-3);">含 3 个动态示例 · 2 组互动</div></div>
+                  <span class="w-4 h-4 rounded-full border-2 animate-spin shrink-0" style="border-top-color:var(--accent);border-right-color:var(--accent);"></span>
+                </div>
+                <div class="flex items-center gap-3 p-3 rounded-md opacity-55" style="background:var(--bg-1);border:1px solid var(--line);">
+                  <span class="w-6 h-6 rounded-full flex items-center justify-center mono text-[11px] shrink-0" style="background:var(--bg-3);color:var(--text-3);">4</span>
+                  <div class="flex-1 min-w-0"><div class="text-[13px]" style="color:var(--text-3);">生成分层测试题组</div></div>
+                </div>
+                <div class="flex items-center gap-3 p-3 rounded-md opacity-55" style="background:var(--bg-1);border:1px solid var(--line);">
+                  <span class="w-6 h-6 rounded-full flex items-center justify-center mono text-[11px] shrink-0" style="background:var(--bg-3);color:var(--text-3);">5</span>
+                  <div class="flex-1 min-w-0"><div class="text-[13px]" style="color:var(--text-3);">同步至学生端</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature 2: 70/30 (UI 8 left / text 4 right) -->
+  <div class="py-16 lg:py-24" style="background:var(--bg);">
+    <div class="container-x">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
+        <div class="lg:col-span-8 reveal lg:order-1 order-2">
+          <div class="rounded-lg overflow-hidden" style="background:var(--bg-2);border:1px solid var(--line);box-shadow:0 20px 60px rgba(0,0,0,.4);">
+            <div class="flex items-center gap-2 px-4 h-9" style="background:var(--bg-3);border-bottom:1px solid var(--line);">
+              <span class="w-2.5 h-2.5 rounded-full" style="background:#3a3d44;"></span><span class="w-2.5 h-2.5 rounded-full" style="background:#3a3d44;"></span><span class="w-2.5 h-2.5 rounded-full" style="background:#3a3d44;"></span>
+              <span class="mono text-[11px] ml-3" style="color:var(--text-3);">AI 助教 · 实时辅导</span>
+            </div>
+            <div class="p-5 space-y-3.5">
+              <div class="flex justify-end"><div class="max-w-[78%] px-3.5 py-2 rounded-lg text-[13px] leading-[1.55]" style="background:var(--bg-3);color:var(--text);">这道积分 ∫sin²x dx 我用换元法算不出来，卡住了…</div></div>
+              <div class="flex justify-start"><div class="max-w-[82%] px-3.5 py-2 rounded-lg text-[13px] leading-[1.6]" style="background:var(--bg-1);border:1px solid var(--line);color:var(--text-2);">
+                <span class="mono text-[10px] mb-1 block" style="color:var(--accent);">AI 助教 · 辅导智能体</span>
+                你卡在第 2 步。sin²x 不能直接换元，应先用降幂公式转为 <span class="mono" style="color:var(--text);">(1−cos2x)/2</span>，再积分。我画了步骤拆解👇
+              </div></div>
+              <div class="flex justify-start"><div class="max-w-[82%] px-3.5 py-2.5 rounded-lg" style="background:var(--bg-1);border:1px solid var(--line);">
+                <div class="mono text-[11px] leading-[1.7]" style="color:var(--text-2);">
+                  ∫sin²x dx<br>
+                  = ∫(1−cos2x)/2 dx<br>
+                  = ½x − ¼sin2x + C
+                </div>
+              </div></div>
+              <div class="flex items-center gap-2 pt-1">
+                <div class="flex-1 px-3 py-2 rounded-lg text-[12px]" style="background:var(--bg-1);border:1px solid var(--line);color:var(--text-3);">输入问题，或贴一道错题…</div>
+                <button class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:var(--accent);color:var(--bg);"><i data-lucide="arrow-up" class="w-4 h-4"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="lg:col-span-4 reveal lg:order-2 order-1">
+          <div class="mono text-[11px] uppercase mb-3" style="letter-spacing:.18em;color:var(--accent);">FEATURE · 02</div>
+          <h3 class="serif font-bold text-ink" style="font-size:30px;letter-spacing:-.02em;line-height:1.1;">AI 智能助教</h3>
+          <p class="mt-4 text-[15px] leading-[1.65]" style="color:var(--text-2);">不止给答案，而是拆解思路、定位卡点。辅导智能体基于学生画像调整讲解粒度，实时追问、即时纠偏。</p>
+          <div class="flex flex-wrap gap-1.5 mt-5">
+            <span class="mono text-[10px] px-2 py-1 rounded" style="background:var(--bg-3);color:var(--text-2);">思路拆解</span>
+            <span class="mono text-[10px] px-2 py-1 rounded" style="background:var(--bg-3);color:var(--text-2);">卡点定位</span>
+            <span class="mono text-[10px] px-2 py-1 rounded" style="background:var(--bg-3);color:var(--text-2);">实时追问</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature 3: FULL-BLEED (col-span-12) -->
+  <div class="py-16 lg:py-24" style="background:var(--bg-1);">
+    <div class="container-x">
+      <div class="reveal mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+        <div>
+          <div class="mono text-[11px] uppercase mb-3" style="letter-spacing:.18em;color:var(--accent);">FEATURE · 03</div>
+          <h3 class="serif font-bold text-ink" style="font-size:30px;letter-spacing:-.02em;line-height:1.1;">智能错题本</h3>
+        </div>
+        <p class="text-[14px] max-w-md" style="color:var(--text-2);">错题自动归类、关联知识图谱节点，每道题都连着一个可追溯的薄弱点。</p>
+      </div>
+      <div class="reveal rounded-lg overflow-hidden" style="background:var(--bg-2);border:1px solid var(--line);box-shadow:0 20px 60px rgba(0,0,0,.45);">
+        <div class="flex items-center gap-2 px-4 h-9" style="background:var(--bg-3);border-bottom:1px solid var(--line);">
+          <span class="w-2.5 h-2.5 rounded-full" style="background:#3a3d44;"></span><span class="w-2.5 h-2.5 rounded-full" style="background:#3a3d44;"></span><span class="w-2.5 h-2.5 rounded-full" style="background:#3a3d44;"></span>
+          <span class="mono text-[11px] ml-3" style="color:var(--text-3);">错题本 · 王同学</span>
+          <span class="mono text-[10px] ml-auto" style="color:var(--text-3);">23 待诊疗 · 156 已攻克</span>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-0">
+          <!-- categorized errors -->
+          <div class="lg:col-span-7 p-5" style="border-right:1px solid var(--line);">
+            <div class="flex items-center gap-2 mb-4">
+              <span class="mono text-[10.5px] uppercase" style="letter-spacing:.12em;color:var(--text-2);">按错因归类</span>
+              <span class="mono text-[9.5px] px-2 py-0.5 rounded" style="background:var(--accent-dim);color:var(--accent);">实时诊断</span>
+            </div>
+            <div class="space-y-2.5">
+              <div class="p-3 rounded-md" style="background:var(--bg-1);border:1px solid var(--line);">
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="text-[13px] text-ink">概念理解偏差 · 导数极值</span>
+                  <span class="mono text-[9.5px] px-1.5 py-0.5 rounded" style="background:rgba(248,113,113,.12);color:var(--err);">high · 7题</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="h-1 flex-1 rounded-full overflow-hidden" style="background:var(--bg-3);"><div class="h-full rounded-full" style="width:30%;background:var(--err);"></div></div>
+                  <span class="mono text-[9.5px]" style="color:var(--text-3);">掌握 30%</span>
+                </div>
+              </div>
+              <div class="p-3 rounded-md" style="background:var(--bg-1);border:1px solid var(--line);">
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="text-[13px] text-ink">公式记忆错误 · 积分</span>
+                  <span class="mono text-[9.5px] px-1.5 py-0.5 rounded" style="background:rgba(251,191,36,.12);color:var(--warn);">med · 4题</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="h-1 flex-1 rounded-full overflow-hidden" style="background:var(--bg-3);"><div class="h-full rounded-full" style="width:60%;background:var(--warn);"></div></div>
+                  <span class="mono text-[9.5px]" style="color:var(--text-3);">掌握 60%</span>
+                </div>
+              </div>
+              <div class="p-3 rounded-md" style="background:var(--bg-1);border:1px solid var(--line);">
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="text-[13px] text-ink">审题不清 · 条件概率</span>
+                  <span class="mono text-[9.5px] px-1.5 py-0.5 rounded" style="background:rgba(74,222,128,.12);color:var(--ok);">low · 3题</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="h-1 flex-1 rounded-full overflow-hidden" style="background:var(--bg-3);"><div class="h-full rounded-full" style="width:82%;background:var(--ok);"></div></div>
+                  <span class="mono text-[9.5px]" style="color:var(--text-3);">掌握 82%</span>
+                </div>
+              </div>
+              <div class="p-3 rounded-md" style="background:var(--bg-1);border:1px solid var(--line);">
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="text-[13px] text-ink">步骤遗漏 · 矩阵运算</span>
+                  <span class="mono text-[9.5px] px-1.5 py-0.5 rounded" style="background:rgba(251,191,36,.12);color:var(--warn);">med · 5题</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="h-1 flex-1 rounded-full overflow-hidden" style="background:var(--bg-3);"><div class="h-full rounded-full" style="width:45%;background:var(--warn);"></div></div>
+                  <span class="mono text-[9.5px]" style="color:var(--text-3);">掌握 45%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- 3D knowledge graph hint -->
+          <div class="lg:col-span-5 p-5" style="background:var(--bg-1);">
+            <div class="flex items-center justify-between mb-3">
+              <span class="mono text-[10.5px] uppercase" style="letter-spacing:.12em;color:var(--text-2);">关联知识图谱</span>
+              <span class="mono text-[9.5px]" style="color:var(--accent);">3D</span>
+            </div>
+            <div class="flex items-center justify-center" style="min-height:240px;">
+              <svg viewBox="0 0 280 260" class="w-full max-w-[320px] h-auto" role="img" aria-label="知识图谱节点关系">
+                <g stroke="#353A44" stroke-width="1" fill="none">
+                  <line x1="140" y1="130" x2="70" y2="60"/>
+                  <line x1="140" y1="130" x2="220" y2="60"/>
+                  <line x1="140" y1="130" x2="60" y2="190"/>
+                  <line x1="140" y1="130" x2="225" y2="195"/>
+                  <line x1="140" y1="130" x2="140" y2="35"/>
+                  <line x1="70" y1="60" x2="140" y2="35"/>
+                  <line x1="220" y1="60" x2="140" y2="35"/>
+                  <line x1="60" y1="190" x2="225" y2="195"/>
+                  <line x1="70" y1="60" x2="60" y2="190"/>
+                  <line x1="220" y1="60" x2="225" y2="195"/>
+                </g>
+                <g>
+                  <circle cx="140" cy="130" r="16" fill="rgba(200,242,74,.18)" stroke="#C8F24A" stroke-width="1.6"/>
+                  <text x="140" y="134" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#EDEAE2">导数</text>
+                </g>
+                <g>
+                  <circle cx="70" cy="60" r="12" fill="#16191F" stroke="#353A44" stroke-width="1.2"/>
+                  <text x="70" y="63" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8" fill="#A7A9B0">极限</text>
+                </g>
+                <g>
+                  <circle cx="220" cy="60" r="12" fill="rgba(248,113,113,.10)" stroke="#F87171" stroke-width="1.2"/>
+                  <text x="220" y="63" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8" fill="#F87171">极值</text>
+                </g>
+                <g>
+                  <circle cx="140" cy="35" r="10" fill="#16191F" stroke="#353A44" stroke-width="1.2"/>
+                  <text x="140" y="38" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="7.5" fill="#A7A9B0">单调</text>
+                </g>
+                <g>
+                  <circle cx="60" cy="190" r="11" fill="#16191F" stroke="#353A44" stroke-width="1.2"/>
+                  <text x="60" y="193" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="7.5" fill="#A7A9B0">切线</text>
+                </g>
+                <g>
+                  <circle cx="225" cy="195" r="13" fill="rgba(251,191,36,.10)" stroke="#FBBF24" stroke-width="1.2"/>
+                  <text x="225" y="198" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8" fill="#FBBF24">积分</text>
+                </g>
+              </svg>
+            </div>
+            <div class="flex items-center gap-3 mt-3 pt-3" style="border-top:1px solid var(--line);">
+              <span class="flex items-center gap-1.5 text-[10.5px]" style="color:var(--text-2);"><span class="w-2 h-2 rounded-full" style="background:var(--accent);"></span>核心节点</span>
+              <span class="flex items-center gap-1.5 text-[10.5px]" style="color:var(--text-2);"><span class="w-2 h-2 rounded-full" style="background:var(--err);"></span>薄弱</span>
+              <span class="flex items-center gap-1.5 text-[10.5px]" style="color:var(--text-3);"><span class="w-2 h-2 rounded-full" style="background:var(--line-2);"></span>已掌握</span>
+            </div>
+          </div>
+        </div>
+        <!-- caption strip -->
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-4 py-2.5 mono text-[10px] uppercase" style="letter-spacing:.14em;color:var(--text-3);border-top:1px solid var(--line);background:var(--bg-3);">
+          <span>FIG. 03 · 错题本 + 3D 知识图谱</span>
+          <span>错因归类 · 节点溯源 · 靶向练习</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature 4: 60/40 (UI 7 left / text 5 right) + inline testimonial -->
+  <div class="py-16 lg:py-24" style="background:var(--bg);">
+    <div class="container-x">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
+        <div class="lg:col-span-7 reveal">
+          <div class="rounded-lg overflow-hidden" style="background:var(--bg-2);border:1px solid var(--line);box-shadow:0 20px 60px rgba(0,0,0,.4);">
+            <div class="flex items-center gap-2 px-4 h-9" style="background:var(--bg-3);border-bottom:1px solid var(--line);">
+              <span class="w-2.5 h-2.5 rounded-full" style="background:#3a3d44;"></span><span class="w-2.5 h-2.5 rounded-full" style="background:#3a3d44;"></span><span class="w-2.5 h-2.5 rounded-full" style="background:#3a3d44;"></span>
+              <span class="mono text-[11px] ml-3" style="color:var(--text-3);">画像构建 · 实时更新</span>
+            </div>
+            <div class="p-5">
+              <div class="flex items-center justify-between mb-4">
+                <span class="mono text-[10.5px] uppercase" style="letter-spacing:.12em;color:var(--text-2);">8 维画像同步</span>
+                <span class="flex items-center gap-1.5 mono text-[9.5px]" style="color:var(--accent);"><span class="w-1.5 h-1.5 rounded-full dot-active" style="background:var(--accent);"></span>分析智能体运行中</span>
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div class="p-2.5 rounded-md" style="background:var(--bg-1);border:1px solid var(--line);border-top:2px solid var(--accent);">
+                  <div class="mono text-[9px] uppercase" style="color:var(--text-3);">知识</div>
+                  <div class="serif font-bold text-ink text-[16px]">0.82</div>
+                </div>
+                <div class="p-2.5 rounded-md" style="background:var(--bg-1);border:1px solid var(--line);border-top:2px solid var(--warm);">
+                  <div class="mono text-[9px] uppercase" style="color:var(--text-3);">认知</div>
+                  <div class="serif font-bold text-ink text-[16px]">0.70</div>
+                </div>
+                <div class="p-2.5 rounded-md" style="background:var(--bg-1);border:1px solid var(--line);border-top:2px solid var(--err);">
+                  <div class="mono text-[9px] uppercase" style="color:var(--text-3);">错误</div>
+                  <div class="serif font-bold text-ink text-[16px]">0.44</div>
+                </div>
+                <div class="p-2.5 rounded-md" style="background:var(--bg-1);border:1px solid var(--line);border-top:2px solid var(--text-2);">
+                  <div class="mono text-[9px] uppercase" style="color:var(--text-3);">动力</div>
+                  <div class="serif font-bold text-ink text-[16px]">0.68</div>
+                </div>
+              </div>
+              <div class="mt-4 p-3 rounded-md" style="background:var(--bg-1);border:1px solid var(--line);">
+                <div class="mono text-[10px] uppercase mb-2" style="letter-spacing:.12em;color:var(--text-2);">画像更新日志</div>
+                <div class="space-y-1.5 mono text-[11px]">
+                  <div class="flex items-center gap-2"><span style="color:var(--text-3);">14:23</span><span style="color:var(--accent);">+</span><span style="color:var(--text-2);">新增错因：链式法则遗漏 → 归因链路更新</span></div>
+                  <div class="flex items-center gap-2"><span style="color:var(--text-3);">14:18</span><span style="color:var(--accent);">+</span><span style="color:var(--text-2);">掌握度 +2% · 导数极值模块</span></div>
+                  <div class="flex items-center gap-2"><span style="color:var(--text-3);">13:55</span><span style="color:var(--warm);">~</span><span style="color:var(--text-2);">学习风格重估 → 视觉型 62%</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="lg:col-span-5 reveal">
+          <div class="mono text-[11px] uppercase mb-3" style="letter-spacing:.18em;color:var(--accent);">FEATURE · 04</div>
+          <h3 class="serif font-bold text-ink" style="font-size:30px;letter-spacing:-.02em;line-height:1.1;">学习画像构建</h3>
+          <p class="mt-4 text-[15px] leading-[1.65]" style="color:var(--text-2);">每一次答题、每一次停留都在更新画像。8 个维度持续演进，让系统真正『认识』每个学生。</p>
+          <div class="flex flex-wrap gap-1.5 mt-5">
+            <span class="mono text-[10px] px-2 py-1 rounded" style="background:var(--bg-3);color:var(--text-2);">实时更新</span>
+            <span class="mono text-[10px] px-2 py-1 rounded" style="background:var(--bg-3);color:var(--text-2);">归因链路</span>
+            <span class="mono text-[10px] px-2 py-1 rounded" style="background:var(--bg-3);color:var(--text-2);">数字孪生</span>
+          </div>
+
+          <!-- inline testimonial -->
+          <figure class="mt-8 pt-7" style="border-top:1px solid var(--line);">
+            <blockquote class="serif text-ink" style="font-size:22px;line-height:1.35;letter-spacing:-.01em;">
+              <span style="color:var(--accent);">「</span>学生从被动刷题，变成被系统真正『看见』。<span style="color:var(--accent);">」</span>
+            </blockquote>
+            <figcaption class="flex items-center gap-3 mt-4">
+              <span class="w-9 h-9 rounded-full shrink-0" style="background:linear-gradient(135deg,var(--accent),var(--warm));"></span>
+              <span>
+                <span class="block text-[13px] text-ink font-medium">陈晓薇</span>
+                <span class="block mono text-[10.5px]" style="color:var(--text-3);">数学教研组长 · 杭州某重点中学</span>
+              </span>
+            </figcaption>
+          </figure>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<!-- ============ 7. TECH STACK — terminal aesthetic ============ -->
+<section id="tech" style="background:var(--bg);">
+  <div class="container-x py-20 lg:py-28">
+
+    <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-12 reveal">
+      <div>
+        <div class="num-tag mb-3">№ 05</div>
+        <h2 class="serif font-bold text-ink" style="font-size:clamp(32px,4vw,50px);letter-spacing:-.02em;line-height:1.05;">技术架构</h2>
+        <p class="mt-4 text-[15px] max-w-xl" style="color:var(--text-2);">多端统一、可私有化部署。从智能体协同引擎到 SSE 流式诊疗，工程化落地每一个教学动作。</p>
+      </div>
+      <div class="mono text-[11px] uppercase self-start rounded px-3 py-1.5" style="letter-spacing:.15em;color:var(--text-3);border:1px solid var(--line);">STACK · INSPECT</div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 reveal">
+      <!-- terminal -->
+      <div class="lg:col-span-8">
+        <div class="rounded-lg overflow-hidden" style="background:var(--bg-2);border:1px solid var(--line);">
+          <div class="flex items-center gap-2 px-4 h-9" style="background:var(--bg-3);border-bottom:1px solid var(--line);">
+            <span class="w-2.5 h-2.5 rounded-full" style="background:#F87171;"></span>
+            <span class="w-2.5 h-2.5 rounded-full" style="background:#FBBF24;"></span>
+            <span class="w-2.5 h-2.5 rounded-full" style="background:#4ADE80;"></span>
+            <span class="mono text-[11px] ml-3" style="color:var(--text-3);">zhx-architecture — bash</span>
+          </div>
+          <pre class="p-5 mono text-[12.5px] leading-[1.95] overflow-x-auto" style="color:var(--text);margin:0;"><code><span style="color:var(--accent);">$</span> <span style="color:var(--text-2);">zhx --inspect architecture</span>
+<span style="color:var(--accent);">├──</span> <span style="color:var(--text-2);">frontend/</span>        <span style="color:var(--text);">Taro 4.x · React · TypeScript · SCSS</span>
+<span style="color:var(--accent);">├──</span> <span style="color:var(--text-2);">backend/</span>         <span style="color:var(--text);">Node.js + Express · Java · Flask · SQLAlchemy</span>
+<span style="color:var(--accent);">├──</span> <span style="color:var(--text-2);">data/</span>            <span style="color:var(--text);">MongoDB · MySQL / PostgreSQL</span>
+<span style="color:var(--accent);">├──</span> <span style="color:var(--text-2);">ai/</span>              <span style="color:var(--text);">Spark4.0 Ultra · 多智能体协同引擎</span>
+<span style="color:var(--accent);">├──</span> <span style="color:var(--text-2);">realtime/</span>        <span style="color:var(--text);">SSE 流式 · 实时诊疗</span>
+<span style="color:var(--accent);">└──</span> <span style="color:var(--text-2);">deploy/</span>          <span style="color:var(--text);">Docker · 可私有化部署</span> <span style="color:var(--text-3);"># on-prem ready</span><span class="blink" style="color:var(--accent);">▋</span></code></pre>
+        </div>
+      </div>
+
+      <!-- spec tiles: one wide + two narrow (unequal) -->
+      <div class="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
+        <div class="sm:col-span-2 lg:col-span-1 p-5 rounded-lg" style="background:var(--bg-1);border:1px solid var(--line);">
+          <div class="mono text-[10px] uppercase mb-2" style="letter-spacing:.15em;color:var(--text-3);">资源类型</div>
+          <div class="serif font-bold text-ink" style="font-size:30px;line-height:1;">7 类教学资源</div>
+          <div class="text-[12px] mt-2" style="color:var(--text-2);">课件 · 教案 · 习题 · 测试 · 辅导 · 报告 · 画像</div>
+        </div>
+        <div class="p-5 rounded-lg" style="background:var(--bg-1);border:1px solid var(--line);">
+          <div class="mono text-[10px] uppercase mb-2" style="letter-spacing:.15em;color:var(--text-3);">画像维度</div>
+          <div class="serif font-bold text-ink" style="font-size:30px;line-height:1;">8 维</div>
+        </div>
+        <div class="p-5 rounded-lg" style="background:var(--bg-1);border:1px solid var(--line);">
+          <div class="mono text-[10px] uppercase mb-2" style="letter-spacing:.15em;color:var(--text-3);">知识图谱</div>
+          <div class="serif font-bold text-ink" style="font-size:30px;line-height:1;">3D</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 8. TESTIMONIAL — large pull quote + inline names ============ -->
+<section style="background:var(--bg-1);">
+  <div class="container-x py-20 lg:py-28">
+    <div class="max-w-4xl reveal">
+      <span class="serif" style="color:var(--accent);font-size:84px;line-height:.5;display:block;">「</span>
+      <blockquote class="serif text-ink mt-2" style="font-size:clamp(28px,3.4vw,46px);line-height:1.18;letter-spacing:-.015em;">
+        智教星让因材施教从口号，变成每天发生在课堂里的事。
+      </blockquote>
+      <div class="mt-6 flex items-center gap-3">
+        <span class="w-10 h-10 rounded-full shrink-0" style="background:linear-gradient(135deg,var(--accent),var(--warm));"></span>
+        <div>
+          <div class="text-[14px] text-ink font-medium">陈晓薇</div>
+          <div class="mono text-[11px]" style="color:var(--text-3);">数学教研组长 · 杭州某重点中学 · 接入 2 学期</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 reveal" style="border-top:1px solid var(--line);">
+      <div>
+        <p class="text-[15px] leading-[1.65]" style="color:var(--text-2);">"以前错题本只是抄写，现在每道错题都有诊断和下一步该练什么。学生知道往哪使劲了。"</p>
+        <div class="mono text-[11px] mt-3" style="color:var(--text-3);">— 李建国 · 高三物理教师</div>
+      </div>
+      <div class="md:pl-8" style="border-left:1px solid var(--line);">
+        <p class="text-[15px] leading-[1.65]" style="color:var(--text-2);">"系统推的练习刚好是我不会的，不再盲目刷题。一个月下来，错题重复率肉眼可见地降了。"</p>
+        <div class="mono text-[11px] mt-3" style="color:var(--text-3);">— 王思远 · 高二学生</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 9. CTA — editorial asymmetric 7/5 ============ -->
+<section id="cta" class="relative overflow-hidden" style="background:var(--bg);">
+  <div class="absolute top-0 right-0 w-[640px] h-[640px] pointer-events-none" style="background:radial-gradient(circle at 70% 30%, rgba(200,242,74,.10), transparent 60%);"></div>
+  <div class="container-x relative py-24 lg:py-32">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+      <div class="lg:col-span-7 reveal">
+        <h2 class="serif font-bold text-ink" style="font-size:clamp(36px,5vw,52px);line-height:1.05;letter-spacing:-.02em;">准备好让每个学生<br>被真正『看见』了吗？</h2>
+        <p class="mt-5 text-[15px] max-w-md" style="color:var(--text-2);">从一道错题开始，看见一个完整的学习者。多智能体协同，为每个学生生成专属成长路径。</p>
+      </div>
+      <div class="lg:col-span-5 reveal">
+        <div class="flex flex-col gap-3">
+          <a href="#" class="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-md text-[15px] font-semibold transition-transform hover:-translate-y-0.5" style="background:var(--accent);color:var(--bg);">申请试用 <i data-lucide="arrow-right" class="w-4 h-4"></i></a>
+          <a href="#" class="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-md text-[15px] transition-colors" style="color:var(--text);border:1px solid var(--line);">预约演示</a>
+          <div class="mono text-[11px] mt-2 uppercase" style="letter-spacing:.15em;color:var(--text-3);">985/211 院校已在使用 · 支持私有化部署</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 10. FOOTER — minimal spec-sheet ============ -->
+<footer style="background:var(--bg-1);border-top:1px solid var(--line);">
+  <div class="container-x py-14">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-10">
+      <div class="lg:col-span-4">
+        <div class="flex items-baseline gap-2">
+          <span class="serif text-[24px] font-bold text-ink">智教星</span>
+          <span class="mono text-[10px] px-1.5 py-0.5 rounded" style="color:var(--text-3);border:1px solid var(--line);">v2.6</span>
+        </div>
+        <p class="mt-4 text-[13px] max-w-xs leading-[1.6]" style="color:var(--text-2);">基于多智能体的自适应错题诊疗系统，让因材施教落地课堂。</p>
+      </div>
+      <div class="lg:col-span-8 grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div class="pl-5" style="border-left:1px solid var(--line);">
+          <div class="mono text-[10px] uppercase mb-3" style="letter-spacing:.15em;color:var(--text-3);">产品</div>
+          <ul class="space-y-2 text-[13px]" style="color:var(--text-2);">
+            <li><a href="#" class="hover:text-ink transition-colors">错题诊疗</a></li>
+            <li><a href="#" class="hover:text-ink transition-colors">学情画像</a></li>
+            <li><a href="#" class="hover:text-ink transition-colors">AI 助教</a></li>
+            <li><a href="#" class="hover:text-ink transition-colors">课程生成</a></li>
+          </ul>
+        </div>
+        <div class="pl-5" style="border-left:1px solid var(--line);">
+          <div class="mono text-[10px] uppercase mb-3" style="letter-spacing:.15em;color:var(--text-3);">资源</div>
+          <ul class="space-y-2 text-[13px]" style="color:var(--text-2);">
+            <li><a href="#" class="hover:text-ink transition-colors">技术文档</a></li>
+            <li><a href="#" class="hover:text-ink transition-colors">案例研究</a></li>
+            <li><a href="#" class="hover:text-ink transition-colors">智能体手册</a></li>
+            <li><a href="#" class="hover:text-ink transition-colors">更新日志</a></li>
+          </ul>
+        </div>
+        <div class="pl-5" style="border-left:1px solid var(--line);">
+          <div class="mono text-[10px] uppercase mb-3" style="letter-spacing:.15em;color:var(--text-3);">公司</div>
+          <ul class="space-y-2 text-[13px]" style="color:var(--text-2);">
+            <li><a href="#" class="hover:text-ink transition-colors">关于我们</a></li>
+            <li><a href="#" class="hover:text-ink transition-colors">教研团队</a></li>
+            <li><a href="#" class="hover:text-ink transition-colors">招聘</a></li>
+            <li><a href="#" class="hover:text-ink transition-colors">新闻动态</a></li>
+          </ul>
+        </div>
+        <div class="pl-5" style="border-left:1px solid var(--line);">
+          <div class="mono text-[10px] uppercase mb-3" style="letter-spacing:.15em;color:var(--text-3);">联系</div>
+          <ul class="space-y-2 text-[13px]" style="color:var(--text-2);">
+            <li><a href="#" class="hover:text-ink transition-colors">申请试用</a></li>
+            <li><a href="#" class="hover:text-ink transition-colors">商务合作</a></li>
+            <li><a href="#" class="hover:text-ink transition-colors">私有化部署</a></li>
+            <li><a href="#" class="hover:text-ink transition-colors">技术支持</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="mt-12 pt-6 flex flex-col sm:flex-row justify-between gap-3 mono text-[11px] uppercase" style="letter-spacing:.12em;color:var(--text-3);border-top:1px solid var(--line);">
+      <span>© 2026 智教星 · 自适应错题诊疗系统</span>
+      <span>Built with multi-agent orchestration</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Lucide icons
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      window.lucide.createIcons();
+    }
+  });
+
+  // Count-up
+  function countUp(el) {
+    var target = parseFloat(el.dataset.count);
+    if (isNaN(target)) return;
+    var suffix = el.dataset.suffix || '';
+    var prefix = el.dataset.prefix || '';
+    var decimals = el.dataset.decimals ? parseInt(el.dataset.decimals, 10) : 0;
+    var duration = 1400;
+    var start = null;
+    function fmt(v) { return prefix + v.toFixed(decimals) + suffix; }
+    function step(ts) {
+      if (!start) start = ts;
+      var p = Math.min((ts - start) / duration, 1);
+      var eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = fmt(target * eased);
+      if (p < 1) requestAnimationFrame(step);
+      else el.textContent = fmt(target);
+    }
+    requestAnimationFrame(step);
+  }
+
+  // IntersectionObserver: reveal + count-up
+  (function () {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        var el = e.target;
+        if (el.classList && el.classList.contains('reveal')) el.classList.add('is-visible');
+        if (el.hasAttribute('data-count') && !el.dataset.counted) {
+          el.dataset.counted = '1';
+          countUp(el);
+        }
+        io.unobserve(el);
+      });
+    }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+
+    document.querySelectorAll('.reveal, [data-count]').forEach(function (el) {
+      io.observe(el);
+    });
+  })();
+</script>
+
+
+    <style>
+  :root{
+    --bg:#0B0C0E;--bg-1:#111317;--bg-2:#16191F;--bg-3:#1C2027;
+    --line:#262A32;--line-2:#353A44;
+    --text:#EDEAE2;--text-2:#A7A9B0;--text-3:#6A6C74;
+    --accent:#C8F24A;--accent-dim:rgba(200,242,74,0.14);
+    --warm:#F5B056;--ok:#4ADE80;--warn:#FBBF24;--err:#F87171;
+    --serif:'Fraunces','Noto Serif SC','Songti SC',serif;
+    --sans:'Inter','PingFang SC','Microsoft YaHei',sans-serif;
+    --mono:'JetBrains Mono','Fira Code',monospace;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--bg);color:var(--text);font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;margin:0;
+    overflow-x:hidden;
+  }
+  .container-x{max-width:1320px;margin-inline:auto;padding-inline:1.5rem;}
+  @media(min-width:1024px){.container-x{padding-inline:2.5rem;}}
+  .mono{font-family:var(--mono);}
+  .serif{font-family:var(--serif);}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-3);}
+  .num-tag{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-3);}
+
+  /* nav underline */
+  .nav-link{position:relative;color:var(--text-2);transition:color .2s ease;}
+  .nav-link:hover{color:var(--text);}
+  .nav-link::after{content:'';position:absolute;left:0;bottom:-5px;width:0;height:1px;background:var(--accent);transition:width .25s ease;}
+  .nav-link:hover::after{width:100%;}
+
+  /* reveal */
+  .reveal{opacity:0;transform:translateY(16px);transition:opacity .6s ease,transform .6s ease;}
+  .reveal.is-visible{opacity:1;transform:none;}
+
+  /* terminal cursor */
+  .blink{animation:blink 1.1s steps(1) infinite;}
+  @keyframes blink{50%{opacity:0;}}
+
+  /* agent row hover */
+  .agent-row{transition:background .2s ease;}
+  .agent-row:hover{background:var(--bg-2);}
+
+  /* bento cell hover */
+  .bento-cell{transition:border-color .25s ease,transform .25s ease;}
+  .bento-cell:hover{border-color:var(--line-2);}
+
+  /* scrollbar */
+  ::-webkit-scrollbar{width:10px;height:10px;}
+  ::-webkit-scrollbar-track{background:var(--bg);}
+  ::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:6px;}
+  ::-webkit-scrollbar-thumb:hover{background:#454b57;}
+
+  /* bento grid template areas (desktop) */
+  @media(min-width:1024px){
+    .bento{
+      grid-template-columns:repeat(12,1fr);
+      grid-template-rows:repeat(4,minmax(168px,auto));
+      grid-template-areas:
+        "a a a a a a a b b b b b"
+        "a a a a a a a c c c c c"
+        "d d d d e e e e f f f f"
+        "g g g g g g h h h h h h";
+    }
+    .b-a{grid-area:a}.b-b{grid-area:b}.b-c{grid-area:c}.b-d{grid-area:d}
+    .b-e{grid-area:e}.b-f{grid-area:f}.b-g{grid-area:g}.b-h{grid-area:h}
+  }
+
+  /* status dot pulse */
+  .dot-active{box-shadow:0 0 0 3px rgba(200,242,74,.15);}
+
+  @media(prefers-reduced-motion:reduce){
+    .reveal{opacity:1;transform:none;transition:none;}
+    .blink{animation:none;}
+  }
+</style>
+</body>
+</html>

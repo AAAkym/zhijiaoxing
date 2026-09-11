@@ -1,0 +1,103 @@
+/* ============================================================
+   智教星 ZhiJiaoXing — Dark Product Theater Theme
+   深色产品剧场感 · 全幅居中 · 产品UI为主角 · 暖琥珀单点强调
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,900&family=JetBrains+Mono:wght@400;500;600&family=Noto+Serif+SC:wght@400;500;600;700;900&display=swap');
+
+:root {
+  /* ---- Core surfaces (warm near-black) ---- */
+  --zx-background: #0B0B0D;
+  --zx-foreground: #EDEAE3;
+
+  --zx-card: #141417;
+  --zx-card-foreground: #EDEAE3;
+
+  --zx-popover: #1B1C20;
+  --zx-popover-foreground: #EDEAE3;
+
+  /* ---- Brand accent (warm amber, used sparingly on data/key numbers) ---- */
+  --zx-primary: #E8B547;
+  --zx-primary-foreground: #0B0B0D;
+
+  --zx-secondary: #1B1C20;
+  --zx-secondary-foreground: #EDEAE3;
+
+  --zx-muted: #1B1C20;
+  --zx-muted-foreground: #8A8780;
+
+  --zx-accent: #E8B547;
+  --zx-accent-foreground: #0B0B0D;
+
+  --zx-destructive: #FF6B5B;
+  --zx-destructive-foreground: #0B0B0D;
+
+  --zx-border: #2A2A2E;
+  --zx-input: #2A2A2E;
+  --zx-ring: #E8B547;
+
+  /* ---- Radius scale (sharper = more editorial) ---- */
+  --zx-radius-sm: 3px;
+  --zx-radius-md: 6px;
+  --zx-radius-lg: 10px;
+
+  /* ---- State colors ---- */
+  --zx-state-success: #5BCC7B;
+  --zx-state-warning: #E8B547;
+  --zx-state-error: #FF6B5B;
+  --zx-state-info: #6BA8E8;
+
+  /* ---- Ink palette (warm dark grays) ---- */
+  --zx-ink-0: #0B0B0D;
+  --zx-ink-1: #141417;
+  --zx-ink-2: #1B1C20;
+  --zx-ink-3: #2A2A2E;
+  --zx-ink-4: #3D3D42;
+  --zx-ink-5: #5A5A5F;
+  --zx-ink-6: #8A8780;
+  --zx-ink-7: #B5B2AB;
+  --zx-ink-8: #EDEAE3;
+
+  /* ---- Accent (warm amber, restrained) ---- */
+  --zx-accent-light: #F0C569;
+  --zx-accent-muted: rgba(232, 181, 71, 0.1);
+
+  /* ---- Typography ---- */
+  --zx-font-display: 'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --zx-font-serif: 'Fraunces', 'Noto Serif SC', 'Songti SC', serif;
+  --zx-font-sans: 'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --zx-font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --zx-font-cn-serif: 'Noto Serif SC', 'Songti SC', serif;
+  --zx-font-cn-sans: 'PingFang SC', 'Microsoft YaHei', 'Inter', sans-serif;
+
+  /* ---- Rule lines ---- */
+  --zx-rule: #2A2A2E;
+  --zx-rule-subtle: #1B1C20;
+  --zx-rule-medium: #3D3D42;
+
+  /* ---- Shadows (subtle on dark) ---- */
+  --zx-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --zx-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --zx-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
+
+  /* ---- Glow (for accent elements on dark) ---- */
+  --zx-glow-accent: 0 0 24px rgba(232, 181, 71, 0.15);
+  --zx-glow-success: 0 0 24px rgba(91, 204, 123, 0.15);
+}
+
+/* Dark mode is the default; .light variant kept for contract compatibility */
+.light {
+  --zx-background: #0B0B0D;
+  --zx-foreground: #EDEAE3;
+  --zx-card: #141417;
+  --zx-card-foreground: #EDEAE3;
+  --zx-popover: #1B1C20;
+  --zx-popover-foreground: #EDEAE3;
+  --zx-primary: #E8B547;
+  --zx-primary-foreground: #0B0B0D;
+  --zx-muted: #1B1C20;
+  --zx-muted-foreground: #8A8780;
+  --zx-border: #2A2A2E;
+  --zx-input: #2A2A2E;
+  --zx-ring: #E8B547;
+}

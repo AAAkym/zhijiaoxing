@@ -4,6 +4,11 @@ Prometheus 指标收集服务
 """
 import time
 import functools
+import json
+import math
+import threading
+from collections import deque
+from datetime import datetime, timedelta
 from typing import Optional, Callable, Any
 from prometheus_client import Counter, Histogram, Gauge, Info, generate_latest, CONTENT_TYPE_LATEST
 from prometheus_client.registry import CollectorRegistry
@@ -110,6 +115,8 @@ class MetricsService:
     
     def __init__(self):
         self._active_user_ids = set()
+        self._request_records = deque(maxlen=5000)
+        self._record_lock = threading.Lock()
     
     def record_request(self, method: str, endpoint: str, status_code: int, duration: float):
         """记录 API 请求"""
@@ -123,6 +130,14 @@ class MetricsService:
             method=method,
             endpoint=endpoint
         ).observe(duration)
+        with self._record_lock:
+            self._request_records.append({
+                "method": method,
+                "endpoint": endpoint,
+                "status_code": int(status_code),
+                "duration_ms": round(float(duration) * 1000, 2),
+                "recorded_at": datetime.utcnow(),
+            })
     
     def record_error(self, error_type: str, endpoint: str):
         """记录错误"""
@@ -181,6 +196,106 @@ class MetricsService:
             'version': version,
             'environment': environment
         })
+
+    @staticmethod
+    def _percentile(values, percentile):
+        if not values:
+            return 0.0
+        ordered = sorted(values)
+        index = max(0, min(len(ordered) - 1, math.ceil(percentile * len(ordered)) - 1))
+        return round(ordered[index], 2)
+
+    def workflow_dashboard(self, owner_id=None, days=30):
+        from src.models.personalized_workflow import PersonalizedWorkflow, PersonalizedWorkflowEvent
+        from src.models.personalized_learning import PersonalizedTaskDelivery, PersonalizedLearningCycle
+        from src.services.personalized_notification_service import personalized_notification_service
+
+        days = min(365, max(1, int(days or 30)))
+        since = datetime.utcnow() - timedelta(days=days)
+        workflow_query = PersonalizedWorkflow.query.filter(PersonalizedWorkflow.created_at >= since)
+        delivery_query = PersonalizedTaskDelivery.query.filter(PersonalizedTaskDelivery.created_at >= since)
+        cycle_query = PersonalizedLearningCycle.query.filter(PersonalizedLearningCycle.created_at >= since)
+        event_query = PersonalizedWorkflowEvent.query.filter(PersonalizedWorkflowEvent.created_at >= since)
+        if owner_id is not None:
+            workflow_query = workflow_query.filter(PersonalizedWorkflow.owner_id == int(owner_id))
+            delivery_query = delivery_query.filter(PersonalizedTaskDelivery.owner_id == int(owner_id))
+            cycle_query = cycle_query.filter(PersonalizedLearningCycle.owner_id == int(owner_id))
+            event_query = event_query.filter(PersonalizedWorkflowEvent.owner_id == int(owner_id))
+
+        workflows = workflow_query.all()
+        deliveries = delivery_query.all()
+        cycles = cycle_query.all()
+        events = event_query.all()
+        generated = [item for item in workflows if item.generation_json]
+        generation_durations = []
+        degraded_count = 0
+        repaired_count = 0
+        for item in generated:
+            end = item.completed_at or item.updated_at
+            if end and item.created_at:
+                generation_durations.append(max(0.0, (end - item.created_at).total_seconds() * 1000))
+            try:
+                generation = json.loads(item.generation_json or "{}")
+            except (TypeError, ValueError):
+                generation = {}
+            source = str(generation.get("generation_source_label") or generation.get("source") or "").lower()
+            if any(word in source for word in ("rule", "fallback", "degrad", "保障", "降级")):
+                degraded_count += 1
+            review = generation.get("review") or {}
+            rounds = review.get("rounds") or []
+            if any((round_item.get("changes") or []) for round_item in rounds if isinstance(round_item, dict)):
+                repaired_count += 1
+
+        event_types = [event.event_type for event in events]
+        recovery_count = sum(1 for value in event_types if "recover" in value or value in ("cycle_interrupted", "workflow_resumed"))
+        generated_count = len(generated)
+        published_count = len(deliveries)
+        completed_cycles = sum(1 for item in cycles if item.status == "COMPLETED")
+        with self._record_lock:
+            records = [item for item in self._request_records if item["recorded_at"] >= since]
+        response_times = [item["duration_ms"] for item in records]
+        errors = sum(1 for item in records if item["status_code"] >= 500)
+        permission_denials = sum(1 for item in records if item["status_code"] in (401, 403))
+        scheduler = personalized_notification_service.scheduler_status()
+
+        def rate(numerator, denominator):
+            return round(numerator / denominator * 100, 1) if denominator else 0.0
+
+        return {
+            "window_days": days,
+            "generated_at": datetime.utcnow().isoformat(),
+            "scope": "teacher" if owner_id is not None else "system",
+            "workflow": {
+                "workflow_total": len(workflows),
+                "generation_total": generated_count,
+                "auto_repair_count": repaired_count,
+                "auto_repair_rate": rate(repaired_count, generated_count),
+                "degraded_count": degraded_count,
+                "degraded_rate": rate(degraded_count, generated_count),
+                "published_count": published_count,
+                "publish_success_rate": rate(published_count, generated_count),
+                "cycle_total": len(cycles),
+                "cycle_completed_count": completed_cycles,
+                "cycle_completion_rate": rate(completed_cycles, len(cycles)),
+                "recovery_count": recovery_count,
+                "average_duration_ms": round(sum(generation_durations) / len(generation_durations), 2) if generation_durations else 0.0,
+                "p95_duration_ms": self._percentile(generation_durations, 0.95),
+            },
+            "runtime": {
+                "request_total": len(records),
+                "error_count": errors,
+                "error_rate": rate(errors, len(records)),
+                "permission_denied_count": permission_denials,
+                "average_response_ms": round(sum(response_times) / len(response_times), 2) if response_times else 0.0,
+                "p95_response_ms": self._percentile(response_times, 0.95),
+                "active_users": len(self._active_user_ids),
+            },
+            "scheduler": scheduler,
+            "data_notes": [
+                "工作流指标来自当前数据库中的状态和事件，不包含学生答案或画像原文。",
+                "运行时请求指标保存在当前进程内，服务重启后重新累计。",
+            ],
+        }
 
 
 # 全局指标服务实例

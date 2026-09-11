@@ -28,6 +28,31 @@ export default function ResultPage({ onRestart, onBackToList, submitResponse }) 
   
   const [expandedQuestions, setExpandedQuestions] = React.useState(new Set())
 
+  const typeStats = useMemo(() => {
+    const stats = {}
+    const resultItems = result?.results || []
+    resultItems.forEach(r => {
+      const q = questions.find(q => q.id === r.questionId)
+      if (q) {
+        const type = q.type || 'choice'
+        if (!stats[type]) {
+          stats[type] = { total: 0, correct: 0, score: 0, maxScore: 0 }
+        }
+        stats[type].total++
+        if (r.type === 'programming') {
+          stats[type].maxScore += r.maxScore || r.score || 10
+        } else {
+          stats[type].maxScore += r.score
+        }
+        if (r.isCorrect) {
+          stats[type].correct++
+          stats[type].score += r.type === 'programming' ? (r.score || 0) : r.score
+        }
+      }
+    })
+    return stats
+  }, [result?.results, questions])
+
   if (!result) {
     return (
       <Card>
@@ -68,30 +93,6 @@ export default function ResultPage({ onRestart, onBackToList, submitResponse }) 
     }
     setExpandedQuestions(newExpanded)
   }
-
-  const typeStats = useMemo(() => {
-    const stats = {}
-    results.forEach(r => {
-      const q = questions.find(q => q.id === r.questionId)
-      if (q) {
-        const type = q.type || 'choice'
-        if (!stats[type]) {
-          stats[type] = { total: 0, correct: 0, score: 0, maxScore: 0 }
-        }
-        stats[type].total++
-        if (r.type === 'programming') {
-          stats[type].maxScore += r.maxScore || r.score || 10
-        } else {
-          stats[type].maxScore += r.score
-        }
-        if (r.isCorrect) {
-          stats[type].correct++
-          stats[type].score += r.type === 'programming' ? (r.score || 0) : r.score
-        }
-      }
-    })
-    return stats
-  }, [results, questions])
 
   const mistakeCount = wrongCount > 0 ? wrongCount : (submitResponse?.extracted_mistakes ?? submitResponse?.extracted_mistake_count ?? 0)
   const hasMistakes = mistakeCount > 0

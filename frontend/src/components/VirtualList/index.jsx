@@ -46,7 +46,7 @@ const VirtualList = forwardRef(({
   error = null,
   errorComponent,
   onRetry,
-  scrollToIndex,
+  scrollToIndex: requestedScrollIndex,
   scrollToIndexOptions = { behavior: 'smooth' },
   preserveScrollPosition = false,
   overscan = BUFFER_SIZE,
@@ -328,10 +328,10 @@ const VirtualList = forwardRef(({
    * 监听scrollToIndex属性变化
    */
   useEffect(() => {
-    if (typeof scrollToIndex === 'number') {
-      scrollToIndex(scrollToIndex)
+    if (typeof requestedScrollIndex === 'number') {
+      scrollToIndex(requestedScrollIndex)
     }
-  }, [scrollToIndex, scrollToIndex])
+  }, [requestedScrollIndex, scrollToIndex])
   
   /**
    * 保存和恢复滚动位置

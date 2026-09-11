@@ -1,0 +1,28 @@
+{
+  "name": "智教星首页重设计",
+  "version": 1,
+  "description": "智教星 AI 教育平台首页 — 深色质感 + 金色品牌色 + 玻璃拟态重设计",
+  "data": [
+    {
+      "id": "page-index",
+      "title": "首页",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1784796218000,
+      "devMetadata": {
+        "htmlSrc": "pages/index.html",
+        "interactions": []
+      },
+      "canvasData": {
+        "x": 0,
+        "y": 0,
+        "group": 0
+      }
+    }
+  ],
+  "config": {
+    "autoLayout": true,
+    "deviceType": "desktop",
+    "projectName": "智教星首页重设计"
+  }
+}

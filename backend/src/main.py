@@ -36,6 +36,8 @@ from src.routes.course_generation import course_gen_bp
 from src.routes.class_management import class_mgmt_bp
 from src.routes.profile_routes import profile_bp
 from src.routes.resource_generation import resource_gen_bp
+from src.routes.personalized_learning import personalized_learning_bp
+from src.routes.personalized_notifications import personalized_notifications_bp
 from src.routes.learning_path_routes import learning_path_bp
 from src.routes.programming import programming_bp
 from src.routes.ai_analysis import ai_analysis_bp
@@ -48,7 +50,9 @@ from src.routes.knowledge_graph_routes import knowledge_graph_bp
 from src.routes.code_execution import code_execution_bp
 from src.routes.content_review import content_review_bp
 from src.routes.ppt import ppt_bp
+from src.routes.metrics_routes import metrics_bp
 from src.services.websocket_service import init_socketio
+from src.middleware.metrics_middleware import MetricsMiddleware
 
 config = get_config()
 
@@ -110,6 +114,8 @@ app.register_blueprint(course_gen_bp, url_prefix='/api')
 app.register_blueprint(class_mgmt_bp, url_prefix='/api')
 app.register_blueprint(profile_bp, url_prefix='/api')
 app.register_blueprint(resource_gen_bp, url_prefix='/api')
+app.register_blueprint(personalized_learning_bp, url_prefix='/api')
+app.register_blueprint(personalized_notifications_bp, url_prefix='/api')
 app.register_blueprint(learning_path_bp, url_prefix='/api')
 app.register_blueprint(programming_bp, url_prefix='/api')
 app.register_blueprint(ai_analysis_bp, url_prefix='/api')
@@ -122,8 +128,10 @@ app.register_blueprint(knowledge_graph_bp, url_prefix='/api')
 app.register_blueprint(code_execution_bp, url_prefix='/api')
 app.register_blueprint(content_review_bp, url_prefix='/api/content-review')
 app.register_blueprint(ppt_bp, url_prefix='/api')
+app.register_blueprint(metrics_bp)
 
 db.init_app(app)
+MetricsMiddleware(app)
 
 # 启用 SQLite WAL 模式，解决多线程并发写入时的数据库锁定问题
 with app.app_context():
@@ -262,11 +270,10 @@ with app.app_context():
     def ensure_table_columns():
         import sqlite3
 
-        db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
-        if not db_uri.startswith('sqlite:///'):
+        if db.engine.url.get_backend_name() != 'sqlite':
             return
 
-        db_path = db_uri.replace('sqlite:///', '').replace('sqlite:////', '')
+        db_path = db.engine.url.database
         if not db_path or not os.path.exists(db_path):
             print(f"[DB Migration] 数据库文件不存在或路径为空: {db_path}")
             return

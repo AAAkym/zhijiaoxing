@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preflight</title>
+    <style id="theme-vars">
+/* ============================================================
+   智教星 ZhiJiaoXing — Premium Dark Glassmorphic Theme
+   Brand prefix: zjx
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Noto+Serif+SC:wght@400;600;700&display=swap');
+
+:root {
+  /* ---- Core surfaces ---- */
+  --zjx-background: #0a0907;
+  --zjx-foreground: #f0ebe3;
+
+  --zjx-card: #14110d;
+  --zjx-card-foreground: #f0ebe3;
+
+  --zjx-popover: #1a1612;
+  --zjx-popover-foreground: #f0ebe3;
+
+  /* ---- Brand primary (gold) ---- */
+  --zjx-primary: #d4a853;
+  --zjx-primary-foreground: #0a0907;
+
+  --zjx-muted: #1c1814;
+  --zjx-muted-foreground: #8a847b;
+
+  --zjx-border: rgba(212, 168, 83, 0.12);
+  --zjx-input: rgba(212, 168, 83, 0.15);
+  --zjx-ring: #d4a853;
+
+  /* ---- Radius scale ---- */
+  --zjx-radius-sm: 6px;
+  --zjx-radius-md: 12px;
+  --zjx-radius-lg: 20px;
+
+  /* ---- State colors ---- */
+  --zjx-state-success: #4ade80;
+  --zjx-state-warning: #fbbf24;
+  --zjx-state-error: #f87171;
+  --zjx-state-info: #60a5fa;
+
+  /* ---- Extended gold palette ---- */
+  --zjx-gold-light: #e9c46a;
+  --zjx-gold: #d4a853;
+  --zjx-gold-dark: #b8860b;
+  --zjx-gold-deep: #8b6914;
+
+  /* ---- Extended neutral palette ---- */
+  --zjx-surface-0: #0a0907;
+  --zjx-surface-1: #100d0a;
+  --zjx-surface-2: #14110d;
+  --zjx-surface-3: #1c1814;
+  --zjx-surface-4: #252019;
+
+  --zjx-text-primary: #f0ebe3;
+  --zjx-text-secondary: #a8a298;
+  --zjx-text-muted: #6b6660;
+
+  --zjx-border-subtle: rgba(212, 168, 83, 0.08);
+  --zjx-border-default: rgba(212, 168, 83, 0.12);
+  --zjx-border-strong: rgba(212, 168, 83, 0.20);
+
+  /* ---- Glass effect tokens ---- */
+  --zjx-glass-bg: rgba(255, 255, 255, 0.025);
+  --zjx-glass-bg-hover: rgba(255, 255, 255, 0.04);
+  --zjx-glass-border: rgba(255, 255, 255, 0.06);
+  --zjx-glass-blur: 20px;
+
+  /* ---- Typography ---- */
+  --zjx-font-sans: 'Inter', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --zjx-font-display: 'Plus Jakarta Sans', 'PingFang SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif;
+  --zjx-font-serif: 'Noto Serif SC', 'Plus Jakarta Sans', serif;
+  --zjx-font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* ---- Shadows ---- */
+  --zjx-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --zjx-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --zjx-shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+  --zjx-shadow-glow: 0 0 40px rgba(212, 168, 83, 0.15);
+}
+
+/* ---- Dark mode class (fill-html-head.mjs reads html class) ---- */
+.dark {
+  --zjx-background: #0a0907;
+  --zjx-foreground: #f0ebe3;
+  --zjx-card: #14110d;
+  --zjx-card-foreground: #f0ebe3;
+  --zjx-popover: #1a1612;
+  --zjx-popover-foreground: #f0ebe3;
+  --zjx-primary: #d4a853;
+  --zjx-primary-foreground: #0a0907;
+  --zjx-muted: #1c1814;
+  --zjx-muted-foreground: #8a847b;
+  --zjx-border: rgba(212, 168, 83, 0.12);
+  --zjx-input: rgba(212, 168, 83, 0.15);
+  --zjx-ring: #d4a853;
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--zjx-background);
+    --color-foreground: var(--zjx-foreground);
+    --color-card: var(--zjx-card);
+    --color-card-foreground: var(--zjx-card-foreground);
+    --color-popover: var(--zjx-popover);
+    --color-popover-foreground: var(--zjx-popover-foreground);
+    --color-primary: var(--zjx-primary);
+    --color-primary-foreground: var(--zjx-primary-foreground);
+    --color-muted: var(--zjx-muted);
+    --color-muted-foreground: var(--zjx-muted-foreground);
+    --color-border: var(--zjx-border);
+    --color-input: var(--zjx-input);
+    --color-ring: var(--zjx-ring);
+    --radius-sm: var(--zjx-radius-sm);
+    --radius-md: var(--zjx-radius-md);
+    --radius-lg: var(--zjx-radius-lg);
+  }
+  @layer base {
+    body { background: var(--zjx-background); color: var(--zjx-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style id="semantic-token-fallback">
+      .bg-background { background-color: var(--zjx-background); }
+      .text-background { color: var(--zjx-background); }
+      .border-background { border-color: var(--zjx-background); }
+      .ring-background { --tw-ring-color: var(--zjx-background); }
+      .bg-foreground { background-color: var(--zjx-foreground); }
+      .text-foreground { color: var(--zjx-foreground); }
+      .border-foreground { border-color: var(--zjx-foreground); }
+      .ring-foreground { --tw-ring-color: var(--zjx-foreground); }
+      .bg-card { background-color: var(--zjx-card); }
+      .text-card { color: var(--zjx-card); }
+      .border-card { border-color: var(--zjx-card); }
+      .ring-card { --tw-ring-color: var(--zjx-card); }
+      .bg-card-foreground { background-color: var(--zjx-card-foreground); }
+      .text-card-foreground { color: var(--zjx-card-foreground); }
+      .border-card-foreground { border-color: var(--zjx-card-foreground); }
+      .ring-card-foreground { --tw-ring-color: var(--zjx-card-foreground); }
+      .bg-popover { background-color: var(--zjx-popover); }
+      .text-popover { color: var(--zjx-popover); }
+      .border-popover { border-color: var(--zjx-popover); }
+      .ring-popover { --tw-ring-color: var(--zjx-popover); }
+      .bg-popover-foreground { background-color: var(--zjx-popover-foreground); }
+      .text-popover-foreground { color: var(--zjx-popover-foreground); }
+      .border-popover-foreground { border-color: var(--zjx-popover-foreground); }
+      .ring-popover-foreground { --tw-ring-color: var(--zjx-popover-foreground); }
+      .bg-primary { background-color: var(--zjx-primary); }
+      .text-primary { color: var(--zjx-primary); }
+      .border-primary { border-color: var(--zjx-primary); }
+      .ring-primary { --tw-ring-color: var(--zjx-primary); }
+      .bg-primary-foreground { background-color: var(--zjx-primary-foreground); }
+      .text-primary-foreground { color: var(--zjx-primary-foreground); }
+      .border-primary-foreground { border-color: var(--zjx-primary-foreground); }
+      .ring-primary-foreground { --tw-ring-color: var(--zjx-primary-foreground); }
+      .bg-muted { background-color: var(--zjx-muted); }
+      .text-muted { color: var(--zjx-muted); }
+      .border-muted { border-color: var(--zjx-muted); }
+      .ring-muted { --tw-ring-color: var(--zjx-muted); }
+      .bg-muted-foreground { background-color: var(--zjx-muted-foreground); }
+      .text-muted-foreground { color: var(--zjx-muted-foreground); }
+      .border-muted-foreground { border-color: var(--zjx-muted-foreground); }
+      .ring-muted-foreground { --tw-ring-color: var(--zjx-muted-foreground); }
+      .bg-border { background-color: var(--zjx-border); }
+      .text-border { color: var(--zjx-border); }
+      .border-border { border-color: var(--zjx-border); }
+      .ring-border { --tw-ring-color: var(--zjx-border); }
+      .bg-input { background-color: var(--zjx-input); }
+      .text-input { color: var(--zjx-input); }
+      .border-input { border-color: var(--zjx-input); }
+      .ring-input { --tw-ring-color: var(--zjx-input); }
+      .bg-ring { background-color: var(--zjx-ring); }
+      .text-ring { color: var(--zjx-ring); }
+      .border-ring { border-color: var(--zjx-ring); }
+      .ring-ring { --tw-ring-color: var(--zjx-ring); }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+    <main>
+    </main>
+    <script>lucide.createIcons();</script>
+</body>
+</html>

@@ -94,6 +94,18 @@ class SharedState:
         with self._lock:
             return dict(self._state)
 
+    def delete_prefix(self, prefix):
+        """Delete request-scoped in-memory values, for example an expired tracking id."""
+        with self._lock:
+            keys = [key for key in self._state if key.startswith(prefix)]
+            for key in keys:
+                del self._state[key]
+            return len(keys)
+
+    def keys(self):
+        with self._lock:
+            return list(self._state.keys())
+
     def get_history(self, limit=50):
         with self._lock:
             return self._history[-limit:]
@@ -172,6 +184,7 @@ class AgentMonitor:
                 agent_state["started_at"] = datetime.utcnow().isoformat()
             elif status in (AgentStatus.SUCCESS, AgentStatus.FAILED):
                 # 终态：先计算耗时并准备持久化数据，再清理内存态
+                running_task = agent_state.get("current_task")
                 started_iso = agent_state.get("started_at")
                 duration_ms = None
                 if started_iso:
@@ -190,21 +203,25 @@ class AgentMonitor:
                 task_type = None
                 error_message = None
                 user_id = None
-                if isinstance(task_info, dict):
-                    task_type = (task_info.get("task_type") or task_info.get("description")
-                                 or task_info.get("title"))
-                    error_message = task_info.get("error") or task_info.get("error_message")
-                    user_id = task_info.get("user_id")
+                terminal_info = task_info if isinstance(task_info, dict) else running_task
+                persist_execution = True
+                if isinstance(terminal_info, dict):
+                    task_type = (terminal_info.get("task_type") or terminal_info.get("description")
+                                 or terminal_info.get("title"))
+                    error_message = terminal_info.get("error") or terminal_info.get("error_message")
+                    user_id = terminal_info.get("user_id")
+                    persist_execution = terminal_info.get("persist_execution", True)
                 elif isinstance(task_info, str):
                     task_type = task_info
-                persist_payload = {
-                    "agent_name": name,
-                    "task_type": task_type,
-                    "status": status.value,
-                    "duration_ms": duration_ms,
-                    "error_message": error_message,
-                    "user_id": user_id,
-                }
+                if persist_execution:
+                    persist_payload = {
+                        "agent_name": name,
+                        "task_type": task_type,
+                        "status": status.value,
+                        "duration_ms": duration_ms,
+                        "error_message": error_message,
+                        "user_id": user_id,
+                    }
         # 落库放在锁外，避免持锁等待 DB IO；best-effort，失败不影响 agent 执行
         if persist_payload:
             self._persist_execution(persist_payload)

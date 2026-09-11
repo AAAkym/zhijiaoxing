@@ -1,6 +1,6 @@
 {
-  "name": "智教星",
-  "short_name": "智教星",
+  "name": "EduAI Pro",
+  "short_name": "EduAI Pro",
   "description": "基于AI技术的智能教学管理平台",
   "start_url": "/",
   "display": "standalone",

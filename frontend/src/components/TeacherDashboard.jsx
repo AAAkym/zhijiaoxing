@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -28,30 +28,40 @@ import {
   MessageCircle,
   Zap,
   Network,
-  GitCompare,
+  ClipboardList,
   AlertCircle,
   Presentation,
-  Download
+  Download,
+  Loader2
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area } from 'recharts'
-import { courses, content, ai, auth, videos, teacher as teacherApi, programming, courseGeneration, pptApi } from '../services/api'
+import { courses, content, ai, auth, videos, teacher as teacherApi, programming, courseGeneration, pptApi, classManagement } from '../services/api'
 import ErrorBoundary from './ErrorBoundary'
 import VideoLessonManager from './VideoLessonManager'
 import PPTViewer from './PPTViewer'
 import CourseGenerationWizard from './CourseGenerationWizard'
-import PersonalizationComparisonDemo from './PersonalizationComparisonDemo'
+import PersonalizedTeachingWorkbench from './PersonalizedTeachingWorkbench'
 import ClassManagement from './ClassManagement'
 import TeacherInteractionPanel from './TeacherInteractionPanel'
 import InteractiveMindMap from './ui/InteractiveMindMap'
 import CodePlayground from './ui/CodePlayground'
 import ContentSaveSyncPanel from './ui/ContentSaveSyncPanel'
 import AgentCollaborationProgress from './AgentCollaborationProgress'
+import ProfileExplainabilityPanel from './ProfileExplainabilityPanel'
+import GenerationCausalChain from './GenerationCausalChain'
 import ContentQualityPanel from './ContentQualityPanel'
 import RagReliabilityPanel from './RagReliabilityPanel'
 import KnowledgeGraphManager from './KnowledgeGraphManager'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useNavigate } from 'react-router-dom'
 import zhijiaoXingSymbol from '@/assets/zhijiaoxing-symbol.svg'
+import {
+  canGeneratePersonalized,
+  getEligibleClasses,
+  getStudentsForClass,
+  isTerminalGenerationStatus,
+  shouldShowPollingWarning,
+} from '@/utils/personalizedGeneration'
 
 /**
  * 检测代码字符串是否为占位文字而非真实代码。
@@ -132,6 +142,14 @@ export default function TeacherDashboard({ user, onLogout }) {
   const [agentProgress, setAgentProgress] = useState(null)
   const [qualityReport, setQualityReport] = useState(null)
   const [ragReliabilityResult, setRagReliabilityResult] = useState(null)
+  const [generationClasses, setGenerationClasses] = useState([])
+  const [selectedGenerationClass, setSelectedGenerationClass] = useState('')
+  const [selectedGenerationStudent, setSelectedGenerationStudent] = useState('')
+  const [generationPlan, setGenerationPlan] = useState(null)
+  const [generationPlanLoading, setGenerationPlanLoading] = useState(false)
+  const [generationNotice, setGenerationNotice] = useState('')
+  const [generationStages, setGenerationStages] = useState([])
+  const pollingTimerRef = useRef(null)
   // 视频脚本解析失败时，控制原始 JSON 折叠展示
   const [showRawMediaJson, setShowRawMediaJson] = useState(false)
 
@@ -152,6 +170,86 @@ export default function TeacherDashboard({ user, onLogout }) {
       }
       return [...prev, type]
     })
+  }
+
+  useEffect(() => {
+    if (currentView !== 'content') return
+    let cancelled = false
+    const loadGenerationClasses = async () => {
+      try {
+        const response = await classManagement.getClasses()
+        const summaries = response.classes || []
+        const details = await Promise.all(summaries.map(item => classManagement.getClass(item.id)))
+        if (!cancelled) setGenerationClasses(details)
+      } catch (error) {
+        if (!cancelled) setGenerationNotice(`班级信息加载失败：${error.message}`)
+      }
+    }
+    loadGenerationClasses()
+    return () => { cancelled = true }
+  }, [currentView])
+
+  useEffect(() => () => {
+    if (pollingTimerRef.current) clearInterval(pollingTimerRef.current)
+  }, [])
+
+  useEffect(() => {
+    if (!selectedCourse || !selectedGenerationClass || !selectedGenerationStudent) {
+      setGenerationPlan(null)
+      return
+    }
+    let cancelled = false
+    setGenerationPlanLoading(true)
+    setGenerationNotice('')
+    courseGeneration.previewPersonalizedPlan({
+      course_id: Number(selectedCourse),
+      class_id: Number(selectedGenerationClass),
+      student_user_id: Number(selectedGenerationStudent),
+      resource_types: selectedResourceTypes,
+      rag_required: true,
+    }).then((plan) => {
+      if (!cancelled) {
+        setGenerationPlan(plan)
+        setGenerationStages(plan.stages || [])
+      }
+    }).catch((error) => {
+      if (!cancelled) {
+        setGenerationPlan(null)
+        setGenerationNotice(error.code === 'PROFILE_NOT_READY'
+          ? '该学生还没有画像，请先完成画像构建或数据同步。'
+          : `无法读取画像策略：${error.message}`)
+      }
+    }).finally(() => {
+      if (!cancelled) setGenerationPlanLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [selectedCourse, selectedGenerationClass, selectedGenerationStudent, selectedResourceTypes])
+
+  const resetPersonalizedGeneration = () => {
+    setSelectedGenerationClass('')
+    setSelectedGenerationStudent('')
+    setGenerationPlan(null)
+    setGenerationStages([])
+    setGenerationNotice('')
+    setMultimodalResults(null)
+    setAgentProgress(null)
+    setQualityReport(null)
+    setRagReliabilityResult(null)
+  }
+
+  const handleGenerationCourseChange = (value) => {
+    setSelectedCourse(value)
+    setSelectedVideo('')
+    resetPersonalizedGeneration()
+  }
+
+  const handleGenerationClassChange = (value) => {
+    setSelectedGenerationClass(value)
+    setSelectedGenerationStudent('')
+    setGenerationPlan(null)
+    setGenerationStages([])
+    setMultimodalResults(null)
+    setAgentProgress(null)
   }
 
   // 考核管理状态
@@ -447,7 +545,7 @@ export default function TeacherDashboard({ user, onLogout }) {
     { id: 'overview', label: '概览', icon: BarChart3 },
     { id: 'courses', label: '课程管理', icon: BookOpen },
     { id: 'courseGen', label: '课程生成', icon: Sparkles },
-    { id: 'personalizationDemo', label: '个性化对比', icon: GitCompare },
+    { id: 'personalizedTeaching', label: '个性化教学', icon: ClipboardList },
     { id: 'classMgmt', label: '班级管理', icon: Users },
     { id: 'videos', label: '视频管理', icon: Video },
     { id: 'interaction', label: '互动管理', icon: MessageCircle },
@@ -793,16 +891,23 @@ export default function TeacherDashboard({ user, onLogout }) {
   }
 
   const generatePersonalizedContent = async () => {
-    if (!selectedCourse || !contentTopic) {
-      alert('请选择课程并输入教学主题')
+    if (!selectedCourse || !selectedGenerationClass || !selectedGenerationStudent || !contentTopic) {
+      setGenerationNotice('请依次选择课程、班级、学生，并输入教学主题。')
+      return
+    }
+    if (!generationPlan) {
+      setGenerationNotice('画像策略尚未准备好，请等待预览加载完成。')
       return
     }
     if (selectedResourceTypes.length === 0) {
-      alert('请至少选择一种内容类型')
+      setGenerationNotice('请至少选择一种内容类型。')
       return
     }
 
+    const randomPart = globalThis.crypto?.randomUUID?.().replaceAll('-', '') || `${Date.now()}${Math.random().toString(16).slice(2)}`
+    const trackingId = `trk_${randomPart}`
     setIsGeneratingMultimodal(true)
+    setGenerationNotice('')
     setMultimodalResults(null)
     setAgentProgress({
       overall_progress: 5,
@@ -817,11 +922,36 @@ export default function TeacherDashboard({ user, onLogout }) {
     })
     setQualityReport(null)
     setRagReliabilityResult(null)
+    let pollErrors = 0
+    const pollStatus = async () => {
+      try {
+        const status = await courseGeneration.getGenerationStatus(trackingId)
+        pollErrors = 0
+        if (status.progress) setAgentProgress(status.progress)
+        if (status.stages) setGenerationStages(status.stages)
+        if (status.strategy) setGenerationPlan(prev => ({ ...(prev || {}), strategy: status.strategy }))
+        if (isTerminalGenerationStatus(status.status) && pollingTimerRef.current) {
+          clearInterval(pollingTimerRef.current)
+          pollingTimerRef.current = null
+        }
+      } catch (error) {
+        if (error.status === 404 && pollErrors < 2) {
+          pollErrors += 1
+          return
+        }
+        pollErrors += 1
+        if (shouldShowPollingWarning(pollErrors)) setGenerationNotice('进度连接暂时中断，服务器仍会继续生成，请等待最终结果。')
+      }
+    }
+    pollingTimerRef.current = setInterval(pollStatus, 1000)
+    pollStatus()
     try {
       const res = await courseGeneration.generatePersonalizedResources({
         course_id: parseInt(selectedCourse, 10),
+        class_id: parseInt(selectedGenerationClass, 10),
+        student_user_id: parseInt(selectedGenerationStudent, 10),
+        tracking_id: trackingId,
         topic: contentTopic,
-        student_profile: { major: '', weaknesses: [], learning_needs: [] },
         resource_types: selectedResourceTypes,
         rag_required: true,
         citation_style: 'bracket',
@@ -831,6 +961,11 @@ export default function TeacherDashboard({ user, onLogout }) {
       if (res.agent_progress) {
         setAgentProgress(res.agent_progress)
       }
+      setGenerationPlan(prev => ({
+        ...(prev || {}),
+        strategy: res.generation_explanation?.strategy || prev?.strategy,
+        generation_explanation: res.generation_explanation,
+      }))
       if (res.content_quality_report) {
         setQualityReport(res.content_quality_report)
       }
@@ -841,9 +976,13 @@ export default function TeacherDashboard({ user, onLogout }) {
       })
       const firstAvailable = selectedResourceTypes.find(t => resources[t])
       if (firstAvailable) setActiveMultimodalTab(firstAvailable)
+      await pollStatus()
+      if (res.errors) setGenerationNotice('部分智能体未完成，已保留其他成功生成的资源。')
     } catch (error) {
       console.error('多模态内容生成失败:', error)
-      alert('生成失败: ' + (error.message || '请重试'))
+      setGenerationNotice(error.code === 'SPARK_NOT_CONFIGURED'
+        ? 'Spark 服务尚未配置。画像与策略预览可用，但暂时不能生成内容。'
+        : `生成失败：${error.message || '请重试'}`)
       setAgentProgress((prev) => ({
         ...(prev || {}),
         overall_progress: 0,
@@ -851,6 +990,10 @@ export default function TeacherDashboard({ user, onLogout }) {
         steps: (prev?.steps || []).map((step) => ({ ...step, status: 'failed' })),
       }))
     } finally {
+      if (pollingTimerRef.current) {
+        clearInterval(pollingTimerRef.current)
+        pollingTimerRef.current = null
+      }
       setIsGeneratingMultimodal(false)
     }
   }
@@ -1778,7 +1921,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="course-select">选择课程</Label>
-                    <Select value={selectedCourse} onValueChange={setSelectedCourse}>
+                    <Select value={selectedCourse} onValueChange={handleGenerationCourseChange}>
                       <SelectTrigger>
                         <SelectValue placeholder="请选择课程" />
                       </SelectTrigger>
@@ -1860,7 +2003,63 @@ export default function TeacherDashboard({ user, onLogout }) {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <p className="text-sm text-gray-500">选择需要生成的内容类型，AI将为您生成个性化教学资源</p>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div>
+                    <Label>1. 课程</Label>
+                    <div className="mt-1.5 min-h-10 border-l-2 border-sky-500 bg-muted/30 px-3 py-2 text-sm">
+                      {courseList.find(course => String(course.id) === selectedCourse)?.title || '请先在上方选择课程'}
+                    </div>
+                  </div>
+                  <div>
+                    <Label>2. 班级</Label>
+                    <Select value={selectedGenerationClass} onValueChange={handleGenerationClassChange} disabled={!selectedCourse}>
+                      <SelectTrigger className="mt-1.5"><SelectValue placeholder="选择已分配该课程的班级" /></SelectTrigger>
+                      <SelectContent>
+                        {getEligibleClasses(generationClasses, selectedCourse)
+                          .map(item => <SelectItem key={item.id} value={String(item.id)}>{item.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>3. 学生</Label>
+                    <Select
+                      value={selectedGenerationStudent}
+                      onValueChange={(value) => {
+                        setSelectedGenerationStudent(value)
+                        setMultimodalResults(null)
+                        setAgentProgress(null)
+                      }}
+                      disabled={!selectedGenerationClass}
+                    >
+                      <SelectTrigger className="mt-1.5"><SelectValue placeholder="选择班级内学生" /></SelectTrigger>
+                      <SelectContent>
+                        {getStudentsForClass(generationClasses, selectedGenerationClass)
+                          .map(item => <SelectItem key={item.user_id} value={String(item.user_id)}>{item.student_name || item.username}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {generationNotice && (
+                  <div role="alert" className="flex items-start gap-2 border-l-2 border-amber-500 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />{generationNotice}
+                  </div>
+                )}
+
+                {generationPlanLoading && (
+                  <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />正在读取学生真实画像和学习证据...
+                  </div>
+                )}
+                {generationPlan?.profile_snapshot?.explainability && (
+                  <ProfileExplainabilityPanel
+                    explainability={generationPlan.profile_snapshot.explainability}
+                    strategy={generationPlan.strategy}
+                    compact
+                  />
+                )}
+
+                <p className="text-sm text-gray-500">选择需要生成的内容类型，系统会按上方已核验的画像策略生成个性化教学资源</p>
                 <div className="grid grid-cols-2 gap-2">
                   {RESOURCE_TYPE_OPTIONS.map(opt => {
                     const isSelected = selectedResourceTypes.includes(opt.value)
@@ -1897,7 +2096,16 @@ export default function TeacherDashboard({ user, onLogout }) {
                 </div>
                 <Button
                   onClick={generatePersonalizedContent}
-                  disabled={isGeneratingMultimodal || !selectedCourse || !contentTopic || selectedResourceTypes.length === 0}
+                  disabled={!canGeneratePersonalized({
+                    loading: isGeneratingMultimodal,
+                    planLoading: generationPlanLoading,
+                    plan: generationPlan,
+                    courseId: selectedCourse,
+                    classId: selectedGenerationClass,
+                    studentId: selectedGenerationStudent,
+                    topic: contentTopic,
+                    resourceTypes: selectedResourceTypes,
+                  })}
                   className="w-full"
                   variant="outline"
                 >
@@ -1908,7 +2116,9 @@ export default function TeacherDashboard({ user, onLogout }) {
                   <div className="mt-4">
                     <AgentCollaborationProgress
                       progress={agentProgress}
+                      stages={generationStages}
                       loading={isGeneratingMultimodal}
+                      autoPoll={false}
                       title="多 Agent 协作生成进度"
                     />
                   </div>
@@ -1918,7 +2128,9 @@ export default function TeacherDashboard({ user, onLogout }) {
                   <div className="mt-4">
                     <AgentCollaborationProgress
                       progress={agentProgress}
+                      stages={generationStages}
                       loading={false}
+                      autoPoll={false}
                       title="Agent 协作执行记录"
                     />
                   </div>
@@ -2745,6 +2957,11 @@ export default function TeacherDashboard({ user, onLogout }) {
                       )
                     })()}
 
+                    <GenerationCausalChain
+                      explanation={generationPlan?.generation_explanation}
+                      resources={multimodalResults}
+                    />
+
                     <ContentQualityPanel report={qualityReport} />
 
                     <RagReliabilityPanel
@@ -2919,8 +3136,8 @@ export default function TeacherDashboard({ user, onLogout }) {
           />
         )
 
-      case 'personalizationDemo':
-        return <PersonalizationComparisonDemo />
+      case 'personalizedTeaching':
+        return <PersonalizedTeachingWorkbench />
 
       case 'classMgmt':
         return (
@@ -3616,7 +3833,7 @@ export default function TeacherDashboard({ user, onLogout }) {
           </div>
         )
 
-      case 'token-usage':
+      case 'token-usage': {
         const s = tokenSummary || {}
         const byType = s.by_type || {}
         const typeEntries = Object.entries(byType).sort((a, b) => b[1].tokens - a[1].tokens)
@@ -3794,6 +4011,7 @@ export default function TeacherDashboard({ user, onLogout }) {
             )}
           </div>
         )
+      }
 
       case 'analytics':
         return (
@@ -4218,10 +4436,10 @@ export default function TeacherDashboard({ user, onLogout }) {
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-white border border-[#eadfca] rounded-xl flex items-center justify-center">
-                  <img src={zhijiaoXingSymbol} alt="智教星标志" className="w-5 h-5" width="20" height="20" />
+                  <img src={zhijiaoXingSymbol} alt="EduAI Pro 标志" className="w-5 h-5" width="20" height="20" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>智教星</h1>
+                  <h1 className="text-xl font-bold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>EduAI Pro</h1>
                   <p className="text-xs text-[#9a9590]">自适应错题诊疗系统</p>
                 </div>
               </div>
@@ -4248,8 +4466,27 @@ export default function TeacherDashboard({ user, onLogout }) {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <nav aria-label="教师功能导航" className="mb-5 flex gap-2 overflow-x-auto pb-2 md:hidden">
+          {menuItems.map((item) => {
+            const Icon = item.icon
+            return (
+              <button
+                key={`mobile-${item.id}`}
+                onClick={() => setCurrentView(item.id)}
+                className={`flex shrink-0 items-center gap-2 border-b-2 px-3 py-2 text-sm transition-colors ${
+                  currentView === item.id
+                    ? 'border-[#d4a853] text-[#9b762f]'
+                    : 'border-transparent text-[#6b6560]'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                <span>{item.label}</span>
+              </button>
+            )
+          })}
+        </nav>
         <div className="flex">
-          <div className="w-64 mr-8">
+          <div className="mr-8 hidden w-64 md:block">
             <nav className="space-y-2">
               {menuItems.map((item) => {
                 const Icon = item.icon
@@ -4272,7 +4509,7 @@ export default function TeacherDashboard({ user, onLogout }) {
           </div>
 
           {/* 主内容区 */}
-          <div className="flex-1">
+          <div className="min-w-0 flex-1">
             <ErrorBoundary>
               {renderContent()}
             </ErrorBoundary>

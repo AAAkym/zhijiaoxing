@@ -1,0 +1,171 @@
+{
+  "project": {
+    "name": "智教星首页重设计",
+    "deviceType": "desktop",
+    "language": "zh-CN",
+    "operatingMode": "variants-multi-scheme",
+    "intentProfile": {
+      "caseFamily": "variants_multi_scheme",
+      "sourceType": "existing-page",
+      "routingReason": "User requests two new show-off variants (v4/v5) built on v3 baseline, demonstrating strong frontend fundamentals with motion and transitions, low AI-feel. Variant generation keeps v3 as baseline."
+    },
+    "contextReadBudget": {
+      "workflowFileReadLimit": 1,
+      "largeWorkflowFilesCachedInSummary": [],
+      "restoreInputsCached": [],
+      "subAgentReadsFullSummary": false
+    },
+    "resolvedLane": "variants_multi_scheme",
+    "selectedIntentWorkflowRead": true,
+    "contextRequirementsLoaded": [
+      { "path": "intent-workflows/intent-project-mutation/INTENT_WORKFLOW.md", "readStatus": "loaded", "bodyRead": true },
+      { "path": "intent-workflows/intent-project-mutation/variant-page-runtime.md", "readStatus": "loaded", "bodyRead": true },
+      { "path": "intent-workflows/intent-project-mutation/variant-dispatch-contract.md", "readStatus": "loaded", "bodyRead: true }
+    ],
+    "contextReadScope": "lane-runtime + variant-page-runtime + variant-dispatch-contract only",
+    "validationRunDiscipline": "validate-design-workspace + validate-finish-readiness",
+    "lowValueCallWatchdog": { "noProgressNextAction": "dispatch v4 and v5 page builds in parallel then validate" },
+    "designRead": "Canvas particle physics + CSS 3D scroll-driven animation patterns — frontend show-off, motion + transitions, low AI-feel",
+    "designDials": "layoutVariance=5 / motionIntensity=5 / visualDensity=4",
+    "styleDefinitionBrief": "Two show-off variants on v3 dark baseline: v4=Canvas Particle Knowledge Graph (force-directed node network as hero bg, data particles flowing on edges, mouse interaction, scroll-triggered SVG stroke animations, count-up numbers, clip-path reveals), v5=CSS 3D Scroll Cinematic (perspective+preserve-3d layered hero, scroll-driven rotateX/translateZ parallax, 3D card stack for agents, mouse parallax depth). Both keep dark theme, no left-right splits, no equal card grids. Motion is hand-written Canvas/CSS/JS — no generic fade-in-only AI patterns.",
+    "styleContinuityAnchors": "v3 dark product-theater baseline preserved; v4 and v5 are structural variants differing in animation technology axis (Canvas physics vs CSS 3D transforms)",
+    "cssPreflightEvidence": {
+      "applies": true,
+      "status": "passed",
+      "brandPrefix": "zx",
+      "checks": { "themeVars": "present", "tailwindCdn": "present-v4", "htmlClass": "dark", "themeInline": "present", "layerBase": "present" },
+      "retryCount": 0,
+      "notes": "Both v4/v5 heads generated via apply-html-head-contract.mjs from colors_and_type-v3.css (dark theme). All contract requirements met."
+    },
+    "visualQualityCheckpoints": [
+      { "anchor": "v4 Hero: Canvas force-directed knowledge graph network as full-bleed bg, particles flow on edges, nodes breathe, mouse hover highlights node+connected edges, headline floats above", "hierarchy": "oversized H1 + Canvas layer behind + product UI card below", "composition": "centered, Canvas fills viewport, no split", "strategy": "requestAnimationFrame physics loop, performance-capped particle count, IntersectionObserver pause when offscreen" },
+      { "anchor": "v5 Hero: CSS 3D perspective layered depth, headline/title/subtitle on different Z planes, mouse parallax tilts the scene, scroll drives rotateX reveal", "hierarchy": "3D-layered H1 + parallax bg layers + scroll-driven section transitions", "composition": "centered, preserve-3d depth stack, no split", "strategy": "pure CSS 3D transforms + scroll event listener, transform-style: preserve-3d, will-change: transform" },
+      { "anchor": "Both: scroll-triggered reveal animations with staggered timing, clip-path/transform variety (not all fade-in)", "hierarchy": "each section has unique transition", "composition": "vertical scroll narrative", "strategy": "IntersectionObserver + CSS custom properties for stagger, clip-path polygon reveals, translateY/rotate/clip variety per section" }
+    ],
+    "variantAxis": "animation technology: v4=Canvas 2D physics simulation, v5=CSS 3D transforms + scroll-driven parallax",
+    "baselinePage": "page-index-v3",
+    "expectedVariantCount": 2,
+    "comparisonGrouping": "v4-vs-v5 motion showcase, both vs v3 static baseline"
+  },
+  "pages": [
+    {
+      "nodeId": "page-index",
+      "htmlSrc": "pages/index.html",
+      "title": "首页 (v1 · 编辑浅色基线)",
+      "pageIndex": 1,
+      "deviceType": "desktop",
+      "writeMode": "preserve",
+      "viewportMode": "document-scroll",
+      "visualNorthStar": "Editorial light baseline — preserved for comparison.",
+      "compositionPattern": "editorial-light / symmetric 1fr_1.18fr hero"
+    },
+    {
+      "nodeId": "page-index-v2",
+      "htmlSrc": "pages/index-v2.html",
+      "title": "首页 v2 · 深色分屏版",
+      "pageIndex": 2,
+      "deviceType": "desktop",
+      "writeMode": "preserve",
+      "viewportMode": "document-scroll",
+      "comparisonRelation": "redesign-v2-vs-v1",
+      "visualNorthStar": "Dark editorial with 42/58 split — rejected by user.",
+      "compositionPattern": "dark-editorial-asymmetric: 42/58 split (REJECTED)"
+    },
+    {
+      "nodeId": "page-index-v3",
+      "htmlSrc": "pages/index-v3.html",
+      "title": "首页 v3 · 全幅产品剧场版",
+      "pageIndex": 3,
+      "deviceType": "desktop",
+      "writeMode": "preserve",
+      "viewportMode": "document-scroll",
+      "comparisonRelation": "redesign-v3-vs-v1-v2",
+      "visualNorthStar": "Dark product-theater, centered full-bleed hero, no splits. BASELINE for v4/v5 variants.",
+      "compositionPattern": "dark-product-theater: centered full-bleed + stacked sections"
+    },
+    {
+      "nodeId": "page-index-v4",
+      "htmlSrc": "pages/index-v4.html",
+      "title": "首页 v4 · Canvas 粒子知识图谱版",
+      "pageIndex": 4,
+      "deviceType": "desktop",
+      "writeMode": "full-build",
+      "viewportMode": "document-scroll",
+      "sourcePageHeritage": "page-index-v3",
+      "comparisonRelation": "variant-v4-canvas-vs-v3-static",
+      "variantAxis": "Canvas 2D physics: force-directed knowledge graph network as hero, data particles flowing on edges, mouse-interactive node highlighting, scroll-triggered SVG stroke-dashoffset path animations, count-up number animations, clip-path polygon reveals",
+      "visualNorthStar": "Canvas particle knowledge graph hero — force-directed node network fills the viewport behind the headline, nodes breathe and connected by edges with flowing data particles. Mouse hover highlights a node and its connections. Scroll triggers SVG path drawing animations and staggered clip-path reveals. Numbers count up on enter. Terminal tech stack with typewriter effect. All motion is hand-written Canvas/CSS/JS, no generic fade-in-only AI patterns.",
+      "compositionPattern": "canvas-particle-hero: full-bleed Canvas bg + centered floating headline + scroll-driven SVG reveals + clip-path staggered sections + count-up stats + typewriter terminal",
+      "sections": [
+        "nav (floating blurred, scroll-progress bar)",
+        "hero (Canvas particle knowledge graph bg + centered headline + CTA + scroll indicator)",
+        "scroll-progress bar (fixed top, canvas-driven)",
+        "01 多智能体架构 (SVG path drawing animation on scroll, nodes appear staggered)",
+        "02 核心功能 (clip-path polygon reveals, each feature slides in from different direction)",
+        "03 8维学生画像 (radar chart SVG stroke-dashoffset animation, bars grow on scroll)",
+        "04 三端协同 (tab content cross-fade with scale transition)",
+        "05 技术栈 (typewriter terminal effect, line-by-line reveal)",
+        "stats count-up band (numbers animate from 0 on scroll enter)",
+        "testimonial (clip-path circle reveal)",
+        "cta (scale + fade on scroll enter)",
+        "footer"
+      ]
+    },
+    {
+      "nodeId": "page-index-v5",
+      "htmlSrc": "pages/index-v5.html",
+      "title": "首页 v5 · CSS 3D 滚动叙事版",
+      "pageIndex": 5,
+      "deviceType": "desktop",
+      "writeMode": "full-build",
+      "viewportMode": "document-scroll",
+      "sourcePageHeritage": "page-index-v3",
+      "comparisonRelation": "variant-v5-3d-vs-v3-static",
+      "variantAxis": "CSS 3D transforms + scroll-driven parallax: perspective+preserve-3d layered hero depth, scroll drives rotateX/translateZ section transitions, 3D card stack for agents, mouse parallax tilt",
+      "visualNorthStar": "CSS 3D scroll cinematic — hero uses perspective with headline/title/subtitle on different Z planes, mouse movement tilts the entire scene. Scroll drives sections through 3D space (rotateX, translateZ). Agent cards stack in 3D and flip open on scroll. Feature sections parallax at different depths. All motion is pure CSS 3D transforms + scroll event, no Canvas, no generic fade-in-only AI patterns.",
+      "compositionPattern": "css-3d-scroll: perspective hero depth + scroll-driven rotateX/translateZ transitions + 3D card stack + parallax layers + mouse parallax tilt",
+      "sections": [
+        "nav (floating blurred, 3D push-back on scroll)",
+        "hero (CSS 3D perspective, headline layers on Z axis, mouse parallax tilt, scroll indicator)",
+        "01 多智能体架构 (3D card stack, cards flip open staggered on scroll, perspective rotateY)",
+        "02 核心功能 (parallax layers, feature content moves at different Z speeds on scroll)",
+        "03 8维学生画像 (3D rotating radar card, perspective tilt on scroll)",
+        "04 三端协同 (3D flip cards, click to flip Y axis revealing content)",
+        "05 技术栈 (3D terminal panel, translateZ push-in on scroll)",
+        "testimonial (3D card rotate-in from bottom)",
+        "cta (3D scale-in from depth)",
+        "footer (parallax fade)"
+      ]
+    }
+  ],
+  "expectedDispatches": [
+    {
+      "dispatchId": "dispatch-v2-page",
+      "targetFile": "pages/index-v2.html",
+      "status": "dispatched",
+      "lane": "redesign_duplicate_project",
+      "allowedWritePaths": ["pages/index-v2.html"]
+    },
+    {
+      "dispatchId": "dispatch-v3-page",
+      "targetFile": "pages/index-v3.html",
+      "status": "completed",
+      "lane": "redesign_duplicate_project",
+      "allowedWritePaths": ["pages/index-v3.html"]
+    },
+    {
+      "dispatchId": "dispatch-v4-page",
+      "targetFile": "pages/index-v4.html",
+      "status": "dispatched",
+      "lane": "variants_multi_scheme",
+      "allowedWritePaths": ["pages/index-v4.html"]
+    },
+    {
+      "dispatchId": "dispatch-v5-page",
+      "targetFile": "pages/index-v5.html",
+      "status": "dispatched",
+      "lane": "variants_multi_scheme",
+      "allowedWritePaths": ["pages/index-v5.html"]
+    }
+  ]
+}

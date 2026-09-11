@@ -126,11 +126,26 @@ def test_chunked_upload_baseline_and_integrity(tmp_path, monkeypatch):
     complete = client.post(f"/api/knowledge-graph/courses/{course_id}/import-syllabus/chunk/{upload_id}/complete")
     chunk_ms = (time.perf_counter() - chunk_start) * 1000
     body = complete.get_json()
-    assert complete.status_code == 200
-    assert body["content_sha256"] == expected_hash
-    assert body["performance"]["upload_mode"] == "chunked"
-    assert body["performance"]["sha256"] == expected_hash
-    assert body["performance"]["total_chunks"] == total_chunks
+    assert complete.status_code == 202
+    assert body["status"] == "processing"
+    assert body["task_id"]
+
+    deadline = time.monotonic() + 5
+    task_body = None
+    while time.monotonic() < deadline:
+        task_status = client.get(f"/api/knowledge-graph/import-task/{body['task_id']}/status")
+        assert task_status.status_code == 200
+        task_body = task_status.get_json()
+        if task_body["status"] in ("completed", "failed"):
+            break
+        time.sleep(0.02)
+
+    assert task_body is not None
+    assert task_body["status"] == "completed", task_body.get("error")
+    assert task_body["result"]["content_sha256"] == expected_hash
+    assert task_body["performance"]["upload_mode"] == "chunked"
+    assert task_body["performance"]["sha256"] == expected_hash
+    assert task_body["performance"]["total_chunks"] == total_chunks
 
     metrics = client.get("/api/knowledge-graph/upload-metrics?limit=5")
     assert metrics.status_code == 200

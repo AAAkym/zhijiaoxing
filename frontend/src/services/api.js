@@ -1,5 +1,5 @@
 // 开发环境使用相对路径通过Vite代理，生产环境使用环境变量或相对路径
-const API_BASE_URL = (typeof process !== 'undefined' && process.env?.VITE_API_BASE_URL) || '/api'
+const API_BASE_URL = globalThis.process?.env?.VITE_API_BASE_URL || '/api'
 
 const SSE_TIMEOUT = 300000
 
@@ -279,6 +279,85 @@ export const courseGeneration = {
     body: data,
   }),
 
+  previewPersonalizedPlan: (data) => request('/resource-generation/plan', {
+    method: 'POST',
+    body: data,
+  }),
+
+  suggestWorkflowKnowledgePoints: (data) => request('/resource-generation/workflow/knowledge-points', {
+    method: 'POST',
+    body: data,
+    timeout: 120000,
+  }),
+
+  previewWorkflowPlan: (data) => request('/resource-generation/workflow/plan', {
+    method: 'POST',
+    body: data,
+  }),
+
+  generateWorkflowResources: (workflowId, data = {}) => request(`/resource-generation/workflow/${workflowId}/generate`, {
+    method: 'POST',
+    body: data,
+    timeout: 300000,
+  }),
+
+  getWorkflow: (workflowId) => request(`/resource-generation/workflow/${workflowId}`),
+
+  publishWorkflow: (workflowId, data = {}) => request(`/resource-generation/workflow/${workflowId}/publish`, {
+    method: 'POST',
+    body: data,
+  }),
+
+  getWorkflowDeliveries: (workflowId) => request(`/resource-generation/workflow/${workflowId}/deliveries`),
+
+  getWorkflows: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString()
+    return request(`/resource-generation/workflows${queryString ? `?${queryString}` : ''}`)
+  },
+
+  preflightClassBatch: (data) => request('/resource-generation/class-batches/preflight', { method: 'POST', body: data }),
+
+  createClassBatch: (data) => request('/resource-generation/class-batches', { method: 'POST', body: data }),
+
+  getClassBatches: () => request('/resource-generation/class-batches'),
+
+  getClassBatch: (batchId) => request(`/resource-generation/class-batches/${batchId}`),
+
+  refreshClassBatchProfiles: (batchId) => request(`/resource-generation/class-batches/${batchId}/refresh-profiles`, { method: 'POST' }),
+
+  generateClassBatch: (batchId) => request(`/resource-generation/class-batches/${batchId}/generate`, { method: 'POST', timeout: 900000 }),
+
+  publishClassBatch: (batchId, data = {}) => request(`/resource-generation/class-batches/${batchId}/publish`, { method: 'POST', body: data, timeout: 300000 }),
+
+  pauseWorkflow: (workflowId) => request(`/resource-generation/workflow/${workflowId}/pause`, {
+    method: 'POST',
+  }),
+
+  resumeWorkflow: (workflowId) => request(`/resource-generation/workflow/${workflowId}/resume`, {
+    method: 'POST',
+  }),
+
+  saveWorkflowDraft: (workflowId) => request(`/resource-generation/workflow/${workflowId}/save-draft`, {
+    method: 'POST',
+  }),
+
+  submitWorkflowReview: (workflowId) => request(`/resource-generation/workflow/${workflowId}/submit-review`, {
+    method: 'POST',
+  }),
+
+  getComparisonDemoPresets: () => request('/resource-generation/comparison-demo/presets'),
+
+  previewComparisonDemoPlan: (data) => request('/resource-generation/comparison-demo/plan', {
+    method: 'POST',
+    body: data,
+  }),
+
+  generateComparisonDemo: (data) => request('/resource-generation/comparison-demo/generate', {
+    method: 'POST',
+    body: data,
+    timeout: 300000,
+  }),
+
   generateResourcePackage: (data) => request('/resource-generation/package', {
     method: 'POST',
     body: data,
@@ -328,6 +407,80 @@ export const courseGeneration = {
   retrySync: (recordId) => request(`/resource-generation/sync-retry/${recordId}`, {
     method: 'POST',
   }),
+}
+
+export const personalizedLearning = {
+  listTeacherDeliveries: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString()
+    return request(`/personalized-deliveries${queryString ? `?${queryString}` : ''}`)
+  },
+
+  bulkChangeDeliveryState: (data) => request('/personalized-deliveries/bulk-state', {
+    method: 'POST',
+    body: data,
+  }),
+
+  bulkRemindDeliveries: (deliveryIds) => request('/personalized-deliveries/bulk-remind', {
+    method: 'POST',
+    body: { delivery_ids: deliveryIds },
+  }),
+
+  getReminderStatus: () => request('/personalized-reminders/status'),
+
+  getStudentNotifications: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString()
+    return request(`/student/personalized-notifications${queryString ? `?${queryString}` : ''}`)
+  },
+
+  markStudentNotificationRead: (notificationId) => request(`/student/personalized-notifications/${notificationId}/read`, {
+    method: 'POST',
+  }),
+
+  markAllStudentNotificationsRead: () => request('/student/personalized-notifications/read-all', {
+    method: 'POST',
+  }),
+
+  getTeacherDelivery: (deliveryId) => request(`/personalized-deliveries/${deliveryId}`),
+
+  pauseTeacherDelivery: (deliveryId) => request(`/personalized-deliveries/${deliveryId}/pause`, {
+    method: 'POST',
+  }),
+
+  resumeTeacherDelivery: (deliveryId) => request(`/personalized-deliveries/${deliveryId}/resume`, {
+    method: 'POST',
+  }),
+
+  analyzeTeacherDelivery: (deliveryId) => request(`/personalized-deliveries/${deliveryId}/analyze`, {
+    method: 'POST',
+  }),
+
+  getStudentDeliveries: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString()
+    return request(`/student/personalized-deliveries${queryString ? `?${queryString}` : ''}`)
+  },
+
+  getStudentDelivery: (deliveryId) => request(`/student/personalized-deliveries/${deliveryId}`),
+
+  startStudentDelivery: (deliveryId) => request(`/student/personalized-deliveries/${deliveryId}/start`, {
+    method: 'POST',
+  }),
+
+  completeStudentResource: (deliveryId, data) => request(`/student/personalized-deliveries/${deliveryId}/complete-resource`, {
+    method: 'POST',
+    body: data,
+  }),
+
+  submitStudentAssessment: (deliveryId, data = {}) => request(`/student/personalized-deliveries/${deliveryId}/submit-assessment`, {
+    method: 'POST',
+    body: data,
+  }),
+
+  getLearningCycle: (cycleId) => request(`/personalized-learning-cycles/${cycleId}`),
+}
+
+export const workflowMetrics = {
+  getDashboard: (days = 30) => request(`/metrics/dashboard?days=${days}`),
+  getHealth: () => request('/metrics/health'),
 }
 
 export const knowledgeGraph = {
@@ -1040,11 +1193,6 @@ export const mistakeBook = {
     body: payload,
   }),
 
-  submitTargetedFeedback: (payload) => request('/mistakes/targeted-practice/feedback', {
-    method: 'POST',
-    body: payload,
-  }),
-
   exportMistakes: (payload) => fetch(`${API_BASE_URL}/mistakes/export`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1532,4 +1680,3 @@ export const pptApi = {
   // 删除PPT
   delete: (contentId) => request(`/ppt/${contentId}`, { method: 'DELETE' }),
 }
-

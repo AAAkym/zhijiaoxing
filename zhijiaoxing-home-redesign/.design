@@ -1,0 +1,89 @@
+{
+  "data": [
+    {
+      "id": "page-index",
+      "title": "首页",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1784801183000,
+      "canvasData": {
+        "x": 0,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/index.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-index-v2",
+      "title": "首页 v2 · 深色分屏版",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1785407600000,
+      "canvasData": {
+        "x": 620,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/index-v2.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-index-v3",
+      "title": "首页 v3 · 全幅产品剧场版",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1785494000000,
+      "canvasData": {
+        "x": 1140,
+        "y": -12,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/index-v3.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-index-v4",
+      "title": "首页 v4 · Canvas 粒子知识图谱版",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1785580400000,
+      "canvasData": {
+        "x": 1740,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/index-v4.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-index-v5",
+      "title": "首页 v5 · CSS 3D 滚动叙事版",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1785580400000,
+      "canvasData": {
+        "x": 2340,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/index-v5.html",
+        "interactions": []
+      }
+    }
+  ],
+  "config": {
+    "autoLayout": false,
+    "deviceType": "desktop",
+    "projectName": "智教星首页重设计"
+  }
+}

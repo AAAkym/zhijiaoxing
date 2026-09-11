@@ -23,6 +23,7 @@ celery_app.autodiscover_tasks([
     'src.tasks.email_tasks',
     'src.tasks.export_tasks',
     'src.tasks.maintenance_tasks',
+    'src.tasks.personalized_reminder_tasks',
 ])
 
 # 定时任务配置（Celery Beat）
@@ -63,6 +64,12 @@ celery_app.conf.beat_schedule = {
     'system-health-check': {
         'task': 'src.tasks.maintenance_tasks.health_check',
         'schedule': 300.0,  # 300秒 = 5分钟
+        'args': (),
+        'options': {'queue': 'maintenance'},
+    },
+    'personalized-task-due-reminders': {
+        'task': 'src.tasks.personalized_reminder_tasks.create_due_reminders',
+        'schedule': 900.0,
         'args': (),
         'options': {'queue': 'maintenance'},
     },

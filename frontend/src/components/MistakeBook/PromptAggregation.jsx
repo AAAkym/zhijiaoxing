@@ -365,6 +365,9 @@ export default function PromptAggregation({ myCourses = [], onBack }) {
         completedCount={completedCount}
         wrongCount={wrongCount}
         afterAccuracy={afterAccuracy}
+        onCompletedCountChange={setCompletedCount}
+        onWrongCountChange={setWrongCount}
+        onAfterAccuracyChange={setAfterAccuracy}
         onSubmitFeedback={handleSubmitFeedback}
         onBackToPlan={() => { setCurrentView('config') }}
         onRetry={handleStartPractice}
@@ -692,7 +695,7 @@ function PracticeView({ questions, currentIndex, answers, timeElapsed, showConfi
   )
 }
 
-function ResultView({ results, feedback, feedbackLoading, completedCount, wrongCount, afterAccuracy, onSubmitFeedback, onBackToPlan, onRetry }) {
+function ResultView({ results, feedback, feedbackLoading, completedCount, wrongCount, afterAccuracy, onCompletedCountChange, onWrongCountChange, onAfterAccuracyChange, onSubmitFeedback, onBackToPlan, onRetry }) {
   if (!results) return null
 
   const { totalScore, maxScore, accuracy, correctCount: correct, wrongCount: wrong, timeElapsed: elapsed } = results
@@ -801,7 +804,7 @@ function ResultView({ results, feedback, feedbackLoading, completedCount, wrongC
                 type="number"
                 min="0"
                 value={completedCount}
-                onChange={(e) => setCompletedCount(Number(e.target.value) || 0)}
+                onChange={(e) => onCompletedCountChange(Number(e.target.value) || 0)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
               />
             </div>
@@ -811,7 +814,7 @@ function ResultView({ results, feedback, feedbackLoading, completedCount, wrongC
                 type="number"
                 min="0"
                 value={wrongCount}
-                onChange={(e) => setWrongCount(Number(e.target.value) || 0)}
+                onChange={(e) => onWrongCountChange(Number(e.target.value) || 0)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
               />
             </div>
@@ -822,7 +825,7 @@ function ResultView({ results, feedback, feedbackLoading, completedCount, wrongC
                 min="0"
                 max="100"
                 value={afterAccuracy}
-                onChange={(e) => setAfterAccuracy(Number(e.target.value) || 0)}
+                onChange={(e) => onAfterAccuracyChange(Number(e.target.value) || 0)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
               />
             </div>

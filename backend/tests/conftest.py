@@ -28,11 +28,11 @@ def app():
     # 强制覆盖数据库URI为内存数据库（防止类级别属性已被求值）
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
 
-    # 重新初始化SQLAlchemy引擎以应用新的URI
+    # src.main 已按上面的测试环境变量初始化为内存数据库。
+    # Flask-SQLAlchemy 3.x 访问 engine 必须处于应用上下文，且同一 app 不能重复 init_app。
     from src.models.user import db as _db
-    if hasattr(_db, 'engine'):
+    with app.app_context():
         _db.engine.dispose()
-    _db.init_app(app)
 
     # 安全检查：确保测试不会连接生产数据库
     db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')

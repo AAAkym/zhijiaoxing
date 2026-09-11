@@ -17,6 +17,7 @@ import { courseGeneration } from '@/services/api'
 const STATUS_CONFIG = {
   success: { label: '完成', icon: CheckCircle, tone: 'success' },
   completed: { label: '完成', icon: CheckCircle, tone: 'success' },
+  partial: { label: '部分完成', icon: AlertCircle, tone: 'failed' },
   running: { label: '运行中', icon: Loader2, tone: 'running' },
   failed: { label: '失败', icon: AlertCircle, tone: 'failed' },
   pending: { label: '等待中', icon: Clock, tone: 'pending' },
@@ -82,6 +83,17 @@ function AgentCard({ step, index }) {
       {step.task_type && (
         <p className="mt-1.5 truncate text-[10px] text-muted-foreground/70">任务: {step.task_type}</p>
       )}
+      {!!step.profile_features?.length && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {step.profile_features.map(feature => <Badge key={feature} variant="outline" className="text-[10px]">{feature}</Badge>)}
+        </div>
+      )}
+      {step.knowledge_summary && <p className="mt-2 text-xs text-muted-foreground">输入：{step.knowledge_summary}</p>}
+      {step.output_summary && <p className="mt-1 text-xs text-emerald-700">输出：{step.output_summary}</p>}
+      {step.duration_ms != null && <p className="mt-1 text-[11px] text-muted-foreground">耗时 {(step.duration_ms / 1000).toFixed(1)} 秒</p>}
+      {(step.error_reason || step.error_message) && (
+        <p className="mt-1 text-xs text-red-600">原因：{step.error_reason || step.error_message}</p>
+      )}
     </div>
   )
 }
@@ -143,6 +155,7 @@ function TimelineItem({ step, index, isLast }) {
  */
 export default function AgentCollaborationProgress({
   progress,
+  stages = [],
   agents: agentsProp,
   loading = false,
   autoPoll = true,
@@ -245,6 +258,23 @@ export default function AgentCollaborationProgress({
             </span>
           </div>
         </div>
+
+        {stages.length > 0 && (
+          <div>
+            <p className="mb-3 text-xs font-medium text-muted-foreground">六阶段生成过程</p>
+            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+              {stages.map((stage) => (
+                <div key={stage.key} className="border-l-2 border-border bg-muted/20 px-3 py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium">{stage.order}. {stage.name}</p>
+                    <StatusIndicator status={stage.status} />
+                  </div>
+                  {stage.summary && <p className="mt-1 text-xs text-muted-foreground">{stage.summary}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* 任务分配卡片网格 */}
         {steps.length > 0 && (

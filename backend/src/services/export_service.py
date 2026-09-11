@@ -15,9 +15,15 @@ from docx.oxml.ns import qn
 
 logger = logging.getLogger(__name__)
 
-FONT_DIR = Path(os.environ.get("SYSTEMROOT", r"C:\Windows")) / "Fonts"
-SIMHEI_PATH = FONT_DIR / "simhei.ttf"
-MSYH_PATH = FONT_DIR / "msyh.ttc"
+WINDOWS_FONT_DIR = Path(os.environ.get("SYSTEMROOT", r"C:\Windows")) / "Fonts"
+FONT_CANDIDATES = (
+    WINDOWS_FONT_DIR / "simhei.ttf",
+    WINDOWS_FONT_DIR / "msyh.ttc",
+    Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"),
+    Path("/usr/share/fonts/opentype/noto/NotoSansCJKsc-Regular.otf"),
+    Path("/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc"),
+    Path("/System/Library/Fonts/PingFang.ttc"),
+)
 
 COLOR_RED = (220, 50, 50)
 COLOR_GREEN = (22, 101, 52)
@@ -37,20 +43,21 @@ ERROR_TYPE_MAP = {
     "other": "其他",
 }
 
-_cached_font_name = None
+_cached_font_path = None
 
 
-def _get_cached_font_name():
-    global _cached_font_name
-    if _cached_font_name is not None:
-        return _cached_font_name
-    if SIMHEI_PATH.exists():
-        _cached_font_name = "SimHei"
-    elif MSYH_PATH.exists():
-        _cached_font_name = "MSYH"
-    else:
-        _cached_font_name = "Helvetica"
-    return _cached_font_name
+def _get_cjk_font_path() -> Optional[Path]:
+    global _cached_font_path
+    if _cached_font_path is not None:
+        return _cached_font_path
+
+    configured_path = os.environ.get("PDF_CJK_FONT_PATH")
+    candidates = ((Path(configured_path),) if configured_path else ()) + FONT_CANDIDATES
+    for candidate in candidates:
+        if candidate.is_file():
+            _cached_font_path = candidate
+            return candidate
+    return None
 
 
 class MistakePDF(FPDF):
@@ -60,20 +67,22 @@ class MistakePDF(FPDF):
         self.set_margins(15, 20, 15)
         self._usable_width = self.w - self.l_margin - self.r_margin
         self._fonts_registered = False
-        self._font_name = _get_cached_font_name()
+        self._font_name = "MistakeBookCJK"
 
     def _register_fonts(self):
         if self._fonts_registered:
             return
+        font_path = _get_cjk_font_path()
+        if font_path is None:
+            raise RuntimeError(
+                "No CJK font is available for PDF export. Install Noto Sans CJK "
+                "or set PDF_CJK_FONT_PATH to a Chinese-capable TTF/TTC/OTF file."
+            )
         try:
-            if self._font_name == "SimHei" and SIMHEI_PATH.exists():
-                self.add_font("SimHei", fname=str(SIMHEI_PATH))
-                self.add_font("SimHei", style="B", fname=str(SIMHEI_PATH))
-            elif self._font_name == "MSYH" and MSYH_PATH.exists():
-                self.add_font("MSYH", fname=str(MSYH_PATH))
-                self.add_font("MSYH", style="B", fname=str(MSYH_PATH))
-        except Exception as e:
-            logger.warning(f"Font registration warning: {e}")
+            self.add_font(self._font_name, fname=str(font_path))
+            self.add_font(self._font_name, style="B", fname=str(font_path))
+        except Exception as exc:
+            raise RuntimeError(f"Unable to load PDF CJK font: {font_path}") from exc
         self._fonts_registered = True
 
     def header(self):
@@ -283,7 +292,7 @@ def generate_pdf(
         for i, m in enumerate(mistakes_data, 1):
             pdf.add_mistake_detailed(i, m, export_mode=export_mode)
 
-    result = pdf.output()
+    result = bytes(pdf.output())
     elapsed = time.perf_counter() - t0
     logger.info(f"PDF generation: {len(mistakes_data)} mistakes, template={template}, mode={export_mode}, {elapsed:.3f}s, {len(result)//1024}KB")
     return result

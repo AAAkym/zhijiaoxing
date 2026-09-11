@@ -161,7 +161,13 @@ class DocumentAgent(AgentBase):
     def process(self, task):
         task_type = task.get("type")
         agent_monitor.update_status(
-            self.agent_name, AgentStatus.RUNNING, task_type
+            self.agent_name,
+            AgentStatus.RUNNING,
+            {
+                "task_type": task_type,
+                "user_id": task.get("user_id"),
+                "persist_execution": task.get("persist_execution", True),
+            },
         )
         try:
             if task_type == "generate_course_document":

@@ -336,8 +336,6 @@ function GraphEdge({ start, end, type, weight, isOnPath, isHighlighted, isSelect
 
 /* ── 节点标签（含内容简析） ── */
 function NodeLabel({ position, text, node, isSelected, isExpanded, lowDetail }) {
-  if (lowDetail && !isSelected && !isExpanded) return null
-
   const isKnowledgePoint = node?.node_type === 'knowledge_point'
   const showSummary = isKnowledgePoint && (node?.description || node?.properties?.summary)
   const summaryText = showSummary
@@ -381,6 +379,8 @@ function NodeLabel({ position, text, node, isSelected, isExpanded, lowDetail }) 
   const labelScale = isSelected || isExpanded
     ? (summaryText ? [5.5, 1.4, 1] : [3.5, 0.9, 1])
     : (summaryText ? [4.5, 1.1, 1] : [2.8, 0.7, 1])
+
+  if (lowDetail && !isSelected && !isExpanded) return null
 
   return (
     <sprite position={[position.x, position.y + 1.4, position.z]} scale={labelScale}>

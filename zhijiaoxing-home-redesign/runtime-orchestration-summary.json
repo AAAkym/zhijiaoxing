@@ -1,0 +1,340 @@
+{
+  "project": {
+    "name": "智教星首页重设计",
+    "deviceType": "desktop",
+    "language": "zh-CN",
+    "operatingMode": "redesign-comparison",
+    "intentProfile": {
+      "caseFamily": "existing_edit_add_comparison",
+      "sourceType": "existing-page",
+      "routingReason": "User rejected v1 (symmetric left-right) and v2 (42/58 split) as AI-looking. v3 applies Linear/Cursor/Vercel-style centered full-bleed product-theater layout — NO left-right splits anywhere. Redesign comparison, source project not mutated."
+    },
+    "contextReadBudget": {
+      "workflowFileReadLimit": 1,
+      "largeWorkflowFilesCachedInSummary": [],
+      "restoreInputsCached": [],
+      "subAgentReadsFullSummary": false
+    },
+    "resolvedLane": "existing_edit_add_comparison",
+    "selectedIntentWorkflowRead": true,
+    "contextRequirementsLoaded": [
+      {
+        "path": "intent-workflows/intent-project-mutation/INTENT_WORKFLOW.md",
+        "readStatus": "loaded",
+        "bodyRead": true
+      },
+      {
+        "path": "intent-workflows/intent-project-mutation/redesign-page-runtime.md",
+        "readStatus": "loaded",
+        "bodyRead": true
+      }
+    ],
+    "contextReadScope": "lane-runtime + redesign-page-runtime only",
+    "validationRunDiscipline": "validate-design-workspace + validate-finish-readiness",
+    "lowValueCallWatchdog": {
+      "noProgressNextAction": "dispatch v3 page build then validate"
+    },
+    "designRead": "Linear.app / Cursor.sh / Vercel.com centered full-bleed product-theater patterns → NO left-right splits, product UI as hero, vertical scroll narrative",
+    "designDials": "layoutVariance=5 / motionIntensity=2 / visualDensity=4",
+    "styleDefinitionBrief": "Dark Product Theater (深色产品剧场): warm near-black #0B0B0D base, warm paper #EDEAE3 text, single warm-amber #E8B547 accent on data/key numbers only. Inter (display, heavy 800-900, tight tracking) + Fraunces/Noto Serif SC (editorial section numbers, pull-quotes) + JetBrains Mono (eyebrows, data, terminal). CENTERED full-bleed hero with product console bleeding to viewport edges below headline (Linear/Cursor pattern). NO left-right splits anywhere. Editorial numbering 01-05. Full-width sections with varying heights. Product UI mockups built in HTML/CSS. Bento grid deliberately unequal. Terminal tech stack. Full-width pull quotes. No 50/50 splits, no equal card grids, no alternating left-right features, no purple-blue gradients, no FAQ accordion.",
+    "styleContinuityAnchors": "none — v3 is a fresh visual language; v1 (editorial light) and v2 (dark split) preserved as comparison baselines",
+    "cssPreflightEvidence": {
+      "applies": true,
+      "status": "passed",
+      "brandPrefix": "zx",
+      "checks": {
+        "themeVars": "present",
+        "tailwindCdn": "present-v4",
+        "htmlClass": "dark",
+        "themeInline": "present",
+        "layerBase": "present"
+      },
+      "retryCount": 0,
+      "notes": "Head generated via apply-html-head-contract.mjs from colors_and_type-v3.css (dark theme). All contract requirements met."
+    },
+    "visualQualityCheckpoints": [
+      {
+        "anchor": "Hero CENTERED full-bleed — headline centered above, full-width product console mockup bleeds below to viewport edges",
+        "hierarchy": "oversized mixed-weight H1 centered + mono eyebrow + centered CTA + full-bleed product UI",
+        "composition": "centered column, product UI spans 100% width below",
+        "strategy": "Linear/Cursor pattern — product IS the hero, no side panel"
+      },
+      {
+        "anchor": "8-agent system as full-width horizontal flow + unequal bento, NOT radial diagram with side panel",
+        "hierarchy": "large 01 serif number + title + full-width topology + unequal agent bento below",
+        "composition": "full-width stacked, no left-right split",
+        "strategy": "horizontal agent flow + deliberately unequal bento kills AI-grid look"
+      },
+      {
+        "anchor": "Core features as full-width stacked bands, NOT 2x2 cards or alternating splits",
+        "hierarchy": "each feature = full-width band with number+title+desc above, product screenshot below",
+        "composition": "vertical stack, varying heights, different visual treatment per feature",
+        "strategy": "full-bleed bands prevent left-right split pattern"
+      }
+    ],
+    "validationHistory": [
+      {
+        "reportPath": "validation-report.json",
+        "reportHash": "79443c5f71596759cb483e39dc401a68b4408a76f7748fae8b9f4bdab9afc4cb",
+        "checkedAt": "2026-07-24T10:48:56.090Z",
+        "success": false,
+        "exitCode": 1,
+        "renderBlockingErrorCount": 6,
+        "repairPlanHints": [
+          "head-infrastructure-missing",
+          "head-infrastructure-missing",
+          "hardcoded-color-in-body",
+          "hardcoded-color-in-body",
+          "hardcoded-color-in-body"
+        ],
+        "errorSignatures": [
+          {
+            "errorClass": "head-infrastructure",
+            "normalized": "[html-infrastructure] [MAIN-AGENT] index-v2.html missing Tailwind CSS CDN (<script src=\"...@tailwindcss/browser@4\">). Impact: all utility classes stop working; page degrades to unstyled HTML. Fix: run apply-html-head-contract.mjs <css-path> index-v2.html --replace-head",
+            "signature": "6f6160b3e38d36f08d9b9df88234e60458038db5a3d2f3891870849e0ffdad7c"
+          },
+          {
+            "errorClass": "head-infrastructure",
+            "normalized": "[html-infrastructure] [MAIN-AGENT] index-v2.html missing <style id=\"theme-vars\"> theme CSS variable block. Impact: all semantic token colors degrade to transparent/default values. Fix: run apply-html-head-contract.mjs <css-path> index-v2.html --replace-head",
+            "signature": "aa7410d52700a9ab9a8546c082957b7c326f52041e37ad1dde54ab7011622150"
+          },
+          {
+            "errorClass": "head-infrastructure",
+            "normalized": "[html-infrastructure] [MAIN-AGENT] index-v2.html missing @theme inline Tailwind <-> CSS variable bridge block. Impact: bg-primary, text-foreground and similar classes cannot map to theme colors. Fix: run apply-html-head-contract.mjs <css-path> index-v2.html --replace-head",
+            "signature": "f2f8ddcab94c06a52ba902c60e15b93b0f88cdd90d86204303cc0059733e47c4"
+          },
+          {
+            "errorClass": "head-infrastructure",
+            "normalized": "[html-infrastructure] [MAIN-AGENT] index-v2.html missing @layer base global base styles. Impact: body background color, font, table word-break and other base styles are lost. Fix: run apply-html-head-contract.mjs <css-path> index-v2.html --replace-head",
+            "signature": "11382b4ee56bf60318713abd011fe0d7a53ef5c22b9f5a64b881d6ee4bd505e5"
+          },
+          {
+            "errorClass": "head-infrastructure",
+            "normalized": "[html-infrastructure] [MAIN-AGENT] index-v2.html missing <html class=\"light\"> or <html class=\"dark\"> theme mode selector. Impact: CSS variable selectors do not match; all theme colors stop working. Fix: run apply-html-head-contract.mjs <css-path> index-v2.html --replace-head",
+            "signature": "17ca6477a8318c67a6851f05f22e8510f4d7cc80a5aeb2c5f790a74d81e210ed"
+          },
+          {
+            "errorClass": "head-infrastructure",
+            "normalized": "[html-infrastructure] [MAIN-AGENT] index.html missing <html class=\"light\"> or <html class=\"dark\"> theme mode selector. Impact: CSS variable selectors do not match; all theme colors stop working. Fix: run apply-html-head-contract.mjs <css-path> index.html --replace-head",
+            "signature": "8a0791dd00c66ea27c3c61f35841e8e3b1416f04f2bcf1ce3480cb4629803722"
+          }
+        ],
+        "terminalState": null
+      }
+    ],
+    "validationRepairLedger": [
+      {
+        "failedReportPath": "validation-report.json",
+        "failedReportHash": "79443c5f71596759cb483e39dc401a68b4408a76f7748fae8b9f4bdab9afc4cb",
+        "repairWorkflowReadPath": "intent-workflows/intent-project-mutation/main-agent-repair-workflow.md",
+        "repairStartedAt": "2026-07-24T10:51:11.423Z",
+        "repairEntryStatus": "started-awaiting-owner-batch-repair",
+        "ownerTriage": [
+          {
+            "owner": "main-agent",
+            "errorClass": "head-infrastructure-missing",
+            "affectedFiles": [
+              "index-v2.html"
+            ],
+            "repairScope": "affected-page-head",
+            "strategy": "run_apply_html_head_replace"
+          },
+          {
+            "owner": "main-agent",
+            "errorClass": "head-infrastructure-missing",
+            "affectedFiles": [
+              "index.html"
+            ],
+            "repairScope": "affected-page-head",
+            "strategy": "run_apply_html_head_replace"
+          },
+          {
+            "owner": "sub-agent",
+            "errorClass": "hardcoded-color-in-body",
+            "affectedFiles": [
+              "index-v2.html"
+            ],
+            "repairScope": "targeted-token-replace",
+            "strategy": "targeted_token_replace_once"
+          },
+          {
+            "owner": "sub-agent",
+            "errorClass": "hardcoded-color-in-body",
+            "affectedFiles": [
+              "index-v3.html"
+            ],
+            "repairScope": "targeted-token-replace",
+            "strategy": "targeted_token_replace_once"
+          },
+          {
+            "owner": "sub-agent",
+            "errorClass": "hardcoded-color-in-body",
+            "affectedFiles": [
+              "index.html"
+            ],
+            "repairScope": "targeted-token-replace",
+            "strategy": "targeted_token_replace_once"
+          }
+        ],
+        "repairPlanHints": [
+          {
+            "errorClass": "head-infrastructure-missing",
+            "owner": "main-agent",
+            "repairScope": "affected-page-head",
+            "strategy": "run_apply_html_head_replace",
+            "affectedFiles": [
+              "index-v2.html"
+            ],
+            "repairReportPath": null,
+            "repairAlreadyAttempted": false,
+            "allowSourceRead": "no-full-html-read",
+            "maxValidationRuns": 2
+          },
+          {
+            "errorClass": "head-infrastructure-missing",
+            "owner": "main-agent",
+            "repairScope": "affected-page-head",
+            "strategy": "run_apply_html_head_replace",
+            "affectedFiles": [
+              "index.html"
+            ],
+            "repairReportPath": null,
+            "repairAlreadyAttempted": false,
+            "allowSourceRead": "no-full-html-read",
+            "maxValidationRuns": 2
+          },
+          {
+            "errorClass": "hardcoded-color-in-body",
+            "owner": "sub-agent",
+            "repairScope": "targeted-token-replace",
+            "strategy": "targeted_token_replace_once",
+            "affectedFiles": [
+              "index-v2.html"
+            ],
+            "repairReportPath": null,
+            "repairAlreadyAttempted": false,
+            "allowSourceRead": "no-full-html-read",
+            "maxValidationRuns": 2
+          },
+          {
+            "errorClass": "hardcoded-color-in-body",
+            "owner": "sub-agent",
+            "repairScope": "targeted-token-replace",
+            "strategy": "targeted_token_replace_once",
+            "affectedFiles": [
+              "index-v3.html"
+            ],
+            "repairReportPath": null,
+            "repairAlreadyAttempted": false,
+            "allowSourceRead": "no-full-html-read",
+            "maxValidationRuns": 2
+          },
+          {
+            "errorClass": "hardcoded-color-in-body",
+            "owner": "sub-agent",
+            "repairScope": "targeted-token-replace",
+            "strategy": "targeted_token_replace_once",
+            "affectedFiles": [
+              "index.html"
+            ],
+            "repairReportPath": null,
+            "repairAlreadyAttempted": false,
+            "allowSourceRead": "no-full-html-read",
+            "maxValidationRuns": 2
+          }
+        ],
+        "repairActions": [],
+        "revalidationReportPath": null,
+        "revalidationReportHash": null,
+        "revalidationSuccess": null,
+        "blockedReason": null
+      }
+    ],
+    "repairEntryEvidence": [
+      {
+        "failedReportPath": "validation-report.json",
+        "failedReportHash": "79443c5f71596759cb483e39dc401a68b4408a76f7748fae8b9f4bdab9afc4cb",
+        "repairWorkflowReadPath": "intent-workflows/intent-project-mutation/main-agent-repair-workflow.md",
+        "repairStartedAt": "2026-07-24T10:51:11.423Z",
+        "ledgerIndex": 0,
+        "ownerTriageCount": 5,
+        "repairActionCount": 0,
+        "revalidationReportPath": null,
+        "revalidationReportHash": null,
+        "revalidationSuccess": null
+      }
+    ]
+  },
+  "pages": [
+    {
+      "nodeId": "page-index",
+      "htmlSrc": "pages/index.html",
+      "title": "首页 (v1 · 编辑浅色基线)",
+      "pageIndex": 1,
+      "deviceType": "desktop",
+      "writeMode": "preserve",
+      "viewportMode": "document-scroll",
+      "visualNorthStar": "Editorial light baseline — preserved for comparison. Rejected by user as AI-looking symmetric layout.",
+      "compositionPattern": "editorial-light / symmetric 1fr_1.18fr hero + equal 4-col stat grids + logo strip"
+    },
+    {
+      "nodeId": "page-index-v2",
+      "htmlSrc": "pages/index-v2.html",
+      "title": "首页 v2 · 深色分屏版",
+      "pageIndex": 2,
+      "deviceType": "desktop",
+      "writeMode": "preserve",
+      "viewportMode": "document-scroll",
+      "sourcePageHeritage": "page-index",
+      "comparisonRelation": "redesign-v2-vs-v1",
+      "visualNorthStar": "Dark editorial with 42/58 split — rejected by user as still looking AI-made (left-right structure).",
+      "compositionPattern": "dark-editorial-asymmetric: 42/58 product-UI hero (REJECTED — still a split)"
+    },
+    {
+      "nodeId": "page-index-v3",
+      "htmlSrc": "pages/index-v3.html",
+      "title": "首页 v3 · 全幅产品剧场版",
+      "pageIndex": 3,
+      "deviceType": "desktop",
+      "writeMode": "full-build",
+      "viewportMode": "document-scroll",
+      "sourcePageHeritage": "page-index",
+      "comparisonRelation": "redesign-v3-vs-v1-v2",
+      "visualNorthStar": "A dark product-theater homepage inspired by Linear/Cursor/Vercel: CENTERED full-bleed hero with product console bleeding to viewport edges (NO left-right split). Warm near-black canvas, warm paper text, single amber accent. Editorial section numbering 01-05. Full-width stacked sections with varying heights and compositions. 8-agent system as full-width horizontal flow + unequal bento. Core features as full-width bands (not 2x2 cards). 8-dim profile as deliberately unequal bento. Three roles as full-width tabs. Tech stack as terminal. Full-width pull quotes.",
+      "compositionPattern": "dark-product-theater: centered full-bleed hero + full-width data marquee + full-width agent flow + unequal bento + full-width stacked feature bands + unequal bento profile + full-width role tabs + terminal tech stack + full-width pull quotes + centered CTA",
+      "sections": [
+        "nav (floating blurred)",
+        "hero (CENTERED full-bleed + product console bleeds below)",
+        "data marquee (full-width scrolling stats)",
+        "01 多智能体架构 (full-width horizontal flow + unequal bento)",
+        "02 核心功能 (full-width stacked bands, NOT 2x2 cards)",
+        "03 8维学生画像 (deliberately unequal bento)",
+        "04 三端协同 (full-width tabbed interface)",
+        "05 技术栈 (terminal aesthetic)",
+        "testimonial (full-width editorial pull quote)",
+        "cta (centered full-bleed)",
+        "footer (spec-sheet)"
+      ]
+    }
+  ],
+  "expectedDispatches": [
+    {
+      "dispatchId": "dispatch-v2-page",
+      "targetFile": "pages/index-v2.html",
+      "status": "dispatched",
+      "lane": "redesign_duplicate_project",
+      "allowedWritePaths": [
+        "pages/index-v2.html"
+      ]
+    },
+    {
+      "dispatchId": "dispatch-v3-page",
+      "targetFile": "pages/index-v3.html",
+      "status": "dispatched",
+      "lane": "redesign_duplicate_project",
+      "allowedWritePaths": [
+        "pages/index-v3.html"
+      ]
+    }
+  ]
+}

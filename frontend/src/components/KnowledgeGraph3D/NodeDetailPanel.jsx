@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useMemo } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -44,23 +44,22 @@ const DIFFICULTY_LABELS = {
 }
 
 export default function NodeDetailPanel({ node, edges = [], nodes = [], onClose, onNavigateToNode }) {
-  if (!node) return null
-
-  const typeConf = TYPE_CONFIG[node.node_type] || TYPE_CONFIG.knowledge_point
+  const nodeId = node?.id
+  const typeConf = TYPE_CONFIG[node?.node_type] || TYPE_CONFIG.knowledge_point
 
   // 找到与该节点相关的边
   const relatedEdges = useMemo(() => {
-    const nid = node.id
+    const nid = nodeId
     return edges.filter((e) => {
       const s = e.source_node_id ?? e.source
       const t = e.target_node_id ?? e.target
       return s === nid || t === nid
     })
-  }, [node.id, edges])
+  }, [nodeId, edges])
 
   // 邻居节点
   const neighbors = useMemo(() => {
-    const nid = node.id
+    const nid = nodeId
     const ids = new Set()
     relatedEdges.forEach((e) => {
       const s = e.source_node_id ?? e.source
@@ -69,7 +68,9 @@ export default function NodeDetailPanel({ node, edges = [], nodes = [], onClose,
       if (t === nid) ids.add(s)
     })
     return nodes.filter((n) => ids.has(n.id))
-  }, [node.id, relatedEdges, nodes])
+  }, [nodeId, relatedEdges, nodes])
+
+  if (!node) return null
 
   const properties = node.properties || {}
 

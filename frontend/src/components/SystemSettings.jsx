@@ -24,9 +24,9 @@ import { admin } from '../services/api'
 export default function SystemSettings() {
   const [settings, setSettings] = useState({
     // 基本设置
-    siteName: '智教星',
-    siteDescription: '智教星 - 智能教学系统',
-    adminEmail: 'admin@zhijiaoxing.com',
+    siteName: 'EduAI Pro',
+    siteDescription: '基于多智能体的自适应学习系统',
+    adminEmail: 'admin@eduai.pro',
     timezone: 'Asia/Shanghai',
     language: 'zh-CN',
     
@@ -597,4 +597,3 @@ export default function SystemSettings() {
     </div>
   )
 }
-

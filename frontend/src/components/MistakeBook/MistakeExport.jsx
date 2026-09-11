@@ -80,11 +80,21 @@ export default function MistakeExport({
       }
 
       const blob = await response.blob()
+      const expectedContentType = exportFormat === 'word'
+        ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        : 'application/pdf'
+      const responseContentType = response.headers.get('Content-Type')?.split(';')[0]
+      if (!blob.size || responseContentType !== expectedContentType) {
+        throw new Error('\u5bfc\u51fa\u670d\u52a1\u672a\u8fd4\u56de\u6709\u6548\u6587\u4ef6\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5')
+      }
+
       const contentDisposition = response.headers.get('Content-Disposition')
       let filename = `mistake_book_${new Date().toISOString().slice(0, 10)}.${exportFormat === 'word' ? 'docx' : 'pdf'}`
       if (contentDisposition) {
-        const match = contentDisposition.match(/filename=(.+)/)
-        if (match) filename = match[1]
+        const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i)
+        const plainMatch = contentDisposition.match(/filename="?([^";]+)"?/i)
+        if (utf8Match) filename = decodeURIComponent(utf8Match[1])
+        else if (plainMatch) filename = plainMatch[1]
       }
 
       const url = window.URL.createObjectURL(blob)
@@ -93,10 +103,10 @@ export default function MistakeExport({
       a.download = filename
       document.body.appendChild(a)
       a.click()
-      window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
 
       setExportSuccess(true)
+      window.setTimeout(() => window.URL.revokeObjectURL(url), 1000)
       setTimeout(() => setExportSuccess(false), 3000)
     } catch (err) {
       console.error('Export error:', err)

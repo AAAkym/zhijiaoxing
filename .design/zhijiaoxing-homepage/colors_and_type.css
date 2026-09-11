@@ -1,0 +1,96 @@
+/* ============================================================
+   智教星 ZhiJiaoXing — Premium Dark Glassmorphic Theme
+   Brand prefix: zjx
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Noto+Serif+SC:wght@400;600;700&display=swap');
+
+:root {
+  /* ---- Core surfaces ---- */
+  --zjx-background: #0a0907;
+  --zjx-foreground: #f0ebe3;
+
+  --zjx-card: #14110d;
+  --zjx-card-foreground: #f0ebe3;
+
+  --zjx-popover: #1a1612;
+  --zjx-popover-foreground: #f0ebe3;
+
+  /* ---- Brand primary (gold) ---- */
+  --zjx-primary: #d4a853;
+  --zjx-primary-foreground: #0a0907;
+
+  --zjx-muted: #1c1814;
+  --zjx-muted-foreground: #8a847b;
+
+  --zjx-border: rgba(212, 168, 83, 0.12);
+  --zjx-input: rgba(212, 168, 83, 0.15);
+  --zjx-ring: #d4a853;
+
+  /* ---- Radius scale ---- */
+  --zjx-radius-sm: 6px;
+  --zjx-radius-md: 12px;
+  --zjx-radius-lg: 20px;
+
+  /* ---- State colors ---- */
+  --zjx-state-success: #4ade80;
+  --zjx-state-warning: #fbbf24;
+  --zjx-state-error: #f87171;
+  --zjx-state-info: #60a5fa;
+
+  /* ---- Extended gold palette ---- */
+  --zjx-gold-light: #e9c46a;
+  --zjx-gold: #d4a853;
+  --zjx-gold-dark: #b8860b;
+  --zjx-gold-deep: #8b6914;
+
+  /* ---- Extended neutral palette ---- */
+  --zjx-surface-0: #0a0907;
+  --zjx-surface-1: #100d0a;
+  --zjx-surface-2: #14110d;
+  --zjx-surface-3: #1c1814;
+  --zjx-surface-4: #252019;
+
+  --zjx-text-primary: #f0ebe3;
+  --zjx-text-secondary: #a8a298;
+  --zjx-text-muted: #6b6660;
+
+  --zjx-border-subtle: rgba(212, 168, 83, 0.08);
+  --zjx-border-default: rgba(212, 168, 83, 0.12);
+  --zjx-border-strong: rgba(212, 168, 83, 0.20);
+
+  /* ---- Glass effect tokens ---- */
+  --zjx-glass-bg: rgba(255, 255, 255, 0.025);
+  --zjx-glass-bg-hover: rgba(255, 255, 255, 0.04);
+  --zjx-glass-border: rgba(255, 255, 255, 0.06);
+  --zjx-glass-blur: 20px;
+
+  /* ---- Typography ---- */
+  --zjx-font-sans: 'Inter', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --zjx-font-display: 'Plus Jakarta Sans', 'PingFang SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif;
+  --zjx-font-serif: 'Noto Serif SC', 'Plus Jakarta Sans', serif;
+  --zjx-font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* ---- Shadows ---- */
+  --zjx-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --zjx-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --zjx-shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+  --zjx-shadow-glow: 0 0 40px rgba(212, 168, 83, 0.15);
+}
+
+/* ---- Dark mode class (fill-html-head.mjs reads html class) ---- */
+.dark {
+  --zjx-background: #0a0907;
+  --zjx-foreground: #f0ebe3;
+  --zjx-card: #14110d;
+  --zjx-card-foreground: #f0ebe3;
+  --zjx-popover: #1a1612;
+  --zjx-popover-foreground: #f0ebe3;
+  --zjx-primary: #d4a853;
+  --zjx-primary-foreground: #0a0907;
+  --zjx-muted: #1c1814;
+  --zjx-muted-foreground: #8a847b;
+  --zjx-border: rgba(212, 168, 83, 0.12);
+  --zjx-input: rgba(212, 168, 83, 0.15);
+  --zjx-ring: #d4a853;
+}

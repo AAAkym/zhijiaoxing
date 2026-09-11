@@ -21,6 +21,9 @@ const SystemSettings = lazy(() => import('./components/SystemSettings'))
 
 
 import { getCurrentUser } from './services/api'
+import { normalizeHashRoute } from './utils/hashRouteCompatibility'
+
+normalizeHashRoute()
 
 
 function PageLoading() {
@@ -119,7 +122,7 @@ function App() {
         if (sessionError?.isNetworkError) {
           const cached = localStorage.getItem('currentUser')
           if (cached) {
-            try { setUser(JSON.parse(cached)) } catch {}
+            try { setUser(JSON.parse(cached)) } catch { localStorage.removeItem('currentUser') }
           }
           return
         }

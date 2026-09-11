@@ -57,17 +57,26 @@ global.fetch = jest.fn(() =>
   })
 )
 
-global.ResizeObserver = jest.fn().mockImplementation(() => ({
-  observe: jest.fn(),
-  unobserve: jest.fn(),
-  disconnect: jest.fn(),
-}))
+class MockResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+global.ResizeObserver = MockResizeObserver
+window.ResizeObserver = MockResizeObserver
 
 global.IntersectionObserver = jest.fn().mockImplementation(() => ({
   observe: jest.fn(),
   unobserve: jest.fn(),
   disconnect: jest.fn(),
 }))
+
+Object.defineProperties(Element.prototype, {
+  hasPointerCapture: { value: jest.fn(() => false) },
+  setPointerCapture: { value: jest.fn() },
+  releasePointerCapture: { value: jest.fn() },
+  scrollIntoView: { value: jest.fn() },
+})
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
@@ -122,9 +131,13 @@ jest.mock('lucide-react', () => ({
   Bot: () => <svg data-testid="bot-icon" />,
   Filter: () => <svg data-testid="filter-icon" />,
   Play: () => <svg data-testid="play-icon" />,
+  Pause: () => <svg data-testid="pause-icon" />,
   Video: () => <svg data-testid="video-icon" />,
   Hash: () => <svg data-testid="hash-icon" />,
   Check: () => <svg data-testid="check-icon" />,
+  CheckIcon: () => <svg data-testid="check-icon" />,
+  ChevronDownIcon: () => <svg data-testid="chevron-down-icon" />,
+  ChevronUpIcon: () => <svg data-testid="chevron-up-icon" />,
   GraduationCap: () => <svg data-testid="graduation-cap-icon" />,
   RefreshCw: () => <svg data-testid="refresh-icon" />,
   AlertCircle: () => <svg data-testid="alert-circle-icon" />,
@@ -140,6 +153,28 @@ jest.mock('lucide-react', () => ({
   ListTodo: () => <svg data-testid="list-todo-icon" />,
   PanelLeft: () => <svg data-testid="panel-left-icon" />,
   PanelLeftClose: () => <svg data-testid="panel-left-close-icon" />,
+  ShieldCheck: () => <svg data-testid="shield-check-icon" />,
+  ArrowRight: () => <svg data-testid="arrow-right-icon" />,
+  Database: () => <svg data-testid="database-icon" />,
+  Target: () => <svg data-testid="target-icon" />,
+  CheckCircle: () => <svg data-testid="check-circle-icon" />,
+  CheckCircle2: () => <svg data-testid="check-circle2-icon" />,
+  BookOpenCheck: () => <svg data-testid="book-open-check-icon" />,
+  GitCompare: () => <svg data-testid="git-compare-icon" />,
+  Network: () => <svg data-testid="network-icon" />,
+  Sparkles: () => <svg data-testid="sparkles-icon" />,
+  Link2: () => <svg data-testid="link2-icon" />,
+  FileCheck: () => <svg data-testid="file-check-icon" />,
+  FileCheck2: () => <svg data-testid="file-check2-icon" />,
+  UserRoundSearch: () => <svg data-testid="user-round-search-icon" />,
+  History: () => <svg data-testid="history-icon" />,
+  Clock3: () => <svg data-testid="clock3-icon" />,
+  Wrench: () => <svg data-testid="wrench-icon" />,
+  AlertTriangle: () => <svg data-testid="alert-triangle-icon" />,
+  ClipboardList: () => <svg data-testid="clipboard-list-icon" />,
+  Activity: () => <svg data-testid="activity-icon" />,
+  CalendarClock: () => <svg data-testid="calendar-clock-icon" />,
+  ClipboardCheck: () => <svg data-testid="clipboard-check-icon" />,
 }))
 
 const originalError = console.error

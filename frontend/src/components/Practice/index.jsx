@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, BookOpen, AlertCircle, CheckCircle } from 'lucide-react'
 import { student, programming } from '@/services/api'
 
-function PracticeContent({ myCourses, onBack }) {
+function PracticeContent({ myCourses, onBack, initialAssessmentId, onInitialAssessmentHandled }) {
   const { currentView, selectPractice, result, reset, selectedPractice, dispatch } = usePractice()
   const [submitStatus, setSubmitStatus] = useState(null)
   const [submitResponse, setSubmitResponse] = useState(null)
@@ -260,6 +260,8 @@ function PracticeContent({ myCourses, onBack }) {
           <PracticeSelector 
             myCourses={myCourses} 
             onSelectPractice={handleSelectPractice}
+            initialAssessmentId={initialAssessmentId}
+            onInitialAssessmentHandled={onInitialAssessmentHandled}
           />
         </>
       )}
@@ -279,10 +281,15 @@ function PracticeContent({ myCourses, onBack }) {
   )
 }
 
-export default function PracticeModule({ myCourses, onBack }) {
+export default function PracticeModule({ myCourses, onBack, initialAssessmentId, onInitialAssessmentHandled }) {
   return (
     <PracticeProvider>
-      <PracticeContent myCourses={myCourses} onBack={onBack} />
+      <PracticeContent
+        myCourses={myCourses}
+        onBack={onBack}
+        initialAssessmentId={initialAssessmentId}
+        onInitialAssessmentHandled={onInitialAssessmentHandled}
+      />
     </PracticeProvider>
   )
 }

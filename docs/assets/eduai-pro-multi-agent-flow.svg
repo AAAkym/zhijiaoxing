@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="760" viewBox="0 0 1400 760">
+  <rect width="1400" height="760" fill="#f7f9fc"/>
+  <text x="70" y="70" font-family="Arial,Microsoft YaHei" font-size="32" font-weight="700" fill="#16345c">EduAI Pro 多智能体协同流程</text>
+  <text x="70" y="108" font-family="Arial,Microsoft YaHei" font-size="18" fill="#5b6b82">学习行为驱动的诊断、推荐、辅导与任务编排闭环</text>
+  <defs><marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0,0 L12,6 L0,12 z" fill="#3d6ea8"/></marker></defs>
+  <g font-family="Arial,Microsoft YaHei">
+    <rect x="70" y="200" width="210" height="110" rx="12" fill="#e7f0ff" stroke="#5b8fd6" stroke-width="2"/><text x="175" y="245" text-anchor="middle" font-size="24" font-weight="700" fill="#1e4e8c">学生学习行为</text><text x="175" y="278" text-anchor="middle" font-size="17" fill="#45617e">做题 / 时长 / 反馈</text>
+    <rect x="360" y="165" width="240" height="180" rx="14" fill="#fff6df" stroke="#d8a643" stroke-width="2"/><text x="480" y="215" text-anchor="middle" font-size="24" font-weight="700" fill="#855f13">学习诊断智能体</text><text x="480" y="255" text-anchor="middle" font-size="17" fill="#6f5a2e">识别薄弱知识点</text><text x="480" y="285" text-anchor="middle" font-size="17" fill="#6f5a2e">更新学情画像</text>
+    <rect x="680" y="165" width="240" height="180" rx="14" fill="#e6f7f2" stroke="#48a68d" stroke-width="2"/><text x="800" y="215" text-anchor="middle" font-size="24" font-weight="700" fill="#1d755f">资源推荐智能体</text><text x="800" y="255" text-anchor="middle" font-size="17" fill="#356f63">检索知识库</text><text x="800" y="285" text-anchor="middle" font-size="17" fill="#356f63">匹配难度与路径</text>
+    <rect x="1000" y="165" width="240" height="180" rx="14" fill="#f1eaff" stroke="#9674ce" stroke-width="2"/><text x="1120" y="215" text-anchor="middle" font-size="24" font-weight="700" fill="#694b9d">任务调度智能体</text><text x="1120" y="255" text-anchor="middle" font-size="17" fill="#65527d">编排执行顺序</text><text x="1120" y="285" text-anchor="middle" font-size="17" fill="#65527d">处理冲突与重试</text>
+    <rect x="520" y="475" width="300" height="150" rx="14" fill="#ffe8e8" stroke="#d56a6a" stroke-width="2"/><text x="670" y="525" text-anchor="middle" font-size="24" font-weight="700" fill="#9b3e3e">智能助教交互智能体</text><text x="670" y="565" text-anchor="middle" font-size="17" fill="#805050">答疑 / 讲解 / 学习反馈</text>
+    <rect x="930" y="475" width="300" height="150" rx="14" fill="#e8f0f8" stroke="#7196b8" stroke-width="2"/><text x="1080" y="525" text-anchor="middle" font-size="24" font-weight="700" fill="#3e6385">自适应学习任务</text><text x="1080" y="565" text-anchor="middle" font-size="17" fill="#526c83">资源、练习与下一步路径</text>
+    <path d="M280 255 L360 255" stroke="#3d6ea8" stroke-width="3" marker-end="url(#arrow)"/><path d="M600 255 L680 255" stroke="#3d6ea8" stroke-width="3" marker-end="url(#arrow)"/><path d="M920 255 L1000 255" stroke="#3d6ea8" stroke-width="3" marker-end="url(#arrow)"/>
+    <path d="M1120 345 L1120 430 L1080 475" stroke="#3d6ea8" stroke-width="3" fill="none" marker-end="url(#arrow)"/><path d="M1000 550 L820 550" stroke="#3d6ea8" stroke-width="3" marker-end="url(#arrow)"/><path d="M520 550 L270 550 L270 310" stroke="#3d6ea8" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+    <path d="M800 345 L800 430 L670 475" stroke="#3d6ea8" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  </g>
+</svg>

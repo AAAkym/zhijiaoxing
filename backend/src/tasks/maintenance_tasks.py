@@ -11,6 +11,7 @@ import os
 import time
 import json
 import shutil
+import sqlite3
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 from celery import shared_task
@@ -36,9 +37,10 @@ def backup_database(self) -> Dict[str, Any]:
     try:
         self.update_state(state='PROGRESS', meta={'progress': 10, 'message': '准备数据库备份'})
         
-        # 生成备份文件名
+        from src.main import app
+
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        backup_filename = f"zhijiaoxing_backup_{timestamp}.sql"
+        backup_filename = f"zhijiaoxing_backup_{timestamp}.db"
         
         # 确保备份目录存在
         backup_dir = os.path.join(BACKUP_PATH, datetime.now().strftime('%Y%m'))
@@ -48,24 +50,23 @@ def backup_database(self) -> Dict[str, Any]:
         
         self.update_state(state='PROGRESS', meta={'progress': 40, 'message': '正在备份数据库'})
         
-        # 实际项目中使用pg_dump或其他数据库备份工具
-        # 这里模拟备份过程
-        # command = f"pg_dump -h localhost -U zhijiaoxing_user zhijiaoxing_db > {backup_path}"
-        # os.system(command)
-        
-        # 模拟备份文件创建
-        with open(backup_path, 'w') as f:
-            f.write(f"-- Database backup created at {datetime.now()}\n")
-            f.write("-- This is a simulated backup file\n")
+        with app.app_context():
+            from src.models.user import db
+            database_path = db.engine.url.database
+            if db.engine.url.get_backend_name() != 'sqlite' or not database_path:
+                return {
+                    'status': 'unavailable',
+                    'message': '当前自动备份只实现SQLite；其他数据库请配置官方备份工具',
+                    'task_id': self.request.id,
+                }
+            with sqlite3.connect(database_path) as source, sqlite3.connect(backup_path) as target:
+                source.backup(target)
+            with sqlite3.connect(backup_path) as check:
+                integrity = check.execute('PRAGMA integrity_check').fetchone()[0]
+            if integrity != 'ok':
+                raise RuntimeError('备份完整性校验失败')
         
         self.update_state(state='PROGRESS', meta={'progress': 80, 'message': '压缩备份文件'})
-        
-        # 压缩备份文件
-        compressed_path = f"{backup_path}.gz"
-        # shutil.make_archive(backup_path, 'gztar', backup_dir, backup_filename)
-        
-        # 删除原始备份文件，保留压缩文件
-        # os.remove(backup_path)
         
         self.update_state(state='PROGRESS', meta={'progress': 100, 'message': '备份完成'})
         
@@ -73,8 +74,8 @@ def backup_database(self) -> Dict[str, Any]:
             'status': 'success',
             'message': '数据库备份成功',
             'backup_file': backup_path,
-            'compressed_file': compressed_path,
             'backup_size': os.path.getsize(backup_path),
+            'integrity': 'ok',
             'created_at': datetime.now().isoformat(),
             'task_id': self.request.id
         }
@@ -203,12 +204,12 @@ def health_check(self) -> Dict[str, Any]:
         self.update_state(state='PROGRESS', meta={'progress': 100, 'message': '检查完成'})
         
         # 综合健康状态
-        overall_status = 'healthy' if all([
+        core_healthy = all([
             db_status['status'] == 'ok',
-            redis_status['status'] == 'ok',
             disk_status['status'] == 'ok',
             memory_status['status'] == 'ok'
-        ]) else 'unhealthy'
+        ])
+        overall_status = 'healthy' if core_healthy and redis_status['status'] == 'ok' else 'degraded' if core_healthy else 'unhealthy'
         
         return {
             'status': overall_status,
@@ -318,14 +319,17 @@ def generate_system_report(self) -> Dict[str, Any]:
 def check_database_connection() -> Dict[str, Any]:
     """检查数据库连接"""
     try:
-        # 实际项目中执行数据库查询
-        # from src.models.user import db
-        # db.session.execute('SELECT 1')
-        
+        started = time.perf_counter()
+        from sqlalchemy import text
+        from src.main import app
+        from src.models.user import db
+        with app.app_context():
+            db.session.execute(text('SELECT 1'))
+        elapsed = (time.perf_counter() - started) * 1000
         return {
             'status': 'ok',
             'message': '数据库连接正常',
-            'response_time': '10ms'
+            'response_time_ms': round(elapsed, 2),
         }
     except Exception as e:
         return {
@@ -337,15 +341,16 @@ def check_database_connection() -> Dict[str, Any]:
 def check_redis_connection() -> Dict[str, Any]:
     """检查Redis连接"""
     try:
-        # 实际项目中检查Redis连接
-        # import redis
-        # r = redis.Redis()
-        # r.ping()
-        
+        import redis
+        started = time.perf_counter()
+        redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+        client = redis.Redis.from_url(redis_url, socket_connect_timeout=0.5, socket_timeout=0.5)
+        client.ping()
+        elapsed = (time.perf_counter() - started) * 1000
         return {
             'status': 'ok',
             'message': 'Redis连接正常',
-            'response_time': '5ms'
+            'response_time_ms': round(elapsed, 2),
         }
     except Exception as e:
         return {
@@ -428,5 +433,5 @@ def get_disk_usage() -> Dict[str, Any]:
             'free': free,
             'usage_percent': (used / total) * 100
         }
-    except:
+    except Exception:
         return {}

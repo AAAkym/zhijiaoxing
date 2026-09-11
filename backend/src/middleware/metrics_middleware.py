@@ -4,8 +4,8 @@
 """
 import time
 import functools
-from flask import request, g, Response
-from services.metrics_service import metrics_service
+from flask import request, g, Response, session
+from src.services.metrics_service import metrics_service
 
 
 class MetricsMiddleware:
@@ -22,8 +22,6 @@ class MetricsMiddleware:
         app.before_request(self.before_request)
         # 注册请求后钩子
         app.after_request(self.after_request)
-        # 注册错误处理
-        app.errorhandler(Exception)(self.handle_error)
     
     def before_request(self):
         """请求前处理"""
@@ -43,22 +41,12 @@ class MetricsMiddleware:
             )
             
             # 记录活跃用户
-            if hasattr(g, 'user_id'):
-                metrics_service.add_active_user(g.user_id)
+            user_id = session.get('user_id')
+            if user_id:
+                metrics_service.add_active_user(str(user_id))
         
         return response
     
-    def handle_error(self, error):
-        """错误处理"""
-        error_type = type(error).__name__
-        endpoint = request.endpoint or request.path
-        
-        metrics_service.record_error(error_type, endpoint)
-        
-        # 重新抛出异常
-        raise error
-
-
 def track_active_user(user_id_getter: callable):
     """
     追踪活跃用户的装饰器

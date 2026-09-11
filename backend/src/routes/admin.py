@@ -1008,11 +1008,10 @@ def create_backup():
         import shutil
         import os as backup_os
 
-        db_uri = current_app.config.get('SQLALCHEMY_DATABASE_URI', '')
-        if not db_uri.startswith('sqlite:///'):
+        if db.engine.url.get_backend_name() != 'sqlite':
             return jsonify({'success': False, 'error': '仅支持SQLite数据库备份'}), 400
 
-        db_path = db_uri.replace('sqlite:///', '').replace('sqlite:////', '')
+        db_path = db.engine.url.database
         if not db_path or not backup_os.path.exists(db_path):
             return jsonify({'success': False, 'error': '数据库文件不存在'}), 400
 

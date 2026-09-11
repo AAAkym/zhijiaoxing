@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preflight</title>
+    <style id="theme-vars">
+/* ============================================================
+   智教星 ZhiJiaoXing — Premium Dark Gold Theme
+   深色高级感 · 金色品牌色 · 玻璃拟态
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  /* ---- Core surfaces (warm deep dark) ---- */
+  --zx-background: #0B0907;
+  --zx-foreground: #F5EFE6;
+
+  --zx-card: #14110D;
+  --zx-card-foreground: #F5EFE6;
+
+  --zx-popover: #1A1611;
+  --zx-popover-foreground: #F5EFE6;
+
+  /* ---- Brand primary (warm gold) ---- */
+  --zx-primary: #D4A853;
+  --zx-primary-foreground: #0B0907;
+
+  --zx-muted: #1C1814;
+  --zx-muted-foreground: #948A7A;
+
+  --zx-border: rgba(212, 168, 83, 0.14);
+  --zx-input: rgba(212, 168, 83, 0.18);
+  --zx-ring: #D4A853;
+
+  /* ---- Radius scale (modern soft) ---- */
+  --zx-radius-sm: 8px;
+  --zx-radius-md: 14px;
+  --zx-radius-lg: 24px;
+
+  /* ---- State colors ---- */
+  --zx-state-success: #4ADE80;
+  --zx-state-warning: #FBBF24;
+  --zx-state-error: #F87171;
+  --zx-state-info: #60A5FA;
+
+  /* ---- Extended gold palette ---- */
+  --zx-gold-light: #F0CE7A;
+  --zx-gold: #D4A853;
+  --zx-gold-mid: #C49A4A;
+  --zx-gold-dark: #A67D2E;
+
+  /* ---- Extended neutral palette (warm darks) ---- */
+  --zx-surface-0: #0B0907;
+  --zx-surface-1: #110E0B;
+  --zx-surface-2: #14110D;
+  --zx-surface-3: #1C1814;
+  --zx-surface-4: #26211A;
+
+  --zx-text-primary: #F5EFE6;
+  --zx-text-secondary: #A89F8E;
+  --zx-text-muted: #6B6356;
+
+  --zx-border-subtle: rgba(212, 168, 83, 0.08);
+  --zx-border-default: rgba(212, 168, 83, 0.14);
+  --zx-border-strong: rgba(212, 168, 83, 0.24);
+
+  /* ---- Glass effect tokens ---- */
+  --zx-glass-bg: rgba(255, 255, 255, 0.028);
+  --zx-glass-bg-hover: rgba(255, 255, 255, 0.05);
+  --zx-glass-border: rgba(255, 255, 255, 0.07);
+  --zx-glass-border-gold: rgba(212, 168, 83, 0.18);
+
+  /* ---- Typography ---- */
+  --zx-font-display: 'Plus Jakarta Sans', 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+  --zx-font-sans: 'Inter', 'Plus Jakarta Sans', 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+  --zx-font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --zx-font-cn: 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', sans-serif;
+
+  /* ---- Shadows ---- */
+  --zx-shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.3);
+  --zx-shadow-md: 0 8px 30px rgba(0, 0, 0, 0.4);
+  --zx-shadow-lg: 0 25px 70px rgba(0, 0, 0, 0.5);
+  --zx-shadow-glow: 0 0 50px rgba(212, 168, 83, 0.18);
+  --zx-shadow-card: 0 1px 0 rgba(255,255,255,0.04) inset, 0 20px 50px rgba(0,0,0,0.35);
+}
+
+/* ---- Dark mode (this IS a dark theme) ---- */
+.dark {
+  --zx-background: #0B0907;
+  --zx-foreground: #F5EFE6;
+  --zx-card: #14110D;
+  --zx-card-foreground: #F5EFE6;
+  --zx-popover: #1A1611;
+  --zx-popover-foreground: #F5EFE6;
+  --zx-primary: #D4A853;
+  --zx-primary-foreground: #0B0907;
+  --zx-muted: #1C1814;
+  --zx-muted-foreground: #948A7A;
+  --zx-border: rgba(212, 168, 83, 0.14);
+  --zx-input: rgba(212, 168, 83, 0.18);
+  --zx-ring: #D4A853;
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--zx-background);
+    --color-foreground: var(--zx-foreground);
+    --color-card: var(--zx-card);
+    --color-card-foreground: var(--zx-card-foreground);
+    --color-popover: var(--zx-popover);
+    --color-popover-foreground: var(--zx-popover-foreground);
+    --color-primary: var(--zx-primary);
+    --color-primary-foreground: var(--zx-primary-foreground);
+    --color-muted: var(--zx-muted);
+    --color-muted-foreground: var(--zx-muted-foreground);
+    --color-border: var(--zx-border);
+    --color-input: var(--zx-input);
+    --color-ring: var(--zx-ring);
+    --radius-sm: var(--zx-radius-sm);
+    --radius-md: var(--zx-radius-md);
+    --radius-lg: var(--zx-radius-lg);
+  }
+  @layer base {
+    body { background: var(--zx-background); color: var(--zx-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style id="semantic-token-fallback">
+      .bg-background { background-color: var(--zx-background); }
+      .text-background { color: var(--zx-background); }
+      .border-background { border-color: var(--zx-background); }
+      .ring-background { --tw-ring-color: var(--zx-background); }
+      .bg-foreground { background-color: var(--zx-foreground); }
+      .text-foreground { color: var(--zx-foreground); }
+      .border-foreground { border-color: var(--zx-foreground); }
+      .ring-foreground { --tw-ring-color: var(--zx-foreground); }
+      .bg-card { background-color: var(--zx-card); }
+      .text-card { color: var(--zx-card); }
+      .border-card { border-color: var(--zx-card); }
+      .ring-card { --tw-ring-color: var(--zx-card); }
+      .bg-card-foreground { background-color: var(--zx-card-foreground); }
+      .text-card-foreground { color: var(--zx-card-foreground); }
+      .border-card-foreground { border-color: var(--zx-card-foreground); }
+      .ring-card-foreground { --tw-ring-color: var(--zx-card-foreground); }
+      .bg-popover { background-color: var(--zx-popover); }
+      .text-popover { color: var(--zx-popover); }
+      .border-popover { border-color: var(--zx-popover); }
+      .ring-popover { --tw-ring-color: var(--zx-popover); }
+      .bg-popover-foreground { background-color: var(--zx-popover-foreground); }
+      .text-popover-foreground { color: var(--zx-popover-foreground); }
+      .border-popover-foreground { border-color: var(--zx-popover-foreground); }
+      .ring-popover-foreground { --tw-ring-color: var(--zx-popover-foreground); }
+      .bg-primary { background-color: var(--zx-primary); }
+      .text-primary { color: var(--zx-primary); }
+      .border-primary { border-color: var(--zx-primary); }
+      .ring-primary { --tw-ring-color: var(--zx-primary); }
+      .bg-primary-foreground { background-color: var(--zx-primary-foreground); }
+      .text-primary-foreground { color: var(--zx-primary-foreground); }
+      .border-primary-foreground { border-color: var(--zx-primary-foreground); }
+      .ring-primary-foreground { --tw-ring-color: var(--zx-primary-foreground); }
+      .bg-muted { background-color: var(--zx-muted); }
+      .text-muted { color: var(--zx-muted); }
+      .border-muted { border-color: var(--zx-muted); }
+      .ring-muted { --tw-ring-color: var(--zx-muted); }
+      .bg-muted-foreground { background-color: var(--zx-muted-foreground); }
+      .text-muted-foreground { color: var(--zx-muted-foreground); }
+      .border-muted-foreground { border-color: var(--zx-muted-foreground); }
+      .ring-muted-foreground { --tw-ring-color: var(--zx-muted-foreground); }
+      .bg-border { background-color: var(--zx-border); }
+      .text-border { color: var(--zx-border); }
+      .border-border { border-color: var(--zx-border); }
+      .ring-border { --tw-ring-color: var(--zx-border); }
+      .bg-input { background-color: var(--zx-input); }
+      .text-input { color: var(--zx-input); }
+      .border-input { border-color: var(--zx-input); }
+      .ring-input { --tw-ring-color: var(--zx-input); }
+      .bg-ring { background-color: var(--zx-ring); }
+      .text-ring { color: var(--zx-ring); }
+      .border-ring { border-color: var(--zx-ring); }
+      .ring-ring { --tw-ring-color: var(--zx-ring); }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+    <main>
+    </main>
+    <script>lucide.createIcons();</script>
+</body>
+</html>

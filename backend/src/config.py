@@ -28,11 +28,9 @@ class Config:
     DB_USER = os.environ.get('DB_USER', 'zhijiaoxing_user')
     DB_PASSWORD = os.environ.get('DB_PASSWORD', 'zhijiaoxing_password')
     
-    # 构建数据库连接字符串
-    # 优先使用完整的DATABASE_URL，如果没有则使用单独的配置参数
-    DATABASE_URL = os.environ.get('DATABASE_URL')
-    if not DATABASE_URL:
-        DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    # SQLite relative paths are resolved from Flask's instance directory.
+    # Override DATABASE_URL explicitly when using PostgreSQL or another database.
+    DATABASE_URL = os.environ.get('DATABASE_URL', 'sqlite:///dev.db')
     
     SQLALCHEMY_DATABASE_URI = DATABASE_URL
     SQLALCHEMY_TRACK_MODIFICATIONS = False

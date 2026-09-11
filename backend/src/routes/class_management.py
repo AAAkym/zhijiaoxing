@@ -10,9 +10,29 @@ from src.models.user import db, User, ClassGroup, ClassGroupStudent, ClassGroupC
 from src.models.course import Course, LearningProgress, PracticeEvaluation, MistakeRecord, CourseQuestion, VideoProgress
 from src.models.student_profile import StudentProfile
 from src.services.spark_service import spark_service
+from src.services.profile_explainability_service import (
+    build_empty_profile,
+    build_profile_explainability,
+)
+from src.services.profile_evidence_collector import collect_programming_signals
 
 logger = logging.getLogger(__name__)
 class_mgmt_bp = Blueprint("class_management", __name__)
+
+
+def _can_access_class(class_id, allow_student=False):
+    class_group = ClassGroup.query.get(class_id)
+    if not class_group:
+        return False
+    user_id = session.get("user_id")
+    role = session.get("user_role", "student")
+    if role == "admin":
+        return True
+    if role == "teacher":
+        return class_group.teacher_id == user_id
+    return allow_student and ClassGroupStudent.query.filter_by(
+        class_group_id=class_id, user_id=user_id
+    ).first() is not None
 
 
 @class_mgmt_bp.route("/classes", methods=["GET"])
@@ -62,6 +82,8 @@ def get_class(class_id):
         cg = ClassGroup.query.get(class_id)
         if not cg:
             return jsonify({"error": "Class not found"}), 404
+        if not _can_access_class(class_id, allow_student=True):
+            return jsonify({"error": "Permission denied"}), 403
         students = [s.to_dict() for s in cg.students.all()]
         courses = [c.to_dict() for c in cg.courses.all()]
         return jsonify({**cg.to_dict(), "students": students, "courses": courses}), 200
@@ -396,6 +418,8 @@ def get_student_profile_in_class(class_id, user_id):
         role = session.get("user_role", "student")
         if role not in ("teacher", "admin"):
             return jsonify({"error": "Permission denied"}), 403
+        if not _can_access_class(class_id):
+            return jsonify({"error": "Permission denied"}), 403
 
         membership = ClassGroupStudent.query.filter_by(
             class_group_id=class_id, user_id=user_id
@@ -519,6 +543,8 @@ def get_class_students_profiles(class_id):
         role = session.get("user_role", "student")
         if role not in ("teacher", "admin"):
             return jsonify({"error": "Permission denied"}), 403
+        if not _can_access_class(class_id):
+            return jsonify({"error": "Permission denied"}), 403
 
         memberships = ClassGroupStudent.query.filter_by(class_group_id=class_id).all()
         user_ids = [m.user_id for m in memberships]
@@ -612,6 +638,8 @@ def get_student_dashboard_in_class(class_id, user_id):
         role = session.get("user_role", "student")
         if role not in ("teacher", "admin"):
             return jsonify({"error": "Permission denied"}), 403
+        if not _can_access_class(class_id):
+            return jsonify({"error": "Permission denied"}), 403
 
         membership = ClassGroupStudent.query.filter_by(
             class_group_id=class_id, user_id=user_id
@@ -631,12 +659,7 @@ def get_student_dashboard_in_class(class_id, user_id):
         since_date = datetime.utcnow() - timedelta(days=days)
 
         profile = StudentProfile.query.filter_by(user_id=user_id).first()
-        if not profile:
-            profile = StudentProfile(user_id=user_id)
-            db.session.add(profile)
-            db.session.commit()
-
-        profile_data = profile.to_dict()
+        profile_data = profile.to_dict() if profile else build_empty_profile(user_id)
 
         # 限定班级课程范围
         course_ids = [
@@ -938,6 +961,28 @@ def get_student_dashboard_in_class(class_id, user_id):
             "interaction_preference": _calc_dimension_score(profile_data, "interaction_preference"),
         }
 
+        profile_explainability = build_profile_explainability(profile_data, {
+            "practice": {
+                "total_practices": total_practices,
+                "avg_score": learning_outcomes["avg_score"],
+                "recent_scores": [item["score"] for item in score_trend[:10] if item.get("score") is not None],
+                "last_at": score_trend[0]["date"] if score_trend else None,
+            },
+            "mistakes": {
+                "total": len(mistakes),
+                "top_knowledge_points": knowledge_mastery["weak_points"],
+                "error_type_distribution": knowledge_mastery["error_type_distribution"],
+            },
+            "interaction": interaction_frequency,
+            "progress": {
+                "courses": content_preferences["courses"],
+                "last_at": progress_timeline[0]["last_accessed"] if progress_timeline else None,
+            },
+            "content_preferences": content_preferences,
+            "time_distribution": time_distribution,
+            "programming": collect_programming_signals(user_id, course_ids),
+        })
+
         # AI 洞察
         insight = ""
         try:
@@ -954,6 +999,7 @@ def get_student_dashboard_in_class(class_id, user_id):
             },
             "profile": profile_data,
             "dimension_scores": dimension_scores,
+            "profile_explainability": profile_explainability,
             "content_preferences": content_preferences,
             "time_distribution": time_distribution,
             "knowledge_mastery": knowledge_mastery,

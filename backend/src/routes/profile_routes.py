@@ -13,6 +13,11 @@ from src.models.course import (
 )
 from src.services.multi_agent.profile_agent import ProfileAgent
 from src.services.profile_sync_service import profile_sync_service
+from src.services.profile_explainability_service import (
+    build_empty_profile,
+    build_profile_explainability,
+)
+from src.services.profile_evidence_collector import collect_programming_signals
 
 logger = logging.getLogger(__name__)
 
@@ -27,12 +32,9 @@ def get_profile():
     try:
         user_id = session["user_id"]
         profile = StudentProfile.query.filter_by(user_id=user_id).first()
-        if not profile:
-            profile = StudentProfile(user_id=user_id)
-            db.session.add(profile)
-            db.session.commit()
-        summary = profile_agent.generate_profile_summary({'profile': profile.to_dict()})
-        return jsonify({"profile": profile.to_dict(), "summary": summary}), 200
+        profile_data = profile.to_dict() if profile else build_empty_profile(user_id)
+        summary = profile_agent.generate_profile_summary({'profile': profile_data})
+        return jsonify({"profile": profile_data, "summary": summary}), 200
     except Exception as e:
         logger.error(f"Get profile error: {e}")
         return jsonify({"error": str(e)}), 500
@@ -267,12 +269,7 @@ def get_profile_dashboard():
         since_date = datetime.utcnow() - timedelta(days=days)
 
         profile = StudentProfile.query.filter_by(user_id=user_id).first()
-        if not profile:
-            profile = StudentProfile(user_id=user_id)
-            db.session.add(profile)
-            db.session.commit()
-
-        profile_data = profile.to_dict()
+        profile_data = profile.to_dict() if profile else build_empty_profile(user_id)
 
         # ====== 1. 学习内容偏好 ======
         enrolled_courses = LearningProgress.query.filter_by(user_id=user_id).all()
@@ -581,9 +578,32 @@ def get_profile_dashboard():
             "interaction_preference": _calc_dimension_score(profile_data, "interaction_preference"),
         }
 
+        profile_explainability = build_profile_explainability(profile_data, {
+            "practice": {
+                "total_practices": total_practices,
+                "avg_score": learning_outcomes["avg_score"],
+                "recent_scores": [item["score"] for item in score_trend[:10] if item.get("score") is not None],
+                "last_at": score_trend[0]["date"] if score_trend else None,
+            },
+            "mistakes": {
+                "total": len(mistakes),
+                "top_knowledge_points": knowledge_mastery["weak_points"],
+                "error_type_distribution": knowledge_mastery["error_type_distribution"],
+            },
+            "interaction": interaction_frequency,
+            "progress": {
+                "courses": content_preferences["courses"],
+                "last_at": progress_timeline[0]["last_accessed"] if progress_timeline else None,
+            },
+            "content_preferences": content_preferences,
+            "time_distribution": time_distribution,
+            "programming": collect_programming_signals(user_id),
+        })
+
         return jsonify({
             "profile": profile_data,
             "dimension_scores": dimension_scores,
+            "profile_explainability": profile_explainability,
             "content_preferences": content_preferences,
             "time_distribution": time_distribution,
             "knowledge_mastery": knowledge_mastery,

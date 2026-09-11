@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智教星 v5 · CSS 3D 滚动叙事版</title>
+    <style id="theme-vars">
+/* ============================================================
+   智教星 ZhiJiaoXing — Dark Product Theater Theme
+   深色产品剧场感 · 全幅居中 · 产品UI为主角 · 暖琥珀单点强调
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,900&family=JetBrains+Mono:wght@400;500;600&family=Noto+Serif+SC:wght@400;500;600;700;900&display=swap');
+
+:root {
+  /* ---- Core surfaces (warm near-black) ---- */
+  --zx-background: #0B0B0D;
+  --zx-foreground: #EDEAE3;
+
+  --zx-card: #141417;
+  --zx-card-foreground: #EDEAE3;
+
+  --zx-popover: #1B1C20;
+  --zx-popover-foreground: #EDEAE3;
+
+  /* ---- Brand accent (warm amber, used sparingly on data/key numbers) ---- */
+  --zx-primary: #E8B547;
+  --zx-primary-foreground: #0B0B0D;
+
+  --zx-secondary: #1B1C20;
+  --zx-secondary-foreground: #EDEAE3;
+
+  --zx-muted: #1B1C20;
+  --zx-muted-foreground: #8A8780;
+
+  --zx-accent: #E8B547;
+  --zx-accent-foreground: #0B0B0D;
+
+  --zx-destructive: #FF6B5B;
+  --zx-destructive-foreground: #0B0B0D;
+
+  --zx-border: #2A2A2E;
+  --zx-input: #2A2A2E;
+  --zx-ring: #E8B547;
+
+  /* ---- Radius scale (sharper = more editorial) ---- */
+  --zx-radius-sm: 3px;
+  --zx-radius-md: 6px;
+  --zx-radius-lg: 10px;
+
+  /* ---- State colors ---- */
+  --zx-state-success: #5BCC7B;
+  --zx-state-warning: #E8B547;
+  --zx-state-error: #FF6B5B;
+  --zx-state-info: #6BA8E8;
+
+  /* ---- Ink palette (warm dark grays) ---- */
+  --zx-ink-0: #0B0B0D;
+  --zx-ink-1: #141417;
+  --zx-ink-2: #1B1C20;
+  --zx-ink-3: #2A2A2E;
+  --zx-ink-4: #3D3D42;
+  --zx-ink-5: #5A5A5F;
+  --zx-ink-6: #8A8780;
+  --zx-ink-7: #B5B2AB;
+  --zx-ink-8: #EDEAE3;
+
+  /* ---- Accent (warm amber, restrained) ---- */
+  --zx-accent-light: #F0C569;
+  --zx-accent-muted: rgba(232, 181, 71, 0.1);
+
+  /* ---- Typography ---- */
+  --zx-font-display: 'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --zx-font-serif: 'Fraunces', 'Noto Serif SC', 'Songti SC', serif;
+  --zx-font-sans: 'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --zx-font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --zx-font-cn-serif: 'Noto Serif SC', 'Songti SC', serif;
+  --zx-font-cn-sans: 'PingFang SC', 'Microsoft YaHei', 'Inter', sans-serif;
+
+  /* ---- Rule lines ---- */
+  --zx-rule: #2A2A2E;
+  --zx-rule-subtle: #1B1C20;
+  --zx-rule-medium: #3D3D42;
+
+  /* ---- Shadows (subtle on dark) ---- */
+  --zx-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --zx-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --zx-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
+
+  /* ---- Glow (for accent elements on dark) ---- */
+  --zx-glow-accent: 0 0 24px rgba(232, 181, 71, 0.15);
+  --zx-glow-success: 0 0 24px rgba(91, 204, 123, 0.15);
+}
+
+/* Dark mode is the default; .light variant kept for contract compatibility */
+.light {
+  --zx-background: #0B0B0D;
+  --zx-foreground: #EDEAE3;
+  --zx-card: #141417;
+  --zx-card-foreground: #EDEAE3;
+  --zx-popover: #1B1C20;
+  --zx-popover-foreground: #EDEAE3;
+  --zx-primary: #E8B547;
+  --zx-primary-foreground: #0B0B0D;
+  --zx-muted: #1B1C20;
+  --zx-muted-foreground: #8A8780;
+  --zx-border: #2A2A2E;
+  --zx-input: #2A2A2E;
+  --zx-ring: #E8B547;
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--zx-background);
+    --color-foreground: var(--zx-foreground);
+    --color-card: var(--zx-card);
+    --color-card-foreground: var(--zx-card-foreground);
+    --color-popover: var(--zx-popover);
+    --color-popover-foreground: var(--zx-popover-foreground);
+    --color-primary: var(--zx-primary);
+    --color-primary-foreground: var(--zx-primary-foreground);
+    --color-secondary: var(--zx-secondary);
+    --color-secondary-foreground: var(--zx-secondary-foreground);
+    --color-muted: var(--zx-muted);
+    --color-muted-foreground: var(--zx-muted-foreground);
+    --color-accent: var(--zx-accent);
+    --color-accent-foreground: var(--zx-accent-foreground);
+    --color-destructive: var(--zx-destructive);
+    --color-destructive-foreground: var(--zx-destructive-foreground);
+    --color-border: var(--zx-border);
+    --color-input: var(--zx-input);
+    --color-ring: var(--zx-ring);
+    --radius-sm: var(--zx-radius-sm);
+    --radius-md: var(--zx-radius-md);
+    --radius-lg: var(--zx-radius-lg);
+  }
+  @layer base {
+    body { background: var(--zx-background); color: var(--zx-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style id="semantic-token-fallback">
+      .bg-background { background-color: var(--zx-background); }
+      .text-background { color: var(--zx-background); }
+      .border-background { border-color: var(--zx-background); }
+      .ring-background { --tw-ring-color: var(--zx-background); }
+      .bg-foreground { background-color: var(--zx-foreground); }
+      .text-foreground { color: var(--zx-foreground); }
+      .border-foreground { border-color: var(--zx-foreground); }
+      .ring-foreground { --tw-ring-color: var(--zx-foreground); }
+      .bg-card { background-color: var(--zx-card); }
+      .text-card { color: var(--zx-card); }
+      .border-card { border-color: var(--zx-card); }
+      .ring-card { --tw-ring-color: var(--zx-card); }
+      .bg-card-foreground { background-color: var(--zx-card-foreground); }
+      .text-card-foreground { color: var(--zx-card-foreground); }
+      .border-card-foreground { border-color: var(--zx-card-foreground); }
+      .ring-card-foreground { --tw-ring-color: var(--zx-card-foreground); }
+      .bg-popover { background-color: var(--zx-popover); }
+      .text-popover { color: var(--zx-popover); }
+      .border-popover { border-color: var(--zx-popover); }
+      .ring-popover { --tw-ring-color: var(--zx-popover); }
+      .bg-popover-foreground { background-color: var(--zx-popover-foreground); }
+      .text-popover-foreground { color: var(--zx-popover-foreground); }
+      .border-popover-foreground { border-color: var(--zx-popover-foreground); }
+      .ring-popover-foreground { --tw-ring-color: var(--zx-popover-foreground); }
+      .bg-primary { background-color: var(--zx-primary); }
+      .text-primary { color: var(--zx-primary); }
+      .border-primary { border-color: var(--zx-primary); }
+      .ring-primary { --tw-ring-color: var(--zx-primary); }
+      .bg-primary-foreground { background-color: var(--zx-primary-foreground); }
+      .text-primary-foreground { color: var(--zx-primary-foreground); }
+      .border-primary-foreground { border-color: var(--zx-primary-foreground); }
+      .ring-primary-foreground { --tw-ring-color: var(--zx-primary-foreground); }
+      .bg-secondary { background-color: var(--zx-secondary); }
+      .text-secondary { color: var(--zx-secondary); }
+      .border-secondary { border-color: var(--zx-secondary); }
+      .ring-secondary { --tw-ring-color: var(--zx-secondary); }
+      .bg-secondary-foreground { background-color: var(--zx-secondary-foreground); }
+      .text-secondary-foreground { color: var(--zx-secondary-foreground); }
+      .border-secondary-foreground { border-color: var(--zx-secondary-foreground); }
+      .ring-secondary-foreground { --tw-ring-color: var(--zx-secondary-foreground); }
+      .bg-muted { background-color: var(--zx-muted); }
+      .text-muted { color: var(--zx-muted); }
+      .border-muted { border-color: var(--zx-muted); }
+      .ring-muted { --tw-ring-color: var(--zx-muted); }
+      .bg-muted-foreground { background-color: var(--zx-muted-foreground); }
+      .text-muted-foreground { color: var(--zx-muted-foreground); }
+      .border-muted-foreground { border-color: var(--zx-muted-foreground); }
+      .ring-muted-foreground { --tw-ring-color: var(--zx-muted-foreground); }
+      .bg-accent { background-color: var(--zx-accent); }
+      .text-accent { color: var(--zx-accent); }
+      .border-accent { border-color: var(--zx-accent); }
+      .ring-accent { --tw-ring-color: var(--zx-accent); }
+      .bg-accent-foreground { background-color: var(--zx-accent-foreground); }
+      .text-accent-foreground { color: var(--zx-accent-foreground); }
+      .border-accent-foreground { border-color: var(--zx-accent-foreground); }
+      .ring-accent-foreground { --tw-ring-color: var(--zx-accent-foreground); }
+      .bg-destructive { background-color: var(--zx-destructive); }
+      .text-destructive { color: var(--zx-destructive); }
+      .border-destructive { border-color: var(--zx-destructive); }
+      .ring-destructive { --tw-ring-color: var(--zx-destructive); }
+      .bg-destructive-foreground { background-color: var(--zx-destructive-foreground); }
+      .text-destructive-foreground { color: var(--zx-destructive-foreground); }
+      .border-destructive-foreground { border-color: var(--zx-destructive-foreground); }
+      .ring-destructive-foreground { --tw-ring-color: var(--zx-destructive-foreground); }
+      .bg-border { background-color: var(--zx-border); }
+      .text-border { color: var(--zx-border); }
+      .border-border { border-color: var(--zx-border); }
+      .ring-border { --tw-ring-color: var(--zx-border); }
+      .bg-input { background-color: var(--zx-input); }
+      .text-input { color: var(--zx-input); }
+      .border-input { border-color: var(--zx-input); }
+      .ring-input { --tw-ring-color: var(--zx-input); }
+      .bg-ring { background-color: var(--zx-ring); }
+      .text-ring { color: var(--zx-ring); }
+      .border-ring { border-color: var(--zx-ring); }
+      .ring-ring { --tw-ring-color: var(--zx-ring); }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+    <main>
+
+      <!-- ============================== NAVIGATION (3D push-back on scroll) ============================== -->
+      <nav id="zx-nav" class="zx-nav" style="position:fixed;top:0;left:0;right:0;z-index:200;background:rgba(11,11,13,0.72);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid var(--zx-border);">
+        <div class="zx-nav-inner">
+          <div style="max-width:1320px;margin:0 auto;padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;gap:24px;">
+            <a href="#hero" style="display:flex;align-items:center;gap:8px;text-decoration:none;flex-shrink:0;">
+              <i data-lucide="hexagon" style="width:26px;height:26px;color:var(--zx-primary);"></i>
+              <span style="font-family:var(--zx-font-serif);font-size:18px;font-weight:700;color:var(--zx-foreground);letter-spacing:-0.01em;">智教星</span>
+            </a>
+            <div class="zx-nav-links" style="display:none;align-items:center;gap:32px;">
+              <a href="#architecture" style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);text-decoration:none;letter-spacing:0.05em;">架构</a>
+              <a href="#features" style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);text-decoration:none;letter-spacing:0.05em;">功能</a>
+              <a href="#profile" style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);text-decoration:none;letter-spacing:0.05em;">画像</a>
+              <a href="#terminals" style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);text-decoration:none;letter-spacing:0.05em;">三端</a>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;flex-shrink:0;">
+              <a href="#cta" style="font-family:var(--zx-font-mono);font-size:12px;font-weight:600;color:var(--zx-primary-foreground);background:var(--zx-primary);padding:8px 18px;border-radius:6px;text-decoration:none;letter-spacing:0.03em;white-space:nowrap;">开始使用</a>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <!-- ============================== HERO (CSS 3D perspective layers + mouse parallax tilt) ============================== -->
+      <section id="hero" class="hero-scene" style="background:var(--zx-background);position:relative;overflow:hidden;padding:128px 0 64px;">
+        <div class="hero-stage" style="max-width:1320px;margin:0 auto;padding:0 24px;position:relative;min-height:78vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+
+          <!-- Z(-200px): background amber glow -->
+          <div class="hero-glow" style="position:absolute;left:50%;top:42%;width:760px;height:760px;max-width:90vw;transform:translate(-50%,-50%) translateZ(-200px);background:radial-gradient(circle,rgba(232,181,71,0.22) 0%,rgba(232,181,71,0.05) 40%,transparent 70%);filter:blur(8px);pointer-events:none;z-index:0;"></div>
+
+          <!-- Z(-100px): decorative geometry -->
+          <div class="hero-shapes" style="position:absolute;inset:0;transform:translateZ(-100px);pointer-events:none;z-index:0;">
+            <span class="shape shape-hex" style="position:absolute;left:8%;top:24%;width:120px;height:120px;border:1px solid rgba(232,181,71,0.35);clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);"></span>
+            <span class="shape shape-tri" style="position:absolute;right:10%;top:20%;width:0;height:0;border-left:54px solid transparent;border-right:54px solid transparent;border-bottom:92px solid rgba(107,168,232,0.14);"></span>
+            <span class="shape shape-ring" style="position:absolute;right:16%;bottom:14%;width:140px;height:140px;border-radius:50%;border:1px dashed rgba(91,204,123,0.3);"></span>
+            <span class="shape shape-square" style="position:absolute;left:14%;bottom:16%;width:84px;height:84px;border:1px solid rgba(63,174,174,0.3);transform:rotate(12deg);"></span>
+          </div>
+
+          <!-- Z(20px): mono eyebrow -->
+          <p class="hero-eyebrow" style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.24em;margin:0 0 28px 0;text-transform:uppercase;transform:translateZ(20px);position:relative;z-index:2;">MULTI-AGENT SYSTEM · ADAPTIVE LEARNING · 2026</p>
+
+          <!-- Z(60px): big title -->
+          <h1 class="hero-title" style="font-family:var(--zx-font-display);font-weight:800;font-size:clamp(36px,6.4vw,74px);line-height:1.04;letter-spacing:-0.03em;color:var(--zx-foreground);margin:0;transform:translateZ(60px);position:relative;z-index:2;">
+            每个错题 都值得被<br>
+            <span style="font-family:var(--zx-font-serif);font-weight:600;font-style:italic;color:var(--zx-primary);">精准诊疗</span>
+          </h1>
+
+          <!-- Z(40px): subtitle -->
+          <p class="hero-sub" style="font-size:17px;line-height:1.6;color:var(--zx-muted-foreground);max-width:560px;margin:24px auto 0 auto;transform:translateZ(40px);position:relative;z-index:2;">智教星 — 基于多智能体的自适应错题诊疗系统,精准诊断错因,靶向推送练习,让每个学生获得个性化学习路径。</p>
+
+          <!-- Z(80px): CTA group -->
+          <div class="hero-cta" style="display:flex;align-items:center;justify-content:center;gap:16px;margin-top:36px;flex-wrap:wrap;transform:translateZ(80px);position:relative;z-index:2;">
+            <a href="#cta" style="display:inline-flex;align-items:center;gap:8px;font-family:var(--zx-font-display);font-size:15px;font-weight:600;color:var(--zx-primary-foreground);background:var(--zx-primary);padding:12px 24px;border-radius:6px;text-decoration:none;box-shadow:0 0 28px rgba(232,181,71,0.22);">开始使用 <i data-lucide="arrow-right" style="width:16px;height:16px;"></i></a>
+            <a href="#features" style="display:inline-flex;align-items:center;gap:8px;font-family:var(--zx-font-display);font-size:15px;font-weight:500;color:var(--zx-foreground);border:1px solid var(--zx-border);padding:12px 24px;border-radius:6px;text-decoration:none;background:rgba(20,20,23,0.4);backdrop-filter:blur(4px);"><i data-lucide="play-circle" style="width:16px;height:16px;"></i>观看演示</a>
+          </div>
+
+          <!-- Z(120px): foreground particles -->
+          <div class="hero-particles" style="position:absolute;inset:0;transform:translateZ(120px);pointer-events:none;z-index:3;">
+            <span class="particle" style="position:absolute;left:22%;top:30%;width:5px;height:5px;border-radius:50%;background:var(--zx-primary);box-shadow:0 0 12px var(--zx-primary);"></span>
+            <span class="particle" style="position:absolute;left:78%;top:38%;width:4px;height:4px;border-radius:50%;background:var(--zx-state-success);box-shadow:0 0 10px var(--zx-state-success);"></span>
+            <span class="particle" style="position:absolute;left:30%;top:72%;width:3px;height:3px;border-radius:50%;background:var(--zx-state-info);box-shadow:0 0 10px var(--zx-state-info);"></span>
+            <span class="particle" style="position:absolute;left:70%;top:68%;width:5px;height:5px;border-radius:50%;background:var(--zx-primary);box-shadow:0 0 12px var(--zx-primary);"></span>
+            <span class="particle" style="position:absolute;left:50%;top:18%;width:3px;height:3px;border-radius:50%;background:var(--zx-foreground);box-shadow:0 0 8px var(--zx-foreground);"></span>
+          </div>
+        </div>
+
+        <!-- scroll indicator -->
+        <div class="hero-scroll-ind" style="display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:8px;">
+          <span style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);letter-spacing:0.3em;">SCROLL</span>
+          <i data-lucide="chevron-down" class="scroll-arrow" style="width:20px;height:20px;color:var(--zx-primary);"></i>
+        </div>
+      </section>
+
+      <!-- ============================== DATA MARQUEE ============================== -->
+      <div class="zx-marquee" style="overflow:hidden;background:var(--zx-card);border-top:1px solid var(--zx-border);border-bottom:1px solid var(--zx-border);padding:18px 0;">
+        <div class="zx-marquee-track" style="display:flex;align-items:center;gap:0;animation:zx-marquee 38s linear infinite;white-space:nowrap;width:max-content;">
+          <span style="display:flex;align-items:center;gap:8px;padding:0 24px;"><span style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-primary);">8</span><span style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">智能体</span></span>
+          <span style="color:var(--zx-border);font-size:20px;">·</span>
+          <span style="display:flex;align-items:center;gap:8px;padding:0 24px;"><span style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-foreground);">94%</span><span style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">诊断准确率</span></span>
+          <span style="color:var(--zx-border);font-size:20px;">·</span>
+          <span style="display:flex;align-items:center;gap:8px;padding:0 24px;"><span style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-foreground);">8</span><span style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">维学生画像</span></span>
+          <span style="color:var(--zx-border);font-size:20px;">·</span>
+          <span style="display:flex;align-items:center;gap:8px;padding:0 24px;"><span style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-foreground);">7</span><span style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">类教学资源</span></span>
+          <span style="color:var(--zx-border);font-size:20px;">·</span>
+          <span style="display:flex;align-items:center;gap:8px;padding:0 24px;"><span style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-primary);">5000+</span><span style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">教学团队</span></span>
+          <span style="color:var(--zx-border);font-size:20px;">·</span>
+          <span style="display:flex;align-items:center;gap:8px;padding:0 24px;"><span style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-foreground);">3D</span><span style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">知识图谱</span></span>
+          <span style="color:var(--zx-border);font-size:20px;">·</span>
+          <span style="display:flex;align-items:center;gap:8px;padding:0 24px;"><span style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-foreground);">985/211</span><span style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">全覆盖</span></span>
+          <span style="color:var(--zx-border);font-size:20px;">·</span>
+          <span style="display:flex;align-items:center;gap:8px;padding:0 24px;"><span style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-primary);">8</span><span style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">智能体</span></span>
+          <span style="color:var(--zx-border);font-size:20px;">·</span>
+          <span style="display:flex;align-items:center;gap:8px;padding:0 24px;"><span style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-foreground);">94%</span><span style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">诊断准确率</span></span>
+          <span style="color:var(--zx-border);font-size:20px;">·</span>
+          <span style="display:flex;align-items:center;gap:8px;padding:0 24px;"><span style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-foreground);">8</span><span style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">维学生画像</span></span>
+          <span style="color:var(--zx-border);font-size:20px;">·</span>
+          <span style="display:flex;align-items:center;gap:8px;padding:0 24px;"><span style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-foreground);">7</span><span style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">类教学资源</span></span>
+          <span style="color:var(--zx-border);font-size:20px;">·</span>
+          <span style="display:flex;align-items:center;gap:8px;padding:0 24px;"><span style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-primary);">5000+</span><span style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">教学团队</span></span>
+          <span style="color:var(--zx-border);font-size:20px;">·</span>
+          <span style="display:flex;align-items:center;gap:8px;padding:0 24px;"><span style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-foreground);">3D</span><span style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">知识图谱</span></span>
+          <span style="color:var(--zx-border);font-size:20px;">·</span>
+          <span style="display:flex;align-items:center;gap:8px;padding:0 24px;"><span style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-foreground);">985/211</span><span style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">全覆盖</span></span>
+          <span style="color:var(--zx-border);font-size:20px;">·</span>
+        </div>
+      </div>
+
+      <!-- ============================== SECTION 01: ARCHITECTURE (3D card stack flip-out) ============================== -->
+      <section id="architecture" class="reveal-3d" style="background:var(--zx-background);padding:96px 0;border-bottom:1px solid var(--zx-border);">
+        <div style="max-width:1320px;margin:0 auto;padding:0 24px;">
+          <div style="margin-bottom:48px;">
+            <div style="font-family:var(--zx-font-serif);font-size:clamp(56px,7vw,80px);font-weight:600;color:var(--zx-primary);line-height:1;letter-spacing:-0.02em;">01</div>
+            <h2 style="font-family:var(--zx-font-display);font-weight:700;font-size:clamp(28px,4vw,40px);line-height:1.1;letter-spacing:-0.02em;color:var(--zx-foreground);margin:12px 0 0 0;">多智能体协同架构</h2>
+            <p style="font-size:16px;color:var(--zx-muted-foreground);line-height:1.6;max-width:620px;margin:16px 0 0 0;">8 个专业智能体各司其职,协同生成 7 类教学资源。Coordinator 统一调度,各智能体并行作业,数据流全程可追溯。</p>
+          </div>
+
+          <!-- 3D stacked agent cards -->
+          <div class="agent-stack" style="margin-bottom:32px;">
+            <div class="agent-stage">
+              <div class="agent-card" style="--i:0;">
+                <div class="agent-card-inner" style="border-color:var(--zx-primary);box-shadow:0 0 24px rgba(232,181,71,0.1);">
+                  <div class="agent-head">
+                    <span class="agent-icon" style="color:var(--zx-primary);"><i data-lucide="cpu" style="width:22px;height:22px;"></i></span>
+                    <div style="min-width:0;"><div class="agent-name">Coordinator</div><div class="agent-role">协调中心 · 统一调度</div></div>
+                    <span class="agent-status" style="color:var(--zx-primary);"><span class="dot" style="background:var(--zx-primary);box-shadow:0 0 0 2px rgba(232,181,71,0.2);"></span>coordinator</span>
+                  </div>
+                  <div class="agent-task">分配文档生成任务</div>
+                  <div class="agent-prog"><span style="width:64%;background:var(--zx-primary);"></span></div>
+                  <div class="agent-meta">CPU 64%</div>
+                </div>
+              </div>
+
+              <div class="agent-card" style="--i:1;">
+                <div class="agent-card-inner">
+                  <div class="agent-head">
+                    <span class="agent-icon" style="color:var(--zx-state-info);"><i data-lucide="file-text" style="width:22px;height:22px;"></i></span>
+                    <div style="min-width:0;"><div class="agent-name">Document</div><div class="agent-role">教学文档与笔记</div></div>
+                    <span class="agent-status" style="color:var(--zx-state-success);"><span class="dot" style="background:var(--zx-state-success);"></span>active</span>
+                  </div>
+                  <div class="agent-task">生成高中数学第3章笔记</div>
+                  <div class="agent-prog"><span style="width:68%;background:var(--zx-state-info);"></span></div>
+                  <div class="agent-meta">68%</div>
+                </div>
+              </div>
+
+              <div class="agent-card" style="--i:2;">
+                <div class="agent-card-inner">
+                  <div class="agent-head">
+                    <span class="agent-icon" style="color:var(--zx-primary);"><i data-lucide="pen-tool" style="width:22px;height:22px;"></i></span>
+                    <div style="min-width:0;"><div class="agent-name">Exercise</div><div class="agent-role">配套习题与测评</div></div>
+                    <span class="agent-status" style="color:var(--zx-state-success);"><span class="dot" style="background:var(--zx-state-success);"></span>active</span>
+                  </div>
+                  <div class="agent-task">生成导数习题 10 题</div>
+                  <div class="agent-prog"><span style="width:42%;background:var(--zx-primary);"></span></div>
+                  <div class="agent-meta">42%</div>
+                </div>
+              </div>
+
+              <div class="agent-card" style="--i:3;">
+                <div class="agent-card-inner">
+                  <div class="agent-head">
+                    <span class="agent-icon" style="color:#3FAEAE;"><i data-lucide="presentation" style="width:22px;height:22px;"></i></span>
+                    <div style="min-width:0;"><div class="agent-name">Media</div><div class="agent-role">课件与可视化</div></div>
+                    <span class="agent-status" style="color:var(--zx-state-success);"><span class="dot" style="background:var(--zx-state-success);"></span>active</span>
+                  </div>
+                  <div class="agent-task">渲染概率分布课件</div>
+                  <div class="agent-prog"><span style="width:85%;background:#3FAEAE;"></span></div>
+                  <div class="agent-meta">85%</div>
+                </div>
+              </div>
+
+              <div class="agent-card" style="--i:4;">
+                <div class="agent-card-inner">
+                  <div class="agent-head">
+                    <span class="agent-icon" style="color:#3FAEAE;"><i data-lucide="layers" style="width:22px;height:22px;"></i></span>
+                    <div style="min-width:0;"><div class="agent-name">Recommendation</div><div class="agent-role">个性化资源推荐</div></div>
+                    <span class="agent-status" style="color:var(--zx-muted-foreground);"><span class="dot" style="background:var(--zx-muted-foreground);"></span>idle</span>
+                  </div>
+                  <div class="agent-task">等待画像回调 · 待命</div>
+                  <div class="agent-prog"><span style="width:0%;background:var(--zx-muted-foreground);"></span></div>
+                  <div class="agent-meta">idle</div>
+                </div>
+              </div>
+
+              <div class="agent-card" style="--i:5;">
+                <div class="agent-card-inner">
+                  <div class="agent-head">
+                    <span class="agent-icon" style="color:#3FAEAE;"><i data-lucide="git-branch" style="width:22px;height:22px;"></i></span>
+                    <div style="min-width:0;"><div class="agent-name">Project</div><div class="agent-role">实践项目任务</div></div>
+                    <span class="agent-status" style="color:var(--zx-state-success);"><span class="dot" style="background:var(--zx-state-success);"></span>active</span>
+                  </div>
+                  <div class="agent-task">编排矩阵运算实践项目</div>
+                  <div class="agent-prog"><span style="width:30%;background:#3FAEAE;"></span></div>
+                  <div class="agent-meta">30%</div>
+                </div>
+              </div>
+
+              <div class="agent-card" style="--i:6;">
+                <div class="agent-card-inner">
+                  <div class="agent-head">
+                    <span class="agent-icon" style="color:var(--zx-primary);"><i data-lucide="users" style="width:22px;height:22px;"></i></span>
+                    <div style="min-width:0;"><div class="agent-name">Profile</div><div class="agent-role">8维学生画像</div></div>
+                    <span class="agent-status" style="color:var(--zx-muted-foreground);"><span class="dot" style="background:var(--zx-muted-foreground);"></span>idle</span>
+                  </div>
+                  <div class="agent-task">更新 8 维学情画像</div>
+                  <div class="agent-prog"><span style="width:55%;background:var(--zx-primary);"></span></div>
+                  <div class="agent-meta">55%</div>
+                </div>
+              </div>
+
+              <div class="agent-card" style="--i:7;">
+                <div class="agent-card-inner">
+                  <div class="agent-head">
+                    <span class="agent-icon" style="color:var(--zx-state-success);"><i data-lucide="network" style="width:22px;height:22px;"></i></span>
+                    <div style="min-width:0;"><div class="agent-name">KnowledgeGraph</div><div class="agent-role">3D知识图谱</div></div>
+                    <span class="agent-status" style="color:var(--zx-state-success);"><span class="dot" style="background:var(--zx-state-success);"></span>active</span>
+                  </div>
+                  <div class="agent-task">补充函数→导数前置依赖</div>
+                  <div class="agent-prog"><span style="width:72%;background:var(--zx-state-success);"></span></div>
+                  <div class="agent-meta">72%</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- activity log (terminal style, flat for readability) -->
+          <div style="background:#08080A;border:1px solid var(--zx-border);border-radius:6px;padding:16px;border-left:2px solid var(--zx-state-info);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <span style="font-family:var(--zx-font-serif);font-size:14px;font-weight:700;color:var(--zx-foreground);">实时活动日志</span>
+              <span style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-state-success);">● live</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;font-family:var(--zx-font-mono);font-size:12px;">
+              <div style="display:flex;gap:8px;"><span style="color:var(--zx-muted-foreground);flex-shrink:0;">14:23:01</span><span style="color:var(--zx-foreground);"><span style="color:var(--zx-primary);">Coordinator</span> 分配文档生成任务</span></div>
+              <div style="display:flex;gap:8px;"><span style="color:var(--zx-muted-foreground);flex-shrink:0;">14:23:15</span><span style="color:var(--zx-foreground);"><span style="color:var(--zx-state-info);">Document</span> 开始解析教材 PDF</span></div>
+              <div style="display:flex;gap:8px;"><span style="color:var(--zx-muted-foreground);flex-shrink:0;">14:23:42</span><span style="color:var(--zx-foreground);"><span style="color:var(--zx-primary);">Exercise</span> 生成导数习题 10 题</span></div>
+              <div style="display:flex;gap:8px;"><span style="color:var(--zx-muted-foreground);flex-shrink:0;">14:24:08</span><span style="color:var(--zx-foreground);"><span style="color:#3FAEAE;">Media</span> 渲染概率分布可视化</span></div>
+              <div style="display:flex;gap:8px;"><span style="color:var(--zx-muted-foreground);flex-shrink:0;">14:24:33</span><span style="color:var(--zx-foreground);"><span style="color:var(--zx-state-success);">KnowledgeGraph</span> 补充函数→导数前置依赖</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================== SECTION 02: CORE FEATURES (3D parallax layers) ============================== -->
+      <section id="features" style="background:var(--zx-background);padding:96px 0 0 0;">
+        <div style="max-width:1320px;margin:0 auto;padding:0 24px;">
+          <div class="reveal-3d" style="margin-bottom:48px;">
+            <div style="font-family:var(--zx-font-serif);font-size:clamp(56px,7vw,80px);font-weight:600;color:var(--zx-primary);line-height:1;letter-spacing:-0.02em;">02</div>
+            <h2 style="font-family:var(--zx-font-display);font-weight:700;font-size:clamp(28px,4vw,40px);line-height:1.1;letter-spacing:-0.02em;color:var(--zx-foreground);margin:12px 0 0 0;">核心功能</h2>
+            <p style="font-size:16px;color:var(--zx-muted-foreground);line-height:1.6;max-width:620px;margin:16px 0 0 0;">从课程生成到错题诊疗,从 AI 助教到学情画像,四大功能覆盖教学全流程。每条 band 在不同 Z 深度上视差移动。</p>
+          </div>
+        </div>
+
+        <!-- BAND 1: AI 课程生成向导 -->
+        <div class="feature-band" style="border-top:1px solid var(--zx-border);padding:64px 0;background:var(--zx-background);">
+          <div class="feature-stage" style="max-width:1320px;margin:0 auto;padding:0 24px;position:relative;">
+            <div class="feature-bg" style="position:absolute;left:-8px;top:-12px;font-family:var(--zx-font-serif);font-size:clamp(120px,18vw,220px);font-weight:700;color:var(--zx-card);line-height:0.8;letter-spacing:-0.04em;z-index:0;pointer-events:none;user-select:none;">02.1</div>
+            <div class="feature-content" style="position:relative;z-index:2;">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap;">
+                <i data-lucide="book-open" style="width:22px;height:22px;color:var(--zx-primary);"></i>
+                <h3 style="font-family:var(--zx-font-display);font-weight:700;font-size:clamp(22px,3vw,28px);color:var(--zx-foreground);margin:0;">AI 课程生成向导</h3>
+              </div>
+              <p style="font-size:15px;color:var(--zx-muted-foreground);line-height:1.6;max-width:680px;margin:0 0 28px 0;">输入学科与章节,Document 解析教材,Exercise 生成习题,Media 渲染课件 — 全流程 3 分钟完成。</p>
+              <div style="border-radius:8px;overflow:hidden;border:1px solid var(--zx-border);background:#08080A;">
+                <div style="display:flex;align-items:center;gap:8px;padding:0 14px;height:36px;background:var(--zx-popover);border-bottom:1px solid var(--zx-border);">
+                  <span style="width:10px;height:10px;border-radius:50%;background:var(--zx-state-error);"></span>
+                  <span style="width:10px;height:10px;border-radius:50%;background:var(--zx-primary);"></span>
+                  <span style="width:10px;height:10px;border-radius:50%;background:var(--zx-state-success);"></span>
+                  <span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);margin-left:8px;">zhijiaoxing course-generator — config.yaml</span>
+                </div>
+                <div style="padding:20px;font-family:var(--zx-font-mono);font-size:12.5px;line-height:1.85;">
+                  <div style="color:var(--zx-muted-foreground);margin-bottom:10px;"># 课程生成参数</div>
+                  <div><span style="color:var(--zx-state-info);">subject</span>: <span style="color:var(--zx-state-success);">"高中数学"</span></div>
+                  <div><span style="color:var(--zx-state-info);">chapter</span>: <span style="color:var(--zx-state-success);">"函数与导数"</span></div>
+                  <div><span style="color:var(--zx-state-info);">difficulty</span>: <span style="color:var(--zx-state-success);">"中等"</span></div>
+                  <div><span style="color:var(--zx-state-info);">exercise_count</span>: <span style="color:var(--zx-primary);">10</span></div>
+                  <div><span style="color:var(--zx-state-info);">include_3d</span>: <span style="color:var(--zx-primary);">true</span></div>
+                  <div><span style="color:var(--zx-state-info);">agents</span>: <span style="color:var(--zx-muted-foreground);">[Document, Exercise, Media, KnowledgeGraph]</span></div>
+                  <div style="margin-top:14px;padding:12px 14px;background:var(--zx-card);border:1px solid var(--zx-border);border-radius:4px;">
+                    <div style="color:var(--zx-state-success);">$ zhijiaoxing generate</div>
+                    <div style="color:var(--zx-muted-foreground);font-size:11.5px;margin-top:6px;">✓ Document 解析完成 (2.3s) · 12 页</div>
+                    <div style="color:var(--zx-muted-foreground);font-size:11.5px;">✓ Exercise 生成 10 题 (4.1s) · 5 基础 / 3 应用 / 2 拓展</div>
+                    <div style="color:var(--zx-muted-foreground);font-size:11.5px;">✓ Media 渲染课件 (3.8s) · 8 张 · 3D 函数图像</div>
+                    <div style="color:var(--zx-primary);font-size:11.5px;">→ KnowledgeGraph 补充依赖... <span class="term-cursor"></span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="feature-accent" style="position:absolute;right:0;top:0;font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);letter-spacing:0.1em;z-index:3;">FEATURE 02.1</div>
+          </div>
+        </div>
+
+        <!-- BAND 2: AI 智能助教 -->
+        <div class="feature-band" style="border-top:1px solid var(--zx-border);padding:64px 0;background:var(--zx-card);">
+          <div class="feature-stage" style="max-width:1320px;margin:0 auto;padding:0 24px;position:relative;">
+            <div class="feature-bg" style="position:absolute;right:-8px;top:-12px;font-family:var(--zx-font-serif);font-size:clamp(120px,18vw,220px);font-weight:700;color:var(--zx-background);line-height:0.8;letter-spacing:-0.04em;z-index:0;pointer-events:none;user-select:none;">02.2</div>
+            <div class="feature-content" style="position:relative;z-index:2;">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap;">
+                <i data-lucide="bot" style="width:22px;height:22px;color:var(--zx-primary);"></i>
+                <h3 style="font-family:var(--zx-font-display);font-weight:700;font-size:clamp(22px,3vw,28px);color:var(--zx-foreground);margin:0;">AI 智能助教</h3>
+              </div>
+              <p style="font-size:15px;color:var(--zx-muted-foreground);line-height:1.6;max-width:680px;margin:0 0 28px 0;">7×24 在线,自然语言交互,支持公式渲染、步骤拆解、错因追问,让每个学生都有专属私教。</p>
+              <div style="border-radius:8px;overflow:hidden;border:1px solid var(--zx-border);background:#0E0E11;">
+                <div style="display:flex;align-items:center;gap:8px;padding:0 14px;height:36px;background:var(--zx-popover);border-bottom:1px solid var(--zx-border);">
+                  <span style="width:10px;height:10px;border-radius:50%;background:var(--zx-state-error);"></span>
+                  <span style="width:10px;height:10px;border-radius:50%;background:var(--zx-primary);"></span>
+                  <span style="width:10px;height:10px;border-radius:50%;background:var(--zx-state-success);"></span>
+                  <span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);margin-left:8px;">智教星 AI 助教 — 对话</span>
+                  <span style="display:flex;align-items:center;gap:4px;font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-state-success);margin-left:auto;"><span style="width:6px;height:6px;border-radius:50%;background:var(--zx-state-success);"></span>在线</span>
+                </div>
+                <div style="padding:24px;display:flex;flex-direction:column;gap:18px;">
+                  <div style="display:flex;gap:12px;justify-content:flex-end;">
+                    <div style="max-width:480px;background:var(--zx-popover);border:1px solid var(--zx-border);border-radius:8px 8px 2px 8px;padding:14px 16px;">
+                      <p style="font-size:14px;color:var(--zx-foreground);margin:0;line-height:1.6;">老师,求 f(x) = x² + 2x - 3 的极值,我算出极值点 x = -1,但不知道怎么判断极大还是极小?</p>
+                    </div>
+                    <div style="width:36px;height:36px;border-radius:50%;background:var(--zx-card);border:1px solid var(--zx-border);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i data-lucide="user-search" style="width:18px;height:18px;color:var(--zx-muted-foreground);"></i></div>
+                  </div>
+                  <div style="display:flex;gap:12px;">
+                    <div style="width:36px;height:36px;border-radius:50%;background:var(--zx-primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i data-lucide="bot" style="width:18px;height:18px;color:var(--zx-primary-foreground);"></i></div>
+                    <div style="max-width:580px;background:var(--zx-card);border:1px solid var(--zx-border);border-left:3px solid var(--zx-primary);border-radius:2px 8px 8px 8px;padding:14px 16px;">
+                      <p style="font-size:14px;color:var(--zx-foreground);margin:0 0 8px 0;line-height:1.6;">极值点 x = -1 正确!判断极大极小有两种方法:</p>
+                      <div style="font-size:13px;line-height:1.7;padding:10px 12px;background:#08080A;border-radius:4px;font-family:var(--zx-font-mono);margin:8px 0;">
+                        <div><span style="color:var(--zx-primary);">方法一</span>:二阶导数 — f''(x)=2 > 0 → <span style="color:var(--zx-state-success);">极小值</span></div>
+                        <div><span style="color:var(--zx-primary);">方法二</span>:一阶导数变号 — x<-1 递减,x>-1 递增 → <span style="color:var(--zx-state-success);">极小值 f(-1)=-4</span></div>
+                      </div>
+                      <p style="font-size:14px;color:var(--zx-foreground);margin:8px 0 0 0;line-height:1.6;">错因诊断:<span style="color:var(--zx-primary);">概念理解偏差</span>。建议练习 3 道同类题型巩固。</p>
+                      <div style="display:flex;gap:8px;margin-top:12px;">
+                        <button style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-primary-foreground);background:var(--zx-primary);border:none;padding:6px 14px;border-radius:4px;cursor:pointer;">开始靶向练习</button>
+                        <button style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-foreground);background:transparent;border:1px solid var(--zx-border);padding:6px 14px;border-radius:4px;cursor:pointer;">追问</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="feature-accent" style="position:absolute;right:0;top:0;font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);letter-spacing:0.1em;z-index:3;">FEATURE 02.2</div>
+          </div>
+        </div>
+
+        <!-- BAND 3: 智能错题本 -->
+        <div class="feature-band" style="border-top:1px solid var(--zx-border);padding:64px 0;background:var(--zx-background);">
+          <div class="feature-stage" style="max-width:1320px;margin:0 auto;padding:0 24px;position:relative;">
+            <div class="feature-bg" style="position:absolute;left:-8px;top:-12px;font-family:var(--zx-font-serif);font-size:clamp(120px,18vw,220px);font-weight:700;color:var(--zx-card);line-height:0.8;letter-spacing:-0.04em;z-index:0;pointer-events:none;user-select:none;">02.3</div>
+            <div class="feature-content" style="position:relative;z-index:2;">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap;">
+                <i data-lucide="stethoscope" style="width:22px;height:22px;color:var(--zx-primary);"></i>
+                <h3 style="font-family:var(--zx-font-display);font-weight:700;font-size:clamp(22px,3vw,28px);color:var(--zx-foreground);margin:0;">智能错题本</h3>
+              </div>
+              <p style="font-size:15px;color:var(--zx-muted-foreground);line-height:1.6;max-width:680px;margin:0 0 28px 0;">自动收录错题,AI 诊断错因级别,生成靶向练习,追踪掌握进度 — 让每个错题都被精准诊疗。</p>
+              <div style="border-radius:8px;overflow:hidden;border:1px solid var(--zx-border);background:var(--zx-card);">
+                <div style="display:flex;align-items:center;gap:8px;padding:0 14px;height:36px;background:var(--zx-popover);border-bottom:1px solid var(--zx-border);">
+                  <span style="width:10px;height:10px;border-radius:50%;background:var(--zx-state-error);"></span>
+                  <span style="width:10px;height:10px;border-radius:50%;background:var(--zx-primary);"></span>
+                  <span style="width:10px;height:10px;border-radius:50%;background:var(--zx-state-success);"></span>
+                  <span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);margin-left:8px;">智教星 · 智能错题本</span>
+                  <span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);margin-left:auto;">23 待诊疗 · 156 已攻克</span>
+                </div>
+                <div style="padding:16px;overflow-x:auto;">
+                  <table style="width:100%;border-collapse:collapse;font-size:13px;color:var(--zx-foreground);min-width:640px;">
+                    <thead>
+                      <tr style="border-bottom:1px solid var(--zx-border);">
+                        <th style="text-align:left;padding:10px 12px;font-family:var(--zx-font-mono);font-size:11px;font-weight:400;color:var(--zx-muted-foreground);">题目</th>
+                        <th style="text-align:left;padding:10px 12px;font-family:var(--zx-font-mono);font-size:11px;font-weight:400;color:var(--zx-muted-foreground);">错因诊断</th>
+                        <th style="text-align:left;padding:10px 12px;font-family:var(--zx-font-mono);font-size:11px;font-weight:400;color:var(--zx-muted-foreground);">智能体</th>
+                        <th style="text-align:left;padding:10px 12px;font-family:var(--zx-font-mono);font-size:11px;font-weight:400;color:var(--zx-muted-foreground);">级别</th>
+                        <th style="text-align:left;padding:10px 12px;font-family:var(--zx-font-mono);font-size:11px;font-weight:400;color:var(--zx-muted-foreground);">掌握度</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr style="border-bottom:1px solid var(--zx-border);"><td style="padding:12px;">f(x)=x²+2x-3 极值求解</td><td style="padding:12px;color:var(--zx-muted-foreground);">概念理解偏差</td><td style="padding:12px;font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-state-info);">诊断</td><td style="padding:12px;font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-state-error);font-weight:600;">● high</td><td style="padding:12px;"><div style="display:flex;align-items:center;gap:8px;"><div class="zx-bar" style="width:60px;height:4px;"><span style="display:block;width:35%;height:100%;background:var(--zx-state-error);"></span></div><span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);">35%</span></div></td></tr>
+                      <tr style="border-bottom:1px solid var(--zx-border);"><td style="padding:12px;">∫sin²x dx 积分计算</td><td style="padding:12px;color:var(--zx-muted-foreground);">公式记忆错误</td><td style="padding:12px;font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-primary);">分析</td><td style="padding:12px;font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-primary);font-weight:600;">● medium</td><td style="padding:12px;"><div style="display:flex;align-items:center;gap:8px;"><div class="zx-bar" style="width:60px;height:4px;"><span style="display:block;width:60%;height:100%;background:var(--zx-primary);"></span></div><span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);">60%</span></div></td></tr>
+                      <tr style="border-bottom:1px solid var(--zx-border);"><td style="padding:12px;">P(A|B) 条件概率应用</td><td style="padding:12px;color:var(--zx-muted-foreground);">审题不清</td><td style="padding:12px;font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-state-success);">归因</td><td style="padding:12px;font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-state-success);font-weight:600;">● low</td><td style="padding:12px;"><div style="display:flex;align-items:center;gap:8px;"><div class="zx-bar" style="width:60px;height:4px;"><span style="display:block;width:82%;height:100%;background:var(--zx-state-success);"></span></div><span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);">82%</span></div></td></tr>
+                      <tr style="border-bottom:1px solid var(--zx-border);"><td style="padding:12px;">矩阵乘法 AB 运算</td><td style="padding:12px;color:var(--zx-muted-foreground);">计算失误</td><td style="padding:12px;font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-state-info);">诊断</td><td style="padding:12px;font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-primary);font-weight:600;">● medium</td><td style="padding:12px;"><div style="display:flex;align-items:center;gap:8px;"><div class="zx-bar" style="width:60px;height:4px;"><span style="display:block;width:45%;height:100%;background:var(--zx-state-info);"></span></div><span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);">45%</span></div></td></tr>
+                      <tr><td style="padding:12px;">概率分布列性质</td><td style="padding:12px;color:var(--zx-muted-foreground);">概念混淆</td><td style="padding:12px;font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-primary);">分析</td><td style="padding:12px;font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-state-error);font-weight:600;">● high</td><td style="padding:12px;"><div style="display:flex;align-items:center;gap:8px;"><div class="zx-bar" style="width:60px;height:4px;"><span style="display:block;width:20%;height:100%;background:var(--zx-state-error);"></span></div><span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);">20%</span></div></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div class="feature-accent" style="position:absolute;right:0;top:0;font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);letter-spacing:0.1em;z-index:3;">FEATURE 02.3</div>
+          </div>
+        </div>
+
+        <!-- BAND 4: 学习画像构建 -->
+        <div class="feature-band" style="border-top:1px solid var(--zx-border);padding:64px 0;background:var(--zx-card);">
+          <div class="feature-stage" style="max-width:1320px;margin:0 auto;padding:0 24px;position:relative;">
+            <div class="feature-bg" style="position:absolute;right:-8px;top:-12px;font-family:var(--zx-font-serif);font-size:clamp(120px,18vw,220px);font-weight:700;color:var(--zx-background);line-height:0.8;letter-spacing:-0.04em;z-index:0;pointer-events:none;user-select:none;">02.4</div>
+            <div class="feature-content" style="position:relative;z-index:2;">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap;">
+                <i data-lucide="user-search" style="width:22px;height:22px;color:var(--zx-primary);"></i>
+                <h3 style="font-family:var(--zx-font-display);font-weight:700;font-size:clamp(22px,3vw,28px);color:var(--zx-foreground);margin:0;">学习画像构建</h3>
+              </div>
+              <p style="font-size:15px;color:var(--zx-muted-foreground);line-height:1.6;max-width:680px;margin:0 0 28px 0;">Profile 智能体从 8 个维度构建学情画像,实时追踪学习行为,精准定位薄弱环节,驱动个性化推荐。</p>
+              <div style="border-radius:8px;overflow:hidden;border:1px solid var(--zx-border);background:var(--zx-popover);">
+                <div style="display:flex;align-items:center;gap:8px;padding:0 14px;height:36px;background:var(--zx-card);border-bottom:1px solid var(--zx-border);">
+                  <span style="width:10px;height:10px;border-radius:50%;background:var(--zx-state-error);"></span>
+                  <span style="width:10px;height:10px;border-radius:50%;background:var(--zx-primary);"></span>
+                  <span style="width:10px;height:10px;border-radius:50%;background:var(--zx-state-success);"></span>
+                  <span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);margin-left:8px;">智教星 · 学情画像 — 张同学</span>
+                  <span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-state-success);margin-left:auto;">画像完整度 94%</span>
+                </div>
+                <div style="padding:28px;display:flex;flex-direction:column;align-items:center;gap:20px;">
+                  <svg viewBox="0 0 300 300" width="240" height="240" style="max-width:240px;height:auto;">
+                    <g fill="none" stroke="#2A2A2E" stroke-width="0.8"><circle cx="150" cy="150" r="30"/><circle cx="150" cy="150" r="60"/><circle cx="150" cy="150" r="90"/><circle cx="150" cy="150" r="120"/></g>
+                    <g stroke="#2A2A2E" stroke-width="0.8"><line x1="150" y1="150" x2="150" y2="30"/><line x1="150" y1="150" x2="234.9" y2="65.1"/><line x1="150" y1="150" x2="270" y2="150"/><line x1="150" y1="150" x2="234.9" y2="234.9"/><line x1="150" y1="150" x2="150" y2="270"/><line x1="150" y1="150" x2="65.1" y2="234.9"/><line x1="150" y1="150" x2="30" y2="150"/><line x1="150" y1="150" x2="65.1" y2="65.1"/></g>
+                    <polygon points="150,48 211.2,88.8 192,150 207.7,207.7 150,243.6 80.4,219.6 72,150 90.6,90.6" fill="rgba(232,181,71,0.12)" stroke="#E8B547" stroke-width="2"/>
+                    <g fill="#E8B547"><circle cx="150" cy="48" r="3"/><circle cx="211.2" cy="88.8" r="3"/><circle cx="192" cy="150" r="3"/><circle cx="207.7" cy="207.7" r="3"/><circle cx="150" cy="243.6" r="3"/><circle cx="80.4" cy="219.6" r="3"/><circle cx="72" cy="150" r="3"/><circle cx="90.6" cy="90.6" r="3"/></g>
+                  </svg>
+                  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;width:100%;max-width:480px;">
+                    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--zx-foreground);"><span>知识掌握</span><span style="font-family:var(--zx-font-mono);color:var(--zx-state-success);">85%</span></div>
+                    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--zx-foreground);"><span>学习效率</span><span style="font-family:var(--zx-font-mono);color:var(--zx-primary);">72%</span></div>
+                    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--zx-foreground);"><span>错题频率</span><span style="font-family:var(--zx-font-mono);color:var(--zx-state-error);">35%</span></div>
+                    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--zx-foreground);"><span>专注度</span><span style="font-family:var(--zx-font-mono);color:var(--zx-state-info);">68%</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="feature-accent" style="position:absolute;right:0;top:0;font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);letter-spacing:0.1em;z-index:3;">FEATURE 02.4</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================== SECTION 03: 8-DIMENSION PROFILE (3D rotating radar card) ============================== -->
+      <section id="profile" class="reveal-3d" style="background:var(--zx-background);padding:96px 0;border-top:1px solid var(--zx-border);">
+        <div style="max-width:1320px;margin:0 auto;padding:0 24px;">
+          <div style="margin-bottom:48px;">
+            <div style="font-family:var(--zx-font-serif);font-size:clamp(56px,7vw,80px);font-weight:600;color:var(--zx-primary);line-height:1;letter-spacing:-0.02em;">03</div>
+            <h2 style="font-family:var(--zx-font-display);font-weight:700;font-size:clamp(28px,4vw,40px);line-height:1.1;letter-spacing:-0.02em;color:var(--zx-foreground);margin:12px 0 0 0;">8 维学生画像</h2>
+            <p style="font-size:16px;color:var(--zx-muted-foreground);line-height:1.6;max-width:620px;margin:16px 0 0 0;">从知识掌握到学习习惯,8 个维度全方位刻画学情。雷达卡片随滚动在 3D 空间中旋转。</p>
+          </div>
+
+          <div class="radar-stage" style="display:flex;justify-content:center;">
+            <div class="radar-card" style="background:var(--zx-card);border:1px solid var(--zx-border);border-radius:10px;padding:32px;display:flex;flex-direction:column;align-items:center;gap:24px;max-width:520px;width:100%;">
+              <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+                <span style="font-family:var(--zx-font-serif);font-size:16px;font-weight:700;color:var(--zx-foreground);">8 维雷达图</span>
+                <span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);">综合评分 74.4</span>
+              </div>
+              <svg viewBox="0 0 300 300" width="100%" style="max-width:380px;height:auto;">
+                <g fill="none" stroke="#2A2A2E" stroke-width="0.8"><circle cx="150" cy="150" r="30"/><circle cx="150" cy="150" r="60"/><circle cx="150" cy="150" r="90"/><circle cx="150" cy="150" r="120"/></g>
+                <g stroke="#2A2A2E" stroke-width="0.8"><line x1="150" y1="150" x2="150" y2="30"/><line x1="150" y1="150" x2="234.9" y2="65.1"/><line x1="150" y1="150" x2="270" y2="150"/><line x1="150" y1="150" x2="234.9" y2="234.9"/><line x1="150" y1="150" x2="150" y2="270"/><line x1="150" y1="150" x2="65.1" y2="234.9"/><line x1="150" y1="150" x2="30" y2="150"/><line x1="150" y1="150" x2="65.1" y2="65.1"/></g>
+                <polygon points="150,48 211.2,88.8 192,150 207.7,207.7 150,243.6 80.4,219.6 72,150 90.6,90.6" fill="rgba(232,181,71,0.12)" stroke="#E8B547" stroke-width="2"/>
+                <g fill="#E8B547"><circle cx="150" cy="48" r="3.5"/><circle cx="211.2" cy="88.8" r="3.5"/><circle cx="192" cy="150" r="3.5"/><circle cx="207.7" cy="207.7" r="3.5"/><circle cx="150" cy="243.6" r="3.5"/><circle cx="80.4" cy="219.6" r="3.5"/><circle cx="72" cy="150" r="3.5"/><circle cx="90.6" cy="90.6" r="3.5"/></g>
+                <g font-family="JetBrains Mono, monospace" font-size="11" fill="#8A8780">
+                  <text x="150" y="20" text-anchor="middle">知识掌握</text>
+                  <text x="245" y="60" text-anchor="start">学习效率</text>
+                  <text x="280" y="155" text-anchor="start">错题频率</text>
+                  <text x="245" y="250" text-anchor="start">专注度</text>
+                  <text x="150" y="290" text-anchor="middle">进步速度</text>
+                  <text x="55" y="250" text-anchor="end">理解深度</text>
+                  <text x="20" y="155" text-anchor="end">应用能力</text>
+                  <text x="55" y="60" text-anchor="end">学习习惯</text>
+                </g>
+              </svg>
+            </div>
+          </div>
+
+          <!-- 8 dimension bars (intentionally unequal, not a bento grid) -->
+          <div class="dim-bars" style="margin-top:48px;display:flex;flex-direction:column;gap:14px;max-width:720px;margin-left:auto;margin-right:auto;">
+            <div class="dim-bar"><div class="dim-bar-head"><span style="color:var(--zx-state-success);">知识掌握</span><span style="font-family:var(--zx-font-mono);color:var(--zx-state-success);">85%</span></div><div class="zx-bar" style="height:5px;"><span style="--w:85%;background:var(--zx-state-success);"></span></div></div>
+            <div class="dim-bar"><div class="dim-bar-head"><span>学习效率</span><span style="font-family:var(--zx-font-mono);color:var(--zx-primary);">72%</span></div><div class="zx-bar" style="height:5px;"><span style="--w:72%;background:var(--zx-primary);"></span></div></div>
+            <div class="dim-bar"><div class="dim-bar-head"><span>错题频率</span><span style="font-family:var(--zx-font-mono);color:var(--zx-state-error);">35%</span></div><div class="zx-bar" style="height:5px;"><span style="--w:35%;background:var(--zx-state-error);"></span></div></div>
+            <div class="dim-bar"><div class="dim-bar-head"><span>专注度</span><span style="font-family:var(--zx-font-mono);color:var(--zx-state-info);">68%</span></div><div class="zx-bar" style="height:5px;"><span style="--w:68%;background:var(--zx-state-info);"></span></div></div>
+            <div class="dim-bar"><div class="dim-bar-head"><span style="color:var(--zx-state-success);">进步速度</span><span style="font-family:var(--zx-font-mono);color:var(--zx-state-success);">78%</span></div><div class="zx-bar" style="height:5px;"><span style="--w:78%;background:var(--zx-state-success);"></span></div></div>
+            <div class="dim-bar"><div class="dim-bar-head"><span style="color:var(--zx-state-success);">理解深度</span><span style="font-family:var(--zx-font-mono);color:var(--zx-state-success);">82%</span></div><div class="zx-bar" style="height:5px;"><span style="--w:82%;background:var(--zx-state-success);"></span></div></div>
+            <div class="dim-bar"><div class="dim-bar-head"><span>应用能力</span><span style="font-family:var(--zx-font-mono);color:var(--zx-primary);">65%</span></div><div class="zx-bar" style="height:5px;"><span style="--w:65%;background:var(--zx-primary);"></span></div></div>
+            <div class="dim-bar"><div class="dim-bar-head"><span>学习习惯</span><span style="font-family:var(--zx-font-mono);color:var(--zx-primary);">70%</span></div><div class="zx-bar" style="height:5px;"><span style="--w:70%;background:var(--zx-primary);"></span></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================== SECTION 04: THREE TERMINALS (3D flip cards, unequal widths) ============================== -->
+      <section id="terminals" class="reveal-3d" style="background:var(--zx-card);padding:96px 0;border-top:1px solid var(--zx-border);">
+        <div style="max-width:1320px;margin:0 auto;padding:0 24px;">
+          <div style="margin-bottom:48px;">
+            <div style="font-family:var(--zx-font-serif);font-size:clamp(56px,7vw,80px);font-weight:600;color:var(--zx-primary);line-height:1;letter-spacing:-0.02em;">04</div>
+            <h2 style="font-family:var(--zx-font-display);font-weight:700;font-size:clamp(28px,4vw,40px);line-height:1.1;letter-spacing:-0.02em;color:var(--zx-foreground);margin:12px 0 0 0;">三端协同</h2>
+            <p style="font-size:16px;color:var(--zx-muted-foreground);line-height:1.6;max-width:620px;margin:16px 0 0 0;">教师端、学生端、管理端三端协同,数据实时同步。点击卡片 3D 翻转查看详情。</p>
+          </div>
+
+          <div class="role-grid" style="display:grid;grid-template-columns:1fr;gap:20px;">
+            <!-- Teacher (widest) -->
+            <div class="role-card" style="cursor:pointer;">
+              <div class="role-card-inner">
+                <div class="role-face role-front" style="border-color:var(--zx-primary);">
+                  <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;"><i data-lucide="users" style="width:26px;height:26px;color:var(--zx-primary);"></i><span style="font-family:var(--zx-font-serif);font-size:22px;font-weight:700;color:var(--zx-foreground);">教师端</span></div>
+                  <p style="font-size:14px;color:var(--zx-muted-foreground);line-height:1.6;margin:0 0 18px 0;">课程管理、AI 内容生成、学情监控,一站式备课与教学。</p>
+                  <div style="display:flex;gap:20px;flex-wrap:wrap;font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-foreground);">
+                    <span>课程 <b style="color:var(--zx-state-info);font-family:var(--zx-font-serif);">42</b></span>
+                    <span>学生 <b style="color:var(--zx-state-success);font-family:var(--zx-font-serif);">1,286</b></span>
+                    <span>AI 内容 <b style="color:var(--zx-primary);font-family:var(--zx-font-serif);">328</b></span>
+                  </div>
+                  <span class="role-flip-hint">点击翻转 →</span>
+                </div>
+                <div class="role-face role-back" style="border-color:var(--zx-primary);">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;"><span style="font-family:var(--zx-font-serif);font-size:16px;font-weight:700;color:var(--zx-foreground);">课程管理</span><span style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-state-success);">● 已生成</span></div>
+                  <table style="width:100%;border-collapse:collapse;font-size:12px;color:var(--zx-foreground);">
+                    <thead><tr style="border-bottom:1px solid var(--zx-border);"><th style="text-align:left;padding:6px 4px;font-family:var(--zx-font-mono);font-size:10px;font-weight:400;color:var(--zx-muted-foreground);">课程</th><th style="text-align:left;padding:6px 4px;font-family:var(--zx-font-mono);font-size:10px;font-weight:400;color:var(--zx-muted-foreground);">学生</th><th style="text-align:left;padding:6px 4px;font-family:var(--zx-font-mono);font-size:10px;font-weight:400;color:var(--zx-muted-foreground);">完成率</th></tr></thead>
+                    <tbody>
+                      <tr style="border-bottom:1px solid var(--zx-border);"><td style="padding:8px 4px;">函数与导数</td><td style="padding:8px 4px;">312</td><td style="padding:8px 4px;font-family:var(--zx-font-mono);color:var(--zx-state-success);">92%</td></tr>
+                      <tr style="border-bottom:1px solid var(--zx-border);"><td style="padding:8px 4px;">概率统计</td><td style="padding:8px 4px;">285</td><td style="padding:8px 4px;font-family:var(--zx-font-mono);color:var(--zx-primary);">78%</td></tr>
+                      <tr style="border-bottom:1px solid var(--zx-border);"><td style="padding:8px 4px;">矩阵与变换</td><td style="padding:8px 4px;">198</td><td style="padding:8px 4px;font-family:var(--zx-font-mono);color:var(--zx-state-info);">65%</td></tr>
+                      <tr><td style="padding:8px 4px;">三角函数</td><td style="padding:8px 4px;">491</td><td style="padding:8px 4px;font-family:var(--zx-font-mono);color:var(--zx-state-success);">88%</td></tr>
+                    </tbody>
+                  </table>
+                  <span class="role-flip-hint">← 点击翻回</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Student (medium) -->
+            <div class="role-card" style="cursor:pointer;">
+              <div class="role-card-inner">
+                <div class="role-face role-front" style="border-color:var(--zx-state-success);">
+                  <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;"><i data-lucide="book-open" style="width:26px;height:26px;color:var(--zx-state-success);"></i><span style="font-family:var(--zx-font-serif);font-size:22px;font-weight:700;color:var(--zx-foreground);">学生端</span></div>
+                  <p style="font-size:14px;color:var(--zx-muted-foreground);line-height:1.6;margin:0 0 18px 0;">错题诊疗、靶向练习、AI 助教、学习成就,个性化学习路径。</p>
+                  <div style="display:flex;gap:20px;flex-wrap:wrap;font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-foreground);">
+                    <span>待诊疗 <b style="color:var(--zx-state-error);font-family:var(--zx-font-serif);">23</b></span>
+                    <span>已攻克 <b style="color:var(--zx-state-success);font-family:var(--zx-font-serif);">156</b></span>
+                    <span>正确率 <b style="color:var(--zx-primary);font-family:var(--zx-font-serif);">82%</b></span>
+                  </div>
+                  <span class="role-flip-hint">点击翻转 →</span>
+                </div>
+                <div class="role-face role-back" style="border-color:var(--zx-state-success);">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;"><span style="font-family:var(--zx-font-serif);font-size:16px;font-weight:700;color:var(--zx-foreground);">练习进度</span><span style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);">4 项</span></div>
+                  <div style="display:flex;flex-direction:column;gap:10px;">
+                    <div><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--zx-foreground);margin-bottom:4px;"><span>函数极值</span><span style="font-family:var(--zx-font-mono);color:var(--zx-state-error);">35%</span></div><div class="zx-bar" style="height:5px;"><span style="display:block;width:35%;height:100%;background:var(--zx-state-error);"></span></div></div>
+                    <div><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--zx-foreground);margin-bottom:4px;"><span>积分公式</span><span style="font-family:var(--zx-font-mono);color:var(--zx-primary);">60%</span></div><div class="zx-bar" style="height:5px;"><span style="display:block;width:60%;height:100%;background:var(--zx-primary);"></span></div></div>
+                    <div><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--zx-foreground);margin-bottom:4px;"><span>条件概率</span><span style="font-family:var(--zx-font-mono);color:var(--zx-state-success);">82%</span></div><div class="zx-bar" style="height:5px;"><span style="display:block;width:82%;height:100%;background:var(--zx-state-success);"></span></div></div>
+                    <div><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--zx-foreground);margin-bottom:4px;"><span>矩阵运算</span><span style="font-family:var(--zx-font-mono);color:var(--zx-state-info);">45%</span></div><div class="zx-bar" style="height:5px;"><span style="display:block;width:45%;height:100%;background:var(--zx-state-info);"></span></div></div>
+                  </div>
+                  <span class="role-flip-hint">← 点击翻回</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Admin (narrowest) -->
+            <div class="role-card" style="cursor:pointer;">
+              <div class="role-card-inner">
+                <div class="role-face role-front" style="border-color:var(--zx-state-info);">
+                  <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;"><i data-lucide="bar-chart-3" style="width:26px;height:26px;color:var(--zx-state-info);"></i><span style="font-family:var(--zx-font-serif);font-size:22px;font-weight:700;color:var(--zx-foreground);">管理端</span></div>
+                  <p style="font-size:14px;color:var(--zx-muted-foreground);line-height:1.6;margin:0 0 18px 0;">全校数据看板、教师绩效、系统监控,全局决策有据可依。</p>
+                  <div style="display:flex;gap:20px;flex-wrap:wrap;font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-foreground);">
+                    <span>学生 <b style="color:var(--zx-state-success);font-family:var(--zx-font-serif);">12,486</b></span>
+                    <span>教师 <b style="color:var(--zx-state-info);font-family:var(--zx-font-serif);">342</b></span>
+                    <span>在线率 <b style="color:var(--zx-state-success);font-family:var(--zx-font-serif);">99.8%</b></span>
+                  </div>
+                  <span class="role-flip-hint">点击翻转 →</span>
+                </div>
+                <div class="role-face role-back" style="border-color:var(--zx-state-info);">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;"><span style="font-family:var(--zx-font-serif);font-size:16px;font-weight:700;color:var(--zx-foreground);">系统监控</span><span style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-state-success);">● healthy</span></div>
+                  <div style="display:flex;flex-direction:column;gap:10px;">
+                    <div><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--zx-foreground);margin-bottom:4px;"><span>Coordinator CPU</span><span style="font-family:var(--zx-font-mono);color:var(--zx-primary);">64%</span></div><div class="zx-bar" style="height:5px;"><span style="display:block;width:64%;height:100%;background:var(--zx-primary);"></span></div></div>
+                    <div><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--zx-foreground);margin-bottom:4px;"><span>Document CPU</span><span style="font-family:var(--zx-font-mono);color:var(--zx-state-info);">81%</span></div><div class="zx-bar" style="height:5px;"><span style="display:block;width:81%;height:100%;background:var(--zx-state-info);"></span></div></div>
+                    <div><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--zx-foreground);margin-bottom:4px;"><span>API 响应</span><span style="font-family:var(--zx-font-mono);color:var(--zx-state-success);">128ms</span></div><div class="zx-bar" style="height:5px;"><span style="display:block;width:15%;height:100%;background:var(--zx-state-success);"></span></div></div>
+                  </div>
+                  <span class="role-flip-hint">← 点击翻回</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================== SECTION 05: TECH STACK (3D terminal push-in) ============================== -->
+      <section id="tech" class="reveal-3d" style="background:var(--zx-background);padding:96px 0;border-top:1px solid var(--zx-border);">
+        <div style="max-width:1320px;margin:0 auto;padding:0 24px;">
+          <div style="margin-bottom:48px;">
+            <div style="font-family:var(--zx-font-serif);font-size:clamp(56px,7vw,80px);font-weight:600;color:var(--zx-primary);line-height:1;letter-spacing:-0.02em;">05</div>
+            <h2 style="font-family:var(--zx-font-display);font-weight:700;font-size:clamp(28px,4vw,40px);line-height:1.1;letter-spacing:-0.02em;color:var(--zx-foreground);margin:12px 0 0 0;">技术栈</h2>
+            <p style="font-size:16px;color:var(--zx-muted-foreground);line-height:1.6;max-width:620px;margin:16px 0 0 0;">基于 Spark4.0 Ultra 多智能体框架,前后端分离架构,支持 3D 知识图谱可视化。</p>
+          </div>
+
+          <div class="tech-stage">
+            <div class="terminal-panel" style="border-radius:8px;overflow:hidden;border:1px solid var(--zx-border);background:#050507;box-shadow:var(--zx-shadow-lg);">
+              <div style="display:flex;align-items:center;gap:8px;padding:0 14px;height:36px;background:var(--zx-popover);border-bottom:1px solid var(--zx-border);">
+                <span style="width:10px;height:10px;border-radius:50%;background:var(--zx-state-error);"></span>
+                <span style="width:10px;height:10px;border-radius:50%;background:var(--zx-primary);"></span>
+                <span style="width:10px;height:10px;border-radius:50%;background:var(--zx-state-success);"></span>
+                <span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);margin-left:8px;">zhijiaoxing — tech-stack — 80x24</span>
+              </div>
+              <div style="padding:24px;font-family:var(--zx-font-mono);font-size:13px;line-height:1.85;">
+                <div style="color:var(--zx-state-success);">$ zhijiaoxing --tech-stack</div>
+                <div style="height:10px;"></div>
+                <div style="display:flex;gap:16px;"><span style="color:var(--zx-primary);font-weight:600;width:110px;flex-shrink:0;">FRONTEND</span><span style="color:var(--zx-foreground);">Taro 4.x · React · TypeScript · SCSS</span></div>
+                <div style="display:flex;gap:16px;"><span style="color:var(--zx-primary);font-weight:600;width:110px;flex-shrink:0;">BACKEND</span><span style="color:var(--zx-foreground);">Node.js · Express · Flask · SQLAlchemy</span></div>
+                <div style="display:flex;gap:16px;"><span style="color:var(--zx-primary);font-weight:600;width:110px;flex-shrink:0;">DATABASE</span><span style="color:var(--zx-foreground);">MongoDB · MySQL / PostgreSQL</span></div>
+                <div style="display:flex;gap:16px;"><span style="color:var(--zx-primary);font-weight:600;width:110px;flex-shrink:0;">AI ENGINE</span><span style="color:var(--zx-foreground);">Spark4.0 Ultra · Multi-Agent Framework</span></div>
+                <div style="display:flex;gap:16px;"><span style="color:var(--zx-primary);font-weight:600;width:110px;flex-shrink:0;">AGENTS</span><span style="color:var(--zx-foreground);">Coordinator · Document · Exercise · Media</span></div>
+                <div style="display:flex;gap:16px;"><span style="color:var(--zx-muted-foreground);width:110px;flex-shrink:0;"></span><span style="color:var(--zx-foreground);">Recommendation · Project · Profile · KnowledgeGraph</span></div>
+                <div style="display:flex;gap:16px;"><span style="color:var(--zx-primary);font-weight:600;width:110px;flex-shrink:0;">VIZ</span><span style="color:var(--zx-foreground);">3D Knowledge Graph · D3.js · Canvas</span></div>
+                <div style="display:flex;gap:16px;"><span style="color:var(--zx-primary);font-weight:600;width:110px;flex-shrink:0;">AUTH</span><span style="color:var(--zx-foreground);">JWT · RBAC · Session Management</span></div>
+                <div style="height:14px;"></div>
+                <div style="color:var(--zx-muted-foreground);">Status: <span style="color:var(--zx-state-success);">8 agents online</span> · <span style="color:var(--zx-foreground);">7 resource types</span> · <span style="color:var(--zx-primary);">94% accuracy</span></div>
+                <div style="color:var(--zx-state-success);margin-top:8px;">$ <span class="term-cursor"></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================== QUOTE (3D rotate from bottom) ============================== -->
+      <section style="background:var(--zx-card);padding:96px 0;border-top:1px solid var(--zx-border);">
+        <div class="quote-stage" style="max-width:1000px;margin:0 auto;padding:0 24px;position:relative;">
+          <div class="quote-card" style="position:relative;">
+            <span style="position:absolute;left:-12px;top:-32px;font-family:var(--zx-font-serif);font-size:120px;font-weight:700;color:var(--zx-primary);line-height:1;opacity:0.8;">"</span>
+            <blockquote style="margin:0;padding:0 0 0 48px;">
+              <p style="font-family:var(--zx-font-serif);font-size:clamp(22px,3vw,30px);font-weight:500;line-height:1.5;color:var(--zx-foreground);margin:0;">智教星的错题诊疗系统让我们的教学效率提升了 3 倍。AI 精准诊断每个学生的薄弱点,靶向练习让提分真正发生在每个学生身上。</p>
+              <footer style="margin-top:24px;font-family:var(--zx-font-mono);font-size:13px;color:var(--zx-muted-foreground);">— 张教授, 清华大学数学系</footer>
+            </blockquote>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================== CTA (3D scale from depth) ============================== -->
+      <section id="cta" style="background:var(--zx-background);padding:120px 24px;border-top:1px solid var(--zx-border);text-align:center;position:relative;overflow:hidden;">
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:600px;height:600px;max-width:90vw;background:radial-gradient(circle,rgba(232,181,71,0.06) 0%,transparent 70%);pointer-events:none;"></div>
+        <div class="cta-stage" style="max-width:680px;margin:0 auto;position:relative;">
+          <div class="cta-content">
+            <h2 style="font-family:var(--zx-font-display);font-weight:800;font-size:clamp(32px,5vw,48px);line-height:1.1;letter-spacing:-0.03em;color:var(--zx-foreground);margin:0;">准备好让每个错题都被精准诊疗了吗</h2>
+            <p style="font-size:17px;color:var(--zx-muted-foreground);line-height:1.6;margin:24px 0 0 0;">8 个智能体已就绪,3 分钟部署,即刻开启 AI 驱动的精准教学</p>
+            <a href="#" style="display:inline-flex;align-items:center;gap:8px;font-family:var(--zx-font-display);font-size:17px;font-weight:600;color:var(--zx-primary-foreground);background:var(--zx-primary);padding:16px 36px;border-radius:8px;text-decoration:none;margin-top:36px;box-shadow:0 0 32px rgba(232,181,71,0.2);">免费试用 <i data-lucide="arrow-right" style="width:18px;height:18px;"></i></a>
+            <p style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);margin:20px 0 0 0;letter-spacing:0.05em;">无需信用卡 · 5 分钟部署 · 985/211 信赖之选</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================== FOOTER (4-col 2/3/3/4, parallax fade) ============================== -->
+      <footer class="reveal-3d" style="background:var(--zx-card);border-top:1px solid var(--zx-border);padding:64px 0 32px;">
+        <div style="max-width:1320px;margin:0 auto;padding:0 24px;">
+          <div class="zx-footer-grid" style="display:grid;grid-template-columns:1fr;gap:32px;">
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;">
+                <i data-lucide="hexagon" style="width:24px;height:24px;color:var(--zx-primary);"></i>
+                <span style="font-family:var(--zx-font-serif);font-size:18px;font-weight:700;color:var(--zx-foreground);">智教星</span>
+              </div>
+              <p style="font-size:13px;color:var(--zx-muted-foreground);line-height:1.6;margin:0;">基于多智能体的自适应错题诊疗系统,让每个学生获得个性化学习路径。</p>
+              <div style="display:flex;gap:12px;margin-top:20px;">
+                <a href="#" style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--zx-border);border-radius:6px;color:var(--zx-muted-foreground);text-decoration:none;"><i data-lucide="github" style="width:16px;height:16px;"></i></a>
+                <a href="#" style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--zx-border);border-radius:6px;color:var(--zx-muted-foreground);text-decoration:none;"><i data-lucide="mail" style="width:16px;height:16px;"></i></a>
+                <a href="#" style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--zx-border);border-radius:6px;color:var(--zx-muted-foreground);text-decoration:none;"><i data-lucide="rss" style="width:16px;height:16px;"></i></a>
+              </div>
+            </div>
+            <div>
+              <h4 style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);letter-spacing:0.15em;margin:0 0 16px 0;text-transform:uppercase;">产品</h4>
+              <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;">
+                <li><a href="#hero" style="font-size:13px;color:var(--zx-foreground);text-decoration:none;">产品概览</a></li>
+                <li><a href="#architecture" style="font-size:13px;color:var(--zx-foreground);text-decoration:none;">多智能体架构</a></li>
+                <li><a href="#features" style="font-size:13px;color:var(--zx-foreground);text-decoration:none;">核心功能</a></li>
+                <li><a href="#profile" style="font-size:13px;color:var(--zx-foreground);text-decoration:none;">学情数据</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);letter-spacing:0.15em;margin:0 0 16px 0;text-transform:uppercase;">资源</h4>
+              <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;">
+                <li><a href="#" style="font-size:13px;color:var(--zx-foreground);text-decoration:none;">开发文档</a></li>
+                <li><a href="#" style="font-size:13px;color:var(--zx-foreground);text-decoration:none;">API 参考</a></li>
+                <li><a href="#" style="font-size:13px;color:var(--zx-foreground);text-decoration:none;">更新日志</a></li>
+                <li><a href="#" style="font-size:13px;color:var(--zx-foreground);text-decoration:none;">系统状态</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);letter-spacing:0.15em;margin:0 0 16px 0;text-transform:uppercase;">订阅更新</h4>
+              <p style="font-size:13px;color:var(--zx-muted-foreground);line-height:1.6;margin:0 0 16px 0;">获取智教星最新功能更新与教育 AI 行业洞察。</p>
+              <div style="display:flex;gap:8px;">
+                <input type="email" placeholder="your@email.com" style="flex:1;background:var(--zx-popover);border:1px solid var(--zx-border);border-radius:6px;padding:10px 14px;font-family:var(--zx-font-mono);font-size:13px;color:var(--zx-foreground);outline:none;min-width:0;" />
+                <button style="font-family:var(--zx-font-mono);font-size:12px;font-weight:600;color:var(--zx-primary-foreground);background:var(--zx-primary);border:none;padding:10px 18px;border-radius:6px;cursor:pointer;white-space:nowrap;">订阅</button>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:48px;padding-top:24px;border-top:1px solid var(--zx-border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+            <span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);">© 2026 智教星 ZhiJiaoXing · All rights reserved</span>
+            <span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);">Made with multi-agent system · Spark4.0 Ultra</span>
+          </div>
+        </div>
+      </footer>
+    </main>
+    <style id="critical-layout">
+      /* ============================================================
+         v5 · CSS 3D Scroll Cinematic — critical layout + 3D transforms
+         Static-rendering safe: every hidden initial state is gated
+         behind html.js-3d (added by JS as its first action). Without
+         JS, all content renders visible in a flat, readable layout.
+         ============================================================ */
+      * { box-sizing: border-box; }
+      body { overflow-x: hidden; }
+      main { position: relative; }
+      @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+
+      /* ---------- NAV: 3D push-back on scroll ---------- */
+      .zx-nav { transform-origin: top center; transition: transform .45s cubic-bezier(.4,0,.2,1); will-change: transform; }
+      html.js-3d .zx-nav.nav-pushed { transform: perspective(900px) rotateX(8deg) translateZ(-40px); }
+      @media (min-width: 900px) { .zx-nav-links { display: flex !important; } }
+
+      /* ---------- HERO: 3D perspective layers + mouse parallax tilt ---------- */
+      .hero-scene { perspective: 1200px; perspective-origin: 50% 42%; }
+      .hero-stage { transform-style: preserve-3d; transition: transform .12s ease-out; will-change: transform; }
+      .hero-glow { animation: heroGlowPulse 6s ease-in-out infinite; }
+      @keyframes heroGlowPulse { 0%,100% { opacity: .85; } 50% { opacity: 1; } }
+      .shape-hex { animation: shapeSpin 18s linear infinite; }
+      .shape-ring { animation: shapeSpin 26s linear infinite reverse; }
+      .shape-square { animation: shapeFloat 8s ease-in-out infinite; }
+      .shape-tri { animation: shapeFloat 11s ease-in-out infinite; }
+      @keyframes shapeSpin { to { transform: rotate(360deg); } }
+      @keyframes shapeFloat { 0%,100% { transform: translateY(0) rotate(12deg); } 50% { transform: translateY(-14px) rotate(12deg); } }
+      .particle { animation: particleFloat 5s ease-in-out infinite; }
+      .particle:nth-child(2) { animation-duration: 7s; animation-delay: -1s; }
+      .particle:nth-child(3) { animation-duration: 6s; animation-delay: -2s; }
+      .particle:nth-child(4) { animation-duration: 8s; animation-delay: -.5s; }
+      .particle:nth-child(5) { animation-duration: 5.5s; animation-delay: -3s; }
+      @keyframes particleFloat { 0%,100% { transform: translate(0,0); opacity: .7; } 50% { transform: translate(8px,-12px); opacity: 1; } }
+      .scroll-arrow { animation: scrollBounce 1.8s ease-in-out infinite; }
+      @keyframes scrollBounce { 0%,100% { transform: translateY(0); opacity: .7; } 50% { transform: translateY(8px); opacity: 1; } }
+
+      /* ---------- MARQUEE ---------- */
+      @keyframes zx-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+      /* ---------- SECTION 01: AGENT STACK (3D fan flip-out) ----------
+         Default (no JS): cards flow as a normal vertical list, all readable.
+         js-3d: cards become absolute, stacked by depth, then fan out on reveal. */
+      .agent-card { position: relative; }
+      .agent-card-inner { background: var(--zx-card); border: 1px solid var(--zx-border); border-radius: 10px; padding: 16px 18px; box-shadow: var(--zx-shadow-md); transition: border-color .3s, box-shadow .3s, transform .3s; }
+      .agent-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+      .agent-icon { display: inline-flex; flex-shrink: 0; }
+      .agent-name { font-family: var(--zx-font-display); font-size: 15px; font-weight: 700; color: var(--zx-foreground); letter-spacing: -.01em; }
+      .agent-role { font-family: var(--zx-font-mono); font-size: 11px; color: var(--zx-muted-foreground); margin-top: 2px; }
+      .agent-status { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-family: var(--zx-font-mono); font-size: 10px; letter-spacing: .05em; flex-shrink: 0; }
+      .agent-status .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+      .agent-task { font-size: 12px; color: var(--zx-foreground); margin-bottom: 8px; }
+      .agent-prog { height: 5px; background: var(--zx-border); border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
+      .agent-prog > span { display: block; height: 100%; border-radius: 3px; }
+      .agent-meta { font-family: var(--zx-font-mono); font-size: 10px; color: var(--zx-muted-foreground); }
+
+      html.js-3d .agent-stack { perspective: 1200px; }
+      html.js-3d .agent-stage { position: relative; min-height: 250px; transform-style: preserve-3d; }
+      html.js-3d .agent-card { position: absolute; top: 0; left: 50%; width: 320px; max-width: 92vw; margin-left: -160px; transform: translateZ(calc(var(--i) * -34px)); opacity: calc(1 - var(--i) * 0.07); transition: transform .85s cubic-bezier(.25,.46,.45,.94), opacity .85s; transition-delay: calc(var(--i) * 85ms); will-change: transform, opacity; }
+      html.js-3d .agent-card:hover .agent-card-inner { transform: translateY(-4px); box-shadow: var(--zx-shadow-lg); }
+      html.js-3d .agent-stack.is-revealed .agent-card { transform: translateX(calc((var(--i) - 3.5) * 90px)) translateY(calc((var(--i) - 3.5) * 12px)) translateZ(calc((3.5 - var(--i)) * 8px)) rotateY(calc((3.5 - var(--i)) * 6deg)) rotateZ(calc((var(--i) - 3.5) * .6deg)); opacity: 1; }
+      html.js-3d .agent-prog > span { transform: scaleX(0); transform-origin: left; transition: transform 1.2s cubic-bezier(.25,.46,.45,.94); transition-delay: calc(var(--i) * 85ms + .4s); }
+      html.js-3d .agent-stack.is-revealed .agent-prog > span { transform: scaleX(1); }
+
+      /* ---------- SECTION 02: FEATURE BANDS (3D parallax layers) ---------- */
+      .feature-band { perspective: 900px; }
+      .feature-stage { transform-style: preserve-3d; position: relative; }
+      .feature-bg, .feature-content, .feature-accent { will-change: transform; transition: transform .12s linear; }
+
+      /* ---------- SECTION 03: RADAR (3D rotate on scroll) ---------- */
+      .radar-stage { perspective: 1400px; }
+      .radar-card { transform-style: preserve-3d; transition: transform .25s ease-out; will-change: transform; }
+      .dim-bar-head { display: flex; justify-content: space-between; font-size: 13px; color: var(--zx-foreground); margin-bottom: 6px; }
+      .zx-bar { background: var(--zx-border); border-radius: 3px; overflow: hidden; }
+      .zx-bar > span { display: block; height: 100%; border-radius: 3px; width: var(--w, 0%); }
+      html.js-3d .zx-bar > span { transform: scaleX(0); transform-origin: left; transition: transform 1.3s cubic-bezier(.25,.46,.45,.94); }
+      html.js-3d .dim-bars.is-revealed .zx-bar > span { transform: scaleX(1); }
+
+      /* ---------- SECTION 04: ROLE FLIP CARDS (unequal width + height) ---------- */
+      .role-card { perspective: 1400px; }
+      .role-face { background: var(--zx-card); border: 1px solid var(--zx-border); border-radius: 10px; padding: 22px; box-shadow: var(--zx-shadow-md); }
+      .role-flip-hint { margin-top: auto; align-self: flex-end; font-family: var(--zx-font-mono); font-size: 10px; color: var(--zx-muted-foreground); letter-spacing: .05em; }
+      html.js-3d .role-card-inner { position: relative; min-height: 240px; transform-style: preserve-3d; transition: transform .85s cubic-bezier(.4,0,.2,1); will-change: transform; }
+      html.js-3d .role-face { position: absolute; inset: 0; display: flex; flex-direction: column; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+      html.js-3d .role-back { transform: rotateY(180deg); }
+      html.js-3d .role-card.is-flipped .role-card-inner { transform: rotateY(180deg); }
+      @media (min-width: 900px) {
+        .role-grid { grid-template-columns: 1.5fr 1.1fr .85fr !important; align-items: start; }
+        html.js-3d .role-card:nth-child(1) .role-card-inner { min-height: 300px; }
+        html.js-3d .role-card:nth-child(2) .role-card-inner { min-height: 252px; }
+        html.js-3d .role-card:nth-child(3) .role-card-inner { min-height: 224px; }
+      }
+
+      /* ---------- SECTION 05: TERMINAL PUSH-IN ---------- */
+      .tech-stage { perspective: 1200px; }
+      .term-cursor { display: inline-block; width: 8px; height: 15px; background: var(--zx-state-success); vertical-align: middle; animation: termBlink 1s steps(2) infinite; }
+      @keyframes termBlink { 50% { opacity: 0; } }
+      html.js-3d .terminal-panel { transform: translateZ(-260px); opacity: 0; transition: transform 1.1s cubic-bezier(.25,.46,.45,.94), opacity 1.1s; will-change: transform, opacity; }
+      html.js-3d .terminal-panel.is-visible { transform: translateZ(0); opacity: 1; }
+
+      /* ---------- QUOTE: 3D rotate from bottom ---------- */
+      .quote-stage { perspective: 1200px; }
+      html.js-3d .quote-card { transform: rotateX(42deg) translateY(110px); opacity: 0; transition: transform 1s cubic-bezier(.25,.46,.45,.94), opacity 1s; will-change: transform, opacity; transform-origin: bottom center; }
+      html.js-3d .quote-card.is-visible { transform: rotateX(0) translateY(0); opacity: 1; }
+
+      /* ---------- CTA: 3D scale from depth ---------- */
+      .cta-stage { perspective: 1200px; }
+      html.js-3d .cta-content { transform: translateZ(-320px) scale(.72); opacity: 0; transition: transform 1.2s cubic-bezier(.25,.46,.45,.94), opacity 1.2s; will-change: transform, opacity; }
+      html.js-3d .cta-content.is-visible { transform: translateZ(0) scale(1); opacity: 1; }
+
+      /* ---------- GENERIC REVEAL ---------- */
+      html.js-3d .reveal-3d { opacity: 0; transform: translateY(28px); transition: opacity .9s ease-out, transform .9s cubic-bezier(.25,.46,.45,.94); }
+      html.js-3d .reveal-3d.is-visible { opacity: 1; transform: translateY(0); }
+
+      /* ---------- FOOTER desktop 2/3/3/4 ---------- */
+      @media (min-width: 900px) { .zx-footer-grid { grid-template-columns: 2fr 3fr 3fr 4fr !important; } }
+
+      /* ---------- MOBILE FALLBACK: disable heavy 3D, keep readable ---------- */
+      @media (max-width: 768px) {
+        html.js-3d .agent-stage { min-height: 0 !important; }
+        html.js-3d .agent-card { position: relative !important; top: auto !important; left: auto !important; right: auto !important; width: auto !important; max-width: none !important; margin-left: 0 !important; transform: none !important; opacity: 1 !important; }
+        html.js-3d .agent-stack.is-revealed .agent-card { transform: none !important; }
+        html.js-3d .agent-prog > span { transform: scaleX(1) !important; }
+        .hero-stage { transform: none !important; }
+      }
+
+      /* ---------- REDUCED MOTION ---------- */
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+        .hero-stage, .radar-card, .feature-bg, .feature-content, .feature-accent { transform: none !important; }
+      }
+    </style>
+    <script>lucide.createIcons();</script>
+    <script>
+      (function () {
+        // First action: mark JS active so gated 3D initial states apply.
+        // If this script fails before here, content stays fully visible (flat).
+        document.documentElement.classList.add('js-3d');
+
+        var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var isMobile = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+
+        // rAF throttle for scroll listeners
+        var scrollCbs = [];
+        var scrollScheduled = false;
+        function onScroll(fn) { scrollCbs.push(fn); }
+        function flushScroll() {
+          scrollScheduled = false;
+          for (var i = 0; i < scrollCbs.length; i++) { try { scrollCbs[i](); } catch (e) {} }
+        }
+        window.addEventListener('scroll', function () {
+          if (scrollScheduled) return;
+          scrollScheduled = true;
+          requestAnimationFrame(flushScroll);
+        }, { passive: true });
+
+        // ---------- NAV 3D push-back ----------
+        var nav = document.getElementById('zx-nav');
+        function navUpdate() {
+          if (!nav) return;
+          if (window.scrollY > 80) nav.classList.add('nav-pushed');
+          else nav.classList.remove('nav-pushed');
+        }
+        onScroll(navUpdate);
+        navUpdate();
+
+        // ---------- HERO mouse parallax tilt ----------
+        var heroScene = document.querySelector('.hero-scene');
+        var heroStage = document.querySelector('.hero-stage');
+        if (heroScene && heroStage && !reduce && !isMobile) {
+          var ticking = false;
+          heroScene.addEventListener('mousemove', function (e) {
+            if (ticking) return; ticking = true;
+            requestAnimationFrame(function () {
+              var r = heroScene.getBoundingClientRect();
+              var mx = (e.clientX - r.left) / r.width - 0.5;
+              var my = (e.clientY - r.top) / r.height - 0.5;
+              heroStage.style.transform = 'rotateY(' + (mx * 10).toFixed(2) + 'deg) rotateX(' + (-my * 10).toFixed(2) + 'deg)';
+              ticking = false;
+            });
+          });
+          heroScene.addEventListener('mouseleave', function () {
+            heroStage.style.transform = 'rotateY(0deg) rotateX(0deg)';
+          });
+        }
+
+        // ---------- IntersectionObserver: generic reveal ----------
+        var revealIO = new IntersectionObserver(function (entries) {
+          entries.forEach(function (en) {
+            if (en.isIntersecting) { en.target.classList.add('is-visible'); revealIO.unobserve(en.target); }
+          });
+        }, { threshold: 0.18, rootMargin: '0px 0px -8% 0px' });
+        document.querySelectorAll('.reveal-3d').forEach(function (el) { revealIO.observe(el); });
+
+        // ---------- Agent stack staggered fan ----------
+        var agentIO = new IntersectionObserver(function (entries) {
+          entries.forEach(function (en) {
+            if (en.isIntersecting) { en.target.classList.add('is-revealed'); agentIO.unobserve(en.target); }
+          });
+        }, { threshold: 0.32 });
+        document.querySelectorAll('.agent-stack').forEach(function (el) { agentIO.observe(el); });
+
+        // ---------- Terminal / Quote / CTA deep push-in ----------
+        var deepIO = new IntersectionObserver(function (entries) {
+          entries.forEach(function (en) {
+            if (en.isIntersecting) { en.target.classList.add('is-visible'); deepIO.unobserve(en.target); }
+          });
+        }, { threshold: 0.2 });
+        document.querySelectorAll('.terminal-panel, .quote-card, .cta-content').forEach(function (el) { deepIO.observe(el); });
+
+        // ---------- Dim bars grow ----------
+        var dimIO = new IntersectionObserver(function (entries) {
+          entries.forEach(function (en) {
+            if (en.isIntersecting) {
+              var bars = en.target.querySelectorAll('.zx-bar > span');
+              bars.forEach(function (s, i) { s.style.transitionDelay = (i * 90) + 'ms'; });
+              en.target.classList.add('is-revealed');
+              dimIO.unobserve(en.target);
+            }
+          });
+        }, { threshold: 0.3 });
+        document.querySelectorAll('.dim-bars').forEach(function (el) { dimIO.observe(el); });
+
+        // ---------- Feature band 3D parallax (scroll-driven) ----------
+        var bands = document.querySelectorAll('.feature-band');
+        function bandUpdate() {
+          var vh = window.innerHeight || document.documentElement.clientHeight;
+          bands.forEach(function (band) {
+            var r = band.getBoundingClientRect();
+            var center = r.top + r.height / 2;
+            var p = (center - vh / 2) / (vh / 2);
+            if (p > 1.3 || p < -1.3) return;
+            var bg = band.querySelector('.feature-bg');
+            var ct = band.querySelector('.feature-content');
+            var ac = band.querySelector('.feature-accent');
+            if (bg) bg.style.transform = 'translateZ(-60px) translateY(' + (p * -22).toFixed(1) + 'px)';
+            if (ct) ct.style.transform = 'translateZ(30px) translateY(' + (p * 14).toFixed(1) + 'px)';
+            if (ac) ac.style.transform = 'translateZ(80px) translateY(' + (p * -34).toFixed(1) + 'px)';
+          });
+        }
+        if (!reduce) { onScroll(bandUpdate); bandUpdate(); }
+
+        // ---------- Radar card 3D rotation on scroll ----------
+        var radarCard = document.querySelector('.radar-card');
+        var radarStage = radarCard ? radarCard.closest('.radar-stage') : null;
+        function radarUpdate() {
+          if (!radarCard || !radarStage) return;
+          var r = radarStage.getBoundingClientRect();
+          var vh = window.innerHeight || document.documentElement.clientHeight;
+          if (r.top > vh || r.bottom < 0) return;
+          var prog = (vh / 2 - (r.top + r.height / 2)) / (vh / 2);
+          var rx = Math.max(-15, Math.min(15, prog * 15));
+          var ry = Math.max(-12, Math.min(12, -prog * 10));
+          radarCard.style.transform = 'rotateX(' + rx.toFixed(2) + 'deg) rotateY(' + ry.toFixed(2) + 'deg)';
+        }
+        if (!reduce && !isMobile) { onScroll(radarUpdate); radarUpdate(); }
+
+        // ---------- Role cards: click flip + auto-flip showcase on enter ----------
+        var roleCards = document.querySelectorAll('.role-card');
+        var roleIO = new IntersectionObserver(function (entries) {
+          entries.forEach(function (en) {
+            if (en.isIntersecting) {
+              var card = en.target;
+              setTimeout(function () { card.classList.add('is-flipped'); }, 650);
+              setTimeout(function () { card.classList.remove('is-flipped'); }, 2100);
+              roleIO.unobserve(card);
+            }
+          });
+        }, { threshold: 0.5 });
+        roleCards.forEach(function (c) {
+          c.addEventListener('click', function () { c.classList.toggle('is-flipped'); });
+          if (!reduce && !isMobile) roleIO.observe(c);
+        });
+
+        // Safety: re-render lucide icons in case any were added late.
+        if (window.lucide && typeof window.lucide.createIcons === 'function') {
+          try { window.lucide.createIcons(); } catch (e) {}
+        }
+      })();
+    </script>
+</body>
+</html>

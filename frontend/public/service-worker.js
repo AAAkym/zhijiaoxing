@@ -4,9 +4,9 @@
  * 提供离线访问能力、缓存策略和推送通知支持
  */
 
-const CACHE_NAME = 'zhijiaoxing-cache-v1'
-const STATIC_CACHE_NAME = 'zhijiaoxing-static-v1'
-const DYNAMIC_CACHE_NAME = 'zhijiaoxing-dynamic-v1'
+const CACHE_NAME = 'eduai-pro-cache-v1'
+const STATIC_CACHE_NAME = 'eduai-pro-static-v1'
+const DYNAMIC_CACHE_NAME = 'eduai-pro-dynamic-v1'
 
 // 需要预缓存的静态资源
 const STATIC_ASSETS = [
@@ -230,7 +230,7 @@ self.addEventListener('push', (event) => {
   console.log('[Service Worker] Push received:', event)
   
   let notificationData = {
-    title: '智教星',
+    title: 'EduAI Pro',
     body: '您有一条新消息',
     icon: '/icons/icon-192x192.png',
     badge: '/icons/badge-72x72.png',
@@ -315,7 +315,7 @@ self.addEventListener('sync', (event) => {
 async function syncData() {
   try {
     // 从IndexedDB获取待同步的数据
-    const db = await openDB('zhijiaoxing-sync', 1)
+    const db = await openDB('eduai-pro-sync', 1)
     const tx = db.transaction('sync-queue', 'readonly')
     const store = tx.objectStore('sync-queue')
     const requests = await store.getAll()

@@ -100,7 +100,7 @@ function practiceReducer(state, action) {
     case 'SET_CURRENT_INDEX':
       return { ...state, currentIndex: action.payload }
     
-    case 'TOGGLE_MARK':
+    case 'TOGGLE_MARK': {
       const newMarked = new Set(state.markedQuestions)
       if (newMarked.has(action.payload)) {
         newMarked.delete(action.payload)
@@ -108,6 +108,7 @@ function practiceReducer(state, action) {
         newMarked.add(action.payload)
       }
       return { ...state, markedQuestions: newMarked }
+    }
     
     case 'SET_FILTER':
       return { ...state, filters: { ...state.filters, ...action.payload } }

@@ -11,7 +11,6 @@ import {
   BookOpen, 
   Clock, 
   Target, 
-  Star, 
   Filter, 
   Search,
   ChevronRight,
@@ -42,7 +41,9 @@ const typeConfig = {
   mixed: { label: '混合题型', icon: '📋' }
 }
 
-export default function PracticeSelector({ myCourses, onSelectPractice }) {
+export default function PracticeSelector({
+  myCourses, onSelectPractice, initialAssessmentId, onInitialAssessmentHandled,
+}) {
   const { filters, setFilter } = usePractice()
   const [searchQuery, setSearchQuery] = useState('')
   const [assessments, setAssessments] = useState([])
@@ -54,6 +55,7 @@ export default function PracticeSelector({ myCourses, onSelectPractice }) {
   const [selectedCompleted, setSelectedCompleted] = useState(null)
   const searchInputRef = useRef(null)
   const lastSyncTimeRef = useRef(null)
+  const autoOpenedAssessmentRef = useRef(null)
 
   useEffect(() => {
     loadAssessments()
@@ -194,11 +196,6 @@ export default function PracticeSelector({ myCourses, onSelectPractice }) {
     return [{ value: 'all', label: '全部课程' }, ...Array.from(courseMap.values())]
   }, [assessments])
 
-  const chapters = useMemo(() => {
-    const chapterSet = new Set(assessments.map(a => a.chapter).filter(Boolean))
-    return [{ value: 'all', label: '全部章节' }, ...Array.from(chapterSet).map(c => ({ value: c, label: c }))]
-  }, [assessments])
-
   const filteredAssessments = useMemo(() => {
     return assessments.filter(a => {
       if (filters.subject !== 'all' && String(a.courseId) !== filters.subject) return false
@@ -252,7 +249,7 @@ export default function PracticeSelector({ myCourses, onSelectPractice }) {
     setSelectedCompleted(null)
   }, [])
 
-  const handleSelectPractice = (assessment) => {
+  const handleSelectPractice = useCallback((assessment) => {
     let questionsData = assessment.questions
     if (typeof questionsData === 'string') {
       try {
@@ -321,21 +318,16 @@ export default function PracticeSelector({ myCourses, onSelectPractice }) {
     console.log('PracticeSelector - normalized questions:', normalizedQuestions.length, 'questions')
     
     onSelectPractice(assessment, normalizedQuestions)
-  }
+  }, [onSelectPractice])
 
-  const renderDifficultyStars = (difficulty) => {
-    const config = difficultyConfig[difficulty] || difficultyConfig.medium
-    return (
-      <div className="flex gap-0.5">
-        {[1, 2, 3].map(star => (
-          <Star 
-            key={star} 
-            className={`w-3 h-3 ${star <= config.stars ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`}
-          />
-        ))}
-      </div>
-    )
-  }
+  useEffect(() => {
+    if (!initialAssessmentId || autoOpenedAssessmentRef.current === initialAssessmentId) return
+    const assessment = assessments.find(item => Number(item.id) === Number(initialAssessmentId))
+    if (!assessment) return
+    autoOpenedAssessmentRef.current = initialAssessmentId
+    handleSelectPractice(assessment)
+    onInitialAssessmentHandled?.()
+  }, [assessments, handleSelectPractice, initialAssessmentId, onInitialAssessmentHandled])
 
   return (
     <div className="space-y-6">
@@ -645,10 +637,6 @@ function CompletedPracticeDetail({ practice, onClose }) {
   }
 
   const results = evaluationData?.results || []
-  const answers = typeof practice.answers === 'string' 
-    ? JSON.parse(practice.answers) 
-    : practice.answers || []
-
   const toggleQuestion = (questionId) => {
     const newExpanded = new Set(expandedQuestions)
     if (newExpanded.has(questionId)) {

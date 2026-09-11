@@ -1,0 +1,1532 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智教星 v4 · Canvas 粒子知识图谱版</title>
+    <style id="theme-vars">
+/* ============================================================
+   智教星 ZhiJiaoXing — Dark Product Theater Theme
+   深色产品剧场感 · 全幅居中 · 产品UI为主角 · 暖琥珀单点强调
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,900&family=JetBrains+Mono:wght@400;500;600&family=Noto+Serif+SC:wght@400;500;600;700;900&display=swap');
+
+:root {
+  /* ---- Core surfaces (warm near-black) ---- */
+  --zx-background: #0B0B0D;
+  --zx-foreground: #EDEAE3;
+
+  --zx-card: #141417;
+  --zx-card-foreground: #EDEAE3;
+
+  --zx-popover: #1B1C20;
+  --zx-popover-foreground: #EDEAE3;
+
+  /* ---- Brand accent (warm amber, used sparingly on data/key numbers) ---- */
+  --zx-primary: #E8B547;
+  --zx-primary-foreground: #0B0B0D;
+
+  --zx-secondary: #1B1C20;
+  --zx-secondary-foreground: #EDEAE3;
+
+  --zx-muted: #1B1C20;
+  --zx-muted-foreground: #8A8780;
+
+  --zx-accent: #E8B547;
+  --zx-accent-foreground: #0B0B0D;
+
+  --zx-destructive: #FF6B5B;
+  --zx-destructive-foreground: #0B0B0D;
+
+  --zx-border: #2A2A2E;
+  --zx-input: #2A2A2E;
+  --zx-ring: #E8B547;
+
+  /* ---- Radius scale (sharper = more editorial) ---- */
+  --zx-radius-sm: 3px;
+  --zx-radius-md: 6px;
+  --zx-radius-lg: 10px;
+
+  /* ---- State colors ---- */
+  --zx-state-success: #5BCC7B;
+  --zx-state-warning: #E8B547;
+  --zx-state-error: #FF6B5B;
+  --zx-state-info: #6BA8E8;
+
+  /* ---- Ink palette (warm dark grays) ---- */
+  --zx-ink-0: #0B0B0D;
+  --zx-ink-1: #141417;
+  --zx-ink-2: #1B1C20;
+  --zx-ink-3: #2A2A2E;
+  --zx-ink-4: #3D3D42;
+  --zx-ink-5: #5A5A5F;
+  --zx-ink-6: #8A8780;
+  --zx-ink-7: #B5B2AB;
+  --zx-ink-8: #EDEAE3;
+
+  /* ---- Accent (warm amber, restrained) ---- */
+  --zx-accent-light: #F0C569;
+  --zx-accent-muted: rgba(232, 181, 71, 0.1);
+
+  /* ---- Typography ---- */
+  --zx-font-display: 'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --zx-font-serif: 'Fraunces', 'Noto Serif SC', 'Songti SC', serif;
+  --zx-font-sans: 'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --zx-font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --zx-font-cn-serif: 'Noto Serif SC', 'Songti SC', serif;
+  --zx-font-cn-sans: 'PingFang SC', 'Microsoft YaHei', 'Inter', sans-serif;
+
+  /* ---- Rule lines ---- */
+  --zx-rule: #2A2A2E;
+  --zx-rule-subtle: #1B1C20;
+  --zx-rule-medium: #3D3D42;
+
+  /* ---- Shadows (subtle on dark) ---- */
+  --zx-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --zx-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --zx-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
+
+  /* ---- Glow (for accent elements on dark) ---- */
+  --zx-glow-accent: 0 0 24px rgba(232, 181, 71, 0.15);
+  --zx-glow-success: 0 0 24px rgba(91, 204, 123, 0.15);
+}
+
+/* Dark mode is the default; .light variant kept for contract compatibility */
+.light {
+  --zx-background: #0B0B0D;
+  --zx-foreground: #EDEAE3;
+  --zx-card: #141417;
+  --zx-card-foreground: #EDEAE3;
+  --zx-popover: #1B1C20;
+  --zx-popover-foreground: #EDEAE3;
+  --zx-primary: #E8B547;
+  --zx-primary-foreground: #0B0B0D;
+  --zx-muted: #1B1C20;
+  --zx-muted-foreground: #8A8780;
+  --zx-border: #2A2A2E;
+  --zx-input: #2A2A2E;
+  --zx-ring: #E8B547;
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--zx-background);
+    --color-foreground: var(--zx-foreground);
+    --color-card: var(--zx-card);
+    --color-card-foreground: var(--zx-card-foreground);
+    --color-popover: var(--zx-popover);
+    --color-popover-foreground: var(--zx-popover-foreground);
+    --color-primary: var(--zx-primary);
+    --color-primary-foreground: var(--zx-primary-foreground);
+    --color-secondary: var(--zx-secondary);
+    --color-secondary-foreground: var(--zx-secondary-foreground);
+    --color-muted: var(--zx-muted);
+    --color-muted-foreground: var(--zx-muted-foreground);
+    --color-accent: var(--zx-accent);
+    --color-accent-foreground: var(--zx-accent-foreground);
+    --color-destructive: var(--zx-destructive);
+    --color-destructive-foreground: var(--zx-destructive-foreground);
+    --color-border: var(--zx-border);
+    --color-input: var(--zx-input);
+    --color-ring: var(--zx-ring);
+    --radius-sm: var(--zx-radius-sm);
+    --radius-md: var(--zx-radius-md);
+    --radius-lg: var(--zx-radius-lg);
+  }
+  @layer base {
+    body { background: var(--zx-background); color: var(--zx-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style id="semantic-token-fallback">
+      .bg-background { background-color: var(--zx-background); }
+      .text-background { color: var(--zx-background); }
+      .border-background { border-color: var(--zx-background); }
+      .ring-background { --tw-ring-color: var(--zx-background); }
+      .bg-foreground { background-color: var(--zx-foreground); }
+      .text-foreground { color: var(--zx-foreground); }
+      .border-foreground { border-color: var(--zx-foreground); }
+      .ring-foreground { --tw-ring-color: var(--zx-foreground); }
+      .bg-card { background-color: var(--zx-card); }
+      .text-card { color: var(--zx-card); }
+      .border-card { border-color: var(--zx-card); }
+      .ring-card { --tw-ring-color: var(--zx-card); }
+      .bg-card-foreground { background-color: var(--zx-card-foreground); }
+      .text-card-foreground { color: var(--zx-card-foreground); }
+      .border-card-foreground { border-color: var(--zx-card-foreground); }
+      .ring-card-foreground { --tw-ring-color: var(--zx-card-foreground); }
+      .bg-popover { background-color: var(--zx-popover); }
+      .text-popover { color: var(--zx-popover); }
+      .border-popover { border-color: var(--zx-popover); }
+      .ring-popover { --tw-ring-color: var(--zx-popover); }
+      .bg-popover-foreground { background-color: var(--zx-popover-foreground); }
+      .text-popover-foreground { color: var(--zx-popover-foreground); }
+      .border-popover-foreground { border-color: var(--zx-popover-foreground); }
+      .ring-popover-foreground { --tw-ring-color: var(--zx-popover-foreground); }
+      .bg-primary { background-color: var(--zx-primary); }
+      .text-primary { color: var(--zx-primary); }
+      .border-primary { border-color: var(--zx-primary); }
+      .ring-primary { --tw-ring-color: var(--zx-primary); }
+      .bg-primary-foreground { background-color: var(--zx-primary-foreground); }
+      .text-primary-foreground { color: var(--zx-primary-foreground); }
+      .border-primary-foreground { border-color: var(--zx-primary-foreground); }
+      .ring-primary-foreground { --tw-ring-color: var(--zx-primary-foreground); }
+      .bg-secondary { background-color: var(--zx-secondary); }
+      .text-secondary { color: var(--zx-secondary); }
+      .border-secondary { border-color: var(--zx-secondary); }
+      .ring-secondary { --tw-ring-color: var(--zx-secondary); }
+      .bg-secondary-foreground { background-color: var(--zx-secondary-foreground); }
+      .text-secondary-foreground { color: var(--zx-secondary-foreground); }
+      .border-secondary-foreground { border-color: var(--zx-secondary-foreground); }
+      .ring-secondary-foreground { --tw-ring-color: var(--zx-secondary-foreground); }
+      .bg-muted { background-color: var(--zx-muted); }
+      .text-muted { color: var(--zx-muted); }
+      .border-muted { border-color: var(--zx-muted); }
+      .ring-muted { --tw-ring-color: var(--zx-muted); }
+      .bg-muted-foreground { background-color: var(--zx-muted-foreground); }
+      .text-muted-foreground { color: var(--zx-muted-foreground); }
+      .border-muted-foreground { border-color: var(--zx-muted-foreground); }
+      .ring-muted-foreground { --tw-ring-color: var(--zx-muted-foreground); }
+      .bg-accent { background-color: var(--zx-accent); }
+      .text-accent { color: var(--zx-accent); }
+      .border-accent { border-color: var(--zx-accent); }
+      .ring-accent { --tw-ring-color: var(--zx-accent); }
+      .bg-accent-foreground { background-color: var(--zx-accent-foreground); }
+      .text-accent-foreground { color: var(--zx-accent-foreground); }
+      .border-accent-foreground { border-color: var(--zx-accent-foreground); }
+      .ring-accent-foreground { --tw-ring-color: var(--zx-accent-foreground); }
+      .bg-destructive { background-color: var(--zx-destructive); }
+      .text-destructive { color: var(--zx-destructive); }
+      .border-destructive { border-color: var(--zx-destructive); }
+      .ring-destructive { --tw-ring-color: var(--zx-destructive); }
+      .bg-destructive-foreground { background-color: var(--zx-destructive-foreground); }
+      .text-destructive-foreground { color: var(--zx-destructive-foreground); }
+      .border-destructive-foreground { border-color: var(--zx-destructive-foreground); }
+      .ring-destructive-foreground { --tw-ring-color: var(--zx-destructive-foreground); }
+      .bg-border { background-color: var(--zx-border); }
+      .text-border { color: var(--zx-border); }
+      .border-border { border-color: var(--zx-border); }
+      .ring-border { --tw-ring-color: var(--zx-border); }
+      .bg-input { background-color: var(--zx-input); }
+      .text-input { color: var(--zx-input); }
+      .border-input { border-color: var(--zx-input); }
+      .ring-input { --tw-ring-color: var(--zx-input); }
+      .bg-ring { background-color: var(--zx-ring); }
+      .text-ring { color: var(--zx-ring); }
+      .border-ring { border-color: var(--zx-ring); }
+      .ring-ring { --tw-ring-color: var(--zx-ring); }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+    <main>
+
+      <!-- ============================== SECTION 1 · NAVIGATION + SCROLL PROGRESS ============================== -->
+      <div id="zx-scroll-progress" aria-hidden="true" style="position:fixed;top:0;left:0;height:2px;width:0;background:var(--zx-primary);z-index:300;box-shadow:0 0 8px rgba(232,181,71,0.6);transition:width 0.08s linear;"></div>
+      <nav id="zx-nav" style="position:fixed;top:0;left:0;right:0;z-index:200;background:rgba(11,11,13,0.72);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid var(--zx-border);">
+        <div style="max-width:1320px;margin:0 auto;padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;gap:24px;">
+          <a href="#hero" style="display:flex;align-items:center;gap:8px;text-decoration:none;flex-shrink:0;">
+            <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" style="color:var(--zx-primary);"><polygon points="12,2 21,7 21,17 12,22 3,17 3,7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><polygon points="12,7 16.5,9.5 16.5,14.5 12,17 7.5,14.5 7.5,9.5" fill="currentColor" opacity="0.35"/></svg>
+            <span style="font-family:var(--zx-font-serif);font-size:18px;font-weight:700;color:var(--zx-foreground);letter-spacing:-0.01em;">智教星</span>
+          </a>
+          <div class="zx-nav-links" style="display:none;align-items:center;gap:32px;">
+            <a href="#architecture" style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);text-decoration:none;letter-spacing:0.05em;">架构</a>
+            <a href="#features" style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);text-decoration:none;letter-spacing:0.05em;">功能</a>
+            <a href="#profile" style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);text-decoration:none;letter-spacing:0.05em;">画像</a>
+            <a href="#terminals" style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);text-decoration:none;letter-spacing:0.05em;">三端</a>
+            <a href="#tech" style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);text-decoration:none;letter-spacing:0.05em;">技术栈</a>
+          </div>
+          <div style="display:flex;align-items:center;gap:16px;flex-shrink:0;">
+            <a href="#cta" style="font-family:var(--zx-font-mono);font-size:12px;font-weight:600;color:var(--zx-primary-foreground);background:var(--zx-primary);padding:8px 18px;border-radius:6px;text-decoration:none;letter-spacing:0.03em;white-space:nowrap;">开始使用</a>
+          </div>
+        </div>
+      </nav>
+
+      <!-- ============================== SECTION 2 · HERO · CANVAS PARTICLE KNOWLEDGE GRAPH ============================== -->
+      <section id="hero" style="position:relative;min-height:100vh;background:var(--zx-background);overflow:hidden;display:flex;align-items:center;">
+        <canvas id="zx-graph-canvas" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;z-index:0;"></canvas>
+        <div style="position:absolute;inset:0;z-index:1;background:radial-gradient(ellipse 60% 50% at 50% 50%,transparent 0%,rgba(11,11,13,0.55) 70%,var(--zx-background) 100%);pointer-events:none;"></div>
+        <div style="position:relative;z-index:2;max-width:1320px;margin:0 auto;padding:120px 24px 0 24px;text-align:center;width:100%;">
+          <p style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.22em;margin:0 0 28px 0;text-transform:uppercase;">MULTI-AGENT · ADAPTIVE LEARNING · 2026</p>
+          <h1 style="font-family:var(--zx-font-display);font-weight:800;font-size:clamp(36px,6.4vw,76px);line-height:1.04;letter-spacing:-0.03em;color:var(--zx-foreground);margin:0;">
+            每个错题 都值得被<br>
+            <span style="font-family:var(--zx-font-serif);font-weight:600;font-style:italic;color:var(--zx-primary);">精准诊疗</span>
+          </h1>
+          <p style="font-size:17px;line-height:1.6;color:var(--zx-muted-foreground);max-width:580px;margin:24px auto 0 auto;">智教星 — 基于多智能体的自适应错题诊疗系统,精准诊断错因,靶向推送练习,让每个学生获得个性化学习路径。</p>
+          <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-top:36px;flex-wrap:wrap;">
+            <a href="#cta" style="display:inline-flex;align-items:center;gap:8px;font-family:var(--zx-font-display);font-size:15px;font-weight:600;color:var(--zx-primary-foreground);background:var(--zx-primary);padding:12px 24px;border-radius:6px;text-decoration:none;box-shadow:0 0 24px rgba(232,181,71,0.25);">开始使用 <i data-lucide="arrow-right" style="width:16px;height:16px;"></i></a>
+            <a href="#architecture" style="display:inline-flex;align-items:center;gap:8px;font-family:var(--zx-font-display);font-size:15px;font-weight:500;color:var(--zx-foreground);border:1px solid var(--zx-border);padding:12px 24px;border-radius:6px;text-decoration:none;"><i data-lucide="git-branch" style="width:16px;height:16px;"></i>查看架构</a>
+          </div>
+        </div>
+        <div aria-hidden="true" style="position:absolute;left:50%;bottom:28px;transform:translateX(-50%);z-index:2;display:flex;flex-direction:column;align-items:center;gap:8px;">
+          <i data-lucide="chevron-down" class="zx-scroll-cue" style="width:18px;height:18px;color:var(--zx-muted-foreground);"></i>
+          <span style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);letter-spacing:0.25em;">SCROLL</span>
+        </div>
+      </section>
+
+      <!-- ============================== SECTION 3 · DATA MARQUEE ============================== -->
+      <div class="zx-marquee" style="overflow:hidden;background:var(--zx-card);border-top:1px solid var(--zx-border);border-bottom:1px solid var(--zx-border);padding:18px 0;">
+        <div class="zx-marquee-track" style="display:flex;align-items:center;gap:0;animation:zx-marquee 38s linear infinite;white-space:nowrap;width:max-content;">
+          <span style="display:flex;align-items:center;gap:8px;padding:0 24px;"><span style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-primary);">8</span><span style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">智能体</span></span>
+          <span style="color:var(--zx-border);font-size:20px;">·</span>
+          <span style="display:flex;align-items:center;gap:8px;padding:0 24px;"><span style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-foreground);">94%</span><span style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">诊断准确率</span></span>
+          <span style="color:var(--zx-border);font-size:20px;">·</span>
+          <span style="display:flex;align-items:center;gap:8px;padding:0 24px;"><span style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-foreground);">8</span><span style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">维学生画像</span></span>
+          <span style="color:var(--zx-border);font-size:20px;">·</span>
+          <span style="display:flex;align-items:center;gap:8px;padding:0 24px;"><span style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-foreground);">7</span><span style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">类教学资源</span></span>
+          <span style="color:var(--zx-border);font-size:20px;">·</span>
+          <span style="display:flex;align-items:center;gap:8px;padding:0 24px;"><span style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-primary);">5000+</span><span style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">教学团队</span></span>
+          <span style="color:var(--zx-border);font-size:20px;">·</span>
+          <span style="display:flex;align-items:center;gap:8px;padding:0 24px;"><span style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-primary);">8</span><span style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">智能体</span></span>
+          <span style="color:var(--zx-border);font-size:20px;">·</span>
+          <span style="display:flex;align-items:center;gap:8px;padding:0 24px;"><span style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-foreground);">94%</span><span style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">诊断准确率</span></span>
+          <span style="color:var(--zx-border);font-size:20px;">·</span>
+          <span style="display:flex;align-items:center;gap:8px;padding:0 24px;"><span style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-foreground);">8</span><span style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">维学生画像</span></span>
+          <span style="color:var(--zx-border);font-size:20px;">·</span>
+          <span style="display:flex;align-items:center;gap:8px;padding:0 24px;"><span style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-foreground);">7</span><span style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">类教学资源</span></span>
+          <span style="color:var(--zx-border);font-size:20px;">·</span>
+          <span style="display:flex;align-items:center;gap:8px;padding:0 24px;"><span style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-primary);">5000+</span><span style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">教学团队</span></span>
+          <span style="color:var(--zx-border);font-size:20px;">·</span>
+        </div>
+      </div>
+      <!--ZX-SPLIT-->
+
+      <!-- ============================== SECTION 4 · 01 多智能体协同架构 (SVG path draw) ============================== -->
+      <section id="architecture" class="zx-reveal-slide" style="background:var(--zx-background);padding:96px 0;border-bottom:1px solid var(--zx-border);">
+        <div style="max-width:1320px;margin:0 auto;padding:0 24px;">
+          <div style="margin-bottom:40px;">
+            <div style="font-family:var(--zx-font-serif);font-size:clamp(56px,7vw,80px);font-weight:600;color:var(--zx-primary);line-height:1;letter-spacing:-0.02em;">01</div>
+            <h2 style="font-family:var(--zx-font-display);font-weight:700;font-size:clamp(28px,4vw,40px);line-height:1.1;letter-spacing:-0.02em;color:var(--zx-foreground);margin:12px 0 0 0;">多智能体协同架构</h2>
+            <p style="font-size:16px;color:var(--zx-muted-foreground);line-height:1.6;max-width:600px;margin:16px 0 0 0;">8 个专业智能体各司其职,协同生成 7 类教学资源。Coordinator 统一调度,各智能体并行作业,数据流全程可追溯。</p>
+          </div>
+
+          <!-- SVG topology: coordinator center + 7 agents around, edges drawn via stroke-dashoffset -->
+          <div id="zx-topo-wrap" style="background:var(--zx-card);border:1px solid var(--zx-border);border-radius:8px;padding:24px;margin-bottom:20px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:12px;">
+              <span style="font-family:var(--zx-font-serif);font-size:16px;font-weight:700;color:var(--zx-foreground);">智能体拓扑</span>
+              <div style="display:flex;gap:16px;font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);">
+                <span style="display:flex;align-items:center;gap:6px;"><span style="width:7px;height:7px;border-radius:50%;background:var(--zx-state-success);"></span>active</span>
+                <span style="display:flex;align-items:center;gap:6px;"><span style="width:7px;height:7px;border-radius:50%;background:var(--zx-muted-foreground);"></span>idle</span>
+                <span style="display:flex;align-items:center;gap:6px;"><span style="width:7px;height:7px;border-radius:50%;background:var(--zx-primary);"></span>coordinator</span>
+              </div>
+            </div>
+            <svg id="zx-topo" viewBox="0 0 640 420" width="100%" style="display:block;max-height:440px;" aria-label="多智能体拓扑图">
+              <g stroke="#3D3D42" stroke-width="1.2" fill="none">
+                <line class="zx-topo-line" x1="320" y1="210" x2="320" y2="60"/>
+                <line class="zx-topo-line" x1="320" y1="210" x2="437" y2="116"/>
+                <line class="zx-topo-line" x1="320" y1="210" x2="466" y2="243"/>
+                <line class="zx-topo-line" x1="320" y1="210" x2="385" y2="345"/>
+                <line class="zx-topo-line" x1="320" y1="210" x2="255" y2="345"/>
+                <line class="zx-topo-line" x1="320" y1="210" x2="174" y2="243"/>
+                <line class="zx-topo-line" x1="320" y1="210" x2="203" y2="116"/>
+              </g>
+              <g class="zx-topo-node" style="transform-origin:320px 210px;">
+                <circle cx="320" cy="210" r="34" fill="#1B1C20" stroke="#E8B547" stroke-width="1.6"/>
+                <circle cx="320" cy="210" r="34" fill="none" stroke="#E8B547" stroke-width="1" opacity="0.35" class="zx-topo-pulse"/>
+                <text x="320" y="207" text-anchor="middle" font-family="Fraunces, serif" font-size="12" font-weight="700" fill="#EDEAE3">Coordinator</text>
+                <text x="320" y="222" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#E8B547">协调中心</text>
+              </g>
+              <g class="zx-topo-node" style="transform-origin:320px 60px;">
+                <circle cx="320" cy="60" r="24" fill="#1B1C20" stroke="#6BA8E8" stroke-width="1.4"/>
+                <text x="320" y="58" text-anchor="middle" font-family="Fraunces, serif" font-size="10" font-weight="700" fill="#EDEAE3">Document</text>
+                <text x="320" y="70" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#6BA8E8">文档</text>
+              </g>
+              <g class="zx-topo-node" style="transform-origin:437px 116px;">
+                <circle cx="437" cy="116" r="24" fill="#1B1C20" stroke="#E8B547" stroke-width="1.4"/>
+                <text x="437" y="114" text-anchor="middle" font-family="Fraunces, serif" font-size="10" font-weight="700" fill="#EDEAE3">Exercise</text>
+                <text x="437" y="126" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#E8B547">习题</text>
+              </g>
+              <g class="zx-topo-node" style="transform-origin:466px 243px;">
+                <circle cx="466" cy="243" r="24" fill="#1B1C20" stroke="#9B7BE0" stroke-width="1.4"/>
+                <text x="466" y="241" text-anchor="middle" font-family="Fraunces, serif" font-size="10" font-weight="700" fill="#EDEAE3">Media</text>
+                <text x="466" y="253" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#9B7BE0">多媒体</text>
+              </g>
+              <g class="zx-topo-node" style="transform-origin:385px 345px;">
+                <circle cx="385" cy="345" r="24" fill="#1B1C20" stroke="#2A7B7B" stroke-width="1.4"/>
+                <text x="385" y="343" text-anchor="middle" font-family="Fraunces, serif" font-size="9" font-weight="700" fill="#EDEAE3">Recommend</text>
+                <text x="385" y="355" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#2A7B7B">推荐</text>
+              </g>
+              <g class="zx-topo-node" style="transform-origin:255px 345px;">
+                <circle cx="255" cy="345" r="24" fill="#1B1C20" stroke="#2A7B7B" stroke-width="1.4"/>
+                <text x="255" y="343" text-anchor="middle" font-family="Fraunces, serif" font-size="10" font-weight="700" fill="#EDEAE3">Project</text>
+                <text x="255" y="355" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#2A7B7B">项目</text>
+              </g>
+              <g class="zx-topo-node" style="transform-origin:174px 243px;">
+                <circle cx="174" cy="243" r="24" fill="#1B1C20" stroke="#E8B547" stroke-width="1.4"/>
+                <text x="174" y="241" text-anchor="middle" font-family="Fraunces, serif" font-size="10" font-weight="700" fill="#EDEAE3">Profile</text>
+                <text x="174" y="253" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#E8B547">画像</text>
+              </g>
+              <g class="zx-topo-node" style="transform-origin:203px 116px;">
+                <circle cx="203" cy="116" r="26" fill="#1B1C20" stroke="#5BCC7B" stroke-width="1.4"/>
+                <text x="203" y="114" text-anchor="middle" font-family="Fraunces, serif" font-size="9" font-weight="700" fill="#EDEAE3">Knowledge</text>
+                <text x="203" y="125" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#5BCC7B">图谱</text>
+              </g>
+            </svg>
+          </div>
+
+          <!-- 8 agent bento (uneven spans 3/4/5/3/4/5/3/6) with growing progress bars -->
+          <div class="zx-bento" style="display:grid;grid-template-columns:repeat(12,1fr);gap:12px;margin-bottom:20px;">
+            <div class="zx-agent-card" style="grid-column:span 12;background:var(--zx-card);border:1px solid var(--zx-border);border-radius:6px;padding:16px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <div style="display:flex;align-items:center;gap:8px;"><i data-lucide="cpu" style="width:18px;height:18px;color:var(--zx-primary);"></i><span style="font-family:var(--zx-font-serif);font-size:14px;font-weight:700;color:var(--zx-foreground);">Coordinator</span></div>
+                <span style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-primary);">coordinator</span>
+              </div>
+              <p style="font-size:12px;color:var(--zx-muted-foreground);line-height:1.5;margin:0 0 10px 0;">协调中心,统一调度所有智能体,分配任务并汇总结果。</p>
+              <div style="font-size:11px;color:var(--zx-foreground);margin-bottom:6px;">当前任务:分配文档生成任务</div>
+              <div style="display:flex;align-items:center;gap:8px;"><div class="zx-bar" style="flex:1;height:4px;"><span data-target="64" style="display:block;width:0%;height:100%;background:var(--zx-primary);"></span></div><span style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);">64%</span></div>
+            </div>
+            <div class="zx-agent-card" style="grid-column:span 12;background:var(--zx-card);border:1px solid var(--zx-border);border-radius:6px;padding:16px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <div style="display:flex;align-items:center;gap:8px;"><i data-lucide="file-text" style="width:18px;height:18px;color:var(--zx-state-info);"></i><span style="font-family:var(--zx-font-serif);font-size:14px;font-weight:700;color:var(--zx-foreground);">Document</span></div>
+                <span style="display:flex;align-items:center;gap:4px;font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-state-success);"><span style="width:6px;height:6px;border-radius:50%;background:var(--zx-state-success);"></span>active</span>
+              </div>
+              <p style="font-size:12px;color:var(--zx-muted-foreground);line-height:1.5;margin:0 0 10px 0;">解析教材内容,生成结构化教学文档与学习笔记。</p>
+              <div style="font-size:11px;color:var(--zx-foreground);margin-bottom:6px;">当前任务:生成高中数学第3章笔记</div>
+              <div style="display:flex;align-items:center;gap:8px;"><div class="zx-bar" style="flex:1;height:4px;"><span data-target="68" style="display:block;width:0%;height:100%;background:var(--zx-state-info);"></span></div><span style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);">68%</span></div>
+            </div>
+            <div class="zx-agent-card" style="grid-column:span 12;background:var(--zx-card);border:1px solid var(--zx-border);border-radius:6px;padding:16px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <div style="display:flex;align-items:center;gap:8px;"><i data-lucide="pen-tool" style="width:18px;height:18px;color:var(--zx-primary);"></i><span style="font-family:var(--zx-font-serif);font-size:14px;font-weight:700;color:var(--zx-foreground);">Exercise</span></div>
+                <span style="display:flex;align-items:center;gap:4px;font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-state-success);"><span style="width:6px;height:6px;border-radius:50%;background:var(--zx-state-success);"></span>active</span>
+              </div>
+              <p style="font-size:12px;color:var(--zx-muted-foreground);line-height:1.5;margin:0 0 10px 0;">生成配套习题与测评,支持自动批改与错因分析。</p>
+              <div style="font-size:11px;color:var(--zx-foreground);margin-bottom:6px;">当前任务:生成导数习题 10 题</div>
+              <div style="display:flex;align-items:center;gap:8px;"><div class="zx-bar" style="flex:1;height:4px;"><span data-target="42" style="display:block;width:0%;height:100%;background:var(--zx-primary);"></span></div><span style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);">42%</span></div>
+            </div>
+            <div class="zx-agent-card" style="grid-column:span 12;background:var(--zx-card);border:1px solid var(--zx-border);border-radius:6px;padding:16px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <div style="display:flex;align-items:center;gap:8px;"><i data-lucide="presentation" style="width:18px;height:18px;color:#9B7BE0;"></i><span style="font-family:var(--zx-font-serif);font-size:14px;font-weight:700;color:var(--zx-foreground);">Media</span></div>
+                <span style="display:flex;align-items:center;gap:4px;font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-state-success);"><span style="width:6px;height:6px;border-radius:50%;background:var(--zx-state-success);"></span>active</span>
+              </div>
+              <p style="font-size:12px;color:var(--zx-muted-foreground);line-height:1.5;margin:0 0 10px 0;">课件可视化,3D 渲染概率分布与几何模型。</p>
+              <div style="font-size:11px;color:var(--zx-foreground);margin-bottom:6px;">当前任务:渲染概率分布课件</div>
+              <div style="display:flex;align-items:center;gap:8px;"><div class="zx-bar" style="flex:1;height:4px;"><span data-target="85" style="display:block;width:0%;height:100%;background:#9B7BE0;"></span></div><span style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);">85%</span></div>
+            </div>
+            <div class="zx-agent-card" style="grid-column:span 12;background:var(--zx-card);border:1px solid var(--zx-border);border-radius:6px;padding:16px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <div style="display:flex;align-items:center;gap:8px;"><i data-lucide="layers" style="width:18px;height:18px;color:#2A7B7B;"></i><span style="font-family:var(--zx-font-serif);font-size:14px;font-weight:700;color:var(--zx-foreground);">Recommendation</span></div>
+                <span style="display:flex;align-items:center;gap:4px;font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);"><span style="width:6px;height:6px;border-radius:50%;background:var(--zx-muted-foreground);"></span>idle</span>
+              </div>
+              <p style="font-size:12px;color:var(--zx-muted-foreground);line-height:1.5;margin:0 0 10px 0;">基于学情画像,个性化推荐教学资源与练习路径。</p>
+              <div style="font-size:11px;color:var(--zx-muted-foreground);margin-bottom:6px;">当前任务:等待画像回调 · 待命</div>
+              <div style="display:flex;align-items:center;gap:8px;"><div class="zx-bar" style="flex:1;height:4px;"><span data-target="0" style="display:block;width:0%;height:100%;background:var(--zx-muted-foreground);"></span></div><span style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);">idle</span></div>
+            </div>
+            <div class="zx-agent-card" style="grid-column:span 12;background:var(--zx-card);border:1px solid var(--zx-border);border-radius:6px;padding:16px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <div style="display:flex;align-items:center;gap:8px;"><i data-lucide="git-branch" style="width:18px;height:18px;color:#2A7B7B;"></i><span style="font-family:var(--zx-font-serif);font-size:14px;font-weight:700;color:var(--zx-foreground);">Project</span></div>
+                <span style="display:flex;align-items:center;gap:4px;font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-state-success);"><span style="width:6px;height:6px;border-radius:50%;background:var(--zx-state-success);"></span>active</span>
+              </div>
+              <p style="font-size:12px;color:var(--zx-muted-foreground);line-height:1.5;margin:0 0 10px 0;">编排实践项目任务,连接知识点与真实应用场景。</p>
+              <div style="font-size:11px;color:var(--zx-foreground);margin-bottom:6px;">当前任务:编排矩阵运算实践项目</div>
+              <div style="display:flex;align-items:center;gap:8px;"><div class="zx-bar" style="flex:1;height:4px;"><span data-target="30" style="display:block;width:0%;height:100%;background:#2A7B7B;"></span></div><span style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);">30%</span></div>
+            </div>
+            <div class="zx-agent-card" style="grid-column:span 12;background:var(--zx-card);border:1px solid var(--zx-border);border-radius:6px;padding:16px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <div style="display:flex;align-items:center;gap:8px;"><i data-lucide="users" style="width:18px;height:18px;color:var(--zx-primary);"></i><span style="font-family:var(--zx-font-serif);font-size:14px;font-weight:700;color:var(--zx-foreground);">Profile</span></div>
+                <span style="display:flex;align-items:center;gap:4px;font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);"><span style="width:6px;height:6px;border-radius:50%;background:var(--zx-muted-foreground);"></span>idle</span>
+              </div>
+              <p style="font-size:12px;color:var(--zx-muted-foreground);line-height:1.5;margin:0 0 10px 0;">构建 8 维学情画像,追踪学习行为与能力变化。</p>
+              <div style="font-size:11px;color:var(--zx-foreground);margin-bottom:6px;">当前任务:更新 8 维学情画像</div>
+              <div style="display:flex;align-items:center;gap:8px;"><div class="zx-bar" style="flex:1;height:4px;"><span data-target="55" style="display:block;width:0%;height:100%;background:var(--zx-primary);"></span></div><span style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);">55%</span></div>
+            </div>
+            <div class="zx-agent-card" style="grid-column:span 12;background:var(--zx-card);border:1px solid var(--zx-border);border-radius:6px;padding:16px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <div style="display:flex;align-items:center;gap:8px;"><i data-lucide="network" style="width:18px;height:18px;color:var(--zx-state-success);"></i><span style="font-family:var(--zx-font-serif);font-size:14px;font-weight:700;color:var(--zx-foreground);">KnowledgeGraph</span></div>
+                <span style="display:flex;align-items:center;gap:4px;font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-state-success);"><span style="width:6px;height:6px;border-radius:50%;background:var(--zx-state-success);"></span>active</span>
+              </div>
+              <p style="font-size:12px;color:var(--zx-muted-foreground);line-height:1.5;margin:0 0 10px 0;">构建 3D 知识图谱,自动补充知识点前置依赖关系,可视化知识结构。</p>
+              <div style="font-size:11px;color:var(--zx-foreground);margin-bottom:6px;">当前任务:补充函数→导数前置依赖</div>
+              <div style="display:flex;align-items:center;gap:8px;"><div class="zx-bar" style="flex:1;height:4px;"><span data-target="72" style="display:block;width:0%;height:100%;background:var(--zx-state-success);"></span></div><span style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);">72%</span></div>
+            </div>
+          </div>
+
+          <!-- terminal-style activity log -->
+          <div style="background:#08080A;border:1px solid var(--zx-border);border-radius:6px;padding:16px;border-left:2px solid var(--zx-state-info);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <span style="font-family:var(--zx-font-serif);font-size:14px;font-weight:700;color:var(--zx-foreground);">实时活动日志</span>
+              <span style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-state-success);">● live</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;font-family:var(--zx-font-mono);font-size:12px;">
+              <div style="display:flex;gap:8px;"><span style="color:var(--zx-muted-foreground);flex-shrink:0;">14:23:01</span><span style="color:var(--zx-foreground);"><span style="color:var(--zx-primary);">Coordinator</span> 分配文档生成任务</span></div>
+              <div style="display:flex;gap:8px;"><span style="color:var(--zx-muted-foreground);flex-shrink:0;">14:23:15</span><span style="color:var(--zx-foreground);"><span style="color:var(--zx-state-info);">Document</span> 开始解析教材 PDF</span></div>
+              <div style="display:flex;gap:8px;"><span style="color:var(--zx-muted-foreground);flex-shrink:0;">14:23:42</span><span style="color:var(--zx-foreground);"><span style="color:var(--zx-primary);">Exercise</span> 生成导数习题 10 题</span></div>
+              <div style="display:flex;gap:8px;"><span style="color:var(--zx-muted-foreground);flex-shrink:0;">14:24:08</span><span style="color:var(--zx-foreground);"><span style="color:#9B7BE0;">Media</span> 渲染概率分布可视化</span></div>
+              <div style="display:flex;gap:8px;"><span style="color:var(--zx-muted-foreground);flex-shrink:0;">14:24:33</span><span style="color:var(--zx-foreground);"><span style="color:var(--zx-state-success);">KnowledgeGraph</span> 补充函数→导数前置依赖</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================== SECTION 5 · 02 核心功能 (clip-path 揭示) ============================== -->
+      <section id="features" style="background:var(--zx-background);padding:96px 0 0 0;">
+        <div style="max-width:1320px;margin:0 auto;padding:0 24px;">
+          <div style="margin-bottom:40px;">
+            <div style="font-family:var(--zx-font-serif);font-size:clamp(56px,7vw,80px);font-weight:600;color:var(--zx-primary);line-height:1;letter-spacing:-0.02em;">02</div>
+            <h2 style="font-family:var(--zx-font-display);font-weight:700;font-size:clamp(28px,4vw,40px);line-height:1.1;letter-spacing:-0.02em;color:var(--zx-foreground);margin:12px 0 0 0;">核心功能</h2>
+            <p style="font-size:16px;color:var(--zx-muted-foreground);line-height:1.6;max-width:600px;margin:16px 0 0 0;">从课程生成到错题诊疗,从 AI 助教到学情画像,四大核心功能覆盖教学全流程。</p>
+          </div>
+        </div>
+
+        <!-- Feature 1 · AI 课程生成向导 · clip-path inset(0 100% 0 0) → inset(0) 从左往右 -->
+        <div class="zx-clip-reveal" data-clip="inset-right" style="border-top:1px solid var(--zx-border);padding:64px 0;background:var(--zx-background);">
+          <div style="max-width:1320px;margin:0 auto;padding:0 24px;">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap;">
+              <i data-lucide="book-open" style="width:22px;height:22px;color:var(--zx-primary);"></i>
+              <h3 style="font-family:var(--zx-font-display);font-weight:700;font-size:26px;color:var(--zx-foreground);margin:0;">AI 课程生成向导</h3>
+              <span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);letter-spacing:0.1em;margin-left:auto;">FEATURE 02.1 · inset-right</span>
+            </div>
+            <p style="font-size:15px;color:var(--zx-muted-foreground);line-height:1.6;max-width:680px;margin:0 0 28px 0;">输入学科与章节,Document 智能体自动解析教材,Exercise 生成配套习题,Media 渲染可视化课件 — 全流程 3 分钟完成。</p>
+            <div style="border-radius:8px;overflow:hidden;border:1px solid var(--zx-border);background:#08080A;">
+              <div style="display:flex;align-items:center;gap:8px;padding:0 14px;height:36px;background:var(--zx-popover);border-bottom:1px solid var(--zx-border);">
+                <span style="width:10px;height:10px;border-radius:50%;background:var(--zx-state-error);"></span><span style="width:10px;height:10px;border-radius:50%;background:var(--zx-primary);"></span><span style="width:10px;height:10px;border-radius:50%;background:var(--zx-state-success);"></span>
+                <span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);margin-left:8px;">zhijiaoxing course-generator — config.yaml</span>
+              </div>
+              <div style="display:flex;min-height:340px;">
+                <div style="width:300px;flex-shrink:0;border-right:1px solid var(--zx-border);padding:20px;font-family:var(--zx-font-mono);font-size:12px;line-height:1.8;">
+                  <div style="color:var(--zx-muted-foreground);margin-bottom:12px;"># 课程生成参数</div>
+                  <div><span style="color:var(--zx-state-info);">subject</span>: <span style="color:var(--zx-state-success);">"高中数学"</span></div>
+                  <div><span style="color:var(--zx-state-info);">chapter</span>: <span style="color:var(--zx-state-success);">"函数与导数"</span></div>
+                  <div><span style="color:var(--zx-state-info);">difficulty</span>: <span style="color:var(--zx-state-success);">"中等"</span></div>
+                  <div><span style="color:var(--zx-state-info);">exercise_count</span>: <span style="color:var(--zx-primary);">10</span></div>
+                  <div><span style="color:var(--zx-state-info);">include_3d</span>: <span style="color:var(--zx-primary);">true</span></div>
+                  <div style="margin-top:16px;padding:8px 12px;background:var(--zx-card);border:1px solid var(--zx-border);border-radius:4px;">
+                    <div style="color:var(--zx-state-success);">$ zhijiaoxing generate</div>
+                    <div style="color:var(--zx-muted-foreground);font-size:11px;margin-top:4px;">✓ Document 解析完成 (2.3s)</div>
+                    <div style="color:var(--zx-muted-foreground);font-size:11px;">✓ Exercise 生成 10 题 (4.1s)</div>
+                    <div style="color:var(--zx-primary);font-size:11px;">→ Media 渲染课件...</div>
+                  </div>
+                </div>
+                <div style="flex:1;padding:20px;min-width:0;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                    <span style="font-family:var(--zx-font-serif);font-size:15px;font-weight:700;color:var(--zx-foreground);">生成结果预览</span>
+                    <span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-state-success);">● 生成中 72%</span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:8px;">
+                    <div style="padding:12px 14px;background:var(--zx-card);border:1px solid var(--zx-border);border-left:3px solid var(--zx-state-info);border-radius:4px;"><div style="display:flex;align-items:center;gap:8px;"><i data-lucide="file-text" style="width:15px;height:15px;color:var(--zx-state-info);"></i><span style="font-size:12px;font-weight:600;color:var(--zx-foreground);">教学文档</span><span style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);margin-left:auto;">12 页 · 已完成</span></div></div>
+                    <div style="padding:12px 14px;background:var(--zx-card);border:1px solid var(--zx-border);border-left:3px solid var(--zx-primary);border-radius:4px;"><div style="display:flex;align-items:center;gap:8px;"><i data-lucide="pen-tool" style="width:15px;height:15px;color:var(--zx-primary);"></i><span style="font-size:12px;font-weight:600;color:var(--zx-foreground);">配套习题</span><span style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);margin-left:auto;">10 题 · 已完成</span></div></div>
+                    <div style="padding:12px 14px;background:var(--zx-card);border:1px solid var(--zx-border);border-left:3px solid #9B7BE0;border-radius:4px;"><div style="display:flex;align-items:center;gap:8px;"><i data-lucide="presentation" style="width:15px;height:15px;color:#9B7BE0;"></i><span style="font-size:12px;font-weight:600;color:var(--zx-foreground);">可视化课件</span><span style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);margin-left:auto;">8 张 · 已完成</span></div></div>
+                    <div style="padding:12px 14px;background:var(--zx-card);border:1px solid var(--zx-border);border-left:3px solid var(--zx-state-success);border-radius:4px;"><div style="display:flex;align-items:center;gap:8px;"><i data-lucide="network" style="width:15px;height:15px;color:var(--zx-state-success);"></i><span style="font-size:12px;font-weight:600;color:var(--zx-foreground);">知识图谱更新</span><span style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-primary);margin-left:auto;">进行中...</span></div><div class="zx-bar" style="height:4px;margin-top:6px;"><span data-target="72" style="display:block;width:0%;height:100%;background:var(--zx-state-success);"></span></div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 2 · AI 智能助教 · clip-path inset(0 0 100% 0) → inset(0) 从上往下 -->
+        <div class="zx-clip-reveal" data-clip="inset-bottom" style="border-top:1px solid var(--zx-border);padding:64px 0;background:var(--zx-card);">
+          <div style="max-width:1320px;margin:0 auto;padding:0 24px;">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap;">
+              <i data-lucide="bot" style="width:22px;height:22px;color:var(--zx-primary);"></i>
+              <h3 style="font-family:var(--zx-font-display);font-weight:700;font-size:26px;color:var(--zx-foreground);margin:0;">AI 智能助教</h3>
+              <span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);letter-spacing:0.1em;margin-left:auto;">FEATURE 02.2 · inset-bottom</span>
+            </div>
+            <p style="font-size:15px;color:var(--zx-muted-foreground);line-height:1.6;max-width:680px;margin:0 0 28px 0;">7×24 小时在线,自然语言交互,支持公式渲染、步骤拆解、错因追问,让每个学生都有专属私教。</p>
+            <div style="border-radius:8px;overflow:hidden;border:1px solid var(--zx-border);background:#0E0E11;">
+              <div style="display:flex;align-items:center;gap:8px;padding:0 14px;height:36px;background:var(--zx-popover);border-bottom:1px solid var(--zx-border);">
+                <span style="width:10px;height:10px;border-radius:50%;background:var(--zx-state-error);"></span><span style="width:10px;height:10px;border-radius:50%;background:var(--zx-primary);"></span><span style="width:10px;height:10px;border-radius:50%;background:var(--zx-state-success);"></span>
+                <span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);margin-left:8px;">智教星 AI 助教 — 对话</span>
+                <span style="display:flex;align-items:center;gap:4px;font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-state-success);margin-left:auto;"><span style="width:6px;height:6px;border-radius:50%;background:var(--zx-state-success);"></span>在线</span>
+              </div>
+              <div style="padding:24px;display:flex;flex-direction:column;gap:18px;">
+                <div style="display:flex;gap:12px;justify-content:flex-end;">
+                  <div style="max-width:480px;background:var(--zx-popover);border:1px solid var(--zx-border);border-radius:8px 8px 2px 8px;padding:14px 16px;"><p style="font-size:14px;color:var(--zx-foreground);margin:0;line-height:1.6;">老师,求 f(x)=x²+2x-3 的极值,我算出极值点 x=-1,但怎么判断极大还是极小?</p></div>
+                  <div style="width:36px;height:36px;border-radius:50%;background:var(--zx-card);border:1px solid var(--zx-border);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i data-lucide="user-search" style="width:18px;height:18px;color:var(--zx-muted-foreground);"></i></div>
+                </div>
+                <div style="display:flex;gap:12px;">
+                  <div style="width:36px;height:36px;border-radius:50%;background:var(--zx-primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i data-lucide="bot" style="width:18px;height:18px;color:var(--zx-primary-foreground);"></i></div>
+                  <div style="max-width:560px;background:var(--zx-card);border:1px solid var(--zx-border);border-left:3px solid var(--zx-primary);border-radius:2px 8px 8px 8px;padding:14px 16px;">
+                    <p style="font-size:14px;color:var(--zx-foreground);margin:0 0 8px 0;line-height:1.6;">极值点 x=-1 正确!判别方法有两种:</p>
+                    <div style="font-size:13px;color:var(--zx-muted-foreground);line-height:1.7;padding:10px 12px;background:#08080A;border-radius:4px;font-family:var(--zx-font-mono);">
+                      <div><span style="color:var(--zx-primary);">方法一</span>:f''(x)=2 &gt; 0 → 极小值</div>
+                      <div><span style="color:var(--zx-primary);">方法二</span>:x&lt;-1 递减,x&gt;-1 递增 → 极小值 f(-1)=-4</div>
+                    </div>
+                    <p style="font-size:14px;color:var(--zx-foreground);margin:8px 0 0 0;line-height:1.6;">错因诊断:<span style="color:var(--zx-primary);">概念理解偏差</span> — 建议练习 3 道同类题巩固。</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 3 · 智能错题本 · clip-path polygon 对角线揭示 -->
+        <div class="zx-clip-reveal" data-clip="polygon-diag" style="border-top:1px solid var(--zx-border);padding:64px 0;background:var(--zx-background);">
+          <div style="max-width:1320px;margin:0 auto;padding:0 24px;">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap;">
+              <i data-lucide="notebook-pen" style="width:22px;height:22px;color:var(--zx-primary);"></i>
+              <h3 style="font-family:var(--zx-font-display);font-weight:700;font-size:26px;color:var(--zx-foreground);margin:0;">智能错题本</h3>
+              <span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);letter-spacing:0.1em;margin-left:auto;">FEATURE 02.3 · polygon-diag</span>
+            </div>
+            <p style="font-size:15px;color:var(--zx-muted-foreground);line-height:1.6;max-width:680px;margin:0 0 28px 0;">AI 精准诊断每道错题的错因与知识缺口,生成靶向练习,让错题真正被"诊疗"而非简单收藏。</p>
+            <div style="border-radius:8px;overflow:hidden;border:1px solid var(--zx-border);background:var(--zx-card);">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--zx-border);">
+                <span style="font-family:var(--zx-font-serif);font-size:15px;font-weight:700;color:var(--zx-foreground);">AI 错因诊断</span>
+                <span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);">5 条 · 实时</span>
+              </div>
+              <div style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:13px;color:var(--zx-foreground);min-width:560px;">
+                  <thead><tr style="border-bottom:1px solid var(--zx-border);"><th style="text-align:left;padding:10px 14px;font-family:var(--zx-font-mono);font-size:11px;font-weight:400;color:var(--zx-muted-foreground);">题目</th><th style="text-align:left;padding:10px 14px;font-family:var(--zx-font-mono);font-size:11px;font-weight:400;color:var(--zx-muted-foreground);">错因</th><th style="text-align:left;padding:10px 14px;font-family:var(--zx-font-mono);font-size:11px;font-weight:400;color:var(--zx-muted-foreground);">智能体</th><th style="text-align:left;padding:10px 14px;font-family:var(--zx-font-mono);font-size:11px;font-weight:400;color:var(--zx-muted-foreground);">级别</th></tr></thead>
+                  <tbody>
+                    <tr style="border-bottom:1px solid var(--zx-border);"><td style="padding:12px 14px;">f(x)=x²+2x-3 极值</td><td style="padding:12px 14px;color:var(--zx-muted-foreground);">概念理解偏差</td><td style="padding:12px 14px;color:var(--zx-muted-foreground);">诊断</td><td style="padding:12px 14px;"><span style="color:var(--zx-state-error);font-weight:700;">high</span></td></tr>
+                    <tr style="border-bottom:1px solid var(--zx-border);"><td style="padding:12px 14px;">∫sin²x dx</td><td style="padding:12px 14px;color:var(--zx-muted-foreground);">公式记忆错误</td><td style="padding:12px 14px;color:var(--zx-muted-foreground);">分析</td><td style="padding:12px 14px;"><span style="color:var(--zx-primary);font-weight:700;">medium</span></td></tr>
+                    <tr style="border-bottom:1px solid var(--zx-border);"><td style="padding:12px 14px;">P(A|B) 条件概率</td><td style="padding:12px 14px;color:var(--zx-muted-foreground);">审题不清</td><td style="padding:12px 14px;color:var(--zx-muted-foreground);">归因</td><td style="padding:12px 14px;"><span style="color:var(--zx-state-success);font-weight:700;">low</span></td></tr>
+                    <tr style="border-bottom:1px solid var(--zx-border);"><td style="padding:12px 14px;">矩阵运算 AB</td><td style="padding:12px 14px;color:var(--zx-muted-foreground);">计算失误</td><td style="padding:12px 14px;color:var(--zx-muted-foreground);">诊断</td><td style="padding:12px 14px;"><span style="color:var(--zx-primary);font-weight:700;">medium</span></td></tr>
+                    <tr><td style="padding:12px 14px;">概率分布列</td><td style="padding:12px 14px;color:var(--zx-muted-foreground);">概念混淆</td><td style="padding:12px 14px;color:var(--zx-muted-foreground);">分析</td><td style="padding:12px 14px;"><span style="color:var(--zx-state-error);font-weight:700;">high</span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 4 · 学习画像构建 · clip-path circle(0%) → circle(100%) 圆形展开 -->
+        <div class="zx-clip-reveal" data-clip="circle" style="border-top:1px solid var(--zx-border);padding:64px 0;background:var(--zx-card);">
+          <div style="max-width:1320px;margin:0 auto;padding:0 24px;">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap;">
+              <i data-lucide="target" style="width:22px;height:22px;color:var(--zx-primary);"></i>
+              <h3 style="font-family:var(--zx-font-display);font-weight:700;font-size:26px;color:var(--zx-foreground);margin:0;">学习画像构建</h3>
+              <span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);letter-spacing:0.1em;margin-left:auto;">FEATURE 02.4 · circle</span>
+            </div>
+            <p style="font-size:15px;color:var(--zx-muted-foreground);line-height:1.6;max-width:680px;margin:0 0 28px 0;">8 维度全方位刻画学情,从知识掌握到学习习惯,驱动精准教学决策。</p>
+            <div style="border-radius:8px;overflow:hidden;border:1px solid var(--zx-border);background:var(--zx-card);padding:32px;display:flex;align-items:center;gap:32px;flex-wrap:wrap;">
+              <svg viewBox="0 0 300 300" width="280" height="280" style="flex-shrink:0;" aria-label="8维雷达图">
+                <g fill="none" stroke="#2A2A2E" stroke-width="0.8"><circle cx="150" cy="150" r="30"/><circle cx="150" cy="150" r="60"/><circle cx="150" cy="150" r="90"/><circle cx="150" cy="150" r="120"/></g>
+                <g stroke="#2A2A2E" stroke-width="0.8"><line x1="150" y1="150" x2="150" y2="30"/><line x1="150" y1="150" x2="234.9" y2="65.1"/><line x1="150" y1="150" x2="270" y2="150"/><line x1="150" y1="150" x2="234.9" y2="234.9"/><line x1="150" y1="150" x2="150" y2="270"/><line x1="150" y1="150" x2="65.1" y2="234.9"/><line x1="150" y1="150" x2="30" y2="150"/><line x1="150" y1="150" x2="65.1" y2="65.1"/></g>
+                <polygon id="zx-radar-feature" points="150,150 150,150 150,150 150,150 150,150 150,150 150,150 150,150" fill="rgba(232,181,71,0.12)" stroke="#E8B547" stroke-width="2"/>
+                <g fill="#E8B547"><circle cx="150" cy="48" r="3"/><circle cx="211.2" cy="88.8" r="3"/><circle cx="192" cy="150" r="3"/><circle cx="207.7" cy="207.7" r="3"/><circle cx="150" cy="243.6" r="3"/><circle cx="80.4" cy="219.6" r="3"/><circle cx="72" cy="150" r="3"/><circle cx="90.6" cy="90.6" r="3"/></g>
+                <g font-family="JetBrains Mono, monospace" font-size="11" fill="#8A8780"><text x="150" y="20" text-anchor="middle">知识掌握</text><text x="245" y="60" text-anchor="start">学习效率</text><text x="280" y="155" text-anchor="start">错题频率</text><text x="245" y="250" text-anchor="start">专注度</text><text x="150" y="290" text-anchor="middle">进步速度</text><text x="55" y="250" text-anchor="end">理解深度</text><text x="20" y="155" text-anchor="end">应用能力</text><text x="55" y="60" text-anchor="end">学习习惯</text></g>
+              </svg>
+              <div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:10px;">
+                <div><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--zx-foreground);margin-bottom:4px;"><span>知识掌握</span><span style="font-family:var(--zx-font-mono);color:var(--zx-state-success);">85%</span></div><div class="zx-bar" style="height:5px;"><span data-target="85" style="display:block;width:0%;height:100%;background:var(--zx-state-success);"></span></div></div>
+                <div><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--zx-foreground);margin-bottom:4px;"><span>学习效率</span><span style="font-family:var(--zx-font-mono);color:var(--zx-primary);">72%</span></div><div class="zx-bar" style="height:5px;"><span data-target="72" style="display:block;width:0%;height:100%;background:var(--zx-primary);"></span></div></div>
+                <div><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--zx-foreground);margin-bottom:4px;"><span>专注度</span><span style="font-family:var(--zx-font-mono);color:var(--zx-state-info);">68%</span></div><div class="zx-bar" style="height:5px;"><span data-target="68" style="display:block;width:0%;height:100%;background:var(--zx-state-info);"></span></div></div>
+                <div><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--zx-foreground);margin-bottom:4px;"><span>应用能力</span><span style="font-family:var(--zx-font-mono);color:var(--zx-primary);">65%</span></div><div class="zx-bar" style="height:5px;"><span data-target="65" style="display:block;width:0%;height:100%;background:var(--zx-primary);"></span></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================== SECTION 6 · 03 8维学生画像 (雷达图描边 + 进度条) ============================== -->
+      <section id="profile" class="zx-reveal-slide" style="background:var(--zx-background);padding:96px 0;border-top:1px solid var(--zx-border);">
+        <div style="max-width:1320px;margin:0 auto;padding:0 24px;">
+          <div style="margin-bottom:40px;">
+            <div style="font-family:var(--zx-font-serif);font-size:clamp(56px,7vw,80px);font-weight:600;color:var(--zx-primary);line-height:1;letter-spacing:-0.02em;">03</div>
+            <h2 style="font-family:var(--zx-font-display);font-weight:700;font-size:clamp(28px,4vw,40px);line-height:1.1;letter-spacing:-0.02em;color:var(--zx-foreground);margin:12px 0 0 0;">8 维学生画像</h2>
+            <p style="font-size:16px;color:var(--zx-muted-foreground);line-height:1.6;max-width:600px;margin:16px 0 0 0;">从知识掌握到学习习惯,8 个维度全方位刻画学情,驱动精准教学决策。综合评分 74.4。</p>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr;gap:20px;">
+            <!-- radar chart with stroke-dashoffset draw animation -->
+            <div style="background:var(--zx-card);border:1px solid var(--zx-border);border-radius:8px;padding:32px;display:flex;align-items:center;justify-content:center;">
+              <svg viewBox="0 0 300 300" width="100%" style="max-width:420px;height:auto;" aria-label="8维学情雷达图">
+                <g fill="none" stroke="#2A2A2E" stroke-width="0.8"><circle cx="150" cy="150" r="30"/><circle cx="150" cy="150" r="60"/><circle cx="150" cy="150" r="90"/><circle cx="150" cy="150" r="120"/></g>
+                <g stroke="#2A2A2E" stroke-width="0.8"><line x1="150" y1="150" x2="150" y2="30"/><line x1="150" y1="150" x2="234.9" y2="65.1"/><line x1="150" y1="150" x2="270" y2="150"/><line x1="150" y1="150" x2="234.9" y2="234.9"/><line x1="150" y1="150" x2="150" y2="270"/><line x1="150" y1="150" x2="65.1" y2="234.9"/><line x1="150" y1="150" x2="30" y2="150"/><line x1="150" y1="150" x2="65.1" y2="65.1"/></g>
+                <polygon id="zx-radar-profile" points="150,48 211.2,88.8 192,150 207.7,207.7 150,243.6 80.4,219.6 72,150 90.6,90.6" fill="rgba(232,181,71,0.12)" stroke="#E8B547" stroke-width="2" style="fill-opacity:0;"/>
+                <g fill="#E8B547" class="zx-radar-dots"><circle cx="150" cy="48" r="3"/><circle cx="211.2" cy="88.8" r="3"/><circle cx="192" cy="150" r="3"/><circle cx="207.7" cy="207.7" r="3"/><circle cx="150" cy="243.6" r="3"/><circle cx="80.4" cy="219.6" r="3"/><circle cx="72" cy="150" r="3"/><circle cx="90.6" cy="90.6" r="3"/></g>
+                <g font-family="JetBrains Mono, monospace" font-size="11" fill="#8A8780"><text x="150" y="20" text-anchor="middle">知识掌握</text><text x="245" y="60" text-anchor="start">学习效率</text><text x="280" y="155" text-anchor="start">错题频率</text><text x="245" y="250" text-anchor="start">专注度</text><text x="150" y="290" text-anchor="middle">进步速度</text><text x="55" y="250" text-anchor="end">理解深度</text><text x="20" y="155" text-anchor="end">应用能力</text><text x="55" y="60" text-anchor="end">学习习惯</text></g>
+              </svg>
+            </div>
+
+            <!-- 8 dimension progress bars (uneven bento) -->
+            <div class="zx-bento-profile" style="display:grid;grid-template-columns:repeat(12,1fr);gap:12px;">
+              <div style="grid-column:span 12;background:var(--zx-card);border:1px solid var(--zx-border);border-radius:6px;padding:18px;">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;"><span style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">知识掌握</span><span style="font-family:var(--zx-font-serif);font-size:26px;font-weight:700;color:var(--zx-state-success);">85%</span></div>
+                <div class="zx-bar" style="height:5px;"><span data-target="85" style="display:block;width:0%;height:100%;background:var(--zx-state-success);"></span></div>
+                <div style="font-size:11px;color:var(--zx-muted-foreground);margin-top:8px;">函数 92% · 导数 78% · 积分 68%</div>
+              </div>
+              <div style="grid-column:span 12;background:var(--zx-card);border:1px solid var(--zx-border);border-radius:6px;padding:18px;">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;"><span style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">学习效率</span><span style="font-family:var(--zx-font-serif);font-size:26px;font-weight:700;color:var(--zx-primary);">72%</span></div>
+                <div class="zx-bar" style="height:5px;"><span data-target="72" style="display:block;width:0%;height:100%;background:var(--zx-primary);"></span></div>
+                <div style="font-size:11px;color:var(--zx-muted-foreground);margin-top:8px;">+12% / 周 · 日均 2.4h</div>
+              </div>
+              <div style="grid-column:span 12;background:var(--zx-card);border:1px solid var(--zx-border);border-radius:6px;padding:18px;">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;"><span style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">错题频率</span><span style="font-family:var(--zx-font-serif);font-size:26px;font-weight:700;color:var(--zx-state-error);">35%</span></div>
+                <div class="zx-bar" style="height:5px;"><span data-target="35" style="display:block;width:0%;height:100%;background:var(--zx-state-error);"></span></div>
+                <div style="font-size:11px;color:var(--zx-muted-foreground);margin-top:8px;">-8% / 周 · 高频:函数极值</div>
+              </div>
+              <div style="grid-column:span 12;background:var(--zx-card);border:1px solid var(--zx-border);border-radius:6px;padding:18px;">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;"><span style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">专注度</span><span style="font-family:var(--zx-font-serif);font-size:26px;font-weight:700;color:var(--zx-state-info);">68%</span></div>
+                <div class="zx-bar" style="height:5px;"><span data-target="68" style="display:block;width:0%;height:100%;background:var(--zx-state-info);"></span></div>
+                <div style="font-size:11px;color:var(--zx-muted-foreground);margin-top:8px;">高效时段 19:00-21:00</div>
+              </div>
+              <div style="grid-column:span 12;background:var(--zx-card);border:1px solid var(--zx-border);border-radius:6px;padding:18px;">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;"><span style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">进步速度</span><span style="font-family:var(--zx-font-serif);font-size:26px;font-weight:700;color:var(--zx-state-success);">78%</span></div>
+                <div class="zx-bar" style="height:5px;"><span data-target="78" style="display:block;width:0%;height:100%;background:var(--zx-state-success);"></span></div>
+                <div style="font-size:11px;color:var(--zx-muted-foreground);margin-top:8px;">+12% / 周</div>
+              </div>
+              <div style="grid-column:span 12;background:var(--zx-card);border:1px solid var(--zx-border);border-radius:6px;padding:18px;">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;"><span style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">理解深度</span><span style="font-family:var(--zx-font-serif);font-size:26px;font-weight:700;color:var(--zx-state-success);">82%</span></div>
+                <div class="zx-bar" style="height:5px;"><span data-target="82" style="display:block;width:0%;height:100%;background:var(--zx-state-success);"></span></div>
+                <div style="font-size:11px;color:var(--zx-muted-foreground);margin-top:8px;">概念题 88% · 推导题 76%</div>
+              </div>
+              <div style="grid-column:span 12;background:var(--zx-card);border:1px solid var(--zx-border);border-radius:6px;padding:18px;">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;"><span style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">应用能力</span><span style="font-family:var(--zx-font-serif);font-size:26px;font-weight:700;color:var(--zx-primary);">65%</span></div>
+                <div class="zx-bar" style="height:5px;"><span data-target="65" style="display:block;width:0%;height:100%;background:var(--zx-primary);"></span></div>
+                <div style="font-size:11px;color:var(--zx-muted-foreground);margin-top:8px;">应用题 60% · 待加强</div>
+              </div>
+              <div style="grid-column:span 12;background:var(--zx-card);border:1px solid var(--zx-border);border-radius:6px;padding:18px;">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;"><span style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);letter-spacing:0.1em;">学习习惯</span><span style="font-family:var(--zx-font-serif);font-size:26px;font-weight:700;color:var(--zx-primary);">70%</span></div>
+                <div class="zx-bar" style="height:5px;"><span data-target="70" style="display:block;width:0%;height:100%;background:var(--zx-primary);"></span></div>
+                <div style="font-size:11px;color:var(--zx-muted-foreground);margin-top:8px;">连续 5/7 天 · 笔记 23 篇</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================== SECTION 7 · 04 三端协同 (tab 淡入淡出 + 缩放) ============================== -->
+      <section id="terminals" class="zx-reveal-slide" style="background:var(--zx-card);padding:96px 0;border-top:1px solid var(--zx-border);">
+        <div style="max-width:1320px;margin:0 auto;padding:0 24px;">
+          <div style="margin-bottom:40px;">
+            <div style="font-family:var(--zx-font-serif);font-size:clamp(56px,7vw,80px);font-weight:600;color:var(--zx-primary);line-height:1;letter-spacing:-0.02em;">04</div>
+            <h2 style="font-family:var(--zx-font-display);font-weight:700;font-size:clamp(28px,4vw,40px);line-height:1.1;letter-spacing:-0.02em;color:var(--zx-foreground);margin:12px 0 0 0;">三端协同</h2>
+            <p style="font-size:16px;color:var(--zx-muted-foreground);line-height:1.6;max-width:600px;margin:16px 0 0 0;">教师端、学生端、管理端三端协同,数据实时同步,教学闭环无死角。</p>
+          </div>
+
+          <div style="display:flex;gap:0;border-bottom:1px solid var(--zx-border);margin-bottom:24px;flex-wrap:wrap;" role="tablist">
+            <button class="zx-tab-btn is-active" data-tab="teacher" onclick="zxTab('teacher')" role="tab" aria-selected="true" style="cursor:pointer;background:transparent;border:none;font-family:var(--zx-font-mono);font-size:14px;color:var(--zx-primary);padding:14px 28px;border-bottom:2px solid var(--zx-primary);transition:color 0.2s,border-color 0.2s;"><i data-lucide="users" style="width:16px;height:16px;display:inline;vertical-align:middle;margin-right:6px;"></i>教师端</button>
+            <button class="zx-tab-btn" data-tab="student" onclick="zxTab('student')" role="tab" aria-selected="false" style="cursor:pointer;background:transparent;border:none;font-family:var(--zx-font-mono);font-size:14px;color:var(--zx-muted-foreground);padding:14px 28px;border-bottom:2px solid transparent;transition:color 0.2s,border-color 0.2s;"><i data-lucide="book-open" style="width:16px;height:16px;display:inline;vertical-align:middle;margin-right:6px;"></i>学生端</button>
+            <button class="zx-tab-btn" data-tab="admin" onclick="zxTab('admin')" role="tab" aria-selected="false" style="cursor:pointer;background:transparent;border:none;font-family:var(--zx-font-mono);font-size:14px;color:var(--zx-muted-foreground);padding:14px 28px;border-bottom:2px solid transparent;transition:color 0.2s,border-color 0.2s;"><i data-lucide="bar-chart-3" style="width:16px;height:16px;display:inline;vertical-align:middle;margin-right:6px;"></i>管理端</button>
+          </div>
+
+          <div class="zx-tab-panel is-active" data-panel="teacher" role="tabpanel">
+            <div style="border-radius:8px;overflow:hidden;border:1px solid var(--zx-border);background:#0E0E11;">
+              <div style="display:flex;align-items:center;gap:8px;padding:0 14px;height:36px;background:var(--zx-popover);border-bottom:1px solid var(--zx-border);">
+                <span style="width:10px;height:10px;border-radius:50%;background:var(--zx-state-error);"></span><span style="width:10px;height:10px;border-radius:50%;background:var(--zx-primary);"></span><span style="width:10px;height:10px;border-radius:50%;background:var(--zx-state-success);"></span>
+                <span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);margin-left:8px;">智教星 · 教师端 — 课程管理</span>
+              </div>
+              <div style="padding:20px;">
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+                  <div style="padding:16px;background:var(--zx-card);border:1px solid var(--zx-border);border-left:3px solid var(--zx-state-info);border-radius:4px;"><div style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);">课程总数</div><div style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-state-info);margin-top:4px;">42</div></div>
+                  <div style="padding:16px;background:var(--zx-card);border:1px solid var(--zx-border);border-left:3px solid var(--zx-state-success);border-radius:4px;"><div style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);">学生人数</div><div style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-state-success);margin-top:4px;">1,286</div></div>
+                  <div style="padding:16px;background:var(--zx-card);border:1px solid var(--zx-border);border-left:3px solid var(--zx-primary);border-radius:4px;"><div style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);">AI 生成内容</div><div style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-primary);margin-top:4px;">328</div></div>
+                  <div style="padding:16px;background:var(--zx-card);border:1px solid var(--zx-border);border-left:3px solid #9B7BE0;border-radius:4px;"><div style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);">平均完成率</div><div style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:#9B7BE0;margin-top:4px;">87%</div></div>
+                </div>
+                <div style="overflow-x:auto;">
+                  <table style="width:100%;border-collapse:collapse;font-size:13px;color:var(--zx-foreground);min-width:560px;">
+                    <thead><tr style="border-bottom:1px solid var(--zx-border);"><th style="text-align:left;padding:10px 12px;font-family:var(--zx-font-mono);font-size:11px;font-weight:400;color:var(--zx-muted-foreground);">课程</th><th style="text-align:left;padding:10px 12px;font-family:var(--zx-font-mono);font-size:11px;font-weight:400;color:var(--zx-muted-foreground);">学生数</th><th style="text-align:left;padding:10px 12px;font-family:var(--zx-font-mono);font-size:11px;font-weight:400;color:var(--zx-muted-foreground);">完成率</th><th style="text-align:left;padding:10px 12px;font-family:var(--zx-font-mono);font-size:11px;font-weight:400;color:var(--zx-muted-foreground);">AI 状态</th></tr></thead>
+                    <tbody>
+                      <tr style="border-bottom:1px solid var(--zx-border);"><td style="padding:12px;">高中数学 · 函数与导数</td><td style="padding:12px;">312</td><td style="padding:12px;"><div style="display:flex;align-items:center;gap:8px;"><div class="zx-bar" style="width:80px;height:4px;"><span data-target="92" style="display:block;width:0%;height:100%;background:var(--zx-state-success);"></span></div><span style="font-family:var(--zx-font-mono);font-size:11px;">92%</span></div></td><td style="padding:12px;"><span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-state-success);">● 已生成</span></td></tr>
+                      <tr><td style="padding:12px;">高中数学 · 概率统计</td><td style="padding:12px;">285</td><td style="padding:12px;"><div style="display:flex;align-items:center;gap:8px;"><div class="zx-bar" style="width:80px;height:4px;"><span data-target="78" style="display:block;width:0%;height:100%;background:var(--zx-primary);"></span></div><span style="font-family:var(--zx-font-mono);font-size:11px;">78%</span></div></td><td style="padding:12px;"><span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-primary);">● 生成中</span></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="zx-tab-panel" data-panel="student" role="tabpanel">
+            <div style="border-radius:8px;overflow:hidden;border:1px solid var(--zx-border);background:#0E0E11;">
+              <div style="display:flex;align-items:center;gap:8px;padding:0 14px;height:36px;background:var(--zx-popover);border-bottom:1px solid var(--zx-border);">
+                <span style="width:10px;height:10px;border-radius:50%;background:var(--zx-state-error);"></span><span style="width:10px;height:10px;border-radius:50%;background:var(--zx-primary);"></span><span style="width:10px;height:10px;border-radius:50%;background:var(--zx-state-success);"></span>
+                <span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);margin-left:8px;">智教星 · 学生端 — 学习中心</span>
+              </div>
+              <div style="padding:20px;">
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+                  <div style="padding:16px;background:var(--zx-card);border:1px solid var(--zx-border);border-left:3px solid var(--zx-state-error);border-radius:4px;"><div style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);">待诊疗</div><div style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-state-error);margin-top:4px;">23</div></div>
+                  <div style="padding:16px;background:var(--zx-card);border:1px solid var(--zx-border);border-left:3px solid var(--zx-state-success);border-radius:4px;"><div style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);">已攻克</div><div style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-state-success);margin-top:4px;">156</div></div>
+                  <div style="padding:16px;background:var(--zx-card);border:1px solid var(--zx-border);border-left:3px solid var(--zx-primary);border-radius:4px;"><div style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);">练习正确率</div><div style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-primary);margin-top:4px;">82%</div></div>
+                  <div style="padding:16px;background:var(--zx-card);border:1px solid var(--zx-border);border-left:3px solid var(--zx-state-info);border-radius:4px;"><div style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);">学习时长</div><div style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-state-info);margin-top:4px;">28h</div></div>
+                </div>
+                <div style="padding:20px;background:var(--zx-card);border:1px solid var(--zx-border);border-radius:6px;">
+                  <div style="font-family:var(--zx-font-serif);font-size:14px;font-weight:700;color:var(--zx-foreground);margin-bottom:14px;">练习进度</div>
+                  <div style="display:flex;flex-direction:column;gap:12px;">
+                    <div><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--zx-foreground);margin-bottom:4px;"><span>函数极值</span><span style="font-family:var(--zx-font-mono);color:var(--zx-state-error);">35%</span></div><div class="zx-bar" style="height:5px;"><span data-target="35" style="display:block;width:0%;height:100%;background:var(--zx-state-error);"></span></div></div>
+                    <div><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--zx-foreground);margin-bottom:4px;"><span>积分公式</span><span style="font-family:var(--zx-font-mono);color:var(--zx-primary);">60%</span></div><div class="zx-bar" style="height:5px;"><span data-target="60" style="display:block;width:0%;height:100%;background:var(--zx-primary);"></span></div></div>
+                    <div><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--zx-foreground);margin-bottom:4px;"><span>条件概率</span><span style="font-family:var(--zx-font-mono);color:var(--zx-state-success);">82%</span></div><div class="zx-bar" style="height:5px;"><span data-target="82" style="display:block;width:0%;height:100%;background:var(--zx-state-success);"></span></div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="zx-tab-panel" data-panel="admin" role="tabpanel">
+            <div style="border-radius:8px;overflow:hidden;border:1px solid var(--zx-border);background:#0E0E11;">
+              <div style="display:flex;align-items:center;gap:8px;padding:0 14px;height:36px;background:var(--zx-popover);border-bottom:1px solid var(--zx-border);">
+                <span style="width:10px;height:10px;border-radius:50%;background:var(--zx-state-error);"></span><span style="width:10px;height:10px;border-radius:50%;background:var(--zx-primary);"></span><span style="width:10px;height:10px;border-radius:50%;background:var(--zx-state-success);"></span>
+                <span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);margin-left:8px;">智教星 · 管理端 — 数据看板</span>
+              </div>
+              <div style="padding:20px;">
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+                  <div style="padding:16px;background:var(--zx-card);border:1px solid var(--zx-border);border-left:3px solid var(--zx-state-success);border-radius:4px;"><div style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);">全校学生</div><div style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-state-success);margin-top:4px;">12,486</div></div>
+                  <div style="padding:16px;background:var(--zx-card);border:1px solid var(--zx-border);border-left:3px solid var(--zx-state-info);border-radius:4px;"><div style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);">教师数</div><div style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-state-info);margin-top:4px;">342</div></div>
+                  <div style="padding:16px;background:var(--zx-card);border:1px solid var(--zx-border);border-left:3px solid var(--zx-primary);border-radius:4px;"><div style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);">资源总量</div><div style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-primary);margin-top:4px;">8,920</div></div>
+                  <div style="padding:16px;background:var(--zx-card);border:1px solid var(--zx-border);border-left:3px solid var(--zx-state-success);border-radius:4px;"><div style="font-family:var(--zx-font-mono);font-size:10px;color:var(--zx-muted-foreground);">系统在线率</div><div style="font-family:var(--zx-font-serif);font-size:28px;font-weight:700;color:var(--zx-state-success);margin-top:4px;">99.8%</div></div>
+                </div>
+                <div style="padding:20px;background:var(--zx-card);border:1px solid var(--zx-border);border-radius:6px;">
+                  <div style="font-family:var(--zx-font-serif);font-size:14px;font-weight:700;color:var(--zx-foreground);margin-bottom:14px;">系统监控</div>
+                  <div style="display:flex;flex-direction:column;gap:10px;">
+                    <div><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--zx-foreground);margin-bottom:4px;"><span>Coordinator CPU</span><span style="font-family:var(--zx-font-mono);color:var(--zx-primary);">64%</span></div><div class="zx-bar" style="height:4px;"><span data-target="64" style="display:block;width:0%;height:100%;background:var(--zx-primary);"></span></div></div>
+                    <div><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--zx-foreground);margin-bottom:4px;"><span>Document CPU</span><span style="font-family:var(--zx-font-mono);color:var(--zx-state-info);">81%</span></div><div class="zx-bar" style="height:4px;"><span data-target="81" style="display:block;width:0%;height:100%;background:var(--zx-state-info);"></span></div></div>
+                    <div><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--zx-foreground);margin-bottom:4px;"><span>API 响应时间</span><span style="font-family:var(--zx-font-mono);color:var(--zx-state-success);">128ms</span></div><div class="zx-bar" style="height:4px;"><span data-target="15" style="display:block;width:0%;height:100%;background:var(--zx-state-success);"></span></div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================== SECTION 8 · 05 技术栈 (打字机终端) ============================== -->
+      <section id="tech" class="zx-reveal-slide" style="background:var(--zx-background);padding:96px 0;border-top:1px solid var(--zx-border);">
+        <div style="max-width:1320px;margin:0 auto;padding:0 24px;">
+          <div style="margin-bottom:40px;">
+            <div style="font-family:var(--zx-font-serif);font-size:clamp(56px,7vw,80px);font-weight:600;color:var(--zx-primary);line-height:1;letter-spacing:-0.02em;">05</div>
+            <h2 style="font-family:var(--zx-font-display);font-weight:700;font-size:clamp(28px,4vw,40px);line-height:1.1;letter-spacing:-0.02em;color:var(--zx-foreground);margin:12px 0 0 0;">技术栈</h2>
+            <p style="font-size:16px;color:var(--zx-muted-foreground);line-height:1.6;max-width:600px;margin:16px 0 0 0;">基于 Spark4.0 Ultra 多智能体框架,前后端分离架构,支持 3D 知识图谱可视化。</p>
+          </div>
+
+          <div id="zx-tech-terminal" style="border-radius:8px;overflow:hidden;border:1px solid var(--zx-border);background:#050507;box-shadow:var(--zx-shadow-lg);">
+            <div style="display:flex;align-items:center;gap:8px;padding:0 14px;height:36px;background:var(--zx-popover);border-bottom:1px solid var(--zx-border);">
+              <span style="width:10px;height:10px;border-radius:50%;background:var(--zx-state-error);"></span><span style="width:10px;height:10px;border-radius:50%;background:var(--zx-primary);"></span><span style="width:10px;height:10px;border-radius:50%;background:var(--zx-state-success);"></span>
+              <span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);margin-left:8px;">zhijiaoxing — tech-stack — 80x24</span>
+            </div>
+            <div style="padding:24px;font-family:var(--zx-font-mono);font-size:13px;line-height:1.8;">
+              <div style="color:var(--zx-state-success);"><span id="zx-typewriter" data-text="$ zhijiaoxing --tech-stack"></span><span class="zx-cursor"></span></div>
+              <div style="height:12px;"></div>
+              <div class="zx-tech-line" style="display:flex;gap:16px;opacity:0;"><span style="color:var(--zx-primary);font-weight:600;width:100px;flex-shrink:0;">FRONTEND</span><span style="color:var(--zx-foreground);">Taro 4.x · React · TypeScript · SCSS</span></div>
+              <div class="zx-tech-line" style="display:flex;gap:16px;opacity:0;"><span style="color:var(--zx-primary);font-weight:600;width:100px;flex-shrink:0;">BACKEND</span><span style="color:var(--zx-foreground);">Node.js · Express · Flask · SQLAlchemy</span></div>
+              <div class="zx-tech-line" style="display:flex;gap:16px;opacity:0;"><span style="color:var(--zx-primary);font-weight:600;width:100px;flex-shrink:0;">DATABASE</span><span style="color:var(--zx-foreground);">MongoDB · MySQL / PostgreSQL</span></div>
+              <div class="zx-tech-line" style="display:flex;gap:16px;opacity:0;"><span style="color:var(--zx-primary);font-weight:600;width:100px;flex-shrink:0;">AI ENGINE</span><span style="color:var(--zx-foreground);">Spark4.0 Ultra · Multi-Agent Framework</span></div>
+              <div class="zx-tech-line" style="display:flex;gap:16px;opacity:0;"><span style="color:var(--zx-primary);font-weight:600;width:100px;flex-shrink:0;">AGENTS</span><span style="color:var(--zx-foreground);">Coordinator · Document · Exercise · Media · Recommendation · Project · Profile · KnowledgeGraph</span></div>
+              <div class="zx-tech-line" style="display:flex;gap:16px;opacity:0;"><span style="color:var(--zx-primary);font-weight:600;width:100px;flex-shrink:0;">VIZ</span><span style="color:var(--zx-foreground);">3D Knowledge Graph · D3.js · Canvas</span></div>
+              <div class="zx-tech-line" style="display:flex;gap:16px;opacity:0;"><span style="color:var(--zx-primary);font-weight:600;width:100px;flex-shrink:0;">AUTH</span><span style="color:var(--zx-foreground);">JWT · RBAC · Session Management</span></div>
+              <div style="height:16px;"></div>
+              <div class="zx-tech-line" style="color:var(--zx-muted-foreground);opacity:0;">Status: <span style="color:var(--zx-state-success);">8 agents online</span> · <span style="color:var(--zx-foreground);">7 resource types</span> · <span style="color:var(--zx-primary);">94% accuracy</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- ============================== SECTION 9 · COUNT-UP BAND ============================== -->
+      <section class="zx-count-band" style="background:var(--zx-card);padding:72px 0;border-top:1px solid var(--zx-border);">
+        <div style="max-width:1320px;margin:0 auto;padding:0 24px;">
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:32px;" class="zx-count-grid">
+            <div style="text-align:center;border-right:1px solid var(--zx-border);padding:8px 0;">
+              <div style="font-family:var(--zx-font-serif);font-size:clamp(48px,7vw,80px);font-weight:700;color:var(--zx-primary);line-height:1;letter-spacing:-0.02em;"><span class="zx-count" data-target="8" data-suffix="">0</span></div>
+              <div style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.15em;margin-top:12px;text-transform:uppercase;">智能体</div>
+            </div>
+            <div style="text-align:center;padding:8px 0;">
+              <div style="font-family:var(--zx-font-serif);font-size:clamp(48px,7vw,80px);font-weight:700;color:var(--zx-foreground);line-height:1;letter-spacing:-0.02em;"><span class="zx-count" data-target="94" data-suffix="%">0</span></div>
+              <div style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.15em;margin-top:12px;text-transform:uppercase;">诊断准确率</div>
+            </div>
+            <div style="text-align:center;border-right:1px solid var(--zx-border);padding:8px 0;">
+              <div style="font-family:var(--zx-font-serif);font-size:clamp(48px,7vw,80px);font-weight:700;color:var(--zx-foreground);line-height:1;letter-spacing:-0.02em;"><span class="zx-count" data-target="8" data-suffix="">0</span></div>
+              <div style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.15em;margin-top:12px;text-transform:uppercase;">维学生画像</div>
+            </div>
+            <div style="text-align:center;padding:8px 0;">
+              <div style="font-family:var(--zx-font-serif);font-size:clamp(48px,7vw,80px);font-weight:700;color:var(--zx-primary);line-height:1;letter-spacing:-0.02em;"><span class="zx-count" data-target="5000" data-suffix="+">0</span></div>
+              <div style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);letter-spacing:0.15em;margin-top:12px;text-transform:uppercase;">教学团队</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================== SECTION 10 · 用户评价 (clip-path circle 揭示) ============================== -->
+      <section class="zx-clip-reveal" data-clip="circle" style="background:var(--zx-background);padding:112px 0;border-top:1px solid var(--zx-border);">
+        <div style="max-width:1000px;margin:0 auto;padding:0 24px;position:relative;">
+          <span aria-hidden="true" style="position:absolute;left:-12px;top:-32px;font-family:var(--zx-font-serif);font-size:120px;font-weight:700;color:var(--zx-primary);line-height:1;opacity:0.8;">"</span>
+          <blockquote style="margin:0;padding:0 0 0 48px;">
+            <p style="font-family:var(--zx-font-serif);font-size:clamp(22px,3vw,30px);font-weight:500;line-height:1.5;color:var(--zx-foreground);margin:0;">智教星的错题诊疗系统让我们的教学效率提升了 3 倍。AI 精准诊断每个学生的薄弱点,靶向练习让提分真正发生在每个学生身上。</p>
+            <footer style="margin-top:24px;font-family:var(--zx-font-mono);font-size:13px;color:var(--zx-muted-foreground);">— 张教授, 清华大学数学系</footer>
+          </blockquote>
+        </div>
+      </section>
+
+      <!-- ============================== SECTION 11 · CTA + FOOTER ============================== -->
+      <section id="cta" class="zx-reveal-scale" style="background:var(--zx-background);padding:120px 24px;border-top:1px solid var(--zx-border);text-align:center;position:relative;overflow:hidden;">
+        <div aria-hidden="true" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(232,181,71,0.06) 0%,transparent 70%);pointer-events:none;"></div>
+        <div style="max-width:680px;margin:0 auto;position:relative;">
+          <h2 style="font-family:var(--zx-font-display);font-weight:800;font-size:clamp(32px,5vw,48px);line-height:1.1;letter-spacing:-0.03em;color:var(--zx-foreground);margin:0;">准备好让每个错题都被精准诊疗了吗</h2>
+          <p style="font-size:17px;color:var(--zx-muted-foreground);line-height:1.6;margin:24px 0 0 0;">8 个智能体已就绪,3 分钟部署,即刻开启 AI 驱动的精准教学</p>
+          <a href="#" style="display:inline-flex;align-items:center;gap:8px;font-family:var(--zx-font-display);font-size:17px;font-weight:600;color:var(--zx-primary-foreground);background:var(--zx-primary);padding:16px 36px;border-radius:8px;text-decoration:none;margin-top:36px;box-shadow:0 0 32px rgba(232,181,71,0.2);">免费试用 <i data-lucide="arrow-right" style="width:18px;height:18px;"></i></a>
+          <p style="font-family:var(--zx-font-mono);font-size:12px;color:var(--zx-muted-foreground);margin:20px 0 0 0;letter-spacing:0.05em;">无需信用卡 · 5 分钟部署 · 985/211 信赖之选</p>
+        </div>
+      </section>
+
+      <footer style="background:var(--zx-card);border-top:1px solid var(--zx-border);padding:64px 0 32px;">
+        <div style="max-width:1320px;margin:0 auto;padding:0 24px;">
+          <div class="zx-footer-grid" style="display:grid;grid-template-columns:1fr;gap:32px;">
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" style="color:var(--zx-primary);"><polygon points="12,2 21,7 21,17 12,22 3,17 3,7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><polygon points="12,7 16.5,9.5 16.5,14.5 12,17 7.5,14.5 7.5,9.5" fill="currentColor" opacity="0.35"/></svg>
+                <span style="font-family:var(--zx-font-serif);font-size:18px;font-weight:700;color:var(--zx-foreground);">智教星</span>
+              </div>
+              <p style="font-size:13px;color:var(--zx-muted-foreground);line-height:1.6;margin:0;">基于多智能体的自适应错题诊疗系统,让每个学生获得个性化学习路径。</p>
+              <div style="display:flex;gap:12px;margin-top:20px;">
+                <a href="#" aria-label="GitHub" style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--zx-border);border-radius:6px;color:var(--zx-muted-foreground);text-decoration:none;"><i data-lucide="github" style="width:16px;height:16px;"></i></a>
+                <a href="#" aria-label="邮箱" style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--zx-border);border-radius:6px;color:var(--zx-muted-foreground);text-decoration:none;"><i data-lucide="mail" style="width:16px;height:16px;"></i></a>
+                <a href="#" aria-label="RSS" style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--zx-border);border-radius:6px;color:var(--zx-muted-foreground);text-decoration:none;"><i data-lucide="rss" style="width:16px;height:16px;"></i></a>
+              </div>
+            </div>
+            <div>
+              <h4 style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);letter-spacing:0.15em;margin:0 0 16px 0;text-transform:uppercase;">产品</h4>
+              <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;">
+                <li><a href="#hero" style="font-size:13px;color:var(--zx-foreground);text-decoration:none;">产品概览</a></li>
+                <li><a href="#architecture" style="font-size:13px;color:var(--zx-foreground);text-decoration:none;">多智能体架构</a></li>
+                <li><a href="#features" style="font-size:13px;color:var(--zx-foreground);text-decoration:none;">核心功能</a></li>
+                <li><a href="#profile" style="font-size:13px;color:var(--zx-foreground);text-decoration:none;">学情数据</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);letter-spacing:0.15em;margin:0 0 16px 0;text-transform:uppercase;">资源</h4>
+              <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;">
+                <li><a href="#" style="font-size:13px;color:var(--zx-foreground);text-decoration:none;">开发文档</a></li>
+                <li><a href="#" style="font-size:13px;color:var(--zx-foreground);text-decoration:none;">API 参考</a></li>
+                <li><a href="#" style="font-size:13px;color:var(--zx-foreground);text-decoration:none;">更新日志</a></li>
+                <li><a href="#" style="font-size:13px;color:var(--zx-foreground);text-decoration:none;">系统状态</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);letter-spacing:0.15em;margin:0 0 16px 0;text-transform:uppercase;">订阅更新</h4>
+              <p style="font-size:13px;color:var(--zx-muted-foreground);line-height:1.6;margin:0 0 16px 0;">获取智教星最新功能更新与教育 AI 行业洞察。</p>
+              <div style="display:flex;gap:8px;">
+                <input type="email" placeholder="your@email.com" aria-label="邮箱地址" style="flex:1;background:var(--zx-popover);border:1px solid var(--zx-border);border-radius:6px;padding:10px 14px;font-family:var(--zx-font-mono);font-size:13px;color:var(--zx-foreground);outline:none;min-width:0;" />
+                <button style="font-family:var(--zx-font-mono);font-size:12px;font-weight:600;color:var(--zx-primary-foreground);background:var(--zx-primary);border:none;padding:10px 18px;border-radius:6px;cursor:pointer;white-space:nowrap;">订阅</button>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:48px;padding-top:24px;border-top:1px solid var(--zx-border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+            <span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);">© 2026 智教星 ZhiJiaoXing · All rights reserved</span>
+            <span style="font-family:var(--zx-font-mono);font-size:11px;color:var(--zx-muted-foreground);">Made with multi-agent system · Spark4.0 Ultra</span>
+          </div>
+        </div>
+      </footer>
+    </main>
+    <style>
+/* ============================================================
+   智教星 v4 · 动画与交互样式 (Canvas 粒子知识图谱版)
+   初始隐藏态统一挂在 .zx-anim 作用域下,脚本同步加该类,无 JS 时回退为可见
+   ============================================================ */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{
+    animation-duration:0.001ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:0.001ms !important;
+    scroll-behavior:auto !important;
+  }
+}
+
+/* ---- 导航链接响应式 (小屏隐藏, md+ 显示) ---- */
+@media (min-width: 860px){
+  .zx-nav-links{ display:flex !important; }
+}
+.zx-nav-links a:hover{ color:var(--zx-foreground) !important; }
+
+/* ---- 可访问性焦点框 ---- */
+a:focus-visible, button:focus-visible{
+  outline:2px solid var(--zx-ring);
+  outline-offset:2px;
+  border-radius:4px;
+}
+
+/* ---- Hero 滚动指示器 bounce ---- */
+.zx-scroll-cue{ animation:zx-bounce 2.2s ease-in-out infinite; }
+@keyframes zx-bounce{
+  0%,100%{ transform:translateY(0); opacity:0.55; }
+  50%{ transform:translateY(6px); opacity:1; }
+}
+
+/* ---- 数据滚动条 marquee (内容已复制两遍, -50% 无缝) ---- */
+@keyframes zx-marquee{
+  0%{ transform:translateX(0); }
+  100%{ transform:translateX(-50%); }
+}
+.zx-marquee:hover .zx-marquee-track{ animation-play-state:paused; }
+
+/* ---- 终端光标闪烁 ---- */
+.zx-cursor{
+  display:inline-block;
+  width:9px;
+  height:1.05em;
+  margin-left:3px;
+  background:var(--zx-state-success);
+  vertical-align:text-bottom;
+  animation:zx-blink 1.05s steps(2) infinite;
+}
+@keyframes zx-blink{ 0%,100%{opacity:1;} 50%{opacity:0;} }
+
+/* ---- 拓扑图脉冲环 ---- */
+.zx-topo-pulse{ transform-origin:center; transform-box:fill-box; animation:zx-pulse 2.6s ease-out infinite; }
+@keyframes zx-pulse{
+  0%{ transform:scale(1); opacity:0.55; }
+  100%{ transform:scale(1.9); opacity:0; }
+}
+
+/* ---- 通用滚动揭示 (zx-reveal-slide / zx-reveal-scale) ---- */
+.zx-anim .zx-reveal-slide{
+  opacity:0;
+  transform:translateY(44px);
+  transition:opacity .85s cubic-bezier(.22,.61,.36,1), transform .85s cubic-bezier(.22,.61,.36,1);
+}
+.zx-anim .zx-reveal-slide.is-visible{ opacity:1; transform:none; }
+
+.zx-anim .zx-reveal-scale{
+  opacity:0;
+  transform:scale(.955);
+  transition:opacity .7s ease, transform .7s cubic-bezier(.22,.61,.36,1);
+}
+.zx-anim .zx-reveal-scale.is-visible{ opacity:1; transform:scale(1); }
+
+/* ---- clip-path 揭示 (4 种) ---- */
+.zx-anim .zx-clip-reveal{ transition:clip-path 1.15s cubic-bezier(.7,0,.3,1); will-change:clip-path; }
+.zx-anim .zx-clip-reveal[data-clip="inset-right"]{ clip-path:inset(0 100% 0 0); }
+.zx-anim .zx-clip-reveal[data-clip="inset-bottom"]{ clip-path:inset(0 0 100% 0); }
+.zx-anim .zx-clip-reveal[data-clip="polygon-diag"]{ clip-path:polygon(0 0, 0 0, 0 0, 0 0); }
+.zx-anim .zx-clip-reveal[data-clip="circle"]{ clip-path:circle(0% at 50% 50%); }
+.zx-anim .zx-clip-reveal.is-visible{ clip-path:inset(0 0 0 0) !important; }
+.zx-anim .zx-clip-reveal[data-clip="polygon-diag"].is-visible{ clip-path:polygon(0 0, 100% 0, 100% 100%, 0 100%) !important; }
+.zx-anim .zx-clip-reveal[data-clip="circle"].is-visible{ clip-path:circle(150% at 50% 50%) !important; }
+
+/* ---- 拓扑 SVG 边绘制 + 节点错峰出现 ---- */
+.zx-anim .zx-topo-line{
+  stroke-dasharray:var(--len, 400);
+  stroke-dashoffset:var(--len, 400);
+  transition:stroke-dashoffset 1.15s ease;
+}
+.zx-topo-wrap-drawn .zx-topo-line{ stroke-dashoffset:0; }
+.zx-anim .zx-topo-node{
+  opacity:0;
+  transform:scale(.4);
+  transition:opacity .5s ease, transform .55s cubic-bezier(.34,1.56,.64,1);
+}
+.zx-topo-wrap-drawn .zx-topo-node{ opacity:1; transform:scale(1); }
+
+/* ---- 雷达图 polygon 描边动画 ---- */
+.zx-anim #zx-radar-profile,
+.zx-anim #zx-radar-feature{
+  stroke-dasharray:var(--rlen, 900);
+  stroke-dashoffset:var(--rlen, 900);
+  transition:stroke-dashoffset 1.7s ease, fill-opacity 1.7s ease;
+}
+#zx-radar-profile.zx-radar-drawn,
+#zx-radar-feature.zx-radar-drawn{
+  stroke-dashoffset:0 !important;
+  fill-opacity:0.12 !important;
+}
+
+/* ---- 进度条增长 ---- */
+.zx-bar > span{ transition:width 1.25s cubic-bezier(.22,.61,.36,1); }
+
+/* ---- 三端 tab 转场 (淡入 + 缩放) ---- */
+.zx-tab-panel{ display:none; }
+.zx-tab-panel.is-active{ display:block; animation:zx-tab-in .4s ease; }
+@keyframes zx-tab-in{
+  0%{ opacity:0; transform:scale(.97); }
+  100%{ opacity:1; transform:scale(1); }
+}
+
+/* ---- 技术栈逐行淡入 ---- */
+.zx-tech-line{ transition:opacity .45s ease; }
+
+/* ---- Bento 响应式不等跨度 (agent: 3/4/5/3/4/5/3/6) ---- */
+@media (min-width: 980px){
+  .zx-bento > .zx-agent-card:nth-child(1){ grid-column:span 3 !important; }
+  .zx-bento > .zx-agent-card:nth-child(2){ grid-column:span 4 !important; }
+  .zx-bento > .zx-agent-card:nth-child(3){ grid-column:span 5 !important; }
+  .zx-bento > .zx-agent-card:nth-child(4){ grid-column:span 3 !important; }
+  .zx-bento > .zx-agent-card:nth-child(5){ grid-column:span 4 !important; }
+  .zx-bento > .zx-agent-card:nth-child(6){ grid-column:span 5 !important; }
+  .zx-bento > .zx-agent-card:nth-child(7){ grid-column:span 3 !important; }
+  .zx-bento > .zx-agent-card:nth-child(8){ grid-column:span 6 !important; }
+}
+/* 画像 bento 不等跨度 (4/3/5/4/3/5/4/4) */
+@media (min-width: 980px){
+  .zx-bento-profile > div:nth-child(1){ grid-column:span 4 !important; }
+  .zx-bento-profile > div:nth-child(2){ grid-column:span 3 !important; }
+  .zx-bento-profile > div:nth-child(3){ grid-column:span 5 !important; }
+  .zx-bento-profile > div:nth-child(4){ grid-column:span 4 !important; }
+  .zx-bento-profile > div:nth-child(5){ grid-column:span 3 !important; }
+  .zx-bento-profile > div:nth-child(6){ grid-column:span 5 !important; }
+  .zx-bento-profile > div:nth-child(7){ grid-column:span 4 !important; }
+  .zx-bento-profile > div:nth-child(8){ grid-column:span 4 !important; }
+}
+/* count-up band 桌面 4 列补分隔线 */
+@media (min-width: 760px){
+  .zx-count-grid{ grid-template-columns:repeat(4, 1fr) !important; }
+  .zx-count-grid > div:nth-child(2){ border-right:1px solid var(--zx-border) !important; }
+}
+/* footer 桌面 4 列 (2/3/3/4) */
+@media (min-width: 920px){
+  .zx-footer-grid{ grid-template-columns:2fr 3fr 3fr 4fr !important; }
+}
+    </style>
+
+    <script>
+(function(){
+  'use strict';
+
+  /* 同步加 .zx-anim, 使初始隐藏态在首次绘制前生效 (脚本阻塞解析, 无 FOUC) */
+  var docEl = document.documentElement;
+  docEl.classList.add('zx-anim');
+
+  var prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ============ 1. 顶部滚动进度条 ============ */
+  var progress = document.getElementById('zx-scroll-progress');
+  function updateProgress(){
+    var h = document.documentElement;
+    var scrolled = h.scrollTop || document.body.scrollTop;
+    var max = (h.scrollHeight - h.clientHeight) || 1;
+    var pct = Math.min(100, Math.max(0, (scrolled / max) * 100));
+    if(progress) progress.style.width = pct + '%';
+  }
+  window.addEventListener('scroll', updateProgress, { passive:true });
+  window.addEventListener('resize', updateProgress, { passive:true });
+  updateProgress();
+
+  /* ============ 2. 通用 IntersectionObserver 触发器 ============ */
+  function onVisible(els, fn, opts){
+    if(!('IntersectionObserver' in window)){
+      (els || []).forEach(function(el){ fn(el, null); });
+      return null;
+    }
+    var io = new IntersectionObserver(function(entries, obs){
+      entries.forEach(function(e){
+        if(e.isIntersecting){ fn(e.target, obs); obs.unobserve(e.target); }
+      });
+    }, opts || { threshold:0.15 });
+    (els || []).forEach(function(el){ if(el) io.observe(el); });
+    return io;
+  }
+
+  onVisible(document.querySelectorAll('.zx-reveal-slide'), function(el){ el.classList.add('is-visible'); });
+  onVisible(document.querySelectorAll('.zx-reveal-scale'), function(el){ el.classList.add('is-visible'); }, { threshold:0.25 });
+  onVisible(document.querySelectorAll('.zx-clip-reveal'), function(el){ el.classList.add('is-visible'); }, { threshold:0.18 });
+
+  /* ============ 3. SVG 拓扑边绘制 + 节点错峰 ============ */
+  var topo = document.getElementById('zx-topo');
+  var topoWrap = document.getElementById('zx-topo-wrap');
+  if(topo && topoWrap){
+    var topoLines = topo.querySelectorAll('.zx-topo-line');
+    var topoNodes = topo.querySelectorAll('.zx-topo-node');
+    topoLines.forEach(function(l){
+      try{ l.style.setProperty('--len', l.getTotalLength()); }catch(err){}
+    });
+    topoNodes.forEach(function(n, i){ n.style.transitionDelay = (0.18 + i * 0.09) + 's'; });
+    onVisible([topoWrap], function(el){ el.classList.add('zx-topo-wrap-drawn'); }, { threshold:0.3 });
+  }
+
+  /* ============ 4. 雷达图 polygon 描边 ============ */
+  function setupRadar(id, points){
+    var p = document.getElementById(id);
+    if(!p) return;
+    if(points){ p.setAttribute('points', points); }
+    var len = 0;
+    try{ len = p.getTotalLength(); }catch(err){ len = 900; }
+    if(!len || len < 1) len = 900;
+    p.style.setProperty('--rlen', len);
+    p.style.fillOpacity = '0';
+    var obs = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){ p.classList.add('zx-radar-drawn'); obs.unobserve(p); }
+      });
+    }, { threshold:0.3 });
+    obs.observe(p);
+  }
+  setupRadar('zx-radar-profile', null);
+  setupRadar('zx-radar-feature', '150,48 211.2,88.8 192,150 207.7,207.7 150,243.6 80.4,219.6 72,150 90.6,90.6');
+
+  /* ============ 5. 进度条增长 (.zx-bar > span[data-target]) ============ */
+  var bars = document.querySelectorAll('.zx-bar');
+  bars.forEach(function(bar){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          var span = bar.querySelector('span[data-target]');
+          if(span){
+            var t = parseInt(span.getAttribute('data-target'), 10) || 0;
+            span.style.width = t + '%';
+          }
+          io.unobserve(bar);
+        }
+      });
+    }, { threshold:0.5 });
+    io.observe(bar);
+  });
+
+  /* ============ 6. count-up 数字 ============ */
+  var countBand = document.querySelector('.zx-count-band');
+  if(countBand){
+    var counts = countBand.querySelectorAll('.zx-count');
+    var cio = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){
+          counts.forEach(function(c, i){
+            var target = parseInt(c.getAttribute('data-target'), 10) || 0;
+            var suffix = c.getAttribute('data-suffix') || '';
+            var dur = 1500;
+            var start = performance.now() + i * 140;
+            (function(node, tgt, suf, st, d){
+              function tick(now){
+                var t = Math.min(1, Math.max(0, (now - st) / d));
+                var eased = 1 - Math.pow(1 - t, 3);
+                var val = Math.round(tgt * eased);
+                node.textContent = val + suf;
+                if(t < 1){ requestAnimationFrame(tick); }
+                else { node.textContent = tgt + suf; }
+              }
+              requestAnimationFrame(tick);
+            })(c, target, suffix, start, dur);
+          });
+          cio.unobserve(countBand);
+        }
+      });
+    }, { threshold:0.4 });
+    cio.observe(countBand);
+  }
+
+  /* ============ 7. 技术栈打字机 ============ */
+  var terminal = document.getElementById('zx-tech-terminal');
+  var tw = document.getElementById('zx-typewriter');
+  if(terminal && tw){
+    var fullText = tw.getAttribute('data-text') || tw.textContent || '';
+    var techLines = terminal.querySelectorAll('.zx-tech-line');
+    var typed = false;
+    var tio = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting && !typed){
+          typed = true;
+          tw.textContent = '';
+          var i = 0;
+          function typeChar(){
+            if(i < fullText.length){
+              tw.textContent += fullText.charAt(i);
+              i++;
+              setTimeout(typeChar, prefersReduced ? 0 : 40);
+            } else {
+              techLines.forEach(function(line, idx){
+                setTimeout(function(){ line.style.opacity = '1'; }, 140 + idx * 170);
+              });
+            }
+          }
+          typeChar();
+          tio.unobserve(terminal);
+        }
+      });
+    }, { threshold:0.3 });
+    tio.observe(terminal);
+  }
+
+  /* ============ 8. 三端 tab 切换 (opacity + scale) ============ */
+  window.zxTab = function(name){
+    var btns = document.querySelectorAll('.zx-tab-btn');
+    var panels = document.querySelectorAll('.zx-tab-panel');
+    btns.forEach(function(b){
+      var active = b.getAttribute('data-tab') === name;
+      b.classList.toggle('is-active', active);
+      b.setAttribute('aria-selected', active ? 'true' : 'false');
+      b.style.color = active ? 'var(--zx-primary)' : 'var(--zx-muted-foreground)';
+      b.style.borderBottomColor = active ? 'var(--zx-primary)' : 'transparent';
+    });
+    panels.forEach(function(p){
+      p.classList.toggle('is-active', p.getAttribute('data-panel') === name);
+    });
+    if(window.lucide && window.lucide.createIcons){ window.lucide.createIcons(); }
+  };
+
+  /* ============ 9. Canvas 力导向知识图谱 (手写) ============ */
+  (function initGraph(){
+    var canvas = document.getElementById('zx-graph-canvas');
+    if(!canvas) return;
+    var hero = document.getElementById('hero');
+    var ctx = canvas.getContext('2d');
+    var DPR = Math.min(window.devicePixelRatio || 1, 2);
+    var W = 0, H = 0;
+
+    var COL = {
+      amber:'#E8B547', info:'#6BA8E8', purple:'#9B7BE0', teal:'#2A7B7B',
+      success:'#5BCC7B', gray:'#8A8780', fg:'#EDEAE3'
+    };
+
+    var nodeDefs = [
+      { id:'c',          type:'center',  label:'智教星',           color:COL.amber,  r:28 },
+      { id:'coordinator',type:'agent',   label:'Coordinator',      color:COL.amber,  r:16 },
+      { id:'document',   type:'agent',   label:'Document',         color:COL.info,   r:16 },
+      { id:'exercise',   type:'agent',   label:'Exercise',         color:COL.amber,  r:16 },
+      { id:'media',      type:'agent',   label:'Media',            color:COL.purple, r:16 },
+      { id:'recommend',  type:'agent',   label:'Recommend',        color:COL.teal,   r:16 },
+      { id:'project',    type:'agent',   label:'Project',          color:COL.teal,   r:16 },
+      { id:'profile',    type:'agent',   label:'Profile',          color:COL.amber,  r:16 },
+      { id:'kg',         type:'agent',   label:'KnowledgeGraph',   color:COL.success,r:16 },
+      { id:'n1', type:'concept', label:'函数',     color:COL.gray, r:10 },
+      { id:'n2', type:'concept', label:'导数',     color:COL.gray, r:10 },
+      { id:'n3', type:'concept', label:'积分',     color:COL.gray, r:10 },
+      { id:'n4', type:'concept', label:'矩阵',     color:COL.gray, r:10 },
+      { id:'n5', type:'concept', label:'概率',     color:COL.gray, r:10 },
+      { id:'n6', type:'concept', label:'统计',     color:COL.gray, r:10 },
+      { id:'n7', type:'concept', label:'几何',     color:COL.gray, r:10 },
+      { id:'n8', type:'concept', label:'代数',     color:COL.gray, r:10 },
+      { id:'n9', type:'concept', label:'三角函数', color:COL.gray, r:10 },
+      { id:'n10',type:'concept', label:'数列',     color:COL.gray, r:10 },
+      { id:'n11',type:'concept', label:'向量',     color:COL.gray, r:10 }
+    ];
+
+    var edges = [
+      ['c','coordinator'],['c','document'],['c','exercise'],['c','media'],
+      ['c','recommend'],['c','project'],['c','profile'],['c','kg'],
+      ['document','n1'],['document','n2'],
+      ['exercise','n2'],['exercise','n3'],['exercise','n4'],
+      ['media','n5'],['media','n6'],['media','n7'],
+      ['kg','n8'],['kg','n9'],['kg','n10'],['kg','n11'],
+      ['profile','n1'],['profile','n5']
+    ];
+
+    var nodes = nodeDefs.map(function(d, i){
+      var ang = (i / nodeDefs.length) * Math.PI * 2;
+      var rad = d.type === 'center' ? 0 : (d.type === 'agent' ? 165 : 280);
+      return {
+        id:d.id, type:d.type, label:d.label, color:d.color, baseR:d.r,
+        x: W/2 + Math.cos(ang) * rad,
+        y: H/2 + Math.sin(ang) * rad,
+        vx:0, vy:0
+      };
+    });
+    var nodeById = {};
+    nodes.forEach(function(n){ nodeById[n.id] = n; });
+
+    var edgeList = edges.map(function(e){
+      return { a:nodeById[e[0]], b:nodeById[e[1]], particles:[ Math.random(), Math.random() ] };
+    });
+
+    var mouse = { x:-9999, y:-9999, active:false };
+    var hoverNode = null;
+
+    var firstLayout = true;
+    function layoutRing(){
+      for(var i = 0; i < nodes.length; i++){
+        var n = nodes[i];
+        if(n.type === 'center'){ n.x = W/2; n.y = H/2; n.vx = 0; n.vy = 0; continue; }
+        var ang = (i / nodes.length) * Math.PI * 2;
+        var rad = n.type === 'agent' ? 165 : 280;
+        n.x = W/2 + Math.cos(ang) * rad;
+        n.y = H/2 + Math.sin(ang) * rad;
+        n.vx = 0; n.vy = 0;
+      }
+    }
+    function resize(){
+      var rect = hero.getBoundingClientRect();
+      W = Math.max(320, rect.width);
+      H = Math.max(400, rect.height);
+      canvas.width = Math.floor(W * DPR);
+      canvas.height = Math.floor(H * DPR);
+      canvas.style.width = W + 'px';
+      canvas.style.height = H + 'px';
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      if(firstLayout){ layoutRing(); firstLayout = false; }
+      else { nodes[0].x = W / 2; nodes[0].y = H / 2; }
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    /* 挂到 window, 避免被 hero 文字层遮挡 mousemove */
+    window.addEventListener('mousemove', function(ev){
+      var rect = canvas.getBoundingClientRect();
+      mouse.x = ev.clientX - rect.left;
+      mouse.y = ev.clientY - rect.top;
+      mouse.active = (mouse.x >= 0 && mouse.x <= W && mouse.y >= 0 && mouse.y <= H);
+    });
+    window.addEventListener('mouseout', function(e){
+      if(!e.relatedTarget){ mouse.active = false; hoverNode = null; }
+    });
+
+    function findHover(){
+      if(!mouse.active){ hoverNode = null; return; }
+      var best = null, bestD = 64;
+      for(var i = 0; i < nodes.length; i++){
+        var n = nodes[i];
+        var dx = n.x - mouse.x, dy = n.y - mouse.y;
+        var d = Math.sqrt(dx * dx + dy * dy);
+        if(d < bestD){ bestD = d; best = n; }
+      }
+      hoverNode = best;
+    }
+    function isEdgeHovered(edge){ return hoverNode && (edge.a === hoverNode || edge.b === hoverNode); }
+    function isNodeHovered(n){ return hoverNode === n; }
+    function isNodeConnected(n){
+      if(!hoverNode) return true;
+      if(n === hoverNode) return true;
+      for(var i = 0; i < edgeList.length; i++){
+        var e = edgeList[i];
+        if((e.a === hoverNode && e.b === n) || (e.b === hoverNode && e.a === n)) return true;
+      }
+      return false;
+    }
+
+    var running = true;
+    var startTime = performance.now();
+
+    function step(now){
+      if(!running) return;
+      var t = (now - startTime) / 1000;
+
+      /* 物理: 节点间斥力 (库仑) */
+      for(var i = 0; i < nodes.length; i++){
+        var a = nodes[i];
+        if(a.type === 'center') continue;
+        for(var j = 0; j < nodes.length; j++){
+          if(i === j) continue;
+          var b = nodes[j];
+          var dx = a.x - b.x, dy = a.y - b.y;
+          var d2 = dx * dx + dy * dy;
+          if(d2 < 1) d2 = 1;
+          var d = Math.sqrt(d2);
+          var force = 1500 / d2;
+          a.vx += (dx / d) * force;
+          a.vy += (dy / d) * force;
+        }
+      }
+      /* 弹簧引力 (有边节点) */
+      for(var k = 0; k < edgeList.length; k++){
+        var e = edgeList[k];
+        var edx = e.b.x - e.a.x, edy = e.b.y - e.a.y;
+        var ed = Math.sqrt(edx * edx + edy * edy) || 1;
+        var target = (e.a.type === 'center' || e.b.type === 'center') ? 150 : 92;
+        var diff = (ed - target);
+        var f = diff * 0.022;
+        var fx = (edx / ed) * f, fy = (edy / ed) * f;
+        if(e.a.type !== 'center'){ e.a.vx += fx; e.a.vy += fy; }
+        if(e.b.type !== 'center'){ e.b.vx -= fx; e.b.vy -= fy; }
+      }
+      /* 向中心微拉, 保持图谱居中 */
+      for(var m = 0; m < nodes.length; m++){
+        var nd = nodes[m];
+        if(nd.type === 'center') continue;
+        nd.vx += (W/2 - nd.x) * 0.0009;
+        nd.vy += (H/2 - nd.y) * 0.0009;
+      }
+      /* 积分 + 阻尼 0.85 + 边界 */
+      for(var p = 0; p < nodes.length; p++){
+        var nd2 = nodes[p];
+        if(nd2.type === 'center'){ nd2.x = W/2; nd2.y = H/2; continue; }
+        nd2.vx *= 0.85; nd2.vy *= 0.85;
+        nd2.x += nd2.vx; nd2.y += nd2.vy;
+        var pad = 44;
+        if(nd2.x < pad){ nd2.x = pad; nd2.vx *= -0.5; }
+        if(nd2.x > W - pad){ nd2.x = W - pad; nd2.vx *= -0.5; }
+        if(nd2.y < pad){ nd2.y = pad; nd2.vy *= -0.5; }
+        if(nd2.y > H - pad){ nd2.y = H - pad; nd2.vy *= -0.5; }
+      }
+
+      findHover();
+
+      /* 渲染 */
+      ctx.clearRect(0, 0, W, H);
+
+      /* 边 + 数据粒子 */
+      ctx.lineWidth = 1;
+      for(var q = 0; q < edgeList.length; q++){
+        var ed2 = edgeList[q];
+        var eh = isEdgeHovered(ed2);
+        ctx.strokeStyle = eh ? 'rgba(232,181,71,0.55)' : 'rgba(237,234,227,0.13)';
+        ctx.beginPath();
+        ctx.moveTo(ed2.a.x, ed2.a.y);
+        ctx.lineTo(ed2.b.x, ed2.b.y);
+        ctx.stroke();
+        for(var pi = 0; pi < ed2.particles.length; pi++){
+          var prog = ((t * 0.26) + ed2.particles[pi]) % 1;
+          var ppx = ed2.a.x + (ed2.b.x - ed2.a.x) * prog;
+          var ppy = ed2.a.y + (ed2.b.y - ed2.a.y) * prog;
+          ctx.beginPath();
+          ctx.fillStyle = eh ? 'rgba(232,181,71,0.92)' : 'rgba(237,234,227,0.5)';
+          ctx.arc(ppx, ppy, eh ? 2.4 : 1.6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      /* 节点 */
+      for(var r = 0; r < nodes.length; r++){
+        var nd3 = nodes[r];
+        var connected = isNodeConnected(nd3);
+        var breath = Math.sin(t * 1.6 + r) * 2;
+        var rad = nd3.baseR + breath;
+        var alpha = hoverNode ? (connected ? 1 : 0.22) : 1;
+
+        if(isNodeHovered(nd3)){
+          ctx.shadowBlur = 24;
+          ctx.shadowColor = nd3.color;
+        } else {
+          ctx.shadowBlur = 0;
+        }
+        ctx.globalAlpha = alpha;
+        ctx.beginPath();
+        ctx.fillStyle = '#0B0B0D';
+        ctx.arc(nd3.x, nd3.y, rad, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.lineWidth = nd3.type === 'center' ? 2 : 1.4;
+        ctx.strokeStyle = nd3.color;
+        ctx.stroke();
+        if(nd3.type === 'center'){
+          ctx.beginPath();
+          ctx.fillStyle = 'rgba(232,181,71,0.18)';
+          ctx.arc(nd3.x, nd3.y, rad - 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.shadowBlur = 0;
+
+        /* 标签: center/agent 常显, concept 仅 hover 时显 */
+        if(nd3.type === 'center' || nd3.type === 'agent' || isNodeHovered(nd3)){
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = nd3.type === 'concept' ? '#B5B2AB' : nd3.color;
+          var fs = nd3.type === 'center' ? 13 : (nd3.type === 'agent' ? 11 : 10);
+          var fw = nd3.type === 'center' ? '600 ' : '500 ';
+          ctx.font = fw + fs + "px Inter, 'PingFang SC', sans-serif";
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(nd3.label, nd3.x, nd3.y + rad + 13);
+        }
+      }
+      ctx.globalAlpha = 1;
+
+      requestAnimationFrame(step);
+    }
+
+    /* IntersectionObserver: hero 不可见时暂停 */
+    if('IntersectionObserver' in window){
+      var gio = new IntersectionObserver(function(entries){
+        entries.forEach(function(e){
+          var was = running;
+          running = e.isIntersecting;
+          if(running && !was){ startTime = performance.now(); requestAnimationFrame(step); }
+        });
+      }, { threshold:0.01 });
+      gio.observe(hero);
+    }
+    requestAnimationFrame(step);
+  })();
+
+  /* ============ 10. 安全兜底: 3s 后强制揭示尚未出现的元素 ============ */
+  window.setTimeout(function(){
+    document.querySelectorAll('.zx-reveal-slide:not(.is-visible)').forEach(function(el){ el.classList.add('is-visible'); });
+    document.querySelectorAll('.zx-reveal-scale:not(.is-visible)').forEach(function(el){ el.classList.add('is-visible'); });
+    document.querySelectorAll('.zx-clip-reveal:not(.is-visible)').forEach(function(el){ el.classList.add('is-visible'); });
+    if(topoWrap && !topoWrap.classList.contains('zx-topo-wrap-drawn')) topoWrap.classList.add('zx-topo-wrap-drawn');
+  }, 3000);
+
+  /* ============ 11. 重新渲染 lucide 图标 ============ */
+  if(window.lucide && window.lucide.createIcons){ window.lucide.createIcons(); }
+})();
+    </script>
+    <script>lucide.createIcons();</script>
+</body>
+</html>

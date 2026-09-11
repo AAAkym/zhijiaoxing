@@ -4,8 +4,8 @@ import os
 import re
 import time
 import uuid
-from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timedelta
+from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeoutError
 
 from src.services.multi_agent import AgentBase
 from src.services.multi_agent.shared_state import (
@@ -103,6 +103,16 @@ RESOURCE_TYPE_TASK_MAP = {
     "ppt": "generate_ppt",
 }
 
+TRACKING_TTL_MINUTES = 30
+GENERATION_STAGES = (
+    ("profile", "读取学生画像"),
+    ("knowledge", "检索课程知识库"),
+    ("strategy", "协调智能体制定策略"),
+    ("agents", "各资源智能体并行生成"),
+    ("quality", "一致性和质量检查"),
+    ("package", "整合个性化资源包"),
+)
+
 
 class CoordinatorAgent(AgentBase):
     agent_name = "coordinator"
@@ -148,7 +158,13 @@ class CoordinatorAgent(AgentBase):
     def process(self, task):
         task_type = task.get("type")
         agent_monitor.update_status(
-            self.agent_name, AgentStatus.RUNNING, task_type
+            self.agent_name,
+            AgentStatus.RUNNING,
+            {
+                "task_type": task_type,
+                "user_id": task.get("user_id"),
+                "persist_execution": task.get("persist_execution", True),
+            },
         )
         try:
             if task_type == "generate_resource_package":
@@ -173,12 +189,18 @@ class CoordinatorAgent(AgentBase):
             return result
         except Exception as e:
             logger.error(f"CoordinatorAgent error: {e}")
+            tracking_id = task.get("tracking_id")
+            if tracking_id:
+                shared_state.set(f"{tracking_id}_status", "failed", self.agent_name)
+                self._update_tracking_stage(
+                    tracking_id, "package", "failed", f"生成中断：{str(e)[:200]}"
+                )
             agent_monitor.update_status(self.agent_name, AgentStatus.FAILED)
             return {"error": str(e)}
 
     def _generate_resource_package(self, task):
         start_time = time.time()
-        package_id = f"pkg_{uuid.uuid4().hex[:12]}"
+        package_id = task.get("tracking_id") or f"pkg_{uuid.uuid4().hex[:12]}"
 
         profile = task.get("student_profile", {})
         topic = task.get("topic", "")
@@ -198,6 +220,27 @@ class CoordinatorAgent(AgentBase):
         _user_role = task.get("user_role")
         rag_required = bool(task.get("rag_required", options.get("rag_required", False)))
         citation_style = task.get("citation_style", options.get("citation_style", "bracket"))
+        profile_explainability = task.get("profile_explainability") or {}
+        strategy_mapping = task.get("strategy_mapping") or {}
+
+        self._cleanup_expired_tracking()
+        created_at = datetime.utcnow()
+        shared_state.update({
+            f"{package_id}_owner": _user_id,
+            f"{package_id}_created_at": created_at.isoformat(),
+            f"{package_id}_expires_at": (created_at + timedelta(minutes=TRACKING_TTL_MINUTES)).isoformat(),
+            f"{package_id}_status": "generating",
+            f"{package_id}_stages": self._new_tracking_stages(rag_required),
+            f"{package_id}_profile_snapshot": {
+                "student_user_id": task.get("student_user_id"),
+                "class_id": task.get("class_id"),
+                "profile": profile,
+                "explainability": profile_explainability,
+            },
+            f"{package_id}_strategy_mapping": strategy_mapping,
+        }, self.agent_name)
+        self._update_tracking_stage(package_id, "profile", "completed", "已读取并验证学生真实画像")
+        self._update_tracking_stage(package_id, "knowledge", "running", "正在读取课程知识库")
 
         if course_id:
             kb_context = self._load_knowledge_base(course_id, chapter_ids)
@@ -220,6 +263,13 @@ class CoordinatorAgent(AgentBase):
                 options["chapter_ids"] = chapter_ids
         else:
             kb_context = None
+
+        if not rag_required:
+            self._update_tracking_stage(package_id, "knowledge", "skipped", "未启用RAG，本阶段按计划跳过")
+        elif kb_context:
+            self._update_tracking_stage(package_id, "knowledge", "completed", "已加载课程知识库上下文")
+        else:
+            self._update_tracking_stage(package_id, "knowledge", "completed", "知识库暂无可用内容，继续使用已选知识点")
 
         course_profile = None
         if course_id:
@@ -255,12 +305,14 @@ class CoordinatorAgent(AgentBase):
             ),
         }, self.agent_name)
 
+        self._update_tracking_stage(package_id, "strategy", "running", "正在把画像证据转换为生成动作")
         strategy = self._plan_generation_strategy(
             profile, topic, knowledge_points, resource_types, options
         )
         shared_state.set(
             f"{package_id}_strategy", strategy, self.agent_name
         )
+        self._update_tracking_stage(package_id, "strategy", "completed", strategy_mapping.get("summary") or strategy)
 
         agent_task_groups = {}
         for rtype in resource_types:
@@ -272,6 +324,7 @@ class CoordinatorAgent(AgentBase):
             agent_task_groups[agent_name].append(rtype)
 
         futures = {}
+        execution_details = {}
         # 每次请求创建独立线程池，避免并发请求间争用worker
         request_executor = ThreadPoolExecutor(max_workers=max(5, len(agent_task_groups)))
         try:
@@ -285,6 +338,9 @@ class CoordinatorAgent(AgentBase):
                     )
                     future = request_executor.submit(self._safe_process, agent, agent_task)
                     futures[rtype] = future
+                    execution_details[rtype] = self._build_execution_detail(
+                        rtype, strategy_mapping, knowledge_points
+                    )
                 else:
                     for rtype in rtypes:
                         agent_task = self._build_agent_task(
@@ -292,6 +348,9 @@ class CoordinatorAgent(AgentBase):
                         )
                         future = request_executor.submit(self._safe_process, agent, agent_task)
                         futures[rtype] = future
+                        execution_details[rtype] = self._build_execution_detail(
+                            rtype, strategy_mapping, knowledge_points
+                        )
                 # 错峰提交：每个Agent之间间隔0.5s，避免并发请求同时打到Spark API触发QPS限流
                 submit_index += 1
                 if submit_index < len(agent_task_groups):
@@ -300,36 +359,64 @@ class CoordinatorAgent(AgentBase):
             shared_state.set(
                 f"{package_id}_progress",
                 self._build_generation_progress(
-                    resource_types, list(futures.keys()), {}, stage="running"
+                    resource_types, list(futures.keys()), {}, stage="running",
+                    execution_details=execution_details,
                 ),
                 self.agent_name,
             )
+            self._update_tracking_stage(package_id, "agents", "running", "资源智能体已并行开始工作")
 
             results = {}
             errors = {}
-            for rtype, future in futures.items():
-                try:
+            future_types = {future: rtype for rtype, future in futures.items()}
+            try:
+                for future in as_completed(future_types, timeout=180):
+                    rtype = future_types[future]
+                    detail = execution_details[rtype]
                     result = future.result(timeout=180)
                     if "error" in result:
                         errors[rtype] = result["error"]
+                        detail["status"] = "failed"
+                        detail["error_reason"] = str(result["error"])[:300]
                     else:
                         results[rtype] = result
-                except Exception as e:
-                    errors[rtype] = str(e)
-                    logger.error(f"Agent failed for {rtype}: {e}")
-                shared_state.set(
-                    f"{package_id}_progress",
-                    self._build_generation_progress(
-                        resource_types,
-                        list(futures.keys()),
-                        {**{key: "completed" for key in results.keys()}, **{key: "failed" for key in errors.keys()}},
-                        stage="running",
-                        error_messages=errors,
-                    ),
-                    self.agent_name,
-                )
+                        detail["status"] = "completed"
+                        detail["output_summary"] = self._summarize_agent_output(result, rtype)
+                    detail["duration_ms"] = round((time.time() - detail.pop("_started", time.time())) * 1000)
+                    shared_state.set(
+                        f"{package_id}_progress",
+                        self._build_generation_progress(
+                            resource_types,
+                            list(futures.keys()),
+                            {**{key: "completed" for key in results.keys()}, **{key: "failed" for key in errors.keys()}},
+                            stage="running",
+                            error_messages=errors,
+                            execution_details=execution_details,
+                        ),
+                        self.agent_name,
+                    )
+            except FuturesTimeoutError:
+                for future, rtype in future_types.items():
+                    if rtype not in results and rtype not in errors:
+                        errors[rtype] = "智能体执行超时"
+                        execution_details[rtype].update({
+                            "status": "failed",
+                            "error_reason": "等待超过180秒",
+                            "duration_ms": 180000,
+                        })
+            except Exception as e:
+                logger.error("Agent completion tracking failed: %s", e)
+                for future, rtype in future_types.items():
+                    if rtype not in results and rtype not in errors and future.done():
+                        errors[rtype] = str(e)
         finally:
             request_executor.shutdown(wait=False)
+
+        agent_stage_status = "partial" if results and errors else "failed" if errors and not results else "completed"
+        self._update_tracking_stage(
+            package_id, "agents", agent_stage_status,
+            f"成功生成{len(results)}类资源，失败{len(errors)}类"
+        )
 
         convertible_types = {"mindmap", "project", "document", "recommendation"}
         for rtype in convertible_types:
@@ -425,12 +512,15 @@ class CoordinatorAgent(AgentBase):
             kb_context=kb_context,
         )
 
+        self._update_tracking_stage(package_id, "quality", "running", "正在检查知识点覆盖、难度和资源一致性")
         consistency_report = self._check_consistency(
             results, knowledge_points, profile
         )
         quality_report = self._assess_content_quality(
             results, knowledge_points, profile
         )
+        self._update_tracking_stage(package_id, "quality", "completed", "一致性和质量检查已完成")
+        self._update_tracking_stage(package_id, "package", "running", "正在整合可用资源和解释信息")
 
         elapsed = round(time.time() - start_time, 2)
         progress = self._build_generation_progress(
@@ -439,13 +529,39 @@ class CoordinatorAgent(AgentBase):
             {**{key: "completed" for key in results.keys()}, **{key: "failed" for key in errors.keys()}},
             stage="completed",
             error_messages=errors,
+            execution_details=execution_details,
         )
+
+        final_status = "partial" if errors and results else "failed" if errors and not results else "completed"
+        generation_explanation = {
+            "profile_snapshot": {
+                "student_user_id": task.get("student_user_id"),
+                "class_id": task.get("class_id"),
+                "profile": profile,
+                "explainability": profile_explainability,
+            },
+            "strategy": strategy_mapping,
+            "causal_chain": [
+                {
+                    "evidence": mapping.get("evidence", []),
+                    "judgement": mapping.get("judgement") or mapping.get("feature"),
+                    "generation_action": mapping.get("action"),
+                    "affected_resources": mapping.get("affected_resources", []),
+                }
+                for mapping in strategy_mapping.get("mappings", [])
+            ],
+            "execution": [
+                {key: value for key, value in detail.items() if not key.startswith("_")}
+                for detail in execution_details.values()
+            ],
+        }
 
         package = {
             "package_id": package_id,
             "topic": topic,
             "student_profile_summary": self._summarize_profile(profile),
             "generation_strategy": strategy,
+            "generation_explanation": generation_explanation,
             "knowledge_base_used": bool(kb_context),
             "course_profile": course_profile,
             "resources": self._normalize_resources_for_output(results),
@@ -479,12 +595,18 @@ class CoordinatorAgent(AgentBase):
                 "rag_required": rag_required,
                 "citation_style": citation_style,
                 "created_at": datetime.utcnow().isoformat(),
+                "tracking_id": package_id,
             },
         }
 
+        self._update_tracking_stage(
+            package_id, "package", "completed" if final_status != "failed" else "failed",
+            "资源包已整合" if final_status != "failed" else "没有可用资源可供整合"
+        )
+
         shared_state.update({
             f"{package_id}_result": package,
-            f"{package_id}_status": "completed",
+            f"{package_id}_status": final_status,
             f"{package_id}_progress": progress,
         }, self.agent_name)
 
@@ -563,7 +685,13 @@ class CoordinatorAgent(AgentBase):
     def _get_generation_status(self, task):
         package_id = task.get("package_id", "")
         if not package_id:
-            return {"error": "package_id required"}
+            return {"error": "package_id required", "code": "TRACKING_ID_REQUIRED"}
+        self._cleanup_expired_tracking()
+        owner = shared_state.get(f"{package_id}_owner")
+        if owner is None:
+            return {"error": "生成记录不存在或已过期", "code": "TRACKING_NOT_FOUND"}
+        if owner != task.get("user_id"):
+            return {"error": "无权查看其他用户的生成过程", "code": "TRACKING_FORBIDDEN"}
         status = shared_state.get(f"{package_id}_status")
         result = shared_state.get(f"{package_id}_result")
         progress = shared_state.get(f"{package_id}_progress")
@@ -571,8 +699,75 @@ class CoordinatorAgent(AgentBase):
             "package_id": package_id,
             "status": status,
             "progress": progress,
+            "stages": shared_state.get(f"{package_id}_stages", []),
+            "profile_snapshot": shared_state.get(f"{package_id}_profile_snapshot"),
+            "strategy": shared_state.get(f"{package_id}_strategy_mapping"),
+            "expires_at": shared_state.get(f"{package_id}_expires_at"),
             "result_available": result is not None,
         }
+
+    def _new_tracking_stages(self, rag_required):
+        now = datetime.utcnow().isoformat()
+        return [
+            {
+                "key": key,
+                "name": name,
+                "order": index + 1,
+                "status": "pending",
+                "summary": "未启用RAG时将跳过" if key == "knowledge" and not rag_required else None,
+                "updated_at": now,
+            }
+            for index, (key, name) in enumerate(GENERATION_STAGES)
+        ]
+
+    def _update_tracking_stage(self, package_id, stage_key, status, summary=None):
+        stages = shared_state.get(f"{package_id}_stages", [])
+        updated = []
+        for stage in stages:
+            item = dict(stage)
+            if item.get("key") == stage_key:
+                item.update({"status": status, "summary": summary, "updated_at": datetime.utcnow().isoformat()})
+            updated.append(item)
+        shared_state.set(f"{package_id}_stages", updated, self.agent_name)
+
+    def _cleanup_expired_tracking(self):
+        now = datetime.utcnow()
+        for key in shared_state.keys():
+            if not key.endswith("_expires_at"):
+                continue
+            expires_at = shared_state.get(key)
+            try:
+                expired = datetime.fromisoformat(expires_at) <= now
+            except (TypeError, ValueError):
+                expired = True
+            if expired:
+                shared_state.delete_prefix(key[:-len("expires_at")])
+
+    def _build_execution_detail(self, resource_type, strategy_mapping, knowledge_points):
+        relevant = [
+            item for item in strategy_mapping.get("mappings", [])
+            if resource_type in item.get("affected_resources", [])
+        ]
+        return {
+            "resource_type": resource_type,
+            "agent_name": RESOURCE_TYPE_AGENT_MAP.get(resource_type, "unassigned"),
+            "task": RESOURCE_TYPE_TASK_MAP.get(resource_type, ""),
+            "profile_features": [item.get("feature") for item in relevant if item.get("feature")],
+            "knowledge_summary": "、".join(str(item) for item in (knowledge_points or [])[:5]) or "使用课程主题",
+            "status": "running",
+            "output_summary": None,
+            "duration_ms": None,
+            "error_reason": None,
+            "_started": time.time(),
+        }
+
+    def _summarize_agent_output(self, result, resource_type):
+        if not isinstance(result, dict):
+            return f"{resource_type}资源已生成"
+        title = result.get("title") or result.get("topic")
+        if title:
+            return str(title)[:120]
+        return f"{resource_type}资源已生成，包含{len(result)}个结构字段"
 
     def _plan_generation_strategy(
         self, profile, topic, knowledge_points, resource_types, options
@@ -707,6 +902,7 @@ class CoordinatorAgent(AgentBase):
             "knowledge_points": knowledge_points,
             "user_id": user_id,
             "user_role": user_role,
+            "persist_execution": options.get("persist_execution", True),
         }
 
         if options.get("course_id"):
@@ -886,12 +1082,16 @@ class CoordinatorAgent(AgentBase):
                 scores.append(float(resource.get("citation_coverage_score") or 0))
         return round(sum(scores) / len(scores), 1) if scores else 0
 
-    def _build_generation_progress(self, requested_types, active_types, status_by_type, stage="running", error_messages=None):
+    def _build_generation_progress(
+        self, requested_types, active_types, status_by_type, stage="running",
+        error_messages=None, execution_details=None
+    ):
         total = len(requested_types or [])
         completed = sum(1 for item in status_by_type.values() if item == "completed")
         failed = sum(1 for item in status_by_type.values() if item == "failed")
         running = max(0, len(active_types or []) - completed - failed)
         error_messages = error_messages or {}
+        execution_details = execution_details or {}
         steps = []
         for rtype in requested_types or []:
             agent_name = RESOURCE_TYPE_AGENT_MAP.get(rtype, "unassigned")
@@ -909,6 +1109,9 @@ class CoordinatorAgent(AgentBase):
             }
             if state == "failed" and rtype in error_messages:
                 step_entry["error_message"] = str(error_messages[rtype])[:300]
+            detail = execution_details.get(rtype) or {}
+            step_entry.update({key: value for key, value in detail.items() if not key.startswith("_")})
+            step_entry["status"] = state
             steps.append(step_entry)
         return {
             "stage": stage,

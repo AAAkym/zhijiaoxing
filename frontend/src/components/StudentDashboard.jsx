@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { lazy, Suspense, useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -37,22 +37,25 @@ import {
   LogIn,
   Flame,
   Shield,
-  Sparkles
+  Sparkles,
+  ClipboardCheck
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area } from 'recharts'
 import { courses, ai, auth, student, studentSettings as studentSettingsApi, notes, mistakeBook, achievements as achievementApi } from '../services/api'
 import { useNavigate } from 'react-router-dom'
-import PracticeModule from './Practice'
-import LearningPlanSystem from './LearningPlanSystem'
-import StudentSettings from './StudentSettings'
-import { AITutorPanel } from '@/components/AITutor'
-import MistakeBook from './MistakeBook'
-import TargetedTherapy from './MistakeBook/TargetedTherapy'
-import StudyNotes from './StudyNotes'
-import AchievementPanel from './AchievementPanel'
-import ProfileBuilder from './ProfileBuilder'
-import { KnowledgeGraph3D } from '@/components/KnowledgeGraph3D'
 import zhijiaoXingSymbol from '@/assets/zhijiaoxing-symbol.svg'
+
+const PracticeModule = lazy(() => import('./Practice'))
+const LearningPlanSystem = lazy(() => import('./LearningPlanSystem'))
+const StudentSettings = lazy(() => import('./StudentSettings'))
+const AITutorPanel = lazy(() => import('@/components/AITutor/AITutorPanel'))
+const MistakeBook = lazy(() => import('./MistakeBook'))
+const TargetedTherapy = lazy(() => import('./MistakeBook/TargetedTherapy'))
+const StudyNotes = lazy(() => import('./StudyNotes'))
+const AchievementPanel = lazy(() => import('./AchievementPanel'))
+const ProfileBuilder = lazy(() => import('./ProfileBuilder'))
+const KnowledgeGraph3D = lazy(() => import('@/components/KnowledgeGraph3D/KnowledgeGraph3D'))
+const PersonalizedLearningTasks = lazy(() => import('./PersonalizedLearningTasks'))
 
 const AI_REQUEST_TIMEOUT = 30000
 const ASSESSMENT_POLL_INTERVAL = 2000
@@ -60,6 +63,7 @@ const ASSESSMENT_POLL_INTERVAL = 2000
 export default function StudentDashboard({ user, onLogout }) {
   const navigate = useNavigate()
   const [currentView, setCurrentView] = useState('overview')
+  const [personalizedAssessmentId, setPersonalizedAssessmentId] = useState(null)
   const [loading, setLoading] = useState(false)
   const [studentSettings, setStudentSettings] = useState(null)
   const [stats, setStats] = useState({
@@ -133,6 +137,7 @@ export default function StudentDashboard({ user, onLogout }) {
     { id: 'overview', label: '学习概览', icon: BarChart3 },
     { id: 'courses', label: '我的课程', icon: BookOpen },
     { id: 'learningPlan', label: '学习规划', icon: Map },
+    { id: 'personalizedTasks', label: '个性化任务', icon: ClipboardCheck },
     { id: 'knowledgeGraph', label: '知识图谱', icon: Network },
     { id: 'aiTutor', label: 'AI助教', icon: GraduationCap },
     { id: 'practice', label: '练习评测', icon: Target },
@@ -1036,6 +1041,11 @@ export default function StudentDashboard({ user, onLogout }) {
 
   const renderContent = () => {
     switch (currentView) {
+      case 'personalizedTasks':
+        return <PersonalizedLearningTasks onOpenAssessment={(assessmentId) => {
+          setPersonalizedAssessmentId(assessmentId || null)
+          setCurrentView('practice')
+        }} />
       case 'learningPlan':
         return <LearningPlanSystem user={user} />
       case 'knowledgeGraph':
@@ -1188,6 +1198,8 @@ export default function StudentDashboard({ user, onLogout }) {
           <PracticeModule 
             myCourses={myCourses} 
             onBack={() => setCurrentView('courses')}
+            initialAssessmentId={personalizedAssessmentId}
+            onInitialAssessmentHandled={() => setPersonalizedAssessmentId(null)}
           />
         )
 
@@ -1817,37 +1829,37 @@ export default function StudentDashboard({ user, onLogout }) {
     <div className="min-h-screen bg-[#faf8f5]">
       <div className="bg-white shadow-sm border-b border-[#e8e4df]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
+          <div className="flex items-center justify-between gap-2 py-3 sm:py-4">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-white border border-[#eadfca] rounded-[10px] flex items-center justify-center">
-                  <img src={zhijiaoXingSymbol} alt="智教星标志" className="w-5 h-5" width="20" height="20" />
+                  <img src={zhijiaoXingSymbol} alt="EduAI Pro 标志" className="w-5 h-5" width="20" height="20" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>智教星</h1>
-                  <p className="text-xs text-[#9a9590]">自适应错题诊疗系统</p>
+                  <h1 className="text-lg font-bold text-[#2d2a26] sm:text-xl" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>EduAI Pro</h1>
+                  <p className="hidden text-xs text-[#9a9590] sm:block">自适应错题诊疗系统</p>
                 </div>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-3">
-                <Avatar className="h-10 w-10">
+            <div className="flex items-center gap-2 sm:gap-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
                   <AvatarImage src={studentSettings?.avatar} alt={studentSettings?.real_name || user?.username} />
                   <AvatarFallback>
                     {(studentSettings?.real_name || user?.username || 'U').charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <div className="text-right">
+                <div className="hidden text-right sm:block">
                   <p className="text-sm font-medium text-[#2d2a26]">
                     {studentSettings?.real_name || user?.username}
                   </p>
                   <p className="text-xs text-[#9a9590]">学生</p>
                 </div>
               </div>
-              <Badge variant="outline" className="text-[#5a9e6f] border-[#5a9e6f]">
+              <Badge variant="outline" className="hidden border-[#5a9e6f] text-[#5a9e6f] sm:inline-flex">
                 在线
               </Badge>
-              <Button variant="outline" className="rounded-[10px]" onClick={async () => {
+              <Button variant="outline" size="sm" className="rounded-[10px]" onClick={async () => {
                 try {
                   await auth.logout()
                 } catch (err) {
@@ -1865,8 +1877,27 @@ export default function StudentDashboard({ user, onLogout }) {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <nav aria-label="学生功能导航" className="mb-5 flex gap-2 overflow-x-auto pb-2 md:hidden">
+          {menuItems.map((item) => {
+            const Icon = item.icon
+            return (
+              <button
+                key={`mobile-${item.id}`}
+                onClick={() => setCurrentView(item.id)}
+                className={`flex shrink-0 items-center gap-2 border-b-2 px-3 py-2 text-sm transition-colors ${
+                  currentView === item.id
+                    ? 'border-[#d4a853] text-[#9b762f]'
+                    : 'border-transparent text-[#6b6560]'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                <span>{item.label}</span>
+              </button>
+            )
+          })}
+        </nav>
         <div className="flex">
-          <div className="w-64 mr-8">
+          <div className="mr-8 hidden w-64 md:block">
             <nav className="space-y-2">
               {menuItems.map((item) => {
                 const Icon = item.icon
@@ -1888,8 +1919,15 @@ export default function StudentDashboard({ user, onLogout }) {
             </nav>
           </div>
 
-          <div className="flex-1">
-            {renderContent()}
+          <div className="min-w-0 flex-1">
+            <Suspense fallback={(
+              <div className="flex min-h-64 items-center justify-center gap-2 text-sm text-muted-foreground">
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                正在加载功能模块...
+              </div>
+            )}>
+              {renderContent()}
+            </Suspense>
           </div>
         </div>
       </div>

@@ -17,6 +17,7 @@ import {
   PieChart as RechartsPie, Pie, Cell, LineChart, Line, AreaChart, Area,
 } from 'recharts'
 import { profileApi } from '@/services/api'
+import ProfileExplainabilityPanel from './ProfileExplainabilityPanel'
 
 const DIMENSION_LABELS = {
   knowledge_base: '知识基础',
@@ -247,10 +248,11 @@ export default function ProfileBuilder() {
 
   // ====== 画像维度雷达图 ======
   const renderRadarChart = () => {
-    if (!dashboardData?.dimension_scores) return null
-    const radarData = Object.entries(dashboardData.dimension_scores).map(([key, value]) => ({
-      dimension: DIMENSION_LABELS[key] || key,
-      score: value,
+    const dimensions = dashboardData?.profile_explainability?.dimensions
+    if (!dimensions?.length) return null
+    const radarData = dimensions.map((item) => ({
+      dimension: item.label || DIMENSION_LABELS[item.key] || item.key,
+      score: item.confidence || 0,
       fullMark: 100,
     }))
 
@@ -261,7 +263,7 @@ export default function ProfileBuilder() {
           <PolarAngleAxis dataKey="dimension" tick={{ fontSize: 12, fill: '#6B7280' }} />
           <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 10 }} />
           <RechartsRadar
-            name="维度评分"
+            name="证据可信度"
             dataKey="score"
             stroke={CHART_COLORS.primary}
             fill={CHART_COLORS.primary}
@@ -384,7 +386,8 @@ export default function ProfileBuilder() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {dims.map(dim => {
           const Icon = dim.icon
-          const score = dashboardData?.dimension_scores?.[dim.key] || 0
+          const evidenceDimension = dashboardData?.profile_explainability?.dimensions?.find(item => item.key === dim.key)
+          const score = evidenceDimension?.confidence || 0
           return (
             <Card key={dim.key} className={`border-l-4 transition-shadow hover:shadow-md ${dim.filled ? 'border-l-green-400' : 'border-l-gray-300'}`}>
               <CardContent className="p-3">
@@ -396,7 +399,7 @@ export default function ProfileBuilder() {
                 <p className="text-sm font-medium truncate" title={dim.value}>{dim.value}</p>
                 <div className="mt-2">
                   <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
-                    <span>完成度</span>
+                    <span>证据可信度</span>
                     <span>{score}%</span>
                   </div>
                   <Progress value={score} className="h-1.5" />
@@ -981,26 +984,12 @@ export default function ProfileBuilder() {
           </Button>
         </div>
 
-        {/* 画像完整度 */}
-        <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-blue-700">画像完整度</p>
-                <p className="text-3xl font-bold text-blue-900">{Math.round((profile?.confidence_score || 0) * 100)}%</p>
-              </div>
-              <div className="flex-1 mx-6">
-                <Progress value={(profile?.confidence_score || 0) * 100} className="h-3" />
-                <p className="text-xs text-blue-500 mt-1">
-                  已填充 {profile ? Math.round((profile.confidence_score || 0) * 8) : 0}/8 个维度
-                </p>
-              </div>
-              <Button size="sm" onClick={handleStartDialog} disabled={loading}>
-                <MessageCircle className="w-4 h-4 mr-1" />完善画像
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <ProfileExplainabilityPanel explainability={dashboardData?.profile_explainability} />
+        <div className="flex justify-end">
+          <Button size="sm" onClick={handleStartDialog} disabled={loading}>
+            <MessageCircle className="w-4 h-4 mr-1" />完善画像
+          </Button>
+        </div>
 
         {/* 概览统计 */}
         {renderOverviewStats()}
@@ -1021,7 +1010,7 @@ export default function ProfileBuilder() {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-sm flex items-center gap-2">
-                    <Radar className="w-4 h-4 text-blue-500" />画像雷达图
+                    <Radar className="w-4 h-4 text-blue-500" />画像证据可信度
                   </CardTitle>
                 </CardHeader>
                 <CardContent>{renderRadarChart()}</CardContent>
