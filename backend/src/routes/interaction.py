@@ -241,6 +241,7 @@ def create_answer(question_id):
 
 @interaction_bp.route('/answers/<int:answer_id>/accept', methods=['POST'])
 @require_auth
+@require_role(('teacher', 'admin'))
 def accept_answer(answer_id):
     """采纳答案"""
     try:
@@ -361,6 +362,7 @@ def like_discussion(discussion_id):
 
 @interaction_bp.route('/discussions/<int:discussion_id>/pin', methods=['POST'])
 @require_auth
+@require_role(('teacher', 'admin'))
 def pin_discussion(discussion_id):
     """置顶讨论（教师/管理员用）"""
     try:
@@ -392,6 +394,7 @@ def pin_discussion(discussion_id):
 
 @interaction_bp.route('/discussions/<int:discussion_id>', methods=['DELETE'])
 @require_auth
+@require_role(('teacher', 'admin'))
 def delete_discussion(discussion_id):
     """删除讨论（教师/管理员用）"""
     try:
@@ -485,6 +488,7 @@ def create_hand_raise(course_id):
 
 @interaction_bp.route('/hand_raises/<int:hand_raise_id>/call', methods=['POST'])
 @require_auth
+@require_role(('teacher', 'admin'))
 def call_hand_raise(hand_raise_id):
     """点名（教师用）"""
     try:
@@ -515,6 +519,7 @@ def call_hand_raise(hand_raise_id):
 
 @interaction_bp.route('/hand_raises/<int:hand_raise_id>/resolve', methods=['POST'])
 @require_auth
+@require_role(('teacher', 'admin'))
 def resolve_hand_raise(hand_raise_id):
     """解决举手"""
     try:

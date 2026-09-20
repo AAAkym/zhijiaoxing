@@ -22,7 +22,7 @@ def require_teacher(f):
 
 
 @course_gen_bp.route("/course-generation/configs", methods=["GET"])
-@require_auth
+@require_teacher
 def list_configs():
     try:
         user_id = session["user_id"]
@@ -34,7 +34,7 @@ def list_configs():
 
 
 @course_gen_bp.route("/course-generation/configs", methods=["POST"])
-@require_auth
+@require_teacher
 def create_config():
     try:
         user_id = session["user_id"]
@@ -47,7 +47,7 @@ def create_config():
 
 
 @course_gen_bp.route("/course-generation/configs/<int:config_id>", methods=["GET"])
-@require_auth
+@require_teacher
 def get_config(config_id):
     try:
         user_id = session["user_id"]
@@ -69,7 +69,7 @@ def get_config(config_id):
 
 
 @course_gen_bp.route("/course-generation/configs/<int:config_id>", methods=["PUT"])
-@require_auth
+@require_teacher
 def update_config(config_id):
     try:
         user_id = session["user_id"]
@@ -84,7 +84,7 @@ def update_config(config_id):
 
 
 @course_gen_bp.route("/course-generation/configs/<int:config_id>/generate/<int:step>", methods=["POST"])
-@require_auth
+@require_teacher
 def generate_step(config_id, step):
     try:
         user_id = session["user_id"]
@@ -98,7 +98,7 @@ def generate_step(config_id, step):
 
 
 @course_gen_bp.route("/course-generation/configs/<int:config_id>/confirm/<int:step>", methods=["POST"])
-@require_auth
+@require_teacher
 def confirm_step(config_id, step):
     try:
         user_id = session["user_id"]
@@ -115,7 +115,7 @@ def confirm_step(config_id, step):
 
 
 @course_gen_bp.route("/course-generation/configs/<int:config_id>/versions/<int:step>", methods=["GET"])
-@require_auth
+@require_teacher
 def get_step_versions(config_id, step):
     try:
         versions = svc.get_step_versions(config_id, step)
@@ -126,7 +126,7 @@ def get_step_versions(config_id, step):
 
 
 @course_gen_bp.route("/course-generation/configs/<int:config_id>/versions/<int:step>/diff", methods=["GET"])
-@require_auth
+@require_teacher
 def get_version_diff(config_id, step):
     try:
         va = request.args.get("version_a", type=int)
@@ -143,7 +143,7 @@ def get_version_diff(config_id, step):
 
 
 @course_gen_bp.route("/course-generation/configs/<int:config_id>/rollback/<int:step>/<int:version_number>", methods=["POST"])
-@require_auth
+@require_teacher
 def rollback_version(config_id, step, version_number):
     try:
         user_id = session["user_id"]
@@ -157,7 +157,7 @@ def rollback_version(config_id, step, version_number):
 
 
 @course_gen_bp.route("/course-generation/configs/<int:config_id>/submit-review", methods=["POST"])
-@require_auth
+@require_teacher
 def submit_for_review(config_id):
     try:
         user_id = session["user_id"]
@@ -171,7 +171,7 @@ def submit_for_review(config_id):
 
 
 @course_gen_bp.route("/course-generation/configs/<int:config_id>/approve", methods=["POST"])
-@require_auth
+@require_teacher
 def approve_review(config_id):
     try:
         user_id = session["user_id"]
@@ -192,7 +192,7 @@ def approve_review(config_id):
 
 
 @course_gen_bp.route("/course-generation/configs/<int:config_id>/share-peer-review", methods=["POST"])
-@require_auth
+@require_teacher
 def share_for_peer_review(config_id):
     try:
         user_id = session["user_id"]
@@ -208,7 +208,7 @@ def share_for_peer_review(config_id):
 
 
 @course_gen_bp.route("/course-generation/configs/<int:config_id>/peer-reviews", methods=["GET"])
-@require_auth
+@require_teacher
 def get_peer_reviews(config_id):
     try:
         reviews = svc.get_peer_reviews(config_id)
@@ -219,7 +219,7 @@ def get_peer_reviews(config_id):
 
 
 @course_gen_bp.route("/course-generation/pending-reviews", methods=["GET"])
-@require_auth
+@require_teacher
 def get_pending_reviews():
     try:
         user_id = session["user_id"]
@@ -231,7 +231,7 @@ def get_pending_reviews():
 
 
 @course_gen_bp.route("/course-generation/configs/<int:config_id>/finalize", methods=["POST"])
-@require_auth
+@require_teacher
 def finalize_course(config_id):
     try:
         user_id = session["user_id"]
@@ -245,6 +245,6 @@ def finalize_course(config_id):
 
 
 @course_gen_bp.route("/course-generation/steps", methods=["GET"])
-@require_auth
+@require_teacher
 def get_steps():
     return jsonify({"steps": svc.GENERATION_STEPS}), 200

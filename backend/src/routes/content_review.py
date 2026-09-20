@@ -20,8 +20,28 @@ def login_required(f):
     return decorated_function
 
 
+def reviewer_required(f):
+    """审核岗校验装饰器：仅教师与管理员可访问内容审核相关接口。
+
+    内容审核会读取/修改全站内容状态与全局审核规则（/rules/<id>），
+    属于教学管理职责，学生无权参与。原先全部 15 个端点只挂了
+    login_required，导致学生可提交人工审核结论、批量审核、
+    指派审核人，甚至修改全局审核规则。
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'success': False, 'error': 'Authentication required'}), 401
+        if session.get('user_role') not in ('teacher', 'admin'):
+            return jsonify({'success': False, 'error': 'Insufficient permissions'}), 403
+        g.user_id = int(user_id) if user_id else None
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 @content_review_bp.route('/list', methods=['GET'])
-@login_required
+@reviewer_required
 def get_review_list():
     filters = {
         'status': request.args.get('status'),
@@ -36,14 +56,14 @@ def get_review_list():
 
 
 @content_review_bp.route('/stats', methods=['GET'])
-@login_required
+@reviewer_required
 def get_review_stats():
     stats = content_review_service.get_review_stats()
     return jsonify({'success': True, 'data': stats})
 
 
 @content_review_bp.route('/<int:review_id>', methods=['GET'])
-@login_required
+@reviewer_required
 def get_review_detail(review_id):
     review = ContentReview.query.get(review_id)
     if not review:
@@ -52,7 +72,7 @@ def get_review_detail(review_id):
 
 
 @content_review_bp.route('/submit', methods=['POST'])
-@login_required
+@reviewer_required
 def submit_for_review():
     data = request.get_json() or {}
     content_id = data.get('content_id')
@@ -76,7 +96,7 @@ def submit_for_review():
 
 
 @content_review_bp.route('/<int:review_id>/auto-review', methods=['POST'])
-@login_required
+@reviewer_required
 def trigger_auto_review(review_id):
     review = content_review_service.auto_review(review_id)
     if not review:
@@ -85,7 +105,7 @@ def trigger_auto_review(review_id):
 
 
 @content_review_bp.route('/<int:review_id>/manual-review', methods=['POST'])
-@login_required
+@reviewer_required
 def submit_manual_review(review_id):
     data = request.get_json() or {}
     status = data.get('status')
@@ -108,7 +128,7 @@ def submit_manual_review(review_id):
 
 
 @content_review_bp.route('/batch', methods=['POST'])
-@login_required
+@reviewer_required
 def batch_review():
     data = request.get_json() or {}
     review_ids = data.get('review_ids', [])
@@ -123,7 +143,7 @@ def batch_review():
 
 
 @content_review_bp.route('/<int:review_id>/assign', methods=['POST'])
-@login_required
+@reviewer_required
 def assign_reviewer(review_id):
     data = request.get_json() or {}
     reviewer_id = data.get('reviewer_id')
@@ -138,14 +158,14 @@ def assign_reviewer(review_id):
 
 
 @content_review_bp.route('/rules', methods=['GET'])
-@login_required
+@reviewer_required
 def get_review_rules():
     rules = content_review_service.get_review_rules()
     return jsonify({'success': True, 'data': rules})
 
 
 @content_review_bp.route('/rules/<int:rule_id>', methods=['PUT'])
-@login_required
+@reviewer_required
 def update_review_rule(rule_id):
     data = request.get_json() or {}
     rule = content_review_service.update_review_rule(rule_id, data)
@@ -155,7 +175,7 @@ def update_review_rule(rule_id):
 
 
 @content_review_bp.route('/logs', methods=['GET'])
-@login_required
+@reviewer_required
 def get_operation_logs():
     filters = {
         'action': request.args.get('action'),
@@ -168,21 +188,21 @@ def get_operation_logs():
 
 
 @content_review_bp.route('/analytics', methods=['GET'])
-@login_required
+@reviewer_required
 def get_analytics():
     analytics = content_review_service.get_review_analytics()
     return jsonify({'success': True, 'data': analytics})
 
 
 @content_review_bp.route('/versions/<int:content_id>/<content_type>', methods=['GET'])
-@login_required
+@reviewer_required
 def get_content_versions(content_id, content_type):
     versions = content_review_service.get_content_versions(content_id, content_type)
     return jsonify({'success': True, 'data': versions})
 
 
 @content_review_bp.route('/history', methods=['GET'])
-@login_required
+@reviewer_required
 def get_review_history():
     """获取审核历史记录，支持按审核人、审核状态、时间范围筛选"""
     filters = {
@@ -199,7 +219,7 @@ def get_review_history():
 
 
 @content_review_bp.route('/auto-submit/<int:course_id>', methods=['POST'])
-@login_required
+@reviewer_required
 def auto_submit_course(course_id):
     count = content_review_service.auto_submit_ai_content(course_id)
     return jsonify({'success': True, 'data': {'submitted_count': count}})
