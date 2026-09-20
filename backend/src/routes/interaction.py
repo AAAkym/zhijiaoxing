@@ -427,18 +427,28 @@ def delete_discussion(discussion_id):
 @interaction_bp.route('/courses/<int:course_id>/hand_raises', methods=['GET'])
 @require_auth
 def get_hand_raises(course_id):
-    """获取举手列表（教师用）"""
+    """获取举手列表。
+
+    教师/管理员：返回该课程全部举手（用于点名与答疑）。
+    学生：只返回**自己**的举手记录 —— 学生需要这个来判断自己是否已经举手，
+    以免重复举手。此前该端点对学生一律 403，导致学生课程详情页每次打开
+    都会产生一个 403 与一条控制台报错，且"我是否已举手"的状态始终不准。
+    """
     try:
         user_role = session.get('user_role')
-        if user_role not in ['teacher', 'admin']:
-            return jsonify({'error': 'Permission denied'}), 403
-        
+        user_id = session.get('user_id')
+
         status = request.args.get('status', 'waiting')
-        
+
+        filters = {'course_id': course_id, 'status': status}
+        if user_role not in ['teacher', 'admin']:
+            # 学生只能看到自己的举手，避免泄露同班其他学生的情况。
+            filters['user_id'] = user_id
+
         hand_raises = HandRaise.query.filter_by(
-            course_id=course_id, status=status
+            **filters
         ).order_by(HandRaise.created_at).all()
-        
+
         return jsonify({
             'hand_raises': [hr.to_dict() for hr in hand_raises]
         }), 200
