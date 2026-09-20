@@ -11,6 +11,7 @@ import uuid
 from collections import deque
 
 from flask import Blueprint, jsonify, request, session
+from werkzeug.exceptions import BadRequest
 
 from src.services.rag_citation_service import rag_citation_service
 from src.services.syllabus_graph_service import syllabus_graph_service
@@ -40,6 +41,12 @@ def _detect_upload_type(filename=None, content=None, fallback=None):
     sample = content or b""
     if isinstance(sample, str):
         sample = sample.encode("utf-8", errors="ignore")
+    elif not isinstance(sample, (bytes, bytearray)):
+        # content 可能是 JSON 里的数字/列表/字典等任意类型。此前直接调用
+        # sample.startswith 会抛 AttributeError 并被上层转成 500，
+        # 客户端只是传错了字段类型却收到"服务器错误"。这里退化为"无法识别"，
+        # 让后续按 fallback 处理或由服务层给出可读的 400 提示。
+        sample = str(sample).encode("utf-8", errors="ignore")
     if sample.startswith(b"%PDF"):
         return "pdf"
     if sample.startswith(b"PK\x03\x04") or sample.startswith(b"PK\x05\x06") or sample.startswith(b"PK\x07\x08"):
@@ -146,6 +153,11 @@ def import_syllabus(course_id):
             data = request.get_json() or {}
             input_type = data.get("input_type", "text")
             content = data.get("content")
+            # content 必须能当作文本处理。JSON 里传数字/布尔/列表等会让下游
+            # 的 (text or "").strip() 抛 AttributeError 并变成 500，
+            # 客户端其实只是字段类型写错了 —— 这里直接回 400。
+            if content is not None and not isinstance(content, str):
+                return jsonify({"error": "content必须是字符串"}), 400
             raw_bytes_received = len(str(content or "").encode("utf-8"))
             filename = data.get("filename")
             rag_required = bool(data.get("rag_required", False))
@@ -171,6 +183,19 @@ def import_syllabus(course_id):
         if "error" in result:
             return jsonify(result), 404 if result["error"] == "Course not found" else 400
         return jsonify(result), 200
+    except ValueError as e:
+        # 用户输入问题（空文件、格式不支持、AI 解析不出内容等）应由
+        # syllabus_graph_service 以 ValueError 表达，属"请求不合法"，
+        # 必须回 400 让前端显示可读提示。此前被下面的 except Exception
+        # 一并吞成 500，老师上传一个空文件或 .txt 都会看到"服务器错误"。
+        logger.warning("Import syllabus rejected for course %s: %s", course_id, e)
+        return jsonify({"error": str(e)}), 400
+    except BadRequest as e:
+        # 请求体不是合法 JSON（截断、空 body 等）：Flask 抛 BadRequest，
+        # 但这同样是客户端问题，应为 400 而非 500。注意不要把 Flask 的
+        # 原始异常描述回显给前端，只给一句通用提示。
+        logger.warning("Import syllabus bad request for course %s: %s", course_id, e)
+        return jsonify({"error": "请求体格式不正确，请确认为合法的 JSON"}), 400
     except Exception as e:
         logger.error(f"Import syllabus to graph error: {e}\n{traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
@@ -212,6 +237,10 @@ def start_chunked_syllabus_import(course_id):
             "total_chunks": total_chunks,
             "received_chunks": [],
         }), 200
+    except ValueError as e:
+        # 参数不合法（file_size/total_chunks 非正数等），属客户端问题。
+        logger.warning("Start chunked syllabus import rejected: %s", e)
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
         logger.error(f"Start chunked syllabus import error: {e}")
         return jsonify({"error": str(e)}), 500
@@ -251,6 +280,11 @@ def upload_syllabus_chunk(course_id, upload_id):
             "total_bytes": meta["file_size"],
             "chunk_receive_ms": elapsed_ms,
         }), 200
+    except ValueError as e:
+        # 上传会话不存在或已过期（_read_chunk_meta / _chunk_session_dir 抛 ValueError）。
+        # 这属于客户端引用了无效会话，应为 404 而不是 500。
+        logger.warning("Upload syllabus chunk rejected for %s: %s", upload_id, e)
+        return jsonify({"error": str(e)}), 404
     except Exception as e:
         logger.error(f"Upload syllabus chunk error: {e}")
         return jsonify({"error": str(e)}), 500

@@ -127,8 +127,17 @@ def build_learning_progress_model(user_id: int, course: Course, progress_pct: fl
     }
 
 
-def get_class_learning_analytics(teacher_id: int, course_id: int = None) -> Dict:
-    courses = Course.query.filter_by(teacher_id=teacher_id).all()
+def get_class_learning_analytics(teacher_id: int, course_id: int = None, user_role: str = None) -> Dict:
+    """按课程汇总班级学情。
+
+    管理员看全站课程：原先无论谁调用都按 Course.teacher_id == teacher_id 过滤，
+    而管理员不任课，结果永远命中「未找到课程」，教师端的 AI 学情报告
+    对管理员角色实际不可用。
+    """
+    if user_role == 'admin':
+        courses = Course.query.all()
+    else:
+        courses = Course.query.filter_by(teacher_id=teacher_id).all()
     if not courses:
         return {"error": "未找到课程"}
     target_ids = [course_id] if course_id else [c.id for c in courses]
@@ -261,7 +270,7 @@ def get_student_detail_analytics(teacher_id: int, student_id: int) -> Dict:
 
 
 def generate_ai_learning_report(teacher_id: int, course_id: int = None, report_type: str = "comprehensive", user_id: int = None, user_role: str = None) -> Dict:
-    analytics = get_class_learning_analytics(teacher_id, course_id)
+    analytics = get_class_learning_analytics(teacher_id, course_id, user_role=user_role)
     if "error" in analytics:
         return analytics
 

@@ -12,7 +12,7 @@ import { Trash2, Edit, Plus, BookOpen, Users, Clock } from 'lucide-react'
 import { courses } from '../services/api'
 import { request } from '../services/api'
 
-export default function CourseManagement() {
+export default function CourseManagement({ user }) {
   const [courseList, setCourseList] = useState([])
   const [loading, setLoading] = useState(false)
   const [deletingCourseId, setDeletingCourseId] = useState(null)
@@ -30,7 +30,14 @@ export default function CourseManagement() {
     teacher_id: ''
   })
 
+  // 教师下拉框用于「添加课程」时指定授课教师，而 /api/users 是管理员专属接口。
+  // 教师账号打开本页时若仍去拉教师列表，会稳定收到 403 并在控制台报错，
+  // 因此这里只在管理员身份下加载。
   const loadTeachers = async () => {
+    if (user?.role !== 'admin') {
+      setTeacherList([])
+      return
+    }
     try {
       const response = await request('/users?role=teacher')
       const users = response.users || response || []

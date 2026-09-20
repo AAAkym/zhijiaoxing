@@ -21,6 +21,10 @@ from services.sse_chat_service import sse_chat_service
 
 sse_bp = Blueprint('sse', __name__)
 
+# 单次提问的最大字符数。用于挡住"一次请求塞进几万字"这类既无意义
+# 又会大量消耗 token 的输入。
+MAX_QUESTION_LENGTH = int(os.environ.get('SSE_MAX_QUESTION_LENGTH', 4000))
+
 
 def require_auth_sse(f):
     """SSE认证装饰器"""
@@ -389,8 +393,36 @@ def stream_chat():
                 status=400
             )
         
-        user_id = session['user_id']
         question = data['question']
+        # question 必须是字符串且不能是纯空白。此前只判断了真值，
+        # 于是 "   "/"\n\n"/"\t" 这类空白输入会照常走完整个大模型调用，
+        # 白白消耗一次额度；而传数字/列表/字典时会在下游拼接 prompt 处崩溃，
+        # 连接被重置，前端只会看到"网络错误"而非可读提示。
+        if not isinstance(question, str):
+            return Response(
+                'data: {"type": "error", "error": "question必须是字符串"}\n\n',
+                mimetype=SSEHeaders.CONTENT_TYPE,
+                headers=SSEHeaders.get_headers(),
+                status=400
+            )
+        question = question.strip()
+        if not question:
+            return Response(
+                'data: {"type": "error", "error": "question不能仅为空白字符"}\n\n',
+                mimetype=SSEHeaders.CONTENT_TYPE,
+                headers=SSEHeaders.get_headers(),
+                status=400
+            )
+        if len(question) > MAX_QUESTION_LENGTH:
+            return Response(
+                'data: {"type": "error", "error": "question过长，请控制在%d字以内"}\n\n'
+                % MAX_QUESTION_LENGTH,
+                mimetype=SSEHeaders.CONTENT_TYPE,
+                headers=SSEHeaders.get_headers(),
+                status=400
+            )
+        
+        user_id = session['user_id']
         conversation_id = data.get('conversation_id')
         context = data.get('context', '')
         topic = data.get('topic', '')
@@ -468,6 +500,32 @@ def stream_chat_simple():
             )
         
         question = data['question']
+        # 与 /chat 保持一致的输入校验：非字符串、纯空白、超长都在此拦下，
+        # 避免白跑一次大模型调用或在下游拼 prompt 时崩溃。
+        if not isinstance(question, str):
+            return Response(
+                'data: {"type": "error", "error": "question必须是字符串"}\n\n',
+                mimetype=SSEHeaders.CONTENT_TYPE,
+                headers=SSEHeaders.get_headers(),
+                status=400
+            )
+        question = question.strip()
+        if not question:
+            return Response(
+                'data: {"type": "error", "error": "question不能仅为空白字符"}\n\n',
+                mimetype=SSEHeaders.CONTENT_TYPE,
+                headers=SSEHeaders.get_headers(),
+                status=400
+            )
+        if len(question) > MAX_QUESTION_LENGTH:
+            return Response(
+                'data: {"type": "error", "error": "question过长，请控制在%d字以内"}\n\n'
+                % MAX_QUESTION_LENGTH,
+                mimetype=SSEHeaders.CONTENT_TYPE,
+                headers=SSEHeaders.get_headers(),
+                status=400
+            )
+        
         context = data.get('context', '')
         topic = data.get('topic', '')
         
