@@ -46,6 +46,7 @@ def require_auth_sse(f):
 
 
 @sse_bp.route('/ai/stream')
+@require_auth_sse
 def ai_stream():
     """
     AI内容流式输出接口
@@ -139,6 +140,7 @@ def ai_stream():
 
 
 @sse_bp.route('/ai/course-outline')
+@require_auth_sse
 def course_outline_stream():
     """
     课程大纲流式生成接口
@@ -199,6 +201,7 @@ def course_outline_stream():
 
 
 @sse_bp.route('/ai/explanation')
+@require_auth_sse
 def explanation_stream():
     """
     知识点解释流式生成接口
@@ -437,11 +440,13 @@ def stream_chat():
 
 
 @sse_bp.route('/chat/simple', methods=['POST'])
+@require_auth_sse
 def stream_chat_simple():
     """
-    简单SSE流式问答接口（无需认证，无会话管理）
+    简单SSE流式问答接口（无会话管理）
     
-    适用于快速问答场景，不保存对话历史
+    适用于快速问答场景，不保存对话历史。与 /chat 一样需要登录：
+    该接口会消耗大模型额度，匿名开放等于对外提供免费 LLM 代理。
     
     Request Body (JSON):
         question: 用户问题（必填）
