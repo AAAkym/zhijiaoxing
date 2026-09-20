@@ -337,16 +337,27 @@ function urlBase64ToUint8Array(base64String) {
 
 /**
  * 发送订阅信息到服务器
+ *
+ * 注意：后端目前**没有** /api/push/subscribe 端点（实测返回 405），
+ * 因为推送推送服务尚未实现。这里保留调用以便后端补齐后直接生效，
+ * 但必须显式处理"端点不存在"的情况——否则每次开启通知都会在控制台
+ * 留下一个刺眼的红色报错，让人误以为系统坏了。
  */
 async function sendSubscriptionToServer(subscription) {
   try {
     const response = await fetch('/api/push/subscribe', {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(subscription)
     })
+    
+    if (response.status === 404 || response.status === 405) {
+      console.info('[PWA] 服务端尚未实现推送订阅端点，本次订阅仅保存在本地')
+      return
+    }
     
     if (!response.ok) {
       throw new Error('Failed to send subscription to server')
@@ -360,16 +371,24 @@ async function sendSubscriptionToServer(subscription) {
 
 /**
  * 从服务器移除订阅信息
+ *
+ * 同 sendSubscriptionToServer：端点尚未实现，需容忍 404/405。
  */
 async function removeSubscriptionFromServer(subscription) {
   try {
     const response = await fetch('/api/push/unsubscribe', {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(subscription)
     })
+    
+    if (response.status === 404 || response.status === 405) {
+      console.info('[PWA] 服务端尚未实现推送退订端点，本次退订仅清理本地记录')
+      return
+    }
     
     if (!response.ok) {
       throw new Error('Failed to remove subscription from server')

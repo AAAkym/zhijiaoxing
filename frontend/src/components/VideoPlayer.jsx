@@ -1,7 +1,15 @@
 import React, { useRef, useState, useEffect, forwardRef, useImperativeHandle } from 'react'
 import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, AlertCircle, Bookmark } from 'lucide-react'
 
-const BACKEND_URL = 'http://localhost:5000'
+// 视频地址走相对路径，由环境决定打到哪个后端。
+//
+// 此前硬编码 'http://localhost:5000'，有两个问题：
+//   1. 部署到别的机器/域名后，视频请求仍指向观看者自己的 localhost:5000，
+//      必然加载失败（"视频一直转圈"）。
+//   2. vite.config.js 专门为 '/uploads' 配了代理（第 56-83 行），
+//      内含视频流的缓存与超时设置；硬编码等于绕过了这套配置。
+// 与 services/api.js 一致，用 VITE_API_BASE_URL 覆盖，默认走同源相对路径。
+const BACKEND_URL = import.meta.env?.VITE_API_BASE_URL?.replace(/\/api\/?$/, '') || ''
 
 function getFullVideoUrl(videoUrl) {
   if (!videoUrl) return null
