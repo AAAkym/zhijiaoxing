@@ -11,7 +11,7 @@
 [![Flask](https://img.shields.io/badge/Flask-2.3-000000?style=flat-square\&logo=flask\&logoColor=white)](https://flask.palletsprojects.com/)
 [![License](https://img.shields.io/badge/license-第十五届中国软件杯-yellow?style=flat-square)](#许可证)
 
-**多智能体协同 · 8 维学生画像 · 3D 知识图谱 · SSE 流式对话 · 7 种多模态资源**
+**多智能体协同 · 8 维学生画像 · 3D 知识图谱 · SSE 流式对话 · 8 种多模态资源**
 
 [快速开始](#-快速开始) · [架构](#-系统架构) · [文档](#-文档导航) · [常见问题](#-常见问题)
 
@@ -38,7 +38,7 @@
 </td>
 <td width="50%" valign="top">
 
-### 🤖 8 个智能体协同
+### 🤖 10 个智能体协同
 **并行生成 7 种资源**：
 - 🎛️ Coordinator 协调
 - 📄 Document 文档
@@ -48,6 +48,7 @@
 - 💻 Project 项目
 - 👤 Profile 画像
 - 🕸️ KnowledgeGraph 图谱
+- 📊 PPT 演示文稿
 
 </td>
 </tr>
@@ -86,6 +87,8 @@
 | Redis         | 5.0+  | ⭕（Celery 异步任务） |
 | Elasticsearch | 8.11+ | ⭕（搜索引擎）        |
 
+> ⚠️ 仓库中**不包含** `.env.example`，请自行在 `backend/` 下创建 `.env`。
+
 ### ⚡ 5 分钟跑起来
 
 **第一步：启动后端** 🐍
@@ -100,7 +103,8 @@ python -m venv venv
 source venv/bin/activate
 
 pip install -r requirements.txt
-cp .env.example .env       # 编辑 .env 填入 SPARK_API_PASSWORD
+
+# 在 backend/ 下新建 .env，至少填入 SPARK_API_PASSWORD（见下方「配置说明」）
 
 python src/main.py
 ```
@@ -115,7 +119,7 @@ pnpm install
 pnpm run dev
 ```
 
-> 前端将运行在 \*\*<http://localhost:5173**（Vite> 已代理 `/api` 和 `/uploads`）
+> 前端将运行在 **<http://localhost:5173>**（Vite 已代理 `/api` 和 `/uploads`）
 
 **第三步：登录系统** 🔑
 
@@ -156,8 +160,8 @@ Docker一键启动.bat
 ├──────────────────┬──────────────────────────┬──────────────────────┤
 │     前端层       │         后端层            │       数据 / AI 层   │
 │   React 19       │   Flask 2.3 (threaded)   │   Spark 星火 Ultra   │
-│   Vite 6         │   ├─ 25+ 路由模块         │   ├─ Multi-Agent     │
-│   Tailwind 4     │   ├─ 25+ 服务模块         │   ├─ 知识库 RAG      │
+│   Vite 6         │   ├─ 34 路由模块          │   ├─ Multi-Agent     │
+│   Tailwind 4     │   ├─ 45 服务模块          │   ├─ 知识库 RAG      │
 │   shadcn/ui      │   ├─ Multi-Agent 框架     │   └─ 内容审核        │
 │   Three.js R3F   │   ├─ Celery 异步          │                      │
 │   Tiptap/CM      │   └─ WebSocket            │   SQLite / Postgres  │
@@ -182,14 +186,14 @@ Docker一键启动.bat
                         │   (总调度)        │
                         └────────┬─────────┘
                                  │
-        ┌──────────┬─────────┬───┴────┬──────────┬──────────┐
-        ▼          ▼         ▼        ▼          ▼          ▼
-   ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐
-   │Document│ │Exercise│ │ Media  │ │  Reco  │ │Project │ │ Know-  │
-   │  📄    │ │  ✏️    │ │  🎬    │ │ 📚    │ │  💻    │ │ledge🕸│
-   └────────┘ └────────┘ └────────┘ └────────┘ └────────┘ └────────┘
-        │          │         │        │          │          │
-        └──────────┴─────────┴────────┴──────────┴──────────┘
+        ┌──────────┬─────────┬───┴────┬──────────┬──────────┬──────────┐
+        ▼          ▼         ▼        ▼          ▼          ▼          ▼
+   ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐
+   │Document│ │Exercise│ │ Media  │ │  Reco  │ │Project │ │ Know-  │ │  PPT   │
+   │  📄    │ │  ✏️    │ │  🎬    │ │ 📚    │ │  💻    │ │ledge🕸│ │  📊    │
+   └────────┘ └────────┘ └────────┘ └────────┘ └────────┘ └────────┘ └────────┘
+        │          │         │        │          │          │          │
+        └──────────┴─────────┴────────┴──────────┴──────────┴──────────┘
                                  ▼
                     ┌──────────────────────────┐
                     │  ContentConverter 格式转换 │
@@ -212,6 +216,7 @@ Docker一键启动.bat
 | 📚 课程管理    | 创建课程、学生分配、进度跟踪、资源上传                      |
 | 🕸️ 知识图谱   | Word/PDF 上传 → AI 解析 → 3D 可视化 → 关系推理      |
 | 🤖 AI 内容生成 | Multi-Agent 协同生成学习目标 / 知识要点 / 代码示例 / 练习题 |
+| 📊 PPT 生成   | 讯飞智能 PPT API 一键生成演示文稿、在线预览、下载与重新生成 |
 | 📝 教案管理    | AI 智能生成教案、版本控制、内容优化                      |
 | 🎥 视频课程    | 视频上传、流式播放（Range 请求）、视频管理                 |
 | 📊 考核管理    | AI 智能出题、编程题评测、考试管理、成绩统计                  |
@@ -266,7 +271,7 @@ Docker一键启动.bat
 | [Tailwind CSS](https://tailwindcss.com/)        | 4.1          | 原子化 CSS       |
 | [shadcn/ui](https://ui.shadcn.com/)             | Latest       | UI 组件库（Radix） |
 | [Three.js](https://threejs.org/)                | 0.184        | 3D 引擎         |
-| React Three Fiber / drei                        | 8.17 / 9.114 | 3D 渲染框架       |
+| React Three Fiber / drei                        | 9.6 / 10.7   | 3D 渲染框架       |
 | [Recharts](https://recharts.org/)               | 2.15         | 数据可视化         |
 | [Tiptap](https://tiptap.dev/)                   | 2.4          | 富文本编辑器        |
 | [CodeMirror](https://codemirror.net/)           | 6.x          | 代码编辑器         |
@@ -282,10 +287,11 @@ Docker一键启动.bat
 | Flask-SocketIO                                     | 5.3.6  | WebSocket    |
 | [Celery](https://docs.celeryq.dev/)                | 5.3.4  | 异步任务队列       |
 | [Redis](https://redis.io/)                         | 5.0.1  | 缓存 / 消息队列    |
-| [PyMuPDF](https://pymupdf.readthedocs.io/)         | Latest | PDF 解析（知识图谱） |
+| [PyMuPDF](https://pymupdf.readthedocs.io/)         | 1.24+  | PDF 解析（知识图谱） |
 | [python-docx](https://python-docx.readthedocs.io/) | 1.1    | Word 解析      |
 | [Prometheus](https://prometheus.io/)               | 0.19   | 指标采集         |
 | Spark API                                          | Ultra  | 讯飞星火大模型      |
+| 讯飞智能 PPT 生成 API                                   | —      | PPT 演示文稿生成   |
 
 ***
 
@@ -293,20 +299,21 @@ Docker一键启动.bat
 
 ```
 project_code/
-├── 📁 backend/                  # 后端代码（Flask + Python 3.14）
+├── 📁 backend/                  # 后端代码（Flask + Python 3.11+）
 │   ├── 📁 src/
-│   │   ├── 📁 routes/           # 25+ API 路由模块
-│   │   ├── 📁 services/         # 25+ 业务服务层
-│   │   │   └── 📁 multi_agent/  # 8 个智能体实现
-│   │   ├── 📁 models/           # 8+ 数据模型
+│   │   ├── 📁 routes/           # 34 个 API 路由模块
+│   │   ├── 📁 services/         # 45 个业务服务层
+│   │   │   └── 📁 multi_agent/  # 10 个智能体实现
+│   │   ├── 📁 models/           # 19 个数据模型
 │   │   ├── 📁 tasks/            # Celery 异步任务
+│   │   ├── 📁 middleware/       # 指标采集等中间件
 │   │   └── 📄 main.py           # 应用入口
 │   ├── 📄 requirements.txt
 │   └── 🚀 start_backend.ps1
 │
 ├── 📁 frontend/                 # 前端代码（React 19 + Vite）
 │   ├── 📁 src/
-│   │   ├── 📁 components/       # 500+ React 组件
+│   │   ├── 📁 components/       # 169 个 React 组件
 │   │   │   ├── 📁 ui/           # shadcn/ui 基础组件
 │   │   │   ├── 📁 KnowledgeGraph3D/  # 3D 图谱组件
 │   │   │   ├── 📁 AITutor/      # AI 助教组件
@@ -316,17 +323,16 @@ project_code/
 │   │   ├── 📁 hooks/            # 自定义 Hooks
 │   │   └── 📁 router/           # 路由（懒加载）
 │   ├── 📄 package.json
-│   └── ⚙️ vite.config.js
+│   ├── ⚙️ vite.config.js
+│   └── 🌐 nginx.conf            # 生产环境反向代理
 │
 ├── 📁 docs/                     # 设计文档
 │   ├── 📁 plans/
+│   ├── 📁 screenshots/          # 界面截图
 │   └── 📄 安装部署指南.md
 │
-├── 📁 search_engine_config/     # Elasticsearch 配置
-├── 📁 monitoring/               # Prometheus + Grafana
-│
 ├── 📘 README.md                 # 本文件
-├── 📋 agent.md                  # 完整技术文档（883 行）
+├── 📋 agent.md                  # 完整技术文档
 └── 🐳 docker-compose.yml
 ```
 
@@ -340,6 +346,9 @@ project_code/
 | 🕸️ [知识图谱 RAG 引用设计](docs/plans/2026-06-11-knowledge-graph-rag-citation.md) | 知识图谱设计文档                                      |
 | 🐛 [缺陷修复报告](docs/plans/2026-06-30-defect-fix-report.md)                    | 历史缺陷修复                                        |
 | ⚙️ [管理后台优化方案](docs/plans/admin-dashboard-optimization.md)                  | 管理员后台方案                                       |
+| 🔄 [个性化教学工作流改造方案](docs/个性化教学工作流产品化改造方案.md)                                    | 工作流产品化设计                                      |
+| 🗄️ [数据库设计文档](docs/EduAI-Pro-数据库设计文档.md)                                   | 数据模型与表结构                                      |
+| 🏗️ [系统架构设计文档](docs/EduAI-Pro-系统架构设计文档.md)                                 | 架构分层与模块划分                                     |
 | 🚀 [安装部署指南](docs/安装部署指南.md)                                                | 生产环境部署                                        |
 | 📘 [项目 AI 行为准则](CLAUDE.md)                                                 | AI 协作规范                                       |
 
@@ -388,15 +397,37 @@ project_code/
 <details>
 <summary><b>🌐 前端报 CORS 跨域错误？</b></summary>
 
-开发环境走 Vite 代理（已配置），**无需 CORS**。生产环境由 [nginx.](file:///c:/Users/33552/Desktop/project_code/frontend/nginx.conf)在 `backend/.env` 文件中配置：
+开发环境走 Vite 代理（`vite.config.js` 已配置），**通常无需处理 CORS**。生产环境由前端目录下的 [nginx.conf](frontend/nginx.conf) 反向代理 `/api` 与 `/uploads` 到后端。
+
+若仍出现跨域，请检查：
+
+1. 后端是否已在 `backend/.env` 中把前端地址加入允许来源
+2. 生产环境是否确实经由 nginx 访问，而非直连 `:5000`
+3. 浏览器 Network 面板中报错请求的实际 URL（是打到 `:5173` 还是 `:5000`）
+
+</details>
+
+<details>
+<summary><b>🔑 如何配置讯飞 API 凭据？</b></summary>
+
+在 `backend/.env` 中配置（**该文件不入库，请勿提交**）：
 
 ```bash
+# 讯飞 Spark 星火大模型
 SPARK_API_PASSWORD=your_api_password
 SPARK_API_URL=https://spark-api-open.xf-yun.com/v1/chat/completions
 SPARK_MODEL=ultra
+
+# 讯飞智能 PPT 生成（可选，用于 PPT 生成功能）
+XFYUN_PPT_APP_ID=your_ppt_app_id
+XFYUN_PPT_API_SECRET=your_ppt_api_secret
 ```
 
+> 🔒 **安全提示**：`XFYUN_PPT_*` 若未配置，会回落到 `backend/src/config.py` 中的**硬编码默认凭据**。请务必自行覆盖，并建议后续将这些默认值从源码中移除、改为强制读取环境变量。
+
 API 申请：<https://www.xfyun.cn/>
+
+</details>
 
 <br />
 
