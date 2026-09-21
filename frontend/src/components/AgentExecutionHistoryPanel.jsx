@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-import { resourceGeneration } from '@/services/api'
+import { courseGeneration } from '@/services/api'
 
 /** 资源智能体名单，与后端 agent_execution_history_service.RESOURCE_AGENT_NAMES 同口径。 */
 const RESOURCE_AGENT_NAMES = new Set([
@@ -62,7 +62,7 @@ export default function AgentExecutionHistoryPanel({ days: initialDays = 30 }) {
     setLoading(true)
     setError('')
     try {
-      setData(await resourceGeneration.getAgentExecutionHistory(days))
+      setData(await courseGeneration.getAgentExecutionHistory(days))
     } catch (loadError) {
       // 历史不可用只降级本卡片，绝不影响实时状态面板。
       setError(loadError.message || '执行历史加载失败')

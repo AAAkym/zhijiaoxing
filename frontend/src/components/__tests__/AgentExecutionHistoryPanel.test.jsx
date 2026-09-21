@@ -2,10 +2,10 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, expect, jest, test } from '@jest/globals'
 import AgentExecutionHistoryPanel from '../AgentExecutionHistoryPanel'
-import { resourceGeneration } from '@/services/api'
+import { courseGeneration } from '@/services/api'
 
 jest.mock('@/services/api', () => ({
-  resourceGeneration: { getAgentExecutionHistory: jest.fn() },
+  courseGeneration: { getAgentExecutionHistory: jest.fn() },
 }))
 
 function stage(stageKey, stageLabel, ownerLabel, hasEvidence, evidenceRequired = true, matched = []) {
@@ -71,7 +71,7 @@ function historyPayload(overrides = {}) {
 
 beforeEach(() => {
   jest.clearAllMocks()
-  resourceGeneration.getAgentExecutionHistory.mockResolvedValue(historyPayload())
+  courseGeneration.getAgentExecutionHistory.mockResolvedValue(historyPayload())
 })
 
 test('renders persisted execution totals and per-agent rows', async () => {
@@ -79,13 +79,13 @@ test('renders persisted execution totals and per-agent rows', async () => {
 
   expect(await screen.findByText('167')).toBeInTheDocument()
   expect(screen.getByText('166')).toBeInTheDocument()
-  // "协调智能体" 会同时出现在流水线阶段行与智能体表格行里，因此按表格单元格取。
+  // "协调智能体" 会同时出现在流水线阶段行与智能体表格行里，因此按表格行取。
   const rows = screen.getAllByRole('row')
   expect(rows.some((row) => row.textContent.includes('协调智能体'))).toBe(true)
   expect(rows.some((row) => row.textContent.includes('视频脚本智能体'))).toBe(true)
   // 68 秒必须按秒展示，而不是 68000。
   expect(screen.getByText('68.0 s')).toBeInTheDocument()
-  expect(resourceGeneration.getAgentExecutionHistory).toHaveBeenCalledWith(30)
+  expect(courseGeneration.getAgentExecutionHistory).toHaveBeenCalledWith(30)
 })
 
 test('declares pipeline stages that have no execution evidence', async () => {
@@ -107,11 +107,11 @@ test('switches the statistics window and refetches', async () => {
   await screen.findByText('167')
   await user.click(screen.getByRole('button', { name: '近 7 天' }))
 
-  expect(resourceGeneration.getAgentExecutionHistory).toHaveBeenLastCalledWith(7)
+  expect(courseGeneration.getAgentExecutionHistory).toHaveBeenLastCalledWith(7)
 })
 
 test('states plainly that an empty window proves nothing', async () => {
-  resourceGeneration.getAgentExecutionHistory.mockResolvedValue(historyPayload({
+  courseGeneration.getAgentExecutionHistory.mockResolvedValue(historyPayload({
     totals: { records: 0, success: 0, failed: 0, unknown_status: 0, avg_duration_ms: null },
     agents: [],
     pipeline: {
@@ -131,7 +131,7 @@ test('states plainly that an empty window proves nothing', async () => {
 })
 
 test('degrades to one inline alert when history is unavailable', async () => {
-  resourceGeneration.getAgentExecutionHistory.mockRejectedValue(new Error('history_unavailable'))
+  courseGeneration.getAgentExecutionHistory.mockRejectedValue(new Error('history_unavailable'))
 
   render(<AgentExecutionHistoryPanel />)
 
@@ -140,7 +140,7 @@ test('degrades to one inline alert when history is unavailable', async () => {
 })
 
 test('lists failed executions with their error message', async () => {
-  resourceGeneration.getAgentExecutionHistory.mockResolvedValue(historyPayload({
+  courseGeneration.getAgentExecutionHistory.mockResolvedValue(historyPayload({
     recent: [
       {
         id: 1,
