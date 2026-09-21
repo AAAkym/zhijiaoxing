@@ -15,6 +15,7 @@ from src.services.profile_explainability_service import (
     build_profile_explainability,
 )
 from src.services.profile_evidence_collector import collect_programming_signals
+from src.services.generation_basis_service import build_class_learning_groups
 
 logger = logging.getLogger(__name__)
 class_mgmt_bp = Blueprint("class_management", __name__)
@@ -1090,4 +1091,26 @@ def sync_class_profiles(class_id):
 
     except Exception as e:
         logger.error(f"Sync class profiles error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@class_mgmt_bp.route("/classes/<int:class_id>/learning-groups", methods=["GET"])
+@require_auth
+def get_class_learning_groups(class_id):
+    """按确定性规则返回班级学习类型分组（只读）。
+
+    越权检查复用 _can_access_class：班级不存在返回 404，非本班教师返回 403。
+    """
+    try:
+        class_group = ClassGroup.query.get(class_id)
+        if not class_group:
+            return jsonify({"error": "班级不存在"}), 404
+        if not _can_access_class(class_id):
+            return jsonify({"error": "无权查看该班级分组"}), 403
+        course_id = request.args.get("course_id", type=int)
+        if course_id is None:
+            course_id = class_group.courses.first().course_id if class_group.courses.first() else None
+        return jsonify(build_class_learning_groups(class_id, course_id)), 200
+    except Exception as e:
+        logger.error(f"Get class learning groups error: {e}")
         return jsonify({"error": str(e)}), 500

@@ -92,7 +92,7 @@ function SafeOrbitControls() {
 }
 
 /* ── 主组件 ── */
-export default function KnowledgeGraph3D({ myCourses = [] }) {
+export default function KnowledgeGraph3D({ myCourses = [], focusKnowledgePoint = null }) {
   const [graphData, setGraphData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -127,6 +127,23 @@ export default function KnowledgeGraph3D({ myCourses = [] }) {
   }, [selectedCourse])
 
   useEffect(() => { fetchGraph() }, [fetchGraph])
+
+  /* 依据链跳转：外部指定知识点名称时，自动选中并聚焦对应节点（不传则不改变任何行为）。 */
+  useEffect(() => {
+    if (!focusKnowledgePoint || !graphData) return
+    const wanted = String(focusKnowledgePoint).trim()
+    if (!wanted) return
+    const normalized = wanted.toLowerCase()
+    const matched = (graphData.nodes || []).find((node) => {
+      const label = String(node.label || node.name || '').trim().toLowerCase()
+      return label === normalized || label.includes(normalized) || normalized.includes(label)
+    })
+    if (!matched) return
+    setSelectedNode(matched)
+    setSelectedEdge(null)
+    setFocusTarget(matched.id)
+    setViewMode(VIEW_MODES.focus)
+  }, [focusKnowledgePoint, graphData])
 
   const nodes = useMemo(() => graphData?.nodes || [], [graphData])
   const edges = useMemo(() => graphData?.edges || [], [graphData])

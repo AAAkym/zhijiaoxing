@@ -11,6 +11,7 @@ jest.mock('@/services/api', () => ({
     startStudentDelivery: jest.fn(),
     completeStudentResource: jest.fn(),
     submitStudentAssessment: jest.fn(),
+    getStudentResourceBasis: jest.fn(),
     getStudentNotifications: jest.fn(),
     markStudentNotificationRead: jest.fn(),
     markAllStudentNotificationsRead: jest.fn(),
@@ -53,6 +54,18 @@ beforeEach(() => {
   })
   personalizedLearning.markStudentNotificationRead.mockResolvedValue({ notification: { is_read: true } })
   personalizedLearning.markAllStudentNotificationsRead.mockResolvedValue({ changed_count: 0 })
+  personalizedLearning.getStudentResourceBasis.mockResolvedValue({
+    basis: {
+      resource_type: 'document',
+      profile_evidence: [],
+      mistake_evidence: [],
+      knowledge_evidence: [],
+      next_step: { action: '先补齐边界条件证据', source: 'learning_cycle', learning_sequence: [] },
+      quality: { overall_score: 80, citation_coverage_score: 90, verification_status: 'passed', dimensions: {} },
+      gaps: [],
+    },
+    resource_type: 'document',
+  })
 })
 
 test('student searches tasks with server-side filters', async () => {
@@ -98,4 +111,62 @@ test('opens the assessment bound to the current delivery', async () => {
   expect(await screen.findByText(/编号 #42/)).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: '打开本轮检测' }))
   expect(onOpenAssessment).toHaveBeenCalledWith(42)
+})
+
+test('reveals the generation basis for one resource on demand', async () => {
+  const user = userEvent.setup()
+  render(<PersonalizedLearningTasks />)
+
+  await user.click(await screen.findByRole('button', { name: '查看任务' }))
+  // 依据链是按需加载的：点击前不请求，也不占用资源正文空间。
+  expect(personalizedLearning.getStudentResourceBasis).not.toHaveBeenCalled()
+
+  await user.click(screen.getByRole('button', { name: '我为什么是给你的' }))
+
+  await waitFor(() => expect(personalizedLearning.getStudentResourceBasis).toHaveBeenCalledWith(
+    'dlv_student', 'document'
+  ))
+  // 依据面板默认只展开画像依据，其余分区由学生自行展开。
+  expect(await screen.findByRole('region', { name: /生成依据链/ })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: /接下来学什么/ }))
+  expect(await screen.findByText('先补齐边界条件证据')).toBeInTheDocument()
+})
+
+test('keeps the resource readable when the basis request fails', async () => {
+  const user = userEvent.setup()
+  personalizedLearning.getStudentResourceBasis.mockRejectedValue(new Error('basis_unavailable'))
+  render(<PersonalizedLearningTasks />)
+
+  await user.click(await screen.findByRole('button', { name: '查看任务' }))
+  expect(await screen.findByText('循环讲义')).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: '我为什么是给你的' }))
+
+  expect(await screen.findByText('依据信息暂时不可用')).toBeInTheDocument()
+  expect(screen.getByText('循环讲义')).toBeInTheDocument()
+})
+
+test('hands the knowledge point over when jumping to the knowledge graph', async () => {
+  const user = userEvent.setup()
+  const onOpenKnowledgeGraph = jest.fn()
+  personalizedLearning.getStudentResourceBasis.mockResolvedValue({
+    basis: {
+      resource_type: 'document',
+      profile_evidence: [],
+      mistake_evidence: [],
+      knowledge_evidence: [{ node_id: 77, label: '递归边界', citation_ids: [] }],
+      next_step: {},
+      quality: { dimensions: {} },
+      gaps: [],
+    },
+    resource_type: 'document',
+  })
+  render(<PersonalizedLearningTasks onOpenKnowledgeGraph={onOpenKnowledgeGraph} />)
+
+  await user.click(await screen.findByRole('button', { name: '查看任务' }))
+  await user.click(screen.getByRole('button', { name: '我为什么是给你的' }))
+  await user.click(await screen.findByRole('button', { name: /知识图谱位置/ }))
+  await user.click(await screen.findByRole('button', { name: /在知识图谱中查看/ }))
+
+  expect(onOpenKnowledgeGraph).toHaveBeenCalledWith(expect.objectContaining({ label: '递归边界' }))
 })

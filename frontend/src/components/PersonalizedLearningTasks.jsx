@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Activity, AlertCircle, ArrowLeft, BookOpenCheck, CheckCircle2, ChevronLeft, ChevronRight, Loader2, Play, RefreshCw, Search, Sparkles, X } from 'lucide-react'
+import { Activity, AlertCircle, ArrowLeft, BookOpenCheck, CheckCircle2, ChevronLeft, ChevronRight, Loader2, Play, RefreshCw, Search, ShieldCheck, Sparkles, X } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -9,6 +9,7 @@ import { Progress } from '@/components/ui/progress'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { personalizedLearning } from '@/services/api'
 import PersonalizedNotificationCenter from './PersonalizedNotificationCenter'
+import ResourceBasisPanel from './ResourceBasisPanel'
 
 const STATUS_LABELS = {
   PUBLISHED: '待开始', IN_PROGRESS: '学习中', WAITING_ASSESSMENT: '等待检测',
@@ -55,7 +56,7 @@ function newRequestId(resourceKey) {
   return `complete-${resourceKey}-${random}`
 }
 
-export default function PersonalizedLearningTasks({ onOpenAssessment }) {
+export default function PersonalizedLearningTasks({ onOpenAssessment, onOpenKnowledgeGraph }) {
   const [deliveries, setDeliveries] = useState([])
   const [delivery, setDelivery] = useState(null)
   const [queryInput, setQueryInput] = useState('')
@@ -66,6 +67,9 @@ export default function PersonalizedLearningTasks({ onOpenAssessment }) {
   const [pagination, setPagination] = useState({ page: 1, pages: 0, total: 0 })
   const [loading, setLoading] = useState('list')
   const [notice, setNotice] = useState(null)
+  const [basisByResource, setBasisByResource] = useState({})
+  const [basisLoading, setBasisLoading] = useState('')
+  const [basisErrors, setBasisErrors] = useState({})
 
   const loadList = useCallback(async () => {
     setLoading('list')
@@ -144,6 +148,21 @@ export default function PersonalizedLearningTasks({ onOpenAssessment }) {
       setLoading('')
     }
   }
+
+  const loadBasis = useCallback(async (resourceKey) => {
+    if (!delivery?.delivery_id) return
+    setBasisLoading(resourceKey)
+    setBasisErrors((current) => ({ ...current, [resourceKey]: false }))
+    try {
+      const response = await personalizedLearning.getStudentResourceBasis(delivery.delivery_id, resourceKey)
+      setBasisByResource((current) => ({ ...current, [resourceKey]: response.basis }))
+    } catch (error) {
+      // 依据链失败只降级为一行提示，绝不影响资源正文的学习流程。
+      setBasisErrors((current) => ({ ...current, [resourceKey]: true }))
+    } finally {
+      setBasisLoading('')
+    }
+  }, [delivery?.delivery_id])
 
   const analyze = async () => {
     setLoading('analyze')
@@ -240,6 +259,30 @@ export default function PersonalizedLearningTasks({ onOpenAssessment }) {
                 <Badge variant={completed ? 'default' : 'outline'}>{completed ? '已完成' : '待学习'}</Badge>
               </div>
               <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{resourceSummary(resource)}</p>
+              <div className="mt-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => loadBasis(key)}
+                  disabled={basisLoading === key}
+                  aria-expanded={Boolean(basisByResource[key])}
+                  aria-controls={`resource-basis-${key}`}
+                >
+                  <ShieldCheck data-icon="inline-start" />
+                  {basisByResource[key] ? '刷新生成依据' : '我为什么是给你的'}
+                </Button>
+              </div>
+              <div id={`resource-basis-${key}`}>
+                {basisLoading === key || basisByResource[key] || basisErrors[key] ? (
+                  <ResourceBasisPanel
+                    basis={basisByResource[key] || null}
+                    resourceType={resource.resource_type || key}
+                    loading={basisLoading === key}
+                    error={basisErrors[key] ? new Error('basis_unavailable') : null}
+                    onOpenKnowledgeGraph={onOpenKnowledgeGraph}
+                  />
+                ) : null}
+              </div>
               {delivery.status === 'IN_PROGRESS' && !completed ? <div className="mt-4 flex justify-end"><Button onClick={() => completeResource(key)} disabled={loading === `resource:${key}`}><CheckCircle2 data-icon="inline-start" />完成这项资源</Button></div> : null}
             </section>
           )

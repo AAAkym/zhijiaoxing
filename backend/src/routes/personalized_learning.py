@@ -1,3 +1,5 @@
+import json
+import logging
 from datetime import datetime
 
 from flask import Blueprint, jsonify, request, session
@@ -5,12 +7,64 @@ from flask import Blueprint, jsonify, request, session
 from src.models.user import db
 from src.models.personalized_learning import PersonalizedTaskDelivery, PersonalizedDeliveryEvent, PersonalizedLearningCycle
 from src.models.personalized_workflow import PersonalizedWorkflow
+from src.models.student_profile import StudentProfile
 from src.services.personalized_delivery_service import DeliveryError, personalized_delivery_service
 from src.services.personalized_notification_service import personalized_notification_service
+from src.services.generation_basis_service import build_basis_signals, build_resource_basis
 from src.utils.auth import require_auth, require_role
 
 
 personalized_learning_bp = Blueprint("personalized_learning", __name__)
+
+
+logger = logging.getLogger(__name__)
+
+
+def _load_json(raw, default):
+    try:
+        value = json.loads(raw) if raw else default
+    except (TypeError, ValueError):
+        return default
+    return value if value is not None else default
+
+
+def _load_mistake_rows(user_id, course_id, limit=20):
+    """读取该学生在本课程下的真实错题明细（只读，按 user_id 过滤）。
+
+    与 CoordinatorAgent._build_mistake_evidence 保持同一形状，便于依据链复用。
+    没有明细时返回空列表，由依据链在 gaps 中登记缺失，绝不用聚合计数伪造条目。
+    """
+    if user_id in (None, "") or course_id in (None, ""):
+        return []
+    try:
+        from src.models.course import MistakeRecord
+    except Exception:  # pragma: no cover - 模型导入失败时降级为无明细
+        return []
+
+    records = MistakeRecord.query.filter(
+        MistakeRecord.user_id == user_id,
+        MistakeRecord.course_id == course_id,
+    ).order_by(MistakeRecord.last_mistake_at.desc()).limit(max(1, int(limit))).all()
+
+    rows = []
+    for record in records:
+        try:
+            tags = json.loads(record.knowledge_tags or "[]")
+        except (TypeError, ValueError):
+            tags = []
+        tags = [str(tag) for tag in tags] if isinstance(tags, list) else []
+        rows.append({
+            "mistake_id": record.id,
+            "knowledge_point": tags[0] if tags else "",
+            "error_type": record.error_type_manual or record.error_type_auto or "",
+            "mistake_count": record.mistake_count or 1,
+            "last_mistake_at": record.last_mistake_at.isoformat() if record.last_mistake_at else None,
+            "mastery_status": record.mastery_status or "unmastered",
+            "question_excerpt": (record.question_content or "")[:120],
+            "user_answer": record.user_answer or "",
+            "correct_answer": record.correct_answer or "",
+        })
+    return rows
 
 
 def _error(exc):
@@ -149,6 +203,72 @@ def get_student_delivery(delivery_id):
     if not delivery:
         return jsonify({"error": "任务不存在或无权访问", "code": "DELIVERY_NOT_FOUND"}), 404
     return jsonify({"delivery": delivery}), 200
+
+
+@personalized_learning_bp.route("/student/personalized-deliveries/<string:delivery_id>/resources/<string:resource_key>/basis", methods=["GET"])
+@require_auth
+def get_student_resource_basis(delivery_id, resource_key):
+    """返回该学生这份资源"为什么是给你的"依据链（只读）。
+
+    越权防护：先按 student_user_id 取交付单，取不到即 404，绝不返回其他学生的画像或错题数据。
+    """
+    if session.get("user_role") != "student":
+        return jsonify({"error": "只有学生可以查看学习资源依据", "code": "STUDENT_REQUIRED"}), 403
+    item = PersonalizedTaskDelivery.query.filter_by(
+        delivery_id=delivery_id, student_user_id=session["user_id"]
+    ).first()
+    if not item:
+        return jsonify({"error": "任务不存在或无权访问", "code": "DELIVERY_NOT_FOUND"}), 404
+
+    resources = _load_json(item.resource_snapshot_json, {})
+    resource = resources.get(resource_key)
+    if not isinstance(resource, dict):
+        return jsonify({"error": "该资源不存在", "code": "RESOURCE_NOT_FOUND"}), 404
+
+    signals = {}
+    if item.student_user_id:
+        try:
+            from src.routes.resource_generation import _collect_profile_signals
+            signals = _collect_profile_signals(item.student_user_id, item.course_id)
+        except Exception as exc:  # 依据链不可得时降级，绝不阻塞资源正文
+            logger.warning("Collect profile signals for basis failed: %s", exc)
+
+    # _collect_profile_signals 只给出错题聚合计数（total / top_knowledge_points），
+    # 不含明细。若不补明细，依据链只能报 missing_mistake_detail，学生明明有错题
+    # 却看不到任何一条。这里补上按 user_id 过滤的真实错题明细。
+    signals = build_basis_signals(
+        _load_mistake_rows(item.student_user_id, item.course_id),
+        extra_signals=signals,
+    )
+
+    profile = {}
+    try:
+        profile_row = StudentProfile.query.filter_by(user_id=item.student_user_id).first()
+        if profile_row:
+            profile = profile_row.to_dict()
+    except Exception as exc:
+        logger.warning("Load student profile for basis failed: %s", exc)
+
+    strategy = _load_json(item.strategy_snapshot_json, {})
+    cycle = None
+    latest_cycle = item.cycles[-1] if item.cycles else None
+    if latest_cycle:
+        cycle = latest_cycle.to_dict()
+
+    basis = build_resource_basis(
+        resource_key,
+        resource,
+        package={"topic": item.title, "resources": resources, "strategy": strategy},
+        signals=signals,
+        cycle=cycle,
+    )
+    return jsonify({
+        "basis": basis,
+        "profile_evidence": basis.get("profile_evidence", []),
+        "resource_type": resource_key,
+        "course_id": item.course_id,
+        "student_user_id": item.student_user_id,
+    }), 200
 
 
 @personalized_learning_bp.route("/student/personalized-deliveries/<string:delivery_id>/start", methods=["POST"])

@@ -29,6 +29,10 @@ from src.services.knowledge_base_service import knowledge_base_service
 from src.services.content_converter_service import content_converter_service
 from src.services.rag_citation_service import rag_citation_service
 from src.services.syllabus_graph_service import syllabus_graph_service
+from src.services.generation_basis_service import (
+    build_package_basis,
+    build_basis_signals,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -278,6 +282,17 @@ class CoordinatorAgent(AgentBase):
                 options["course_profile"] = course_profile
             except Exception as e:
                 logger.warning(f"Failed to build course profile: {e}")
+
+        # 错题明细（只读、按 user_id 过滤）：作为依据链的错题来源，绝不用聚合计数伪造。
+        mistake_records = []
+        _student_user_id = task.get("student_user_id")
+        if _student_user_id and course_id:
+            try:
+                mistake_records = self._build_mistake_evidence(
+                    _student_user_id, course_id, knowledge_points
+                )
+            except Exception as e:
+                logger.warning("Failed to load mistake evidence: %s", e)
 
         rag_evidence = []
         if rag_required and course_id:
@@ -537,6 +552,7 @@ class CoordinatorAgent(AgentBase):
             "profile_snapshot": {
                 "student_user_id": task.get("student_user_id"),
                 "class_id": task.get("class_id"),
+                "course_id": course_id,
                 "profile": profile,
                 "explainability": profile_explainability,
             },
@@ -556,9 +572,24 @@ class CoordinatorAgent(AgentBase):
             ],
         }
 
+        # 依据链回填：把执行记录补成可回溯的 id + 真实质量分，再生成每类资源的依据链。
+        citation_index = {
+            rtype: results.get(rtype, {}).get("citations") or []
+            for rtype in results
+            if isinstance(results.get(rtype), dict)
+        }
+        self._backfill_execution_evidence(
+            execution_details, results, quality_report, citation_index, mistake_records
+        )
+        generation_explanation["execution"] = [
+            {key: value for key, value in detail.items() if not key.startswith("_")}
+            for detail in execution_details.values()
+        ]
+
         package = {
             "package_id": package_id,
             "topic": topic,
+            "course_id": course_id,
             "student_profile_summary": self._summarize_profile(profile),
             "generation_strategy": strategy,
             "generation_explanation": generation_explanation,
@@ -598,6 +629,16 @@ class CoordinatorAgent(AgentBase):
                 "tracking_id": package_id,
             },
         }
+
+        # 每份资源的生成依据链（新增顶层字段，不改变既有字段语义）。
+        package["resource_basis"] = build_package_basis(
+            package,
+            signals=build_basis_signals(mistake_records, profile),
+            graph_context={"selected_knowledge_points": [
+                {"label": str(item)} for item in (knowledge_points or [])
+            ]},
+            cycle=task.get("learning_cycle"),
+        )
 
         self._update_tracking_stage(
             package_id, "package", "completed" if final_status != "failed" else "failed",
@@ -758,8 +799,155 @@ class CoordinatorAgent(AgentBase):
             "output_summary": None,
             "duration_ms": None,
             "error_reason": None,
+            # 依据链回填位：待质量检查完成后由 _backfill_execution_evidence 补齐，
+            # 在此之前保持空值，绝不填入猜测出来的 id 或分数。
+            "basis_refs": [],
+            "knowledge_point_ids": [],
+            "mistake_ids": [],
+            "quality_score": None,
             "_started": time.time(),
         }
+
+    def _backfill_execution_evidence(self, execution_details, results, quality_report=None,
+                                     citations=None, mistake_records=None):
+        """把每个智能体的执行记录回填成可回溯的依据 id 与真实质量分。
+
+        - ``basis_refs``：该资源命中的 evidence id（策略特征 key + 引用 source_id）。
+        - ``knowledge_point_ids``：该资源在知识图谱中的节点 id（来自知识点引用）。
+        - ``mistake_ids``：按 user_id 过滤后，与本资源知识点相关的错题 id。
+        - ``quality_score``：取自 _assess_content_quality 的维度分（media/ppt 用事实性
+          维度，因为这两类资源故意不做引用核验），不是硬编码常量。
+        """
+        quality_report = quality_report or {}
+        dimensions = quality_report.get("dimensions") or {}
+        mistake_records = mistake_records or []
+        for resource_type, detail in (execution_details or {}).items():
+            resource = results.get(resource_type)
+            if not isinstance(resource, dict):
+                continue
+            detail["basis_refs"] = self._collect_basis_refs(resource_type, resource, detail, citations)
+            detail["knowledge_point_ids"] = self._collect_knowledge_point_ids(resource)
+            detail["mistake_ids"] = self._collect_mistake_ids(resource, mistake_records)
+            detail["quality_score"] = self._resource_quality_score(resource_type, dimensions)
+
+    def _collect_basis_refs(self, resource_type, resource, detail, citations=None):
+        refs = []
+        for feature in detail.get("profile_features") or []:
+            if feature and feature not in refs:
+                refs.append(str(feature))
+        for citation in (resource.get("citations") or []):
+            if not isinstance(citation, dict):
+                continue
+            source_id = citation.get("source_id")
+            if source_id and source_id not in refs:
+                refs.append(str(source_id))
+        for citation in (citations or {}).get(resource_type, []) or []:
+            if not isinstance(citation, dict):
+                continue
+            source_id = citation.get("source_id")
+            if source_id and source_id not in refs:
+                refs.append(str(source_id))
+        return refs
+
+    def _collect_knowledge_point_ids(self, resource):
+        ids = []
+        for reference in (resource.get("knowledge_point_references") or []):
+            if not isinstance(reference, dict):
+                continue
+            node_id = reference.get("knowledge_point_id") or reference.get("node_id") or reference.get("id")
+            if node_id is not None and node_id not in ids:
+                ids.append(node_id)
+        for key in ("knowledge_point_ids", "node_ids"):
+            for node_id in (resource.get(key) or []):
+                if node_id is not None and node_id not in ids:
+                    ids.append(node_id)
+        return ids
+
+    def _collect_mistake_ids(self, resource, mistake_records):
+        """把错题明细按知识点与本资源对齐，返回真实 mistake_id 列表。
+
+        注意：``_normalize_resources_for_output`` 会移除顶层 ``knowledge_points``，
+        因此这里同时从 ``knowledge_point_references`` 的标题取标签，否则归一化后的
+        资源永远匹配不到错题（依据链会静默退化成空）。
+        """
+        tags = set()
+        for key in ("knowledge_points", "knowledge_tags"):
+            value = resource.get(key)
+            if isinstance(value, (list, tuple)):
+                tags.update(str(item) for item in value if item)
+            elif isinstance(value, str) and value:
+                tags.update(part.strip() for part in re.split(r"[,，、;；]", value) if part.strip())
+        for reference in (resource.get("knowledge_point_references") or []):
+            if not isinstance(reference, dict):
+                continue
+            for key in ("title", "label", "name"):
+                label = reference.get(key)
+                if label:
+                    tags.add(str(label).strip())
+        if not tags:
+            return []
+        ids = []
+        for record in mistake_records:
+            if record.get("knowledge_point") in tags and record.get("mistake_id") is not None:
+                if record["mistake_id"] not in ids:
+                    ids.append(record["mistake_id"])
+        return ids
+
+    def _resource_quality_score(self, resource_type, dimensions):
+        """返回该资源类型的真实质量分，而不是固定常量。"""
+        dimension_key = "factuality" if resource_type in ("media", "ppt") else "citation_integrity"
+        dimension = dimensions.get(dimension_key) or dimensions.get("coverage") or {}
+        score = dimension.get("score")
+        return round(float(score), 1) if isinstance(score, (int, float)) else None
+
+    def _build_mistake_evidence(self, user_id, course_id, knowledge_points=None, limit=10):
+        """从 MistakeRecord 读取错题明细（只读，按 user_id 过滤）。
+
+        返回结构化错题条目；没有明细时返回空列表，由调用方在 gaps 中登记缺失，
+        绝不用聚合计数伪造条目。
+        """
+        if user_id in (None, "") or course_id in (None, ""):
+            return []
+        from src.models.course import MistakeRecord
+
+        query = MistakeRecord.query.filter(
+            MistakeRecord.user_id == user_id,
+            MistakeRecord.course_id == course_id,
+        )
+        records = query.order_by(MistakeRecord.last_mistake_at.desc()).limit(max(1, int(limit))).all()
+        wanted = {str(item) for item in (knowledge_points or []) if item}
+        rows = []
+        for record in records:
+            tags = self._parse_knowledge_tags(record.knowledge_tags)
+            if wanted and not (wanted & set(tags)):
+                continue
+            rows.append({
+                "mistake_id": record.id,
+                "knowledge_point": tags[0] if tags else "",
+                "error_type": record.error_type_manual or record.error_type_auto or "",
+                "mistake_count": record.mistake_count or 1,
+                "last_mistake_at": record.last_mistake_at.isoformat() if record.last_mistake_at else None,
+                "mastery_status": record.mastery_status or "unmastered",
+                "question_excerpt": (record.question_content or "")[:120],
+                "user_answer": record.user_answer or "",
+                "correct_answer": record.correct_answer or "",
+            })
+        return rows
+
+    def _parse_knowledge_tags(self, value):
+        if not value:
+            return []
+        if isinstance(value, (list, tuple)):
+            return [str(item) for item in value if item]
+        try:
+            parsed = json.loads(value)
+        except (TypeError, ValueError):
+            return [part.strip() for part in re.split(r"[,，、;；]", str(value)) if part.strip()]
+        if isinstance(parsed, list):
+            return [str(item) for item in parsed if item]
+        if isinstance(parsed, str):
+            return [parsed]
+        return []
 
     def _summarize_agent_output(self, result, resource_type):
         if not isinstance(result, dict):
@@ -975,12 +1163,26 @@ class CoordinatorAgent(AgentBase):
             (coverage_score * 0.4 + difficulty_score * 0.3 + cross_ref_score * 0.3), 1
         )
 
-        return {
+        report = {
             "knowledge_coverage": f"覆盖率评分: {coverage_score}/100",
             "difficulty_alignment": f"难度对齐评分: {difficulty_score}/100",
             "cross_reference_check": f"交叉引用评分: {cross_ref_score}/100",
             "overall_score": overall,
         }
+        if self._difficulty_alignment_is_placeholder(profile):
+            # 占位值必须显式标记，禁止被下游当作真实评分展示。
+            report["difficulty_alignment_is_placeholder"] = True
+        return report
+
+    def _difficulty_alignment_is_placeholder(self, profile):
+        """画像缺少可用的节奏/知识基础信号时，难度对齐只能给占位分。"""
+        profile = profile or {}
+        if not profile.get("learning_pace"):
+            return True
+        if profile.get("knowledge_base"):
+            return False
+        # 只有默认画像（无节奏、无知识基础）才判为占位。
+        return not profile.get("cognitive_style") and not profile.get("goal_orientation")
 
     def _check_knowledge_coverage(self, resources, knowledge_points):
         """评估资源对知识点的覆盖程度，采用多层降级匹配策略提升评估准确性。
@@ -1052,7 +1254,45 @@ class CoordinatorAgent(AgentBase):
         return round(total_score / len(knowledge_points) * 100, 1)
 
     def _check_difficulty_alignment(self, resources, profile):
-        return 75
+        """难度对齐：画像节奏与知识基础 与 资源实际难度估计 的匹配度（0-100）。
+
+        画像缺少节奏/知识基础信号时退化为占位值，并由 _check_consistency 打上
+        ``difficulty_alignment_is_placeholder`` 标记，下游据此在 gaps 中说明。
+        """
+        profile = profile or {}
+        if self._difficulty_alignment_is_placeholder(profile):
+            return 75
+
+        pace = profile.get("learning_pace") or "moderate"
+        # 资源实际难度估计：内容越长、练习/项目占比越高，难度越高。
+        resource_text = json.dumps(resources or {}, ensure_ascii=False)
+        content_len = len(resource_text)
+        lower = resource_text.lower()
+        practice_hits = sum(1 for key in ("exercise", "practice", "project", "练习", "项目") if key in lower)
+
+        estimated_difficulty = 50
+        if content_len > 6000:
+            estimated_difficulty += 15
+        elif content_len > 3000:
+            estimated_difficulty += 8
+        elif content_len < 800:
+            estimated_difficulty -= 10
+        estimated_difficulty += min(practice_hits * 5, 15)
+
+        # 画像期望难度：节奏越快、知识基础越强，越能承受高难度。
+        pace_target = {"slow": 40, "moderate": 55, "fast": 72, "adaptive": 60}.get(pace, 55)
+        knowledge_base = profile.get("knowledge_base") or {}
+        if isinstance(knowledge_base, dict):
+            public_scores = [
+                float(score) for name, score in knowledge_base.items()
+                if not str(name).startswith("_") and isinstance(score, (int, float))
+            ]
+            if public_scores:
+                average = sum(public_scores) / len(public_scores)
+                pace_target += (average - 60) * 0.4
+
+        gap = abs(estimated_difficulty - pace_target)
+        return round(max(0.0, min(100.0, 100 - gap * 1.6)), 1)
 
     def _check_cross_references(self, resources):
         if len(resources) <= 1:

@@ -64,6 +64,7 @@ export default function StudentDashboard({ user, onLogout }) {
   const navigate = useNavigate()
   const [currentView, setCurrentView] = useState('overview')
   const [personalizedAssessmentId, setPersonalizedAssessmentId] = useState(null)
+  const [graphFocusKnowledgePoint, setGraphFocusKnowledgePoint] = useState(null)
   const [loading, setLoading] = useState(false)
   const [studentSettings, setStudentSettings] = useState(null)
   const [stats, setStats] = useState({
@@ -1042,14 +1043,21 @@ export default function StudentDashboard({ user, onLogout }) {
   const renderContent = () => {
     switch (currentView) {
       case 'personalizedTasks':
-        return <PersonalizedLearningTasks onOpenAssessment={(assessmentId) => {
-          setPersonalizedAssessmentId(assessmentId || null)
-          setCurrentView('practice')
-        }} />
+        return <PersonalizedLearningTasks
+          onOpenAssessment={(assessmentId) => {
+            setPersonalizedAssessmentId(assessmentId || null)
+            setCurrentView('practice')
+          }}
+          onOpenKnowledgeGraph={(knowledgePoint) => {
+            // 依据链跳转：把知识点名称带到知识图谱视图，聚焦对应节点。
+            setGraphFocusKnowledgePoint(knowledgePoint?.label || knowledgePoint?.node_label || null)
+            setCurrentView('knowledgeGraph')
+          }}
+        />
       case 'learningPlan':
         return <LearningPlanSystem user={user} />
       case 'knowledgeGraph':
-        return <KnowledgeGraph3D myCourses={myCourses} />
+        return <KnowledgeGraph3D myCourses={myCourses} focusKnowledgePoint={graphFocusKnowledgePoint} />
       case 'courses':
         return (
           <div className="space-y-6">

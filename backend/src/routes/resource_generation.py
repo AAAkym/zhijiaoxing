@@ -25,6 +25,7 @@ from src.services.profile_explainability_service import (
     build_generation_strategy_mapping,
 )
 from src.services.profile_evidence_collector import collect_programming_signals
+from src.services.generation_basis_service import build_basis_preview
 from src.services.comparison_demo_service import (
     DEFAULT_DEMO_IDS,
     DEFAULT_RESOURCE_TYPES,
@@ -948,6 +949,12 @@ def preview_personalized_plan():
                 "summary": (outline or {}).get("statistics", {}),
             },
             "stages": _build_six_stage_plan(rag_enabled),
+            "basis_preview": build_basis_preview(
+                str(data.get("topic") or "").strip() or f"course_{scope['course_id']}",
+                signals,
+                profile=scope["profile"],
+                explainability=explainability,
+            ),
         }), 200
     except Exception as e:
         logger.error("Preview personalized plan error: %s", e)
@@ -1071,6 +1078,13 @@ def preview_personalized_workflow_plan():
             ("approval", "等待教师确认"), ("generation", "生成课程资源"), ("review", "ReviewAgent审核"),
         ]],
     }
+    # 生成前依据预览：复用同一批 signals / 画像，保证与生成结果口径一致。
+    payload["basis_preview"] = build_basis_preview(
+        topic,
+        selected_signals,
+        profile=scope.get("profile") or {},
+        explainability=explainability,
+    )
     requested_workflow_id = str(data.get("workflow_id") or "").strip()
     workflow = workflow_store.get_owned(requested_workflow_id, session["user_id"]) if requested_workflow_id else None
     if requested_workflow_id and not workflow:

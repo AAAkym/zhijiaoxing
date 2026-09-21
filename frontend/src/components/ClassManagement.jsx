@@ -16,6 +16,7 @@ import {
   Users, Plus, Trash2, BookOpen, BarChart3, UserPlus, Search, Loader2, Eye, Brain, Target, Clock, TrendingUp, AlertTriangle, RefreshCw, Radar
 } from 'lucide-react'
 import { classManagement, profileApi } from '@/services/api'
+import ClassLearningTypesPanel from './ClassLearningTypesPanel'
 
 const ERROR_TYPE_LABELS = {
   calculation_error: '计算失误',
@@ -552,8 +553,7 @@ export default function ClassManagement({ myCourses = [] }) {
                 </Card>
               </div>
 
-              {stats?.score_distribution && (
-                <Card>
+              {stats?.score_distribution && (                <Card>
                   <CardHeader><CardTitle className="text-sm flex items-center gap-2"><BarChart3 className="w-4 h-4" />成绩分布</CardTitle></CardHeader>
                   <CardContent>
                     <div className="flex items-end gap-4 h-32">
@@ -572,6 +572,8 @@ export default function ClassManagement({ myCourses = [] }) {
                   </CardContent>
                 </Card>
               )}
+
+              <ClassLearningTypesPanel classId={selectedClass} courses={myCourses} />
 
               <Card>
                 <CardHeader>

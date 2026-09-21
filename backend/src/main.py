@@ -1059,6 +1059,18 @@ with app.app_context():
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve(path):
+    """SPA 兜底路由。
+
+    注意：``path`` 参数**不带前导斜杠**（Flask 约定），因此 API 判定必须写成
+    ``path == 'api'`` 或 ``path.startswith('api/')``。
+
+    若未匹配的 ``/api/*`` 请求落到这里并返回 index.html（200），"路由不存在"与
+    "接口正常"在 HTTP 层面将完全无法区分，会掩盖后端未重启、blueprint 未注册等
+    故障。因此 API 命名空间一律返回 JSON 404，与仓库既有错误风格保持一致。
+    """
+    if path == 'api' or path.startswith('api/'):
+        return jsonify({'error': f'接口不存在: /{path}'}), 404
+
     static_folder_path = app.static_folder
     if static_folder_path is None:
         return 'Static folder not configured', 404

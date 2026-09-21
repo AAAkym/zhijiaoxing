@@ -466,6 +466,9 @@ export const personalizedLearning = {
 
   getStudentDelivery: (deliveryId) => request(`/student/personalized-deliveries/${deliveryId}`),
 
+  getStudentResourceBasis: (deliveryId, resourceKey) =>
+    request(`/student/personalized-deliveries/${deliveryId}/resources/${resourceKey}/basis`),
+
   startStudentDelivery: (deliveryId) => request(`/student/personalized-deliveries/${deliveryId}/start`, {
     method: 'POST',
   }),
@@ -604,6 +607,10 @@ export const classManagement = {
   getStudentDashboard: (classId, userId, timeRange = '30') => request(`/classes/${classId}/students/${userId}/dashboard?time_range=${timeRange}`),
 
   syncClassProfiles: (classId) => request(`/classes/${classId}/profiles-sync`, { method: 'POST' }),
+
+  getClassLearningGroups: (classId, courseId) => request(
+    `/classes/${classId}/learning-groups${courseId ? `?course_id=${courseId}` : ''}`
+  ),
 }
 
 // AI助手API
