@@ -96,6 +96,8 @@ def get_class(class_id):
 @require_auth
 def update_class(class_id):
     try:
+        if not _can_access_class(class_id):
+            return jsonify({"error": "无权修改该班级"}), 403
         cg = ClassGroup.query.get(class_id)
         if not cg:
             return jsonify({"error": "Class not found"}), 404
@@ -115,6 +117,8 @@ def update_class(class_id):
 @require_auth
 def delete_class(class_id):
     try:
+        if not _can_access_class(class_id):
+            return jsonify({"error": "无权删除该班级"}), 403
         cg = ClassGroup.query.get(class_id)
         if not cg:
             return jsonify({"error": "Class not found"}), 404
@@ -132,6 +136,8 @@ def delete_class(class_id):
 @require_auth
 def add_student(class_id):
     try:
+        if not _can_access_class(class_id):
+            return jsonify({"error": "无权向该班级添加学生"}), 403
         data = request.get_json() or {}
         student_name = data.get("student_name", "").strip()
         student_number = data.get("student_number", "").strip()
@@ -186,6 +192,8 @@ def add_student(class_id):
 @require_auth
 def remove_student(class_id, student_id):
     try:
+        if not _can_access_class(class_id):
+            return jsonify({"error": "无权从该班级移除学生"}), 403
         membership = ClassGroupStudent.query.filter_by(
             class_group_id=class_id, id=student_id
         ).first()
@@ -203,6 +211,8 @@ def remove_student(class_id, student_id):
 @require_auth
 def assign_course(class_id):
     try:
+        if not _can_access_class(class_id):
+            return jsonify({"error": "无权向该班级分配课程"}), 403
         data = request.get_json() or {}
         course_id = data.get("course_id")
         if not course_id:
@@ -237,6 +247,8 @@ def assign_course(class_id):
 @require_auth
 def remove_course(class_id, assignment_id):
     try:
+        if not _can_access_class(class_id):
+            return jsonify({"error": "无权从该班级移除课程"}), 403
         assignment = ClassGroupCourse.query.filter_by(
             class_group_id=class_id, id=assignment_id
         ).first()
@@ -254,6 +266,8 @@ def remove_course(class_id, assignment_id):
 @require_auth
 def get_class_stats(class_id):
     try:
+        if not _can_access_class(class_id):
+            return jsonify({"error": "无权查看该班级统计"}), 403
         memberships = ClassGroupStudent.query.filter_by(class_group_id=class_id).all()
         user_ids = [m.user_id for m in memberships]
 
@@ -300,6 +314,8 @@ def batch_add_students():
         students = data.get("students", [])
         if not class_id or not students:
             return jsonify({"error": "class_id and students array required"}), 400
+        if not _can_access_class(class_id):
+            return jsonify({"error": "无权批量导入学生"}), 403
 
         created = []
         for s in students:
@@ -358,7 +374,14 @@ def batch_add_students():
 @class_mgmt_bp.route("/students/available", methods=["GET"])
 @require_auth
 def get_available_students():
+    """列出可加入班级的学生名录。
+
+    仅教师与管理员可用：该接口返回全部学生账号（含真实姓名等），
+    学生自己不需要看到完整名录，开放给学生等于泄露全校花名册。
+    """
     try:
+        if session.get("user_role") not in ("teacher", "admin"):
+            return jsonify({"error": "无权查看学生名录"}), 403
         students = User.query.filter_by(role="student").order_by(User.id).all()
         return jsonify({"students": [s.to_dict() for s in students]}), 200
     except Exception as e:
@@ -370,6 +393,8 @@ def get_available_students():
 @require_auth
 def add_existing_student(class_id):
     try:
+        if not _can_access_class(class_id):
+            return jsonify({"error": "无权向该班级添加学生"}), 403
         data = request.get_json() or {}
         user_id = data.get("user_id")
         if not user_id:
@@ -1021,6 +1046,8 @@ def get_student_dashboard_in_class(class_id, user_id):
 def sync_class_profiles(class_id):
     """批量同步班级所有学生的画像数据"""
     try:
+        if not _can_access_class(class_id):
+            return jsonify({"error": "无权同步该班级画像"}), 403
         role = session.get("user_role", "student")
         if role not in ("teacher", "admin"):
             return jsonify({"error": "Permission denied"}), 403

@@ -5,14 +5,26 @@
 支持GET/POST请求、模糊搜索、自动补全、智能推荐
 """
 import time
-from flask import Blueprint, request, jsonify, g
+from flask import Blueprint, request, jsonify, g, session
 from functools import wraps
 
 from src.services.search_service import search_service
 from src.services.search_recommendation import search_recommendation_service
 from src.utils.cache_utils import cached
+from src.utils.auth import require_auth, require_admin
 
 search_bp = Blueprint('search', __name__, url_prefix='/api/search')
+
+
+@search_bp.before_request
+def _populate_request_user():
+    """把当前登录用户写入 g.user_id。
+
+    get_current_user_id() 读取的是 g.user_id，而本模块此前从未给 g 赋值，
+    导致 /history 与 /history/clear 对任何已登录用户都恒定返回 401（死功能）。
+    —— 注意这里只做“身份透传”，鉴权仍由各路由上的 require_auth 负责。
+    """
+    g.user_id = session.get('user_id')
 
 
 def get_current_user_id():
@@ -394,9 +406,13 @@ def get_related():
 
 
 @search_bp.route('/click', methods=['POST'])
+@require_auth
 def record_click():
     """
     记录搜索结果点击
+    
+    需要登录：该接口会写入点击统计，进而影响搜索排序权重。
+    匿名可写等于允许任何人投毒排序数据。
     
     POST /api/search/click
     Body: {
@@ -428,9 +444,13 @@ def record_click():
 
 
 @search_bp.route('/analytics', methods=['GET'])
+@require_admin
 def get_analytics():
     """
     获取搜索分析数据
+    
+    仅限管理员：返回全站搜索总量、零结果率、热门 query 等运营数据，
+    属站点级统计，不应向普通用户或匿名访客暴露。
     
     GET /api/search/analytics?days=7
     
@@ -454,6 +474,7 @@ def get_analytics():
 
 
 @search_bp.route('/history', methods=['GET'])
+@require_auth
 def get_history():
     """
     获取用户搜索历史
@@ -491,6 +512,7 @@ def get_history():
 
 
 @search_bp.route('/history/clear', methods=['POST'])
+@require_auth
 def clear_history():
     """
     清除用户搜索历史

@@ -1,4 +1,6 @@
-const API_BASE_URL = (typeof process !== 'undefined' && process.env?.VITE_API_BASE_URL) || '/api'
+// 同 services/api.js：浏览器产物里 process.env 不会被 Vite 填充，
+// 只有 import.meta.env 才能读到 VITE_ 前缀的变量。
+const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || '/api'
 
 async function request(url, options = {}) {
   const config = {
@@ -76,7 +78,11 @@ export const searchApi = {
     if (params.page) queryString.set('page', params.page)
     if (params.per_page) queryString.set('per_page', params.per_page)
 
-    return request(`/search/courses?${decodeURIComponent(queryString.toString())}`)
+    // 不要对整串做 decodeURIComponent：URLSearchParams 的输出已经是编码好的，
+    // 再整体解码会把参数值里的 %26 变回 & ，服务端就会把它当成参数分隔符，
+    // 参数被错误切分（实测 q=机器学习&category=a%26b 会变成 q=机器学习&category=a&b）。
+    // 同文件的 search / searchKnowledge 都没有这一步，这里保持一致。
+    return request(`/search/courses?${queryString.toString()}`)
   },
 
   searchKnowledge: (params) => {

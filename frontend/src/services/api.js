@@ -1,5 +1,10 @@
 // 开发环境使用相对路径通过Vite代理，生产环境使用环境变量或相对路径
-const API_BASE_URL = globalThis.process?.env?.VITE_API_BASE_URL || '/api'
+//
+// 必须用 import.meta.env：这是 Vite 在浏览器产物中真正注入环境变量的方式。
+// 此前写的是 globalThis.process?.env?.VITE_API_BASE_URL —— Vite 不会在浏览器里
+// 填充 process.env，所以该表达式恒为 undefined，无论 .env 里怎么配，
+// 都会静默回退到字面量 '/api'。部署到独立域名后会打到前端自己的源而不是后端。
+const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || '/api'
 
 const SSE_TIMEOUT = 300000
 

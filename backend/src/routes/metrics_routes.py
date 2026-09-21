@@ -24,9 +24,14 @@ def prometheus_metrics():
 
 
 @metrics_bp.route('/health', methods=['GET'])
+@require_auth
+@require_role(('admin',))
 def health_check():
     """
     健康检查端点
+    
+    仅限管理员：响应体包含数据库可用性与调度器内部状态，属运维信息，
+    匿名暴露会向攻击者确认后端组件存活情况。
     
     Returns:
         应用健康状态
