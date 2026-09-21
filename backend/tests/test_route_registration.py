@@ -32,6 +32,22 @@ def test_student_resource_basis_route_is_registered(app):
     ) in rules
 
 
+def test_agent_execution_history_route_is_registered(app):
+    """今夜新增的智能体执行历史端点同样必须在 url_map 中。"""
+    rules = _rule_strings(app)
+
+    assert "/api/resource-generation/agents/history" in rules
+
+
+def test_agent_execution_history_route_resolves_to_json_not_spa_fallback(client):
+    """已注册的 API 路由即使鉴权失败，也必须返回 JSON，绝不能落到 SPA 兜底。"""
+    response = client.get("/api/resource-generation/agents/history")
+
+    assert response.status_code == 401
+    assert response.is_json
+    assert not response.get_data(as_text=True).lstrip().startswith("<!DOCTYPE")
+
+
 def test_learning_groups_route_resolves_to_json_not_spa_fallback(client):
     """已注册的 API 路由即使鉴权失败，也必须返回 JSON，绝不能落到 SPA 兜底。"""
     response = client.get("/api/classes/1/learning-groups")

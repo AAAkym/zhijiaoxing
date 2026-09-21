@@ -34,6 +34,10 @@ from src.services.comparison_demo_service import (
     get_demo_profile,
     list_demo_profiles,
 )
+from src.services.agent_execution_history_service import (
+    DEFAULT_WINDOW_DAYS as DEFAULT_HISTORY_WINDOW_DAYS,
+    build_agent_execution_history,
+)
 from src.services.multi_agent.coordinator_agent import CoordinatorAgent
 from src.services.multi_agent.shared_state import agent_monitor
 from src.services.review_agent import ReviewAgent, validate_external_resources
@@ -661,6 +665,49 @@ def get_agents_status():
         return jsonify({"agents": status}), 200
     except Exception as e:
         logger.error(f"Get agents status error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+def _parse_int_arg(name, default):
+    """把查询参数解析成 int；缺失或非法一律回落默认值，由服务层负责夹取范围。
+
+    这里**不**用 `request.args.get(name, default, type=int)`：该写法把 "abc"
+    和 "缺省" 都变成 None，而 "0" 变成 0，调用方无法区分三种情况。
+    """
+    raw = request.args.get(name)
+    if raw in (None, ""):
+        return default
+    try:
+        return int(str(raw).strip())
+    except (TypeError, ValueError):
+        return default
+
+
+@resource_gen_bp.route("/resource-generation/agents/history", methods=["GET"])
+@require_auth
+def get_agents_execution_history():
+    """智能体执行历史（只读）。
+
+    与 `/agents/status` 的区别（这是本端点存在的理由）：
+    `/agents/status` 返回的是 **AgentMonitor 的内存态**，服务重启即归零；
+    本端点读的是 `agent_execution_logs` 表的**持久化记录**，因此能回答
+    "重启之前这批资源究竟是哪些智能体生成的、耗时多少、失败在哪一阶段"。
+
+    纯新增只读端点，不改动 `/agents/status` 的任何既有字段。
+    """
+    try:
+        # 显式解析为字符串再交给服务层夹取：直接 request.args.get(..., type=int)
+        # 会把 "0" 解析成 0、把 "abc" 解析成 None，两种"没传/传了垃圾"要靠服务层
+        # 分开处理，否则 ?limit=0 会被悄悄当成"没传"从而返回默认 50 条。
+        days = _parse_int_arg("days", DEFAULT_HISTORY_WINDOW_DAYS)
+        limit = _parse_int_arg("limit", 50)
+        agent_name = (request.args.get("agent") or "").strip() or None
+        history = build_agent_execution_history(
+            days=days, agent_name=agent_name, limit=limit
+        )
+        return jsonify(history), 200
+    except Exception as e:
+        logger.error(f"Get agents execution history error: {e}")
         return jsonify({"error": str(e)}), 500
 
 

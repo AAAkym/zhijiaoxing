@@ -26,6 +26,7 @@ import AIAnalysisDashboard from './AIAnalysisDashboard'
 import TokenUsage from './TokenUsage'
 import AgentMonitorCenter from './AgentMonitorCenter'
 import WorkflowOperationsDashboard from './WorkflowOperationsDashboard'
+import AgentExecutionHistoryPanel from './AgentExecutionHistoryPanel'
 import { useNavigate } from 'react-router-dom'
 import zhijiaoXingSymbol from '@/assets/zhijiaoxing-symbol.svg'
 
@@ -82,7 +83,14 @@ export default function AdminDashboard({ user, onLogout }) {
       case 'agent-monitor':
         return <AgentMonitorCenter />
       case 'workflow-monitor':
-        return <WorkflowOperationsDashboard />
+        return (
+          <div className="flex flex-col gap-6">
+            <WorkflowOperationsDashboard />
+            {/* 实时状态面板回答"现在谁在跑"；执行历史回答"过去谁真的干过活"。
+                后者读持久化表，服务重启后依然可见。 */}
+            <AgentExecutionHistoryPanel />
+          </div>
+        )
       case 'ai-review':
         return <AIContentReview />
       case 'ai-analysis':

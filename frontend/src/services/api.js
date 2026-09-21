@@ -377,6 +377,9 @@ export const courseGeneration = {
 
   getAgentsStatus: () => request('/resource-generation/agents/status'),
 
+  getAgentExecutionHistory: (days = 30, limit = 50) =>
+    request(`/resource-generation/agents/history?days=${days}&limit=${limit}`),
+
   getSystemSummary: () => request('/resource-generation/system/summary'),
 
   getCourseResources: (courseId, chapterId) => {
