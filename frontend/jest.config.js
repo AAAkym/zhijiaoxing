@@ -53,6 +53,12 @@ export default {
     '<rootDir>/src/components/__tests__/StudentInteractionPanel.test.jsx',
   ],
   moduleFileExtensions: ['js', 'jsx', 'ts', 'tsx', 'json'],
+  // Vite 在构建时会把 import.meta.env.VITE_* 静态替换成字面量；Jest 不经过
+  // Vite，且 CommonJS 下 import.meta 是解析期语法错误，会让整个测试套件
+  // "failed to run"（静默失效）。这里按 Vite 的语义补一个等价替换。
+  globals: {
+    import_meta_env: { VITE_API_BASE_URL: process.env.VITE_API_BASE_URL },
+  },
   verbose: true,
   testTimeout: 10000,
   clearMocks: true,

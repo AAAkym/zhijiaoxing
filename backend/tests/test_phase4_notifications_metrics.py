@@ -124,7 +124,11 @@ def test_metrics_dashboard_is_real_and_role_scoped(client, db_session, auth_sess
     assert client.get("/api/metrics/prometheus").status_code == 200
 
 
-def test_health_reports_scheduler_degradation_without_failing_core(client, db_session):
+def test_health_reports_scheduler_degradation_without_failing_core(client, db_session, admin_session):
+    # /api/metrics/health 暴露数据库可用性与调度器状态，属运维信息，
+    # 上一轮巡检已把该端点收敛为 admin-only（原匿名 200 是 SEC 问题）。
+    # 本测试的目的是"调度器降级不影响核心可用性"，因此必须带管理员身份访问。
+    _login(client, admin_session)
     response = client.get("/api/metrics/health")
     assert response.status_code == 200
     payload = response.get_json()

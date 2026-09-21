@@ -108,8 +108,11 @@ describe('searchApi', () => {
       
       const url = fetch.mock.calls[0][0]
       expect(url).toContain('q=React')
-      expect(url).toContain('category=前端')
-      expect(url).toContain('difficulty=中级')
+      // URLSearchParams 会对非 ASCII 做百分号编码，且这是**必须保留**的行为：
+      // 上一轮巡检已修掉"对整串再 decodeURIComponent"的 bug（那会让参数值里的
+      // %26 变回 & 从而切错参数）。因此这里断言编码后的形态，而不是解码后的中文。
+      expect(url).toContain(`category=${encodeURIComponent('前端')}`)
+      expect(url).toContain(`difficulty=${encodeURIComponent('中级')}`)
       expect(url).toContain('min_rating=4')
       expect(url).toContain('is_free=true')
     })

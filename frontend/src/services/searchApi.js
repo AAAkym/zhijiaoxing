@@ -1,6 +1,14 @@
 // 同 services/api.js：浏览器产物里 process.env 不会被 Vite 填充，
 // 只有 import.meta.env 才能读到 VITE_ 前缀的变量。
-const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || '/api'
+//
+// 注意：Jest 以 CommonJS 加载本模块，裸写 import.meta 会让整个测试套件
+// 在解析阶段就报 "Cannot use 'import.meta' outside a module"（typeof 守卫
+// 也救不了，这是解析期语法错误），导致该套测试长期无法运行。
+// 这里改用仓库既有的 CJS 安全写法；Vite 构建时会静态替换 import.meta.env，
+// 两种运行时都取得到 VITE_API_BASE_URL。
+const API_BASE_URL =
+  // eslint-disable-next-line no-undef -- 由 Vite / jest.config globals 注入
+  (typeof import_meta_env !== 'undefined' && import_meta_env?.VITE_API_BASE_URL) || '/api'
 
 async function request(url, options = {}) {
   const config = {
