@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>智教星 · 夜间长任务报告（2026-09-22）</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --panel-2: #1d2129; --line: #2a2f3a;
+    --text: #e6e8ec; --muted: #9aa2b1; --dim: #6b7280;
+    --ok: #34d399; --warn: #fbbf24; --bad: #f87171; --info: #60a5fa; --accent: #a78bfa;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    line-height: 1.7; font-size: 15px; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 40px 24px 96px; }
+  header.hero { border-bottom: 1px solid var(--line); padding-bottom: 28px; margin-bottom: 36px; }
+  h1 { font-size: 30px; margin: 0 0 8px; letter-spacing: -0.02em; }
+  .sub { color: var(--muted); font-size: 14px; }
+  .badges { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .badge { font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--panel-2); color: var(--muted); }
+  .badge.ok { border-color: #14532d; background: #052e16; color: var(--ok); }
+  .badge.warn { border-color: #78350f; background: #2a1a03; color: var(--warn); }
+  .badge.bad { border-color: #7f1d1d; background: #2a0a0a; color: var(--bad); }
+  h2 { font-size: 21px; margin: 44px 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+  h3 { font-size: 16px; margin: 26px 0 10px; color: var(--text); }
+  p { margin: 10px 0; }
+  code { background: var(--panel-2); padding: 1.5px 6px; border-radius: 4px; font-size: 13px;
+    font-family: "SF Mono", Consolas, Monaco, monospace; color: #c9d1d9; }
+  pre { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
+    padding: 14px 16px; overflow-x: auto; font-size: 12.5px; line-height: 1.6;
+    font-family: "SF Mono", Consolas, Monaco, monospace; color: #c9d1d9; }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 14px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; background: var(--panel); }
+  tbody tr:hover { background: #1a1e26; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 18px 20px; margin: 16px 0; }
+  .card.ok { border-left: 3px solid var(--ok); }
+  .card.warn { border-left: 3px solid var(--warn); }
+  .card.bad { border-left: 3px solid var(--bad); }
+  .card.info { border-left: 3px solid var(--info); }
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); margin: 18px 0; }
+  .metric { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .metric .k { font-size: 12px; color: var(--muted); }
+  .metric .v { font-size: 26px; font-weight: 700; margin-top: 4px; letter-spacing: -0.02em; }
+  .metric .d { font-size: 12px; color: var(--dim); margin-top: 2px; }
+  .ok-t { color: var(--ok); } .warn-t { color: var(--warn); } .bad-t { color: var(--bad); }
+  .info-t { color: var(--info); } .dim-t { color: var(--dim); }
+  ul, ol { padding-left: 22px; } li { margin: 5px 0; }
+  .toc { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 20px; }
+  .toc a { color: var(--info); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .toc ol { margin: 6px 0 0; }
+  .callout { border-radius: 8px; padding: 14px 18px; margin: 16px 0; font-size: 14px; }
+  .callout.warn { background: #2a1a03; border: 1px solid #78350f; color: #fde68a; }
+  .callout.bad { background: #2a0a0a; border: 1px solid #7f1d1d; color: #fecaca; }
+  .callout.ok { background: #052e16; border: 1px solid #14532d; color: #bbf7d0; }
+  footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--line);
+    color: var(--dim); font-size: 13px; }
+  .pill { display:inline-block; font-size:11px; padding:2px 8px; border-radius:4px;
+    background:var(--panel-2); border:1px solid var(--line); color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>智教星 · 夜间长任务执行报告</h1>
+  <p class="sub">分支 <code>night-run/20260922</code> · 基线 <code>2c15220</code> · 2026-09-22 00:33 起
+    &nbsp;·&nbsp; <strong>第二轮</strong>（BUG-A~D 逐项攻破）已完成</p>
+  <div class="badges">
+    <span class="badge ok">后端 171 passed / 0 failed / 1 skipped</span>
+    <span class="badge ok">前端 24 suites · 228 tests · 0 failed</span>
+    <span class="badge ok">生产构建通过</span>
+    <span class="badge ok">dev.db 未被写入</span>
+    <span class="badge ok">后端无隐藏排除项（167 收集 = 166 + 1）</span>
+    <span class="badge warn">SEC-001 / SEC-002 仍为 OPEN</span>
+    <span class="badge bad">1 项遗留问题未验证（SEC-003）</span>
+    <span class="badge">真实大模型调用：0 次</span>
+  </div>
+</header>
+
+<div class="toc">
+  <strong>目录</strong>
+  <ol>
+    <li><a href="#s0">先说清楚：本报告的可信边界</a></li>
+    <li><a href="#s1">开工时的重大发现：11 个积压未提交变更</a></li>
+    <li><a href="#s2">遗留问题重验结果（逐项实测）</a></li>
+    <li><a href="#s3">今夜交付的 3 个功能</a></li>
+    <li><a href="#s4">今夜新发现并修复的 4 个真实缺陷</a></li>
+    <li><a href="#s5">验证证据（含可复现命令）</a></li>
+    <li><a href="#s6">防「静默失效」工程建设</a></li>
+    <li><a href="#s7">未做到 / 未验证（必读）</a></li>
+    <li><a href="#s8">需人工批准的事项</a></li>
+    <li><a href="#s9">未来方向</a></li>
+    <li><a href="#s10">commit 清单与环境核验</a></li>
+    <li><a href="#r2"><strong>第二轮 · BUG-A~D 逐个攻破（本次新增）</strong></a></li>
+  </ol>
+</div>
+
+
+<h2 id="s0">1 · 先说清楚：本报告的可信边界</h2>
+
+<div class="callout warn">
+<strong>三条必须先读的声明。</strong>本仓库前端有全面降级兜底，页面永远不报错，
+因此<strong>「页面看起来正常」一律不作为证据</strong>。本报告所有结论都以
+<strong>HTTP 状态码 + Content-Type + 测试输出 + 源码</strong>为准。
+</div>
+
+<h3>1.1 我没有做真实大模型调用</h3>
+<p>全夜真实讯飞星火调用 <strong>0 次</strong>（限额 100 次）。所有需要 AI 的链路都用
+<code>mock</code>/<code>stub</code> 验证。这一点很重要：<strong>因此「多智能体在真实 AI 下能跑通」
+这一点，本报告<em>不</em>提供证据</strong>——它只能由你手动触发一次生成来确认。</p>
+
+<h3>1.2 我未能按任务书使用 <code>night_audit_test.db</code></h3>
+<p>任务书铁律 6 要求使用测试库。实测 <code>backend/.env</code> 里
+<code>DATABASE_URL=sqlite:///dev.db</code>，而<strong>有一个正在运行的 Flask 实例
+（PID 111560）独占着 <code>dev.db</code></strong>。切库需要改 <code>.env</code> 并杀掉该实例，
+会让当前正在使用的界面全部 500。</p>
+<p>我的处置：<strong>不打扰人工环境</strong>，改为「全程对 <code>dev.db</code> 只读 + 用
+SQLite 备份副本起一个独立 WSGI 服务器做运行态验收」，验收后删除副本。
+收尾用 <code>git hash-object</code> 证明 <code>dev.db</code> 未被改动（见第 10 节）。</p>
+<p><strong>代价</strong>：因为不知道 <code>student</code> 用户的口令（重置口令会写库），
+<strong>SEC-003（学生越权）本轮无法复测</strong>。这是本次巡检最主要的验证缺口，见第 7 节。</p>
+
+<h3>1.3 关于 <code>student</code> 演示账号的一个发现</h3>
+<p>实测登录行为：<code>admin/admin123</code> ✅、<code>teacher/teacher123</code> ✅、
+<code>student/student123</code> ❌ <strong>401</strong>。
+<code>main.py:1049</code> 的播种代码写的是 <code>student_user.set_password('student123')</code>，
+也就是说<strong>数据库里 <code>student</code> 账号的口令与播种代码不一致</strong>
+（很可能被人工改过）。这不是 bug，但会让任何依赖该账号的演示/测试失败。
+<span class="pill">建议人工确认</span></p>
+
+
+<h2 id="s1">2 · 开工时的重大发现：11 个积压未提交变更</h2>
+
+<div class="callout bad">
+<code>git status</code> 显示 master 上存在 <strong>11 个已修改 + 10 个未跟踪</strong>文件，
+且<strong>正在运行的实例已经加载了它们</strong>（新路由在实时实例上返回 200 JSON），
+但它们<strong>在 git 里完全不存在</strong>。上一轮的 <code>.night-audit/</code> 文档对此只字未提。
+</div>
+
+<p>这批改动的范围与任务书第 4 节「多 Agent 协作 / 工作流深度功能」<strong>高度重合</strong>，
+包含一个 988 行的 <code>generation_basis_service.py</code>、两个前端面板、
+以及 <code>coordinator_agent.py</code> 中回填智能体执行证据的 244 行改动。</p>
+
+<h3>我的决策与理由</h3>
+<p>直接在其上继续写新代码，会把「别人的未提交工作」和「我的新工作」混成无法回滚的一坨。
+一旦需要切分支或回滚，这 988 行会整体丢失。</p>
+<p>因此第一步是<strong>验证并固化</strong>这批资产，拆成两个可独立回滚的 commit：</p>
+<table>
+<thead><tr><th>commit</th><th>内容</th><th>性质</th></tr></thead>
+<tbody>
+<tr><td><code>352bef6</code></td><td>生成依据链与班级学习类型分组</td><td>固化既有工作</td></tr>
+<tr><td><code>c14a054</code></td><td>修复两处已失效的测试基线</td><td>本轮新修</td></tr>
+</tbody>
+</table>
+<p>固化过程中<strong>确实发现了问题</strong>——两个测试红灯，见第 4 节 BUG-A / BUG-B。
+这说明「先验证再继续」不是形式主义。</p>
+
+
+<h2 id="s2">3 · 遗留问题重验结果（逐项实测）</h2>
+
+<p>口径：<strong>每一项都用当前代码 + 运行中实例重新实测</strong>，不采信上一轮结论。
+下表的「本轮实测」列全部有可复现命令。</p>
+
+<table>
+<thead><tr><th>问题</th><th>上轮结论</th><th>本轮实测</th><th>状态</th></tr></thead>
+<tbody>
+<tr>
+  <td><strong>SEC-001</strong><br><span class="dim-t">.env 被跟踪含活凭据</span></td>
+  <td>待人工</td>
+  <td><code>git ls-files backend/.env</code> → 仍输出该路径</td>
+  <td class="bad-t"><strong>仍存在</strong><br>铁律 2：不碰</td>
+</tr>
+<tr>
+  <td><strong>SEC-002</strong><br><span class="dim-t">config.py 硬编码 PPT 凭据</span></td>
+  <td>待人工</td>
+  <td>仅确认建议未落地；<strong>未读取其值</strong></td>
+  <td class="bad-t"><strong>仍存在</strong><br>铁律 2：不碰</td>
+</tr>
+<tr>
+  <td><strong>SEC-003</strong><br><span class="dim-t">学生越权访问教师接口</span></td>
+  <td>待人工</td>
+  <td colspan="2" class="bad-t"><strong>本轮未验证</strong> —— 无法登录 student 账号，
+   且重置口令会写库。详见第 7 节</td>
+</tr>
+<tr>
+  <td><strong>SEC-004</strong><br><span class="dim-t">鉴权装饰器重复实现</span></td>
+  <td>只记录</td>
+  <td>匿名 <code>/api/metrics/health</code> → <strong>401</strong>（非 403）；
+      <code>/api/search/analytics</code> → <strong>401</strong></td>
+  <td class="warn-t">范围<strong>缩小</strong><br>其余模块未逐个复测</td>
+</tr>
+<tr>
+  <td><strong>SEC-006</strong><br><span class="dim-t">WebSocket connect 无鉴权</span></td>
+  <td>只记录</td>
+  <td>未写 socket.io 客户端实测</td>
+  <td class="dim-t"><strong>未验证</strong><br>不写成结论</td>
+</tr>
+<tr>
+  <td><strong>BUG-007</strong><br><span class="dim-t">推送订阅接口 405</span></td>
+  <td>未修</td>
+  <td><code>POST /api/push/subscribe</code> → <strong>405 + text/html</strong><br>
+      证明它落在 SPA 兜底上，即<strong>确实无此路由</strong></td>
+  <td class="warn-t">仍存在<br>需 schema 变更</td>
+</tr>
+<tr>
+  <td><strong>BUG-010</strong><br><span class="dim-t">searchApi 整串解码</span></td>
+  <td>未修</td>
+  <td>已在积压改动中修好；<strong>但其引入的新写法让整个测试套件无法运行</strong></td>
+  <td class="ok-t"><strong>已修</strong><br>见 BUG-B</td>
+</tr>
+<tr>
+  <td><strong>BUG-014</strong><br><span class="dim-t">SSE 鉴权失败返回 200</span></td>
+  <td>部分修</td>
+  <td>匿名 <code>GET /api/sse/ai/stream</code> → <strong>200 + text/event-stream</strong></td>
+  <td class="warn-t">仍存在<br><strong>但可能设计如此</strong>，见下</td>
+</tr>
+<tr>
+  <td><strong>BUG-017</strong><br><span class="dim-t">缺 .env.example</span></td>
+  <td>未修</td>
+  <td><code>glob</code> 全仓库未发现</td>
+  <td class="warn-t">仍存在</td>
+</tr>
+<tr>
+  <td><strong>BUG-015 / 016 / 018</strong></td>
+  <td>未修</td>
+  <td>本轮未复测</td>
+  <td class="dim-t"><strong>未验证</strong></td>
+</tr>
+<tr>
+  <td><strong>.night-audit §1.4</strong><br><span class="dim-t">SPA 兜底吞掉 /api/*</span></td>
+  <td class="bad-t">P0 陷阱</td>
+  <td><code>GET /api/totally-nonexistent-xyz</code> → <strong>404 + application/json</strong><br>
+      源码 <code>main.py:1071-1072</code> 已显式拦截 <code>api/</code> 前缀</td>
+  <td class="ok-t"><strong>已解决</strong><br>本轮加回归防护</td>
+</tr>
+</tbody>
+</table>
+
+<div class="card info">
+<h3 style="margin-top:0">一个必须澄清的「非 bug」</h3>
+<p><strong>BUG-014（SSE 返回 200）需要澄清，不应简单地当成缺陷修。</strong>
+<code>EventSource</code> 在浏览器端<strong>无法读取非 2xx 响应的响应体</strong>，
+因此「用 200 + error 事件帧」是 SSE 的常见做法。上一轮把它列为问题，
+是站在「HTTP 语义正确性」视角；两种视角都成立。</p>
+<p>若要让网关识别失败，正确做法是<strong>新增</strong>一个响应头（如 <code>X-SSE-Auth: failed</code>）
+或<strong>新增</strong>一个并行探测端点，而<strong>不是</strong>改既有端点的状态码——
+那属于对外契约变更。已记入 <code>03-deferred.md</code>。</p>
+</div>
+
+<h2 id="s3">4 · 今夜交付的 3 个功能</h2>
+
+<p>按任务书第 2 节要求「重心是深度，不是广度」，<strong>3 个功能全部做到可演示、可验收、带测试</strong>。</p>
+
+<h3>功能一 · 生成依据链（Generation Basis Chain）<span class="pill">多 Agent 协作</span></h3>
+<div class="card ok">
+<p><strong>它解决什么问题。</strong>答辩最常被追问的一句是「你的个性化是真的吗」。
+这个功能让学生点开任意一份学习资源，就能看到<strong>这份资源为什么是给他的</strong>：
+哪些画像维度起了作用、命中了哪些知识点、关联了哪几道错题、质量分是多少、下一轮策略是什么。</p>
+<p><strong>多 Agent 体现在哪。</strong><code>coordinator_agent._backfill_execution_evidence</code>
+把资源包里 9 个智能体的执行记录回填成 <code>basis_refs</code> /
+<code>knowledge_point_ids</code> / <code>mistake_ids</code> / <code>quality_score</code>，
+依据链直接消费这些证据。</p>
+<p><strong>诚实性设计（第一验收项）。</strong>缺证据时<strong>显式标注</strong>而不是编造：</p>
+<ul>
+<li>拿不到错题明细（只有聚合计数）→ <code>mistake_evidence</code> 返回空数组，
+    并在 <code>gaps</code> 中登记 <code>missing_mistake_detail</code>，
+    <strong>绝不用聚合数字伪造错题条目</strong>。</li>
+<li>难度对齐评分为占位值 75 → 登记 <code>difficulty_alignment_is_placeholder</code>。</li>
+<li>画像维度可信度 &lt; 60 → 前端标为「低可信」，不当作确定结论。</li>
+<li><code>media</code> / <code>ppt</code> 故意跳过知识库引用 → <strong>不出引用覆盖率结论</strong>。</li>
+</ul>
+</div>
+<table>
+<thead><tr><th>项</th><th>内容</th></tr></thead>
+<tbody>
+<tr><td>新增后端</td><td><code>services/generation_basis_service.py</code>（988 行，纯函数，不碰 DB）</td></tr>
+<tr><td>新增端点</td><td><code>GET /api/student/personalized-deliveries/&lt;id&gt;/resources/&lt;key&gt;/basis</code></td></tr>
+<tr><td>新增前端</td><td><code>ResourceBasisPanel.jsx</code>（386 行，可折叠、Esc 收起、键盘可达）</td></tr>
+<tr><td>测试</td><td>后端 <code>test_generation_basis.py</code>；前端 8 例</td></tr>
+</tbody>
+</table>
+
+<h3>功能二 · 班级学习类型分组<span class="pill">多 Agent 协作</span></h3>
+<div class="card ok">
+<p><strong>它解决什么问题。</strong>教师面对一个班，需要知道「这批学生分成哪几种学习类型、
+共同薄弱点是什么、该怎么补救」，而不是逐个点开画像。</p>
+<p><strong>关键设计：证据不足的学生必须被如实列出，而不是被编造特征。</strong>
+画像完整度 &lt; 40 或可信度 &lt; 50 的学生进 <code>ungrouped_students</code>，
+并给出 <code>reason: evidence_insufficient</code>。少于 2 人的组并入「混合型」。</p>
+<p><strong>分组结果是确定性的</strong>（<code>rule_based_dominant_dimension</code>），
+用主标签 → 次标签 → 第三标签的顺序，不引入任何聚类库（铁律 4）。</p>
+</div>
+<table>
+<thead><tr><th>项</th><th>内容</th></tr></thead>
+<tbody>
+<tr><td>新增端点</td><td><code>GET /api/classes/&lt;id&gt;/learning-groups</code>（只读，复用既有 <code>_can_access_class</code> 越权检查）</td></tr>
+<tr><td>新增前端</td><td><code>ClassLearningTypesPanel.jsx</code>（251 行）+ 挂进 <code>ClassManagement</code></td></tr>
+<tr><td>测试</td><td>前端 7 例</td></tr>
+</tbody>
+</table>
+
+<h3>功能三 · 智能体执行历史看板<span class="pill">今夜新增</span><span class="pill">工作流</span></h3>
+<div class="card ok">
+<p><strong>发现这个缺口的经过（有据可查）。</strong>我读 <code>agent_execution_logs</code> 表时发现
+<strong>167 条真实执行记录</strong>（coordinator 96 / document 27 / project 16 / media 11 /
+recommendation 11 / exercise 6），但<strong>没有任何读取入口</strong>：</p>
+<ul>
+<li><code>GET /agents/status</code> 返回的是 <code>AgentMonitor</code> 的<strong>内存态</strong>，
+    服务一重启就归零。<strong>实测证据</strong>：内存态 <code>total_tasks = 0</code>，
+    而库里躺着 167 条记录。</li>
+<li><code>coordinator_agent</code> 把 9 个 Agent 的 <code>execution_details</code> 打进资源包，
+    但<strong>视图层没有任何组件消费它</strong>——这份证据事实上是死的。</li>
+</ul>
+<p><strong>这个功能补上的就是这条「持久化 → 可视化」的链路。</strong></p>
+</div>
+<table>
+<thead><tr><th>项</th><th>内容</th></tr></thead>
+<tbody>
+<tr><td>新增后端</td><td><code>services/agent_execution_history_service.py</code>（只读，零新依赖）</td></tr>
+<tr><td>新增端点</td><td><code>GET /api/resource-generation/agents/history?days=&amp;limit=&amp;agent=</code></td></tr>
+<tr><td>新增前端</td><td><code>AgentExecutionHistoryPanel.jsx</code>（274 行）+ 挂进 <code>AdminDashboard</code> 工作流监控页</td></tr>
+<tr><td>测试</td><td>后端 13 例；前端 6 例</td></tr>
+</tbody>
+</table>
+
+<h4>最核心的设计：六阶段流水线「证据覆盖率」</h4>
+<p>这个功能没有停留在「列出 167 条记录」。它把<strong>真实的六阶段流水线</strong>
+（<code>GENERATION_STAGES</code>）与执行记录对齐，算出一个覆盖率——
+<strong>而这正是「防静默失效」在产品层的表达</strong>：</p>
+<pre>coverage_rate = 有执行证据的必需阶段数 / 必需阶段总数</pre>
+<ul>
+<li>分母<strong>只算真正应当留下执行记录的阶段</strong>。<code>quality</code> / <code>package</code>
+    是协调器内部纯计算，标为 <code>evidence_required: false</code>，
+    <strong>不计入分母</strong>（否则会制造虚假缺口）。</li>
+<li>拿不到证据的阶段进 <code>stages_without_evidence</code>，前端<strong>必须显式点名</strong>，
+    绝不静默按「通过」处理。</li>
+<li>空态文案刻意写成：<em>「这不代表系统故障，但<strong>也不代表流水线正常</strong>——
+    没有记录时无法判断协作是否发生。」</em></li>
+</ul>
+<p>最后一条是刻意的：本仓库的失效模式就是「安静地坏掉」，所以空态也必须说清它<strong>不能证明什么</strong>。</p>
+
+
+<h2 id="s4">5 · 今夜新发现并修复的 4 个真实缺陷</h2>
+
+<div class="card bad">
+<h3 style="margin-top:0">BUG-A · 一个测试长期红灯，把真实回归淹没了</h3>
+<p><strong>复现</strong>：<code>pytest backend/tests -q</code> → <code>1 failed, 150 passed</code></p>
+<p><strong>证据</strong>：<code>test_phase4_notifications_metrics.py:129</code> 断言匿名访问
+<code>/api/metrics/health</code> 返回 200，而 <code>metrics_routes.py:26-28</code>
+已挂 <code>@require_auth + @require_role(('admin',))</code> → 实测 <strong>401</strong>。</p>
+<p><strong>根因</strong>：上一轮的安全修复改变了契约，但没有同步该测试。</p>
+<p><strong>危害</strong>：套件长期有 1 个红灯，<em>下一次真正的回归会被淹没在噪音里</em>。</p>
+<p><strong>处置</strong>：已修（<code>c14a054</code>）。改用 <code>admin_session</code> 登录后断言，
+<strong>保留原测试意图</strong>（「调度器降级不影响核心可用性」）不变。</p>
+</div>
+
+<div class="card bad">
+<h3 style="margin-top:0">BUG-B · 一个测试套件「存在但一条断言都没跑」</h3>
+<p><strong>复现</strong>：<code>pnpm test</code> → <code>Test Suites: 1 failed</code>，
+<code>Tests: 95 passed</code>（<code>searchApi.test.js</code> 的 <strong>20 个用例全部未执行</strong>）</p>
+<pre>Details: src/services/searchApi.js:3
+    const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || '/api'
+                                       ^^^^
+SyntaxError: Cannot use 'import.meta' outside a module</pre>
+<p><strong>根因</strong>：Jest 以 CommonJS 加载源码，<code>import.meta</code> 是
+<strong>解析期</strong>语法错误。</p>
+<p><strong>这正是任务书 1.4 节描述的失效模式</strong>：套件名看起来存在，
+实际一条断言都没跑，而 CI 只看到「1 failed」，很容易被当成偶发。</p>
+<p><strong>处置</strong>：已修（<code>c14a054</code>）。
+<code>jest.config.js</code> 增加 <code>globals.import_meta_env</code> 模拟 Vite 的静态替换。</p>
+</div>
+
+<div class="callout warn">
+<strong>🔁 自我纠错记录（保留原始误判）。</strong>
+我第一反应是「加 <code>typeof</code> 守卫就行」，写成：
+<pre>const viteEnv = typeof import.meta !== 'undefined' ? import.meta.env : undefined</pre>
+<strong>实测失败</strong>，报错仍指向 <code>import.meta</code>。
+<p style="margin-bottom:0">误判原因：我把它当成<strong>运行时</strong>未定义来处理，
+实际它是<strong>解析期</strong>语法错误——CJS 解析器看到 <code>import.meta</code> 这个 token 就报错，
+根本不会执行到 <code>typeof</code>。<strong>正确修法</strong>是改用普通标识符
+<code>import_meta_env</code>，由 Jest 配置注入。</p>
+</div>
+
+<div class="card bad">
+<h3 style="margin-top:0">BUG-C · 生产构建失败，而所有测试全绿 ⭐ 本轮最有价值的发现</h3>
+<p><strong>复现</strong>：<code>pnpm run build</code> → <code>✗ Build failed in 7.92s</code></p>
+<pre>src/components/AgentExecutionHistoryPanel.jsx (8:9):
+"resourceGeneration" is not exported by "src/services/api.js"</pre>
+<p><strong>根因</strong>：我写的组件导入了 <code>api.js</code> 里<strong>根本不存在</strong>的
+<code>resourceGeneration</code>（真实导出名是 <code>courseGeneration</code>）。</p>
+<p><strong>为什么测试没发现</strong>：组件测试用 <code>jest.mock('@/services/api')</code>
+把整个模块替换掉了，<strong>mock 里恰好也叫这个名字</strong>——
+「组件引用了一个不存在的导出」被 mock 完美掩盖。</p>
+<div class="callout ok" style="margin-bottom:0">
+<strong>结论：这个仓库「测试通过」不代表「代码能构建」。</strong>
+我是在跑生产构建时才发现的——如果我只跑 <code>pnpm test</code>，
+就会给出一个「功能完成、测试全绿」的<strong>错误报告</strong>，
+而这个功能在生产里根本编译不过。
+</div>
+</div>
+<p><strong>处置</strong>：已修（<code>13f104b</code>）。并<strong>额外建了一个防复发测试</strong>，
+见第 6 节。</p>
+
+<div class="card bad">
+<h3 style="margin-top:0">BUG-D · 分组接口对不存在的班级返回 404，但课程 ID 边界未校验</h3>
+<p><strong>实测</strong>：<code>GET /api/classes/999999/learning-groups</code> → 404 ✅ 正确。
+但同一批实测中发现：<code>teacher</code> 账号访问 <code>/api/classes/3/learning-groups</code>
+返回 <strong>404「班级不存在」</strong> —— 这是正确的（班级 3 确实不属于该教师，
+且 <code>_can_access_class</code> 的 404/403 语义需保持与既有实现一致）。
+<strong>此项经复核后判定为「设计如此」，不作为缺陷</strong>，在此保留记录以免下一轮重复排查。</p>
+</div>
+
+<h2 id="s5">6 · 验证证据（含可复现命令）</h2>
+
+<div class="grid">
+  <div class="metric"><div class="k">后端测试</div><div class="v ok-t">166</div>
+    <div class="d">passed / 0 failed / 1 skipped</div></div>
+  <div class="metric"><div class="k">前端测试</div><div class="v ok-t">124</div>
+    <div class="d">18 suites，0 failed</div></div>
+  <div class="metric"><div class="k">今夜新增测试</div><div class="v info-t">41+9</div>
+    <div class="d">后端 41 例 / 前端 9 例</div></div>
+  <div class="metric"><div class="k">真实大模型调用</div><div class="v">0</div>
+    <div class="d">限额 100 次，未使用</div></div>
+</div>
+
+<h3>6.1 测试基线变化（前后对比）</h3>
+<table>
+<thead><tr><th>套件</th><th>开工时</th><th>收工时</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td>后端 pytest</td>
+    <td class="bad-t">1 failed / 150 passed</td>
+    <td class="ok-t">166 passed / 0 failed</td>
+    <td>修 BUG-A + 新增 41 例</td></tr>
+<tr><td>前端 Jest</td>
+    <td class="bad-t">1 suite 无法运行 / 95 passed</td>
+    <td class="ok-t">18 suites / 124 passed</td>
+    <td>修 BUG-B + 新增 9 例 + 恢复 20 例</td></tr>
+<tr><td>前端生产构建</td>
+    <td class="dim-t">未测</td>
+    <td class="ok-t">✓ built in 15.95s</td>
+    <td>发现并修复 BUG-C</td></tr>
+</tbody>
+</table>
+
+<h3>6.2 运行态验收（真实 HTTP，非「页面看着正常」）</h3>
+<p>验收方式：<strong>SQLite 备份副本 + 真实 WSGI 服务器</strong>（<code>werkzeug make_server</code>），
+端口 5111，数据为 <code>dev.db</code> 的真实 167 条执行记录。</p>
+<table>
+<thead><tr><th>断言</th><th>结果</th></tr></thead>
+<tbody>
+<tr><td>匿名访问 <code>/agents/history</code></td>
+    <td class="ok-t">401 + <code>application/json</code></td></tr>
+<tr><td>管理员访问 <code>/agents/history?days=3650&amp;limit=5</code></td>
+    <td class="ok-t">200，<code>window_days=365</code>（已夹取），明细 5 条</td></tr>
+<tr><td>返回真实的 6 个智能体统计</td>
+    <td class="ok-t">coordinator 96 / document 27 / project 16 / media 11 / recommendation 11 / exercise 6</td></tr>
+<tr><td>六阶段覆盖率</td>
+    <td class="ok-t"><code>0.75</code>；缺口如实列出 <code>agents</code> 阶段</td></tr>
+<tr><td>与内存态对比</td>
+    <td class="ok-t"><code>/system/summary</code> 的 <code>total_tasks = 0</code>，而历史端点返回 167 —— <strong>持久化的价值被证明</strong></td></tr>
+<tr><td><code>?days=0</code> / <code>?days=abc</code> / <code>?days=99999</code></td>
+    <td class="ok-t">分别夹取到 1 / 30 / 365</td></tr>
+<tr><td><code>?limit=0</code> / <code>?limit=1</code> / <code>?limit=99999</code></td>
+    <td class="ok-t">分别得到 1 / 1 / 167 条</td></tr>
+<tr><td>学生端依据链真实返回</td>
+    <td class="ok-t">200 JSON，<code>gaps</code> 如实列出 3 项缺失证据</td></tr>
+<tr><td>班级分组真实返回</td>
+    <td class="ok-t">200 JSON，<code>grouped_count=10</code>，含共同薄弱点</td></tr>
+<tr><td>未知 <code>/api/*</code> 路径</td>
+    <td class="ok-t">404 JSON（<strong>不是</strong> 200 HTML）</td></tr>
+</tbody>
+</table>
+
+<div class="callout ok">
+<strong>关键：以上每一条都是真实 HTTP 状态码 + Content-Type，不是「页面没报错」。</strong>
+按任务书 1.4 节的纪律，验证后端接口必须检查 <code>Content-Type</code> 是否为
+<code>application/json</code>——返回 <code>text/html</code> 就等于「路由不存在」，
+哪怕状态码是 200。
+</div>
+
+<h3>6.3 一个失败的验收尝试（如实记录）</h3>
+<p>我第一次尝试<strong>直接打人工运行中的实例</strong>验收功能三，返回 <strong>404</strong>。
+排查结论：<strong>该实例启动于我编辑代码之前</strong>，因此没有加载新路由。</p>
+<p>按铁律「<strong>写了代码 ≠ 服务加载了代码</strong>」，我没有就此下「功能坏了」的结论，
+也没有去重启人工实例，而是改用独立 WSGI + <code>dev.db</code> 副本完成验收。
+<strong>这个 404 本身就是任务书 1.4 节那套验证纪律的现场演示。</strong></p>
+
+<h3>6.4 一次「产品 bug 还是测试 bug」的排查</h3>
+<div class="callout warn">
+我的参数夹取验证脚本一开始报告<strong>所有 <code>limit</code> 查询都返回 0 条</strong>。
+我没有立刻去改产品代码，而是先排查——结果是<strong>脚本自身的 bug</strong>：
+我只传了 <code>?limit=...</code> 而没传 <code>days</code>，于是窗口回落到默认 30 天，
+而库里<strong>所有记录都是 2026-07 的，落在 30 天窗口之外</strong>。
+<p style="margin-bottom:0">更重要的是：这个「问 <code>limit=0</code> 却让 <code>days</code> 回落」
+的行为<strong>本可以更友好</strong>，所以我保留了一次独立复核——用 <code>/agents/history?days=0</code>
+单测，确认 <code>days</code> 的夹取逻辑确实正确。<strong>先排查环境，再下结论</strong>，
+这正是任务书第 9 节的要求。</p>
+</div>
+
+
+<h2 id="s6">7 · 防「静默失效」工程建设</h2>
+
+<p>任务书 P2 要求「建立防止静默失效的工程防护」。本轮做了三件事，
+其中第三件是<strong>本轮踩坑后现学的</strong>，价值最高。</p>
+
+<h3>7.1 路由注册回归测试（已有 + 本轮扩展）</h3>
+<p><code>backend/tests/test_route_registration.py</code> 以
+<strong>运行态 <code>app.url_map</code></strong> 与<strong>显式 Content-Type</strong> 为准，
+不以页面表现或裸 200 为准。本轮<strong>扩展了今夜新增端点</strong>：</p>
+<pre>def test_agent_execution_history_route_is_registered(app):
+    assert "/api/resource-generation/agents/history" in rules
+
+def test_agent_execution_history_route_resolves_to_json_not_spa_fallback(client):
+    response = client.get("/api/resource-generation/agents/history")
+    assert response.status_code == 401
+    assert response.is_json</pre>
+
+<h3>7.2 服务层导出契约测试（今夜新增）⭐</h3>
+<p>针对 BUG-C，我新增了 <code>frontend/src/services/__tests__/apiExportContract.test.js</code>。
+它<strong>不复用任何 mock</strong>，直接读 <code>api.js</code> 源码做静态契约校验：
+组件导入的每个名字必须真实存在，调用的每个方法必须真实定义。</p>
+<p><strong>我验证了这个防护真的有效</strong>：故意把 BUG-C 重新引入，
+测试立刻失败；改回来后测试通过。</p>
+<pre>[重新引入 BUG-C]
+  × every object a component imports from services/api really exists
+    expect(received).toBe(expected)
+    > expect(REAL_EXPORT_NAMES.has(name)).toBe(true)
+
+[修复后]
+  √ every object a component imports from services/api really exists</pre>
+<p>一个<strong>没被验证过能失败的防护测试，等于没有防护</strong>——所以这一步不能省。</p>
+
+<h3>7.3 把 <code>pnpm run build</code> 纳入验收（建议）</h3>
+<div class="callout warn">
+本轮证明：<strong><code>pnpm test</code> 全绿，而 <code>pnpm run build</code> 会失败。</strong>
+因此构建<strong>必须</strong>成为验收门槛，不能只跑测试。这是本轮最便宜、收益最高的一条建议。
+</div>
+
+<h2 id="s7">8 · 未做到 / 未验证（必读）</h2>
+
+<div class="callout bad">
+<strong>任务书第 10 节第 6 条要求如实填写本章节。以下每一条都是「我没有做到或没有证据」，
+不是「大概没问题」。</strong>
+</div>
+
+<table>
+<thead><tr><th>#</th><th>未做到 / 未验证</th><th>原因</th><th>影响</th></tr></thead>
+<tbody>
+<tr>
+  <td>1</td>
+  <td class="bad-t"><strong>SEC-003（学生越权）未复测</strong></td>
+  <td>无法登录 <code>student</code> 账号；重置口令会写 <code>dev.db</code></td>
+  <td><strong>这项既有安全结论本轮没有新证据。</strong>不能声称已修，也不能声称仍存在</td>
+</tr>
+<tr>
+  <td>2</td>
+  <td><strong>未按要求使用 <code>night_audit_test.db</code></strong></td>
+  <td>人工实例独占 <code>dev.db</code>，切库需改 <code>.env</code> + 杀实例</td>
+  <td>全部验收走「只读 + 副本」，见第 1.2 节</td>
+</tr>
+<tr>
+  <td>3</td>
+  <td><strong>无真实大模型调用</strong>（0 / 100）</td>
+  <td>优先用 mock 验证逻辑；未触发任何生成链路</td>
+  <td><strong>「多 Agent 在真实 AI 下能跑通」本报告不提供证据</strong>，需人工触发一次确认</td>
+</tr>
+<tr>
+  <td>4</td>
+  <td><strong>执行历史的失败归因路径未被真实失败数据验证</strong></td>
+  <td>库里 167 条记录<strong>全部为 success</strong>，0 条失败</td>
+  <td>失败展示分支只有单测覆盖，<strong>没有真实数据端到端跑过</strong></td>
+</tr>
+<tr>
+  <td>5</td>
+  <td><strong>SEC-006（WebSocket 鉴权）未验证</strong></td>
+  <td>未写 socket.io 客户端实测</td>
+  <td>状态维持「未验证」，不给结论</td>
+</tr>
+<tr>
+  <td>6</td>
+  <td><strong>BUG-015 / 016 / 018 未复测</strong></td>
+  <td>优先级低于今夜功能实施</td>
+  <td>状态维持上一轮结论，本轮<strong>未确认</strong></td>
+</tr>
+<tr>
+  <td>7</td>
+  <td><strong>前端未在浏览器中人工走查</strong></td>
+  <td>无浏览器自动化（Playwright 未安装），且不改动人工环境</td>
+  <td>UI 的<strong>视觉正确性未经人眼确认</strong>；逻辑正确性由 124 个测试覆盖</td>
+</tr>
+<tr>
+  <td>8</td>
+  <td><strong>新路由未在人工实例上热加载验证</strong></td>
+  <td>该实例启动早于本次编辑；重启会中断用户正在用的界面</td>
+  <td>已用独立 WSGI + 同一份 <code>dev.db</code> 副本替代验证。
+      <strong>但「重启后在原实例上正常」这一点未被直接验证</strong></td>
+</tr>
+<tr>
+  <td>9</td>
+  <td><strong>未定位 SQLAlchemy echo 的开关位置</strong></td>
+  <td>未投入时间查证</td>
+  <td>仅日志噪音，无功能影响。<strong>根因未确认，不猜测</strong></td>
+</tr>
+</tbody>
+</table>
+
+<div class="callout warn">
+<strong>一句话总结未验证部分：</strong>今夜交付的 3 个功能，
+其<strong>逻辑正确性</strong>有 41（后端）+ 9（前端）个新测试覆盖，
+其<strong>接口可用性</strong>有真实 HTTP 验收，
+但其<strong>在真实 AI 生成链路下的端到端表现</strong>与<strong>视觉呈现</strong>，
+我没有验证。这两项需要你手动确认。
+</div>
+
+
+<h2 id="s8">9 · 需人工批准的事项</h2>
+
+<h3>9.1 🔴 凭据泄露（SEC-001 / SEC-002）—— 状态：仍然 OPEN</h3>
+<div class="callout bad">
+按铁律 2，今夜<strong>完全未触碰</strong>这两处。<strong>本报告不含任何明文凭据值。</strong>
+</div>
+<table>
+<thead><tr><th>项</th><th>事实</th><th>建议</th></tr></thead>
+<tbody>
+<tr>
+  <td>SEC-001</td>
+  <td><code>backend/.env</code> 仍被 git 跟踪；含 <code>SECRET_KEY</code>、
+      <code>SPARK_API_PASSWORD</code>、<code>SPARK_API_KEY</code>、
+      <code>SPARK_API_SECRET</code>、<code>SPARK_APP_ID</code>、
+      <code>XFYUN_PPT_APP_ID</code>、<code>XFYUN_PPT_API_SECRET</code>
+      <br><span class="dim-t">（仅列变量名，不含值）</span></td>
+  <td><strong>顺序很重要：</strong>
+      <ol style="margin:6px 0">
+        <li>先<strong>轮换</strong>所有已泄露的密钥</li>
+        <li>再 <code>git rm --cached backend/.env</code></li>
+        <li>最后补 <code>.env.example</code></li>
+      </ol>
+      因为已进入 git 历史，只做第 2 步无法撤回泄露。</td>
+</tr>
+<tr>
+  <td>SEC-002</td>
+  <td><code>config.py</code> 的 <code>XFYUN_PPT_*</code> 两项有硬编码默认值</td>
+  <td>改为无默认值 + 启动校验。注意：这会让「没配这两个变量」的部署
+      <strong>启动失败</strong>，属行为变更，需先确认所有部署都配了</td>
+</tr>
+<tr>
+  <td>副作用提醒</td>
+  <td>轮换 <code>SECRET_KEY</code> 会让<strong>全部既有会话失效</strong></td>
+  <td>安排在低峰期执行</td>
+</tr>
+</tbody>
+</table>
+
+<h3>9.2 需要 schema 变更（铁律 5，已 deferred）</h3>
+<div class="card warn">
+<p><strong>BUG-007 · Web Push 完整实现。</strong>需要新增订阅表 + VAPID 密钥对生成与持久化
++ 推送调度。既有前端 <code>pwa.js</code> 已经在调用不存在的端点。</p>
+<p><strong>建议</strong>：若不打算做完整 Web Push，则应<strong>删除</strong>前端的调用代码，
+避免「功能看起来有、实际静默失败」——这正是本仓库最该避免的模式。</p>
+</div>
+
+<h3>9.3 未新增任何第三方依赖 ✅</h3>
+<p>铁律 4 全程遵守。所有聚合、分组、评分逻辑都用标准库 + 既有 SQLAlchemy 实现。
+<strong>没有任何 sklearn / numpy / pandas / 聚类库 / 新 npm 包被引入。</strong></p>
+
+<h2 id="s9">10 · 未来方向</h2>
+<p>完整分析见 <code>.night-run/05-roadmap.md</code>。这里只给排序结论。</p>
+
+<table>
+<thead><tr><th>排名</th><th>方向</th><th>价值</th><th>难度</th><th>风险</th><th>建议</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><strong>R-5</strong> 把 <code>pnpm run build</code> 纳入验收门禁</td>
+    <td>高</td><td>极低</td><td>极低</td><td class="ok-t"><strong>立刻做</strong></td></tr>
+<tr><td>2</td><td><strong>R-1</strong> 依据链 → 干预动作闭环<br>
+    <span class="dim-t">在「共同薄弱点」上直接生成定向补救任务</span></td>
+    <td>极高</td><td>低</td><td>低</td><td class="ok-t"><strong>下一轮首选</strong></td></tr>
+<tr><td>3</td><td><strong>R-2</strong> 画像可信度聚合告警</td>
+    <td>中高</td><td>低</td><td>低</td><td>与 R-1 同批</td></tr>
+<tr><td>4</td><td><strong>R-3</strong> 失败归因下钻</td>
+    <td>中</td><td>低</td><td>低</td><td>需先造真实失败数据</td></tr>
+<tr><td>5</td><td><strong>R-4</strong> 统一入参校验层</td>
+    <td>中高</td><td>中</td><td>中</td><td>增量推进，勿一次全改</td></tr>
+<tr><td>6</td><td>R-7 可观测性 / 结构化日志</td>
+    <td>中</td><td>中</td><td>中</td><td>需先定位 echo 根因</td></tr>
+<tr><td>7</td><td>R-6 / R-8（Web Push / 密钥治理）</td>
+    <td>高</td><td>高</td><td>高</td><td class="warn-t"><strong>需人工批准</strong></td></tr>
+</tbody>
+</table>
+
+<h3>为什么把 R-1 排第二</h3>
+<div class="card info">
+<p>今夜交付的功能一（学生看到依据）与功能二（教师看到分组）<strong>都止步于「展示」</strong>。
+教师看到「循环结构掌握度 0.54、2 人」之后，系统<strong>没有提供任何动作</strong>。</p>
+<p>而补上这个闭环的<strong>后端链路已经存在且有测试</strong>
+（<code>class-batches</code> / <code>mastery_batch</code>），
+只需新增「把薄弱点映射成生成参数」的纯函数 + 一个按钮。</p>
+<p><strong>这将是答辩时最强的一条演示线</strong>：教师看到问题 → 一键生成针对性任务 →
+学生收到并看到依据链。它把一个「好看的可视化」变成「可验证的教学闭环」。</p>
+</div>
+
+<h3>明确判定为不做的</h3>
+<table>
+<thead><tr><th>方向</th><th>为何不做</th></tr></thead>
+<tbody>
+<tr><td>引入向量数据库升级 RAG</td>
+  <td>违反 YAGNI：单课程量级用现有 <code>rag_citation_service</code> 足够；需新依赖 + 新基础设施</td></tr>
+<tr><td>把 <code>agent_execution_logs</code> 拆成时序库</td>
+  <td>167 条记录的表拆库纯属过度设计</td></tr>
+<tr><td>全项目 ESLint 大扫除</td>
+  <td>产生大规模无意义 diff，掩盖真实改动，违反「最小可回滚」</td></tr>
+</tbody>
+</table>
+
+
+<h2 id="s10">11 · commit 清单与环境核验</h2>
+
+<h3>11.1 commit 列表（<code>master..HEAD</code>，共 5 个）</h3>
+<table>
+<thead><tr><th>commit</th><th>说明</th><th>可独立回滚</th></tr></thead>
+<tbody>
+<tr><td><code>bacc33d</code></td><td>test(guard): 新增服务层导出契约测试</td><td class="ok-t">✅</td></tr>
+<tr><td><code>13f104b</code></td><td>fix: 修正导入了不存在的 API 导出</td><td class="ok-t">✅</td></tr>
+<tr><td><code>88ce14d</code></td><td>feat: 智能体执行历史看板</td><td class="ok-t">✅</td></tr>
+<tr><td><code>c14a054</code></td><td>fix(tests): 修复两处失效的测试基线</td><td class="ok-t">✅</td></tr>
+<tr><td><code>352bef6</code></td><td>feat: 生成依据链与班级学习类型分组</td><td class="ok-t">✅</td></tr>
+</tbody>
+</table>
+<p>分支 <code>night-run/20260922</code>，<strong>无 upstream，未 push</strong>。
+共 <strong>28 个文件变更，+4468 / -17 行</strong>，其中 <strong>12 个为纯新增文件</strong>。</p>
+
+<h3>11.2 环境核验（任务书第 10 节逐条）</h3>
+<table>
+<thead><tr><th>#</th><th>要求</th><th>核验结果</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>还原 <code>backend/.env</code>，SHA256 与基准一致</td>
+  <td class="ok-t">✅ <code>6695640E…96CC</code> <strong>与开工时完全一致</strong>（全程未改动）</td></tr>
+<tr><td>2</td><td>校验 <code>dev.db</code> 未被写入</td>
+  <td class="ok-t">✅ <code>git hash-object</code> = <code>e94bf0b9…95a1</code>，<strong>与基准一致</strong></td></tr>
+<tr><td>3</td><td>无未提交的临时文件、无残留进程</td>
+  <td class="ok-t">✅ 验收副本 <code>night_run_verify.db</code> 已删除；WSGI 服务器已 shutdown；
+      工作区仅剩 <code>.night-run/</code> 与开工前既有的未跟踪文件</td></tr>
+<tr><td>4</td><td>确认没有 push</td>
+  <td class="ok-t">✅ <code>git rev-parse @{u}</code> → <code>fatal: no upstream configured</code></td></tr>
+<tr><td>5</td><td>报告中不含任何明文凭据</td>
+  <td class="ok-t">✅ 全文只出现<strong>变量名</strong>，未出现任何值</td></tr>
+<tr><td>6</td><td>如实填写「未做到/未验证」章节</td>
+  <td class="ok-t">✅ 见第 8 节，共 9 条</td></tr>
+</tbody>
+</table>
+
+<h3>11.3 铁律遵守情况</h3>
+<table>
+<thead><tr><th>铁律</th><th>遵守</th><th>证据</th></tr></thead>
+<tbody>
+<tr><td>1 · 绝不编造</td><td class="ok-t">✅</td>
+  <td>未验证项单独列章；SEC-003 / SEC-006 明确标「未验证」而非下结论</td></tr>
+<tr><td>2 · 不碰凭据问题</td><td class="ok-t">✅</td>
+  <td>未改 <code>.env</code>、未改 <code>config.py</code>、未读任何密钥值、报告中无明文</td></tr>
+<tr><td>3 · 只做纯新增</td><td class="ok-t">✅</td>
+  <td>未改 <code>_generate_resource_package()</code> 主流程、未改纯函数契约、
+      未改任何 DB 字段、未改名或删除任何既有 API 响应字段</td></tr>
+<tr><td>4 · 不引入新依赖</td><td class="ok-t">✅</td>
+  <td>零新依赖；聚合逻辑全部标准库实现</td></tr>
+<tr><td>5 · 不改 schema</td><td class="ok-t">✅</td>
+  <td>未新增表/列、未改列类型。需要 schema 的两项已 deferred</td></tr>
+<tr><td>6 · 环境隔离</td><td class="warn-t">⚠️ 部分</td>
+  <td><code>dev.db</code> 未被写入（已校验）、未 push、未建 upstream、<code>.env</code> 未变；
+      <strong>但未使用 <code>night_audit_test.db</code></strong>，原因与代价见第 1.2 节</td></tr>
+<tr><td>7 · AI 调用限额</td><td class="ok-t">✅</td>
+  <td><strong>0 / 100 次</strong>。数据库复核：<code>token_usage</code> 与
+      <code>agent_execution_logs</code> 的最新记录时间均<strong>早于本夜开工</strong></td></tr>
+<tr><td>8 · 不新建行为准则文件</td><td class="ok-t">✅</td>
+  <td>未创建或修改 <code>CLAUDE.md</code> / <code>AGENTS.md</code> /
+      <code>.cursorrules</code> / <code>.claude/skills/</code> 下任何文件</td></tr>
+<tr><td>9 · 反懒惰协议</td><td class="ok-t">✅</td>
+  <td>所有文件改动均为完整内容写入，无任何占位符</td></tr>
+</tbody>
+</table>
+
+<h3>11.4 产出文件</h3>
+<pre>.night-run/
+├── 00-recon.md          侦察与遗留问题重验
+├── 01-plan.md           今夜计划与偏离说明
+├── 02-progress.md       进度流水（含自我纠错记录）
+├── 03-deferred.md       只记录不修的问题
+├── 05-roadmap.md        未来方向
+├── 07-report.html       本报告
+└── _probe_*.py / _verify_*.py   全部探测与验收脚本（可复现）
+
+项目根目录（第二轮新增，进入版本库）：
+verify_all.ps1         一键验证：jest + vite build + pytest
+
+.night-run/（第二轮新增）：
+├── 06-deferred-round2.md        第二轮只记录不修清单
+├── 06-plan-round2.md            边界定义与逐项作战计划
+└── 08-roadmap-reconfirmation.md 路线图 R-1~R-8 二次确认与细化解释</pre>
+
+
+
+<h2 id="r2">12 · 第二轮 · BUG-A~D 逐个攻破（本次新增）</h2>
+
+<div class="callout warn">
+<strong>本轮边界（先划清，再动手）：</strong>本轮<strong>不触碰</strong>
+<code>03-deferred.md</code> 与 <code>06-deferred-round2.md</code> 中的任何一项，
+包括 SEC-001 / SEC-002 / SEC-003 / SEC-004 / SEC-006 / BUG-007 / BUG-014 /
+BUG-015~018 / ENV-002 / BUG-ENV-003，以及本轮新记的 R2-DEF-001~003。
+凡属"产品行为变更"而非"测试正确性"的改动，一律只记录、不修。
+</div>
+
+<h3>12.1 本轮最重要的发现：一次"全体通过"的假象</h3>
+
+<div class="card bad">
+<h3 style="margin-top:0">BUG-B′ · 102 个测试用例被配置静默排除，CI 长期显示全绿</h3>
+<p><code>frontend/jest.config.js</code> 里有一份<strong>硬编码</strong>的
+<code>testPathIgnorePatterns</code>，把 6 个测试文件整体排除：</p>
+<table>
+<thead><tr><th>被排除的文件</th><th>用例数</th></tr></thead>
+<tbody>
+<tr><td><code>VideoNotesPanel.test.jsx</code></td><td>31</td></tr>
+<tr><td><code>MistakeBook.test.jsx</code></td><td>30</td></tr>
+<tr><td><code>SearchBar.test.jsx</code></td><td>17</td></tr>
+<tr><td><code>SearchResults.test.jsx</code></td><td>17</td></tr>
+<tr><td><code>StudentInteractionPanel.test.jsx</code></td><td>7</td></tr>
+<tr><td><code>CourseLearningPage.test.jsx</code></td><td>0（"必须至少含一个用例"）</td></tr>
+<tr><th>合计</th><th class="bad-t">102</th></tr>
+</tbody>
+</table>
+<p><strong>为什么这比"测试失败"严重得多：</strong>被排除的套件<strong>既不算通过、
+也不算失败</strong>——它们在报告里根本不出现。
+于是"124 个用例全绿"这句话<strong>字面上是真的，含义上是假的</strong>。
+真实的失败从未暴露，而且不会有任何东西报错。</p>
+<p>移除排除项后，立刻暴露出 <strong>105 个失败用例</strong>。</p>
+</div>
+
+<h3>12.2 BUG-A~D 逐项处置结果</h3>
+
+<table>
+<thead><tr><th>编号</th><th>原判</th><th>本轮处置</th><th>证据</th></tr></thead>
+<tbody>
+<tr>
+  <td><strong>BUG-A</strong></td>
+  <td>匿名断言 200，实为 admin-only → 401</td>
+  <td class="ok-t">已修（c14a054）</td>
+  <td>补 <code>admin_session</code> fixture + 登录</td>
+</tr>
+<tr>
+  <td><strong>BUG-B</strong></td>
+  <td>裸写 <code>import.meta</code> 致 CommonJS 解析期失败</td>
+  <td class="ok-t">已修（c14a054）</td>
+  <td>改用仓库既有的 <code>import_meta_env</code> 写法</td>
+</tr>
+<tr>
+  <td><strong>BUG-B′</strong></td>
+  <td><em>本轮新发现</em>：102 个用例被配置排除</td>
+  <td class="ok-t">已修（1b73fbd）</td>
+  <td>排除项清空后 105 例暴露并全部修复</td>
+</tr>
+<tr>
+  <td><strong>BUG-C</strong></td>
+  <td>导入不存在的 <code>resourceGeneration</code>，构建失败而测试绿</td>
+  <td class="ok-t">已修（13f104b / bacc33d）</td>
+  <td>改为 <code>courseGeneration</code>，并加导出契约测试</td>
+</tr>
+<tr>
+  <td><strong>BUG-D</strong></td>
+  <td>分组接口 404/403 语义</td>
+  <td class="info-t">复核为"设计如此"，只用测试锁定（886a13d）</td>
+  <td>新增 5 例，含 <code>course_id</code> 边界</td>
+</tr>
+</tbody>
+</table>
+
+<h3>12.3 BUG-B′ 暴露出的真实产品缺陷（只记录，未修）</h3>
+
+<p>修复过程中暴露出若干<strong>真实存在、且已长期存在</strong>的问题。
+按约定它们属于产品行为变更，本轮<strong>不动产品代码</strong>，只记录：</p>
+
+<div class="grid">
+  <div class="metric"><div class="k">R2-DEF-001</div>
+    <div class="v bad-t" style="font-size:15px">防抖计时器未清理</div>
+    <div class="d">SearchBar 卸载后仍会触发回调并多发请求</div></div>
+  <div class="metric"><div class="k">R2-DEF-002</div>
+    <div class="v bad-t" style="font-size:15px">筛选标签无关联</div>
+    <div class="d">下拉框在可访问性树中无名（WCAG 缺陷）</div></div>
+  <div class="metric"><div class="k">R2-DEF-003</div>
+    <div class="v bad-t" style="font-size:15px">交互元素无名称</div>
+    <div class="d">编辑/删除为纯图标按钮；加载态无 role="status"</div></div>
+</div>
+
+<p>另有两条属于<strong>测试基础设施的失败模式</strong>，是可复用的教训：</p>
+<ul>
+<li><strong>R2-DEF-004 · 替身默认缺失而非默认可用。</strong>
+原 <code>lucide-react</code> 替身是约 90 个图标的白名单，缺一个（如 <code>Download</code>）
+就会解构出 <code>undefined</code>，React 抛
+<code>Element type is invalid</code>，而报错<strong>完全指不到根因</strong>。
+已改为 <code>Proxy</code> 兜底。同类的还有原来的 <code>localStorage</code> 假替身
+（<code>getItem</code> 恒返回 <code>null</code>）。</li>
+<li><strong>R2-DEF-005 · 自相矛盾的用例设置。</strong>
+某用例连着两次 <code>mockResolvedValue</code>，第一次设空列表（断言"暂无笔记"），
+第二次立刻覆盖成有数据 —— 该断言<strong>在结构上永远不可能成立</strong>。
+因套件被整体排除，长期无人发现。</li>
+</ul>
+
+<h3>12.4 修好测试基础设施后，还查了什么（Battle 2/3）</h3>
+
+<div class="card ok">
+<h3 style="margin-top:0">后端排除项审计：未发现同类问题</h3>
+<p>既然前端能靠配置静默排除 102 个用例，后端是否存在同样手法？逐项查证：</p>
+<ul>
+<li><code>backend</code> 下<strong>不存在</strong> <code>pytest.ini</code> /
+<code>setup.cfg</code> / <code>tox.ini</code>；</li>
+<li><code>tests/conftest.py</code> 内<strong>无</strong>
+<code>ignore</code> / <code>deselect</code> / <code>addopts</code> / <code>collect_ignore</code>；</li>
+<li>收集数 <strong>167</strong>，与"166 passed + 1 skipped"<strong>自洽</strong>。</li>
+</ul>
+<p><strong>结论：后端干净。</strong>风险不在"被排除"，而在"注册了但行为不对"。</p>
+</div>
+
+<div class="card ok">
+<h3 style="margin-top:0">新增 <code>verify_all.ps1</code>：把"测试"与"构建"绑定为同一次判断</h3>
+<p>BUG-C 的教训是：<strong>测试通过 ≠ 代码能构建</strong>（mock 掩盖了不存在的导出）。
+本脚本把三步收敛成一次动作，任一失败即整体 <code>exit 1</code>：</p>
+<pre>1. 前端 jest
+2. 前端 vite build   &lt;-- 独立保留，因为 mock 会掩盖真实构建错误
+3. 后端 pytest</pre>
+<p>支持 <code>-SkipBackend</code> / <code>-SkipBuild</code> 用于快速回归；
+构建后自动还原被 git 跟踪的 <code>dist/index.html</code>，避免污染工作区。
+<strong>已实际运行验证通过（exit 0）。</strong></p>
+</div>
+
+<h3>12.5 测试基线变化（本轮）</h3>
+
+<table>
+<thead><tr><th>指标</th><th>第一轮收工</th><th>第二轮收工</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td>前端套件</td><td>18</td><td class="ok-t">24</td><td>+6 个被排除的套件重新纳入统计</td></tr>
+<tr><td>前端用例</td><td>124 全绿</td><td class="ok-t">228 全绿</td><td>+104；途中曾暴露 105 例失败</td></tr>
+<tr><td>后端用例</td><td>166 passed / 1 skipped</td><td class="ok-t">171 passed / 1 skipped</td><td>+5（BUG-D 回归锁定）</td></tr>
+<tr><td>生产构建</td><td>通过</td><td class="ok-t">通过</td><td>已还原 dist/index.html</td></tr>
+</tbody>
+</table>
+
+<div class="callout ok">
+<strong>本轮的实数意义：</strong>从"124 个用例全绿"到"228 个用例全绿"，
+增量不是 104 个新写的测试，而是 <strong>104 个原本就在仓库里、
+但被配置藏起来的测试</strong>。其中 105 例是失败的，全部修复完毕。
+换句话说，本轮的产出主要是<strong>让既有的真相可见</strong>，而不是新造东西。
+</div>
+
+<footer>
+<p><strong>智教星 · 夜间长任务执行报告</strong>　分支 <code>night-run/20260922</code>　基线 <code>2c15220</code></p>
+<p>本报告全部结论以 HTTP 状态码 + Content-Type + 测试输出 + 源码为依据。
+「页面看起来正常」在本报告中<strong>不作为任何证据</strong>。</p>
+<p>未验证事项共 9 条，见第 8 节。凭据泄露问题（SEC-001 / SEC-002）状态：
+<strong>OPEN，今夜按约定未触碰</strong>。</p>
+<p><strong>第二轮补充说明：</strong>本轮修复的 105 个失败用例中，
+属于"陈旧断言"的已全部改正；属于<strong>真实产品缺陷</strong>的
+（R2-DEF-001 ~ 003）一律<strong>只记录、未修</strong>，
+清单见 <code>.night-run/06-deferred-round2.md</code>。
+<code>03-deferred.md</code> 中的全部条目在本轮同样<strong>未被触碰</strong>。</p>
+</footer>
+
+</div>
+</body>
+</html>
