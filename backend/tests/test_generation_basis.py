@@ -652,3 +652,137 @@ def test_student_basis_route_surfaces_real_mistake_detail(client, db_session):
 
     gap_kinds = [gap["kind"] for gap in basis["gaps"]]
     assert "missing_mistake_detail" not in gap_kinds, "已有明细时不得再报错题缺失"
+
+
+# ---------------------------------------------------------------------------
+# BUG-D 回归锁定：分组接口的 404 / 403 语义与 course_id 边界
+#
+# 第一轮实测结论是"设计如此，不是缺陷"，因此这里**不改动任何产品代码**，
+# 只用测试把当时的观测结果钉住，防止后续重构无意间改变越权语义：
+#   - 班级不存在            -> 404
+#   - 班级存在但不属于本人  -> 403
+#   - course_id 缺失        -> 回落到班级自身关联的课程
+#   - course_id 非法/不存在 -> 不报错，按空分组处理（只读接口，不做外键校验）
+# ---------------------------------------------------------------------------
+
+
+def _make_groups_fixture(db_session, *, with_course_link=True):
+    """建一个"教师-班级-学生"最小闭环，供 404/403 与 course_id 边界用例复用。"""
+    from src.models.user import User, ClassGroup, ClassGroupStudent
+    from src.models.student_profile import StudentProfile
+
+    owner = User(username=_username("bugd_owner"), password="test123", role="teacher")
+    other = User(username=_username("bugd_other"), password="test123", role="teacher")
+    student = User(username=_username("bugd_s1"), password="test123", role="student", real_name="王五")
+    outsider_student = User(
+        username=_username("bugd_s2"), password="test123", role="student", real_name="赵六"
+    )
+    db_session.session.add_all([owner, other, student, outsider_student])
+    db_session.session.flush()
+
+    klass = ClassGroup(name="BUG-D 回归班", teacher_id=owner.id)
+    db_session.session.add(klass)
+    db_session.session.flush()
+
+    db_session.session.add_all([
+        ClassGroupStudent(class_group_id=klass.id, user_id=student.id, student_name="王五"),
+        StudentProfile(
+            user_id=student.id, cognitive_style="visual", goal_orientation="exam",
+            learning_pace="slow", knowledge_base='{"递归": 40}',
+            interest_areas='["算法"]', time_availability='{"weekend": 2}',
+            interaction_preference="exploratory",
+        ),
+    ])
+    db_session.session.commit()
+    return {"owner": owner, "other": other, "klass": klass, "student": student}
+
+
+def _login_as(client, user):
+    with client.session_transaction() as sess:
+        sess["user_id"] = user.id
+        sess["user_role"] = user.role
+        sess["username"] = user.username
+
+
+def test_bugd_class_not_found_returns_404(client, db_session):
+    """班级不存在时必须是 404（而不是 403 或 200 空分组）。
+
+    语义：先判断资源是否存在，再判断权限 —— 404 在前，避免用 403 泄露
+    "这个 ID 其实存在" 的信息。
+    """
+    fixture = _make_groups_fixture(db_session)
+    _login_as(client, fixture["owner"])
+
+    response = client.get("/api/classes/999999/learning-groups?course_id=3")
+
+    assert response.status_code == 404, "不存在的班级必须返回 404"
+    assert "班级不存在" in response.get_json()["error"]
+
+
+def test_bugd_foreign_class_returns_403_not_404(client, db_session):
+    """班级存在但不属于当前教师时返回 403，且与 404 明确区分开。
+
+    这是 BUG-D 的核心：两个状态码承担不同语义，不能合并。
+    """
+    fixture = _make_groups_fixture(db_session)
+    _login_as(client, fixture["other"])
+
+    response = client.get(
+        f"/api/classes/{fixture['klass'].id}/learning-groups?course_id=3"
+    )
+
+    assert response.status_code == 403, "非本班教师必须返回 403"
+    assert "无权" in response.get_json()["error"]
+
+
+def test_bugd_missing_course_id_falls_back_to_class_course(client, db_session):
+    """不传 course_id 时不报错，回落到班级自身关联的课程。
+
+    班级没有关联课程时回落到 None，接口仍返回 200 —— 只读接口不因缺参数而 4xx。
+    """
+    fixture = _make_groups_fixture(db_session)
+    _login_as(client, fixture["owner"])
+
+    response = client.get(f"/api/classes/{fixture['klass'].id}/learning-groups")
+
+    assert response.status_code == 200, "缺少 course_id 不应导致失败"
+    payload = response.get_json()
+    assert payload["class_id"] == fixture["klass"].id
+    assert payload["course_id"] is None, "无关联课程时应回落为 None"
+
+
+def test_bugd_unknown_course_id_does_not_error(client, db_session):
+    """course_id 指向不存在的课程时不抛错、不 5xx，按空分组处理。
+
+    这是 BUG-D 记录中"课程 ID 边界未校验"的准确语义：
+    接口对 course_id **不做外键存在性校验**，它只透传给分组构建逻辑。
+    本用例锁定该行为，避免后续误以为这里是缺陷而引入破坏性改动。
+    """
+    fixture = _make_groups_fixture(db_session)
+    _login_as(client, fixture["owner"])
+
+    response = client.get(
+        f"/api/classes/{fixture['klass'].id}/learning-groups?course_id=987654321"
+    )
+
+    assert response.status_code == 200, "未知 course_id 不应导致 4xx/5xx"
+    payload = response.get_json()
+    assert payload["class_id"] == fixture["klass"].id
+    assert payload["course_id"] == 987654321, "course_id 应原样透传"
+    assert isinstance(payload["groups"], list)
+
+
+def test_bugd_student_role_is_rejected_by_default(client, db_session):
+    """学生角色默认不可访问该接口（_can_access_class 未开 allow_student）。
+
+    锁定"越权检查默认收紧"这一取向：新接口默认不向学生开放，
+    需要开放时必须显式传 allow_student=True。
+    """
+    fixture = _make_groups_fixture(db_session)
+    _login_as(client, fixture["student"])
+
+    response = client.get(
+        f"/api/classes/{fixture['klass'].id}/learning-groups?course_id=3"
+    )
+
+    assert response.status_code == 403, "学生角色默认应被拒绝"
