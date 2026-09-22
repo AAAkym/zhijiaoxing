@@ -26,22 +26,40 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 })
 
+// 真实可用的 localStorage / sessionStorage 替身。
+//
+// 原先这里是一个"哑"桩：getItem 永远返回 null、setItem 直接丢弃。
+// 后果是任何断言"写进去的东西读得出来"的测试都**永远不可能通过**，
+// 而那些用例正是被 jest.config.js 的 testPathIgnorePatterns 静默排除的那批。
+// 用内存实现替换后，组件写入的历史记录、偏好等都能被测试真实观察到。
+const createStorageStub = () => {
+  const store = new Map()
+  return {
+    getItem: (key) => (store.has(key) ? store.get(key) : null),
+    setItem: (key, value) => {
+      store.set(String(key), String(value))
+    },
+    removeItem: (key) => {
+      store.delete(key)
+    },
+    clear: () => {
+      store.clear()
+    },
+    key: (index) => Array.from(store.keys())[index] ?? null,
+    get length() {
+      return store.size
+    },
+  }
+}
+
 Object.defineProperty(window, 'localStorage', {
-  value: {
-    getItem: jest.fn(() => null),
-    setItem: jest.fn(),
-    removeItem: jest.fn(),
-    clear: jest.fn(),
-  },
+  value: createStorageStub(),
+  writable: true,
 })
 
 Object.defineProperty(window, 'sessionStorage', {
-  value: {
-    getItem: jest.fn(() => null),
-    setItem: jest.fn(),
-    removeItem: jest.fn(),
-    clear: jest.fn(),
-  },
+  value: createStorageStub(),
+  writable: true,
 })
 
 Object.defineProperty(window, 'scrollTo', {
@@ -85,97 +103,49 @@ jest.mock('react-router-dom', () => ({
   useParams: () => ({}),
 }))
 
-jest.mock('lucide-react', () => ({
-  Search: () => <svg data-testid="search-icon" />,
-  User: () => <svg data-testid="user-icon" />,
-  Menu: () => <svg data-testid="menu-icon" />,
-  X: () => <svg data-testid="x-icon" />,
-  Loader2: () => <svg data-testid="loader-icon" />,
-  ChevronLeft: () => <svg data-testid="chevron-left-icon" />,
-  ChevronRight: () => <svg data-testid="chevron-right-icon" />,
-  Star: () => <svg data-testid="star-icon" />,
-  Clock: () => <svg data-testid="clock-icon" />,
-  TrendingUp: () => <svg data-testid="trending-up-icon" />,
-  BookOpen: () => <svg data-testid="book-open-icon" />,
-  FileText: () => <svg data-testid="file-text-icon" />,
-  HelpCircle: () => <svg data-testid="help-circle-icon" />,
-  Users: () => <svg data-testid="users-icon" />,
-  SearchX: () => <svg data-testid="search-x-icon" />,
-  Bold: () => <svg data-testid="bold-icon" />,
-  Italic: () => <svg data-testid="italic-icon" />,
-  Underline: () => <svg data-testid="underline-icon" />,
-  Strikethrough: () => <svg data-testid="strikethrough-icon" />,
-  Code: () => <svg data-testid="code-icon" />,
-  List: () => <svg data-testid="list-icon" />,
-  ListOrdered: () => <svg data-testid="list-ordered-icon" />,
-  AlignLeft: () => <svg data-testid="align-left-icon" />,
-  AlignCenter: () => <svg data-testid="align-center-icon" />,
-  AlignRight: () => <svg data-testid="align-right-icon" />,
-  Link: () => <svg data-testid="link-icon" />,
-  Image: () => <svg data-testid="image-icon" />,
-  Undo: () => <svg data-testid="undo-icon" />,
-  Redo: () => <svg data-testid="redo-icon" />,
-  Maximize2: () => <svg data-testid="maximize-icon" />,
-  Minimize2: () => <svg data-testid="minimize-icon" />,
-  Highlighter: () => <svg data-testid="highlighter-icon" />,
-  Quote: () => <svg data-testid="quote-icon" />,
-  CheckSquare: () => <svg data-testid="check-square-icon" />,
-  Tag: () => <svg data-testid="tag-icon" />,
-  Plus: () => <svg data-testid="plus-icon" />,
-  ArrowLeft: () => <svg data-testid="arrow-left-icon" />,
-  Save: () => <svg data-testid="save-icon" />,
-  Eye: () => <svg data-testid="eye-icon" />,
-  Edit3: () => <svg data-testid="edit-icon" />,
-  Trash2: () => <svg data-testid="trash-icon" />,
-  Calendar: () => <svg data-testid="calendar-icon" />,
-  Bot: () => <svg data-testid="bot-icon" />,
-  Filter: () => <svg data-testid="filter-icon" />,
-  Play: () => <svg data-testid="play-icon" />,
-  Pause: () => <svg data-testid="pause-icon" />,
-  Video: () => <svg data-testid="video-icon" />,
-  Hash: () => <svg data-testid="hash-icon" />,
-  Check: () => <svg data-testid="check-icon" />,
-  CheckIcon: () => <svg data-testid="check-icon" />,
-  ChevronDownIcon: () => <svg data-testid="chevron-down-icon" />,
-  ChevronUpIcon: () => <svg data-testid="chevron-up-icon" />,
-  GraduationCap: () => <svg data-testid="graduation-cap-icon" />,
-  RefreshCw: () => <svg data-testid="refresh-icon" />,
-  AlertCircle: () => <svg data-testid="alert-circle-icon" />,
-  Hand: () => <svg data-testid="hand-icon" />,
-  MessageCircle: () => <svg data-testid="message-circle-icon" />,
-  XCircle: () => <svg data-testid="x-circle-icon" />,
-  Send: () => <svg data-testid="send-icon" />,
-  ThumbsUp: () => <svg data-testid="thumbs-up-icon" />,
-  Pin: () => <svg data-testid="pin-icon" />,
-  UserCheck: () => <svg data-testid="user-check-icon" />,
-  MessageSquare: () => <svg data-testid="message-square-icon" />,
-  BarChart3: () => <svg data-testid="bar-chart-icon" />,
-  ListTodo: () => <svg data-testid="list-todo-icon" />,
-  PanelLeft: () => <svg data-testid="panel-left-icon" />,
-  PanelLeftClose: () => <svg data-testid="panel-left-close-icon" />,
-  ShieldCheck: () => <svg data-testid="shield-check-icon" />,
-  ArrowRight: () => <svg data-testid="arrow-right-icon" />,
-  Database: () => <svg data-testid="database-icon" />,
-  Target: () => <svg data-testid="target-icon" />,
-  CheckCircle: () => <svg data-testid="check-circle-icon" />,
-  CheckCircle2: () => <svg data-testid="check-circle2-icon" />,
-  BookOpenCheck: () => <svg data-testid="book-open-check-icon" />,
-  GitCompare: () => <svg data-testid="git-compare-icon" />,
-  Network: () => <svg data-testid="network-icon" />,
-  Sparkles: () => <svg data-testid="sparkles-icon" />,
-  Link2: () => <svg data-testid="link2-icon" />,
-  FileCheck: () => <svg data-testid="file-check-icon" />,
-  FileCheck2: () => <svg data-testid="file-check2-icon" />,
-  UserRoundSearch: () => <svg data-testid="user-round-search-icon" />,
-  History: () => <svg data-testid="history-icon" />,
-  Clock3: () => <svg data-testid="clock3-icon" />,
-  Wrench: () => <svg data-testid="wrench-icon" />,
-  AlertTriangle: () => <svg data-testid="alert-triangle-icon" />,
-  ClipboardList: () => <svg data-testid="clipboard-list-icon" />,
-  Activity: () => <svg data-testid="activity-icon" />,
-  CalendarClock: () => <svg data-testid="calendar-clock-icon" />,
-  ClipboardCheck: () => <svg data-testid="clipboard-check-icon" />,
-}))
+// lucide-react 的图标替身。
+//
+// 这里**故意不逐个列出图标名**：原先是一份约 90 个图标的白名单，任何组件用到
+// 名单之外的图标（例如 Download）都会解构出 undefined，React 抛
+// "Element type is invalid ... but got: undefined"，而失败信息完全指不到根因。
+// 改用 Proxy 兜底：任何被访问的图标名都返回一个可渲染的占位组件，
+// 同时保留几个有 data-testid 的常用图标，方便既有测试按 testid 查询。
+const ICON_TESTIDS = {
+  Search: "search-icon",
+  User: "user-icon",
+  Menu: "menu-icon",
+  X: "x-icon",
+  Loader2: "loader-icon",
+  ChevronLeft: "chevron-left-icon",
+  ChevronRight: "chevron-right-icon",
+  Star: "star-icon",
+  Clock: "clock-icon",
+  TrendingUp: "trending-up-icon",
+  SearchX: "search-x-icon",
+}
+
+jest.mock('lucide-react', () => {
+  const makeIcon = (name) => {
+    const Icon = (props) => <svg data-testid={ICON_TESTIDS[name] || 'icon-' + name} {...props} />
+    Icon.displayName = name
+    return Icon
+  }
+
+  const cache = new Map()
+  return new Proxy(
+    {},
+    {
+      get(_target, prop) {
+        if (typeof prop !== 'string') return undefined
+        // 兼容 '__esModule' 之类的探测，交给默认行为处理。
+        if (prop === '__esModule') return true
+        if (prop === 'default') return undefined
+        if (!cache.has(prop)) cache.set(prop, makeIcon(prop))
+        return cache.get(prop)
+      },
+    }
+  )
+})
 
 const originalError = console.error
 beforeAll(() => {

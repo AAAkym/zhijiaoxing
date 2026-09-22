@@ -12,7 +12,7 @@ import {
   Loader2,
   SearchX,
 } from 'lucide-react'
-import { searchApi } from '../../services/searchApi'
+import { searchApi } from '@/services/searchApi'
 import './SearchResults.css'
 
 const TYPE_ICONS = {

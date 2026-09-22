@@ -4,7 +4,15 @@
 // 此前写的是 globalThis.process?.env?.VITE_API_BASE_URL —— Vite 不会在浏览器里
 // 填充 process.env，所以该表达式恒为 undefined，无论 .env 里怎么配，
 // 都会静默回退到字面量 '/api'。部署到独立域名后会打到前端自己的源而不是后端。
-const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || '/api'
+//
+// 注意：这里不能裸写 import.meta —— Jest 以 CommonJS 加载本模块，
+// 裸写 import.meta 是**解析期**语法错误，会让所有间接引用 api.js 的测试套件
+// 直接 "failed to run"（typeof 守卫也救不了）。统一改为仓库既有的 CJS 安全写法：
+// Vite 构建时会静态替换 import.meta.env，Jest 下由 jest.config.js 的
+// globals.import_meta_env 注入同名字面量。
+const API_BASE_URL =
+  // eslint-disable-next-line no-undef -- 由 Vite / jest.config globals 注入
+  (typeof import_meta_env !== 'undefined' && import_meta_env?.VITE_API_BASE_URL) || '/api'
 
 const SSE_TIMEOUT = 300000
 

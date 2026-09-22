@@ -1,31 +1,30 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SearchResults } from '../SearchResults'
-import { searchApi } from '../../../services/searchApi'
+// import 共享 mock 模块，且用与组件**完全相同**的相对路径。
+// moduleNameMapper 按书写形式映射，不同写法会产生不同模块实例，
+// 导致断言 mock 调用次数永远是 0。SearchResults.jsx 写的是 '../../services/searchApi'。
+import { searchApi } from '@/services/searchApi'
 
-vi.mock('../../../services/searchApi', () => ({
-  searchApi: {
-    search: vi.fn(() => Promise.resolve({
-      results: [],
-      total: 0,
-      page: 1,
-      per_page: 20,
-      total_pages: 0,
-      response_time_ms: 50,
-    })),
-    getRelated: vi.fn(() => Promise.resolve({ related: [] })),
-    recordClick: vi.fn(() => Promise.resolve({ success: true })),
-  },
-}))
+// 默认返回值必须在每个用例前重新设置：jest.config.js 开了 resetMocks，
+// 共享 mock 模块里 jest.fn(impl) 的实现会被清掉。
+beforeEach(() => {
+  searchApi.search.mockResolvedValue({
+    results: [],
+    total: 0,
+    page: 1,
+    per_page: 20,
+    total_pages: 0,
+    response_time_ms: 50,
+  })
+  searchApi.getRelated.mockResolvedValue({ related: [] })
+  searchApi.recordClick.mockResolvedValue({ success: true })
+})
 
 describe('SearchResults', () => {
   const mockOnResultClick = vi.fn()
   const mockOnPageChange = vi.fn()
   const mockOnQueryChange = vi.fn()
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
 
   test('renders nothing when no query', () => {
     const { container } = render(<SearchResults query="" />)

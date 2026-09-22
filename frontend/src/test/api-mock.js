@@ -55,7 +55,27 @@ export const notes = {
 
 export const auth = {}
 export const content = {}
-export const courseGeneration = {}
+// videos 之前**完全没有导出**，而 CourseLearningPage 会调用
+// videos.getByCourse / videos.getContent，于是解构出来的是 undefined，
+// 组件在 await 之前就抛 "Cannot read properties of undefined"。
+// 这里补齐组件实际用到的成员。
+export const videos = {
+  getByCourse: mockFn({ videos: [] }),
+  getContent: mockFn({ contents: [] }),
+  getAll: mockFn({ videos: [] }),
+  getById: mockFn(),
+  create: mockFn(),
+  update: mockFn(),
+  delete: mockFn(),
+}
+export const courseGeneration = {
+  getCourseResources: mockFn({ resources: [] }),
+  generateCourse: mockFn(),
+  getTaskStatus: mockFn(),
+}
+export const ai = {
+  videoAssistantChat: mockFn({ reply: '' }),
+}
 export const teacher = {}
 export const student = {}
 export const admin = {}

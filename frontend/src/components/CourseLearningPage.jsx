@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { courses, videos, notes, ai, courseGeneration } from '../services/api'
+import { courses, videos, notes, ai, courseGeneration } from '@/services/api'
 import VideoPlayer from './VideoPlayer'
 import StudentInteractionPanel from './StudentInteractionPanel'
 import VideoNotesPanel from './StudyNotes/VideoNotesPanel'

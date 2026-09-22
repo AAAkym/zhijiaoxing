@@ -1,6 +1,15 @@
 import { io } from 'socket.io-client'
 
-const SOCKET_URL = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000'
+// 与 services/searchApi.js 保持同一套写法：裸写 import.meta 会让 Jest（以 CommonJS
+// 加载本模块）在**解析期**就报 "Cannot use 'import.meta' outside a module"，
+// 整个依赖它的测试套件都跑不起来（StudentInteractionPanel 就是这样被禁用的）。
+// Vite 构建时会把 import.meta.env 静态替换掉；Jest 下由 jest.config.js 的
+// globals.import_meta_env 注入同名字面量。两种运行时都能读到 VITE_API_BASE_URL。
+const API_BASE_URL =
+  // eslint-disable-next-line no-undef -- 由 Vite / jest.config globals 注入
+  (typeof import_meta_env !== 'undefined' && import_meta_env?.VITE_API_BASE_URL) || '/api'
+
+const SOCKET_URL = API_BASE_URL.replace('/api', '') || 'http://localhost:5000'
 
 class WebSocketService {
   constructor() {

@@ -1,3 +1,6 @@
+// 本文件测的是 searchApi 的**真实实现**，因此必须绕开 jest.config.js 里
+// 把 '@/services/searchApi' 指向共享 mock 的 moduleNameMapper。
+// 用相对路径导入真实模块（该路径没有 mapper 规则，不会命中 mock）。
 import { searchApi } from '../searchApi'
 
 global.fetch = vi.fn()

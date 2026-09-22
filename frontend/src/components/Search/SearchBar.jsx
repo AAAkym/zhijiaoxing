@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Search, TrendingUp, Clock, X, Loader2 } from 'lucide-react'
-import { searchApi } from '../../services/searchApi'
+import { searchApi } from '@/services/searchApi'
 import './SearchBar.css'
 
 const SEARCH_TYPES = [
