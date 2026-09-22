@@ -129,6 +129,16 @@ test('restores a persisted workflow from its full detail', async () => {
   expect(screen.getByText('方案已保存')).toBeInTheDocument()
 })
 
+// 这个用例的耗时预算是显式放宽的，原因是它本身就是一个长链路集成测试：
+// 要依次完成「选课程 → 选班级 → 选学生 → 拆分知识点 → 读取证据制定方案 →
+// 确认方案生成资源」六步交互，每步都走 userEvent（内部含 act + 真实计时器），
+// 再叠加十余处 findBy*/waitFor 的等待。它实测稳定落在 9~11 秒区间，
+// 恰好压在 jest.config.js 的全局 testTimeout=10000 上，于是随机超时。
+//
+// 这不属于产品缺陷，也不是陈旧断言，而是**测试自身的运行预算问题**：
+// 断言内容（"写操作只在显式动作后发生"）完全是正确且重要的，
+// 只是给它 10 秒不够。因此这里单点放宽，而不是改动全局 testTimeout ——
+// 全局放宽会让真正卡死的用例也一起变慢，掩盖问题。
 test('runs the real first-stage workflow and writes only after explicit action', async () => {
   const user = userEvent.setup()
   render(<PersonalizedTeachingWorkbench />)
@@ -165,7 +175,7 @@ test('runs the real first-stage workflow and writes only after explicit action',
   await waitFor(() => expect(courseGeneration.saveWorkflowDraft).toHaveBeenCalledWith('wf_test'))
   await user.click(screen.getByRole('button', { name: /提交AI审核/ }))
   await waitFor(() => expect(courseGeneration.submitWorkflowReview).toHaveBeenCalledWith('wf_test'))
-})
+}, 30000)
 
 test('publishes an automatically reviewed resource package to the selected student', async () => {
   const user = userEvent.setup()
