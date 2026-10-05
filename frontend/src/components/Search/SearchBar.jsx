@@ -44,6 +44,10 @@ export function SearchBar({
     }
   }, [autoFocus])
 
+  // 卸载时清掉未触发的防抖计时器：否则在防抖窗口内切换页面，回调仍会
+  // 对已卸载组件 setState 并发出多余的 autocomplete 请求
+  useEffect(() => () => clearTimeout(debounceRef.current), [])
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
