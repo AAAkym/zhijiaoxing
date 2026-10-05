@@ -17,6 +17,7 @@ import {
   Play
 } from 'lucide-react'
 import '@/styles/rich-text-editor.css'
+import { formatApiDateTime } from '@/utils/apiDate'
 
 export default function NoteViewer({ note, onBack, onEdit }) {
   if (!note) {
@@ -32,17 +33,7 @@ export default function NoteViewer({ note, onBack, onEdit }) {
     )
   }
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '-'
-    const date = new Date(dateString)
-    return date.toLocaleDateString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
+  const formatDate = (dateString) => formatApiDateTime(dateString)
 
   const formatTimestamp = (seconds) => {
     if (!seconds) return null

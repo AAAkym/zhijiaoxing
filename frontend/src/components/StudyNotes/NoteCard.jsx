@@ -13,25 +13,18 @@ import {
   Bot
 } from 'lucide-react'
 import { getTagColor } from './NoteSearch'
+import { formatApiDate } from '@/utils/apiDate'
 
-export default function NoteCard({ 
-  note, 
-  variant = 'card', 
-  onView, 
-  onEdit, 
+export default function NoteCard({
+  note,
+  variant = 'card',
+  onView,
+  onEdit,
   onDelete,
   highlightedTitle,
   highlightedContent
 }) {
-  const formatDate = (dateString) => {
-    if (!dateString) return '-'
-    const date = new Date(dateString)
-    return date.toLocaleDateString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    })
-  }
+  const formatDate = (dateString) => formatApiDate(dateString)
 
   const formatTimestamp = (seconds) => {
     if (!seconds) return null

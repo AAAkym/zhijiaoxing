@@ -41,6 +41,7 @@ import {
   ClipboardCheck
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area } from 'recharts'
+import { formatApiDateTime } from '@/utils/apiDate'
 import { courses, ai, auth, student, studentSettings as studentSettingsApi, notes, mistakeBook, achievements as achievementApi } from '../services/api'
 import { useNavigate } from 'react-router-dom'
 import zhijiaoXingSymbol from '@/assets/zhijiaoxing-symbol.svg'
@@ -1709,7 +1710,7 @@ export default function StudentDashboard({ user, onLogout }) {
                            <BookOpen className="h-5 w-5 text-[#c47a3a]" />}
                           <div>
                             <p className="text-sm font-medium">{activity.description || activity.title}</p>
-                            <p className="text-xs text-[#9a9590]">{activity.time || activity.created_at || ''}</p>
+                            <p className="text-xs text-[#9a9590]">{formatApiDateTime(activity.time || activity.created_at)}</p>
                           </div>
                         </div>
                       ))}
