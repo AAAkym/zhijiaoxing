@@ -85,7 +85,8 @@ test('renders persisted execution totals and per-agent rows', async () => {
   expect(rows.some((row) => row.textContent.includes('视频脚本智能体'))).toBe(true)
   // 68 秒必须按秒展示，而不是 68000。
   expect(screen.getByText('68.0 s')).toBeInTheDocument()
-  expect(courseGeneration.getAgentExecutionHistory).toHaveBeenCalledWith(30)
+  // 默认窗口为 90 天：30 天窗口内往往没有执行记录，会呈现误导性空态（J2-03）。
+  expect(courseGeneration.getAgentExecutionHistory).toHaveBeenCalledWith(90)
 })
 
 test('declares pipeline stages that have no execution evidence', async () => {
