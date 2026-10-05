@@ -270,7 +270,7 @@ export default function LearningPlanSystem({ user }) {
           }}>
             {[
               { label: '认知风格', value: { visual: '视觉型', auditory: '听觉型', kinesthetic: '动觉型', reading: '阅读型', mixed: '混合型' }[profile.cognitive_style] || profile.cognitive_style || '未设置', icon: '🧠' },
-              { label: '学习节奏', value: { fast: '快速型', moderate: '适中型', slow: '深度型', adaptive: '灵活型' }[profile.learning_pace] || profile.learning_pace || '未设置', icon: '⏱️' },
+              { label: '学习节奏', value: { fast: '较快', moderate: '适中', slow: '偏慢', adaptive: '自适应' }[profile.learning_pace] || profile.learning_pace || '未设置', icon: '⏱️' },
               { label: '目标导向', value: { exam: '应试导向', career: '职业发展', hobby: '兴趣驱动', research: '学术研究' }[profile.goal_orientation] || profile.goal_orientation || '未设置', icon: '🎯' },
               { label: '互动偏好', value: { guided: '引导式', independent: '自主式', collaborative: '协作式', competitive: '竞争式' }[profile.interaction_preference] || profile.interaction_preference || '未设置', icon: '💬' },
             ].map(item => (

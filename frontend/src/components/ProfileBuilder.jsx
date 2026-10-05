@@ -45,8 +45,11 @@ const STYLE_LABELS = {
   visual: '视觉型', auditory: '听觉型', kinesthetic: '动觉型',
   reading: '阅读型', mixed: '混合型',
 }
+// 维度取值的中文标签与后端 profile_explainability_service.VALUE_LABELS 保持一致：
+// 同一个原始值（如 slow）在页面的"特征层"与"维度详情"必须显示同一个词，
+// 否则并排呈现时像互相矛盾的数据。
 const PACE_LABELS = {
-  fast: '快速型', moderate: '适中型', slow: '深度型', adaptive: '灵活型',
+  fast: '较快', moderate: '适中', slow: '偏慢', adaptive: '自适应',
 }
 const GOAL_LABELS = {
   exam: '应试导向', career: '职业发展', hobby: '兴趣驱动', research: '学术研究',

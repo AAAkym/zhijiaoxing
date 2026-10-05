@@ -39,7 +39,7 @@ const STYLE_LABELS = {
   reading: '阅读型', mixed: '混合型',
 }
 const PACE_LABELS = {
-  fast: '快速型', moderate: '适中型', slow: '深度型', adaptive: '灵活型',
+  fast: '较快', moderate: '适中', slow: '偏慢', adaptive: '自适应',
 }
 const GOAL_LABELS = {
   exam: '应试导向', career: '职业发展', hobby: '兴趣驱动', research: '学术研究',
