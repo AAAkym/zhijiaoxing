@@ -152,6 +152,7 @@ export default function VideoNotesPanel({
           variant="ghost"
           size="sm"
           onClick={onToggleExpand}
+          aria-label="展开视频笔记面板"
           className="mb-4"
         >
           <ChevronLeft className="w-4 h-4" />
@@ -161,6 +162,7 @@ export default function VideoNotesPanel({
             variant="ghost"
             size="sm"
             onClick={handleAddNote}
+            aria-label="添加视频笔记"
             className="relative"
           >
             <Plus className="w-4 h-4" />
@@ -187,7 +189,7 @@ export default function VideoNotesPanel({
             </Badge>
           )}
         </div>
-        <Button variant="ghost" size="sm" onClick={onToggleExpand}>
+        <Button variant="ghost" size="sm" onClick={onToggleExpand} aria-label="收起视频笔记面板">
           <ChevronRight className="w-4 h-4" />
         </Button>
       </div>
@@ -266,7 +268,7 @@ export default function VideoNotesPanel({
 
       <ScrollArea className="flex-1">
         {loading ? (
-          <div className="flex items-center justify-center py-8">
+          <div className="flex items-center justify-center py-8" role="status" aria-label="笔记加载中">
             <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
           </div>
         ) : sortedNotes.length === 0 ? (
@@ -292,13 +294,18 @@ export default function VideoNotesPanel({
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex items-center gap-2">
                       {note.video_timestamp !== null && note.video_timestamp !== undefined && (
-                        <Badge
-                          variant="outline"
-                          className="text-blue-600 border-blue-200 cursor-pointer hover:bg-blue-100"
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleSeekToNote(note.video_timestamp)
+                          }}
+                          aria-label={`跳转到 ${formatTimestamp(note.video_timestamp)}`}
+                          className="inline-flex items-center rounded-full border border-blue-200 px-2 py-0.5 text-xs text-blue-600 cursor-pointer hover:bg-blue-100"
                         >
                           <Play className="w-3 h-3 mr-1" />
                           {formatTimestamp(note.video_timestamp)}
-                        </Badge>
+                        </button>
                       )}
                     </div>
                     <div className="flex gap-1">
@@ -306,6 +313,7 @@ export default function VideoNotesPanel({
                         variant="ghost"
                         size="sm"
                         className="h-6 w-6 p-0"
+                        aria-label="编辑笔记"
                         onClick={(e) => {
                           e.stopPropagation()
                           handleEditNote(note)
@@ -317,6 +325,7 @@ export default function VideoNotesPanel({
                         variant="ghost"
                         size="sm"
                         className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                        aria-label="删除笔记"
                         onClick={(e) => {
                           e.stopPropagation()
                           handleDeleteNote(note.id)

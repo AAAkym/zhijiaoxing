@@ -253,29 +253,29 @@ describe('VideoNotesPanel 组件', () => {
   })
 
   describe('编辑笔记', () => {
-    it('应该显示编辑按钮', async () => {
+    it('应该显示带可访问名的编辑按钮', async () => {
       render(<VideoNotesPanel {...mockProps} />)
-      
+
       await waitFor(() => {
-        const editButtons = screen.getAllByRole('button', { name: '' })
-        expect(editButtons.length).toBeGreaterThan(0)
+        // 编辑按钮曾是无名图标按钮（屏幕阅读器不可知），现已补 aria-label
+        expect(screen.getAllByRole('button', { name: '编辑笔记' }).length).toBeGreaterThan(0)
+        expect(screen.getAllByRole('button', { name: '删除笔记' }).length).toBeGreaterThan(0)
       })
     })
 
     it('点击编辑应该显示编辑器并填充内容', async () => {
       render(<VideoNotesPanel {...mockProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('变量定义笔记')).toBeInTheDocument()
       })
-      
-      // 时间戳是 Badge（不是 button）；编辑/删除是**纯图标按钮**，没有可访问名。
-      // 因此先按时间戳文本定位卡片，再用图标 testid 找到编辑按钮。
+
+      // 时间戳现在是真正的 <button>；编辑按钮带可访问名，可直接按角色定位
       const firstNoteCard = screen.getByText('1:00').closest('div[class*="rounded-xl"]')
       const editButton = firstNoteCard.querySelector('[data-testid="icon-Edit3"]').closest('button')
-      
+
       await userEvent.click(editButton)
-      
+
       expect(screen.getByDisplayValue('变量定义笔记')).toBeInTheDocument()
       expect(screen.getByDisplayValue('Python中变量不需要声明类型')).toBeInTheDocument()
     })
