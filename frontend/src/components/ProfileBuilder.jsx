@@ -358,10 +358,11 @@ export default function ProfileBuilder() {
       },
       {
         key: 'interest_areas', label: '兴趣领域', icon: Sparkles, color: DIMENSION_COLORS.interest_areas,
+        // 兴趣条目可能存在 area 为空白的占位记录，不过滤会渲染成孤立的分隔符 ","
         value: profile.interest_areas && profile.interest_areas.length > 0
-          ? profile.interest_areas.map(a => a.area).join(', ')
+          ? profile.interest_areas.map(a => (a?.area || '').trim()).filter(Boolean).join('、') || '未设置'
           : '未设置',
-        filled: profile.interest_areas && profile.interest_areas.length > 0,
+        filled: profile.interest_areas && profile.interest_areas.some(a => (a?.area || '').trim()),
       },
       {
         key: 'goal_orientation', label: '目标导向', icon: Target, color: DIMENSION_COLORS.goal_orientation,
