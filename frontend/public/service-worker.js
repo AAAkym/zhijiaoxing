@@ -124,8 +124,8 @@ function isStaticAsset(request) {
  */
 function isAPIRequest(request) {
   const url = new URL(request.url)
-  return url.pathname.startsWith('/api/') || 
-         url.pathname.startsWith('/auth/')
+  // 此前还匹配 '/auth/'，但前后端都不存在该前缀（第二轮 BUG-018 清理）
+  return url.pathname.startsWith('/api/')
 }
 
 /**

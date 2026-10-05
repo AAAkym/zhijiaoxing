@@ -185,9 +185,11 @@ class Config:
 class DevelopmentConfig(Config):
     """开发环境配置"""
     DEBUG = True
+    # SQL echo 默认关闭：此前无条件 True，运行日志被 SQLAlchemy 语句刷屏，
+    # 真正的告警与报错被淹没（夜间巡查 BUG-ENV-003）。需要时设 SQLALCHEMY_ECHO=true。
     SQLALCHEMY_ENGINE_OPTIONS = {
         **Config.SQLALCHEMY_ENGINE_OPTIONS,
-        'echo': True,  # 开发环境打印SQL语句方便调试
+        'echo': os.environ.get('SQLALCHEMY_ECHO', '').lower() in ('1', 'true', 'yes'),
     }
 
     # 开发环境使用SimpleCache (内存缓存，无需安装Redis服务器)
