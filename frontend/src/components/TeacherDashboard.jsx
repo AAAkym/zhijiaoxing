@@ -510,31 +510,11 @@ export default function TeacherDashboard({ user, onLogout }) {
     })
   }
 
-  // 学情分析数据
-  const [studentProgressData, setStudentProgressData] = useState([
-    { name: '优秀', value: 30, color: '#10B981' },
-    { name: '良好', value: 45, color: '#3B82F6' },
-    { name: '一般', value: 20, color: '#F59E0B' },
-    { name: '待提高', value: 5, color: '#EF4444' }
-  ])
-  const [weeklyActivityData, setWeeklyActivityData] = useState([
-    { day: '周一', activity: 45 },
-    { day: '周二', activity: 52 },
-    { day: '周三', activity: 38 },
-    { day: '周四', activity: 61 },
-    { day: '周五', activity: 55 },
-    { day: '周六', activity: 28 },
-    { day: '周日', activity: 32 }
-  ])
-  const [learningTrendData, setLearningTrendData] = useState([
-    { name: '01/01', pv: 4000, uv: 2400 },
-    { name: '01/02', pv: 3000, uv: 1398 },
-    { name: '01/03', pv: 9800, uv: 2290 },
-    { name: '01/04', pv: 2780, uv: 3908 },
-    { name: '01/05', pv: 4800, uv: 2181 },
-    { name: '01/06', pv: 3800, uv: 2500 },
-    { name: '01/07', pv: 4300, uv: 2100 }
-  ])
+  // 学情分析数据：初始为空，等真实数据到达后再渲染。
+  // 此前初始值和失败回退都填的是编造的演示数字，教师会把它们当成真实学情。
+  const [studentProgressData, setStudentProgressData] = useState([])
+  const [weeklyActivityData, setWeeklyActivityData] = useState([])
+  const [learningTrendData, setLearningTrendData] = useState([])
   const [recentActivities, setRecentActivities] = useState([])
   // AI 教学数据分析报告相关状态
   const [aiReport, setAiReport] = useState(null)
@@ -618,86 +598,36 @@ export default function TeacherDashboard({ user, onLogout }) {
           teacherApi.getLearningTrend()
         ])
         
-        // 学生进度分布
+        // 学生进度分布：全零分布画出来是看不见的空饼图，按无数据处理
         if (progressRes.status === 'fulfilled') {
           const data = progressRes.value?.data || progressRes.value?.distribution || []
-          if (Array.isArray(data) && data.length > 0) {
-            setStudentProgressData(data)
-          } else {
-            // 模拟数据：学生学习进度分布
-            setStudentProgressData([
-              { name: '优秀', value: 30, color: '#10B981' },
-              { name: '良好', value: 45, color: '#3B82F6' },
-              { name: '一般', value: 20, color: '#F59E0B' },
-              { name: '待提高', value: 5, color: '#EF4444' }
-            ])
-          }
+          setStudentProgressData(
+            Array.isArray(data) ? data.filter(d => Number(d?.value) > 0) : []
+          )
         }
-        
+
         // 每周活动数据
         if (activityRes.status === 'fulfilled') {
           const data = activityRes.value?.data || activityRes.value?.activity || []
-          if (Array.isArray(data) && data.length > 0) {
-            setWeeklyActivityData(data)
-          } else {
-            // 模拟数据：每周学习活动
-            setWeeklyActivityData([
-              { day: '周一', activity: 45 },
-              { day: '周二', activity: 52 },
-              { day: '周三', activity: 38 },
-              { day: '周四', activity: 61 },
-              { day: '周五', activity: 55 },
-              { day: '周六', activity: 28 },
-              { day: '周日', activity: 32 }
-            ])
-          }
+          setWeeklyActivityData(
+            Array.isArray(data) ? data.filter(d => Number(d?.activity) > 0) : []
+          )
         }
-        
+
         // 学习趋势数据
         if (trendRes.status === 'fulfilled') {
           const data = trendRes.value?.data || trendRes.value?.trend || []
-          if (Array.isArray(data) && data.length > 0) {
-            setLearningTrendData(data)
-          } else {
-            // 模拟数据：学习趋势
-            setLearningTrendData([
-              { name: '01/01', pv: 4000, uv: 2400 },
-              { name: '01/02', pv: 3000, uv: 1398 },
-              { name: '01/03', pv: 9800, uv: 2290 },
-              { name: '01/04', pv: 2780, uv: 3908 },
-              { name: '01/05', pv: 4800, uv: 2181 },
-              { name: '01/06', pv: 3800, uv: 2500 },
-              { name: '01/07', pv: 4300, uv: 2100 }
-            ])
-          }
+          setLearningTrendData(
+            Array.isArray(data)
+              ? data.filter(d => Number(d?.pv) > 0 || Number(d?.uv) > 0)
+              : []
+          )
         }
       } catch (err) {
-        console.warn('加载分析数据失败，使用模拟数据', err)
-        // 全部使用模拟数据
-        setStudentProgressData([
-          { name: '优秀', value: 30, color: '#10B981' },
-          { name: '良好', value: 45, color: '#3B82F6' },
-          { name: '一般', value: 20, color: '#F59E0B' },
-          { name: '待提高', value: 5, color: '#EF4444' }
-        ])
-        setWeeklyActivityData([
-          { day: '周一', activity: 45 },
-          { day: '周二', activity: 52 },
-          { day: '周三', activity: 38 },
-          { day: '周四', activity: 61 },
-          { day: '周五', activity: 55 },
-          { day: '周六', activity: 28 },
-          { day: '周日', activity: 32 }
-        ])
-        setLearningTrendData([
-          { name: '01/01', pv: 4000, uv: 2400 },
-          { name: '01/02', pv: 3000, uv: 1398 },
-          { name: '01/03', pv: 9800, uv: 2290 },
-          { name: '01/04', pv: 2780, uv: 3908 },
-          { name: '01/05', pv: 4800, uv: 2181 },
-          { name: '01/06', pv: 3800, uv: 2500 },
-          { name: '01/07', pv: 4300, uv: 2100 }
-        ])
+        console.warn('加载分析数据失败，展示空态', err)
+        setStudentProgressData([])
+        setWeeklyActivityData([])
+        setLearningTrendData([])
       }
     }
 

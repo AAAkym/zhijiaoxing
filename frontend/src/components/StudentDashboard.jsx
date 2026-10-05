@@ -119,20 +119,10 @@ export default function StudentDashboard({ user, onLogout }) {
   const abortControllerRef = useRef(null)
   const pollIntervalRef = useRef(null)
 
-  const [weeklyProgressData, setWeeklyProgressData] = useState([
-    { day: '周一', hours: 2.5, completed: 3 },
-    { day: '周二', hours: 3.2, completed: 4 },
-    { day: '周三', hours: 1.8, completed: 2 },
-    { day: '周四', hours: 4.1, completed: 5 },
-    { day: '周五', hours: 3.5, completed: 4 },
-    { day: '周六', hours: 2.0, completed: 2 },
-    { day: '周日', hours: 2.8, completed: 3 }
-  ])
-  const [courseProgressData, setCourseProgressData] = useState([
-    { name: 'Python 基础', progress: 78, color: '#d4a853' },
-    { name: 'TensorFlow.js', progress: 65, color: '#5a9e6f' },
-    { name: '深度学习', progress: 45, color: '#c47a3a' }
-  ])
+  // 图表初始为空，等真实数据到达后再渲染；不预填演示数据
+  // （此前预填的"每周 2.5 小时 / Python基础 78%"是编造数字，用户会当真）
+  const [weeklyProgressData, setWeeklyProgressData] = useState([])
+  const [courseProgressData, setCourseProgressData] = useState([])
   const [recentActivities, setRecentActivities] = useState([])
 
   const menuItems = [
@@ -299,47 +289,19 @@ export default function StudentDashboard({ user, onLogout }) {
     try {
       const res = await student.getLearningProgressChart()
       const data = res?.data || res || {}
-      if (data.weekly_progress && Array.isArray(data.weekly_progress) && data.weekly_progress.length > 0) {
-        setWeeklyProgressData(data.weekly_progress)
-      } else {
-        // 模拟数据：每周学习时长
-        setWeeklyProgressData([
-          { day: '周一', hours: 2.5, completed: 3 },
-          { day: '周二', hours: 3.2, completed: 4 },
-          { day: '周三', hours: 1.8, completed: 2 },
-          { day: '周四', hours: 4.1, completed: 5 },
-          { day: '周五', hours: 3.5, completed: 4 },
-          { day: '周六', hours: 2.0, completed: 2 },
-          { day: '周日', hours: 2.8, completed: 3 }
-        ])
-      }
-      if (data.course_progress && Array.isArray(data.course_progress) && data.course_progress.length > 0) {
-        setCourseProgressData(data.course_progress)
-      } else {
-        // 模拟数据：课程完成度
-        setCourseProgressData([
-          { name: 'Python 基础', progress: 78, color: '#d4a853' },
-          { name: 'TensorFlow.js', progress: 65, color: '#5a9e6f' },
-          { name: '深度学习', progress: 45, color: '#c47a3a' }
-        ])
-      }
+      // 全零条目对图表没有信息量（画出来是一张看不见的空图），按无数据处理
+      const weekly = Array.isArray(data.weekly_progress)
+        ? data.weekly_progress.filter(d => Number(d?.hours) > 0 || Number(d?.completed) > 0)
+        : []
+      setWeeklyProgressData(weekly)
+      const courses = Array.isArray(data.course_progress)
+        ? data.course_progress.filter(d => Number(d?.progress) > 0)
+        : []
+      setCourseProgressData(courses)
     } catch (error) {
-      console.warn('获取学习进度图表数据失败，使用模拟数据', error)
-      // 全部使用模拟数据
-      setWeeklyProgressData([
-        { day: '周一', hours: 2.5, completed: 3 },
-        { day: '周二', hours: 3.2, completed: 4 },
-        { day: '周三', hours: 1.8, completed: 2 },
-        { day: '周四', hours: 4.1, completed: 5 },
-        { day: '周五', hours: 3.5, completed: 4 },
-        { day: '周六', hours: 2.0, completed: 2 },
-        { day: '周日', hours: 2.8, completed: 3 }
-      ])
-      setCourseProgressData([
-        { name: 'Python 基础', progress: 78, color: '#d4a853' },
-        { name: 'TensorFlow.js', progress: 65, color: '#5a9e6f' },
-        { name: '深度学习', progress: 45, color: '#c47a3a' }
-      ])
+      console.warn('获取学习进度图表数据失败，展示空态', error)
+      setWeeklyProgressData([])
+      setCourseProgressData([])
     }
   }, [])
 
