@@ -40,6 +40,7 @@ def get_client_ip():
 
 
 @search_bp.route('', methods=['GET', 'POST'])
+@require_auth
 def search():
     """
     全局搜索接口
@@ -139,6 +140,7 @@ def search():
 
 
 @search_bp.route('/courses', methods=['GET'])
+@require_auth
 def search_courses():
     """
     课程搜索接口
@@ -188,6 +190,7 @@ def search_courses():
 
 
 @search_bp.route('/knowledge', methods=['GET'])
+@require_auth
 def search_knowledge():
     """
     知识库搜索接口
@@ -222,6 +225,7 @@ def search_knowledge():
 
 
 @search_bp.route('/contents', methods=['GET'])
+@require_auth
 def search_contents():
     """
     课程内容搜索接口
@@ -256,6 +260,7 @@ def search_contents():
 
 
 @search_bp.route('/advanced', methods=['POST'])
+@require_auth
 def advanced_search():
     """
     高级搜索接口
@@ -301,6 +306,7 @@ def advanced_search():
 
 
 @search_bp.route('/autocomplete', methods=['GET'])
+@require_auth
 def autocomplete():
     """
     自动补全接口
@@ -332,6 +338,7 @@ def autocomplete():
 
 
 @search_bp.route('/suggestions', methods=['GET'])
+@require_auth
 def get_suggestions():
     """
     获取热门搜索建议
@@ -354,6 +361,7 @@ def get_suggestions():
 
 
 @search_bp.route('/recommendations', methods=['GET'])
+@require_auth
 def get_recommendations():
     """
     获取个性化推荐
@@ -380,6 +388,7 @@ def get_recommendations():
 
 
 @search_bp.route('/related', methods=['GET'])
+@require_auth
 def get_related():
     """
     获取相关搜索

@@ -29,8 +29,10 @@ BASE_PATH = "/api"
 
 from flask import url_for
 
-# 前缀豁免：SSE 流内鉴权（见上），公开搜索联想（待决策项，暂按现状锁定为"公开"）
-EXEMPT_PREFIXES = ("/api/sse/", "/api/search/")
+# 前缀豁免：SSE 流内鉴权（见上）。
+# 注：/api/search/* 曾按"公开搜索联想"豁免，第二轮 D-1 已采纳推荐方案
+# 为全部搜索读路由补上 @require_auth（见 search_routes.py），故不再豁免。
+EXEMPT_PREFIXES = ("/api/sse/",)
 
 # 精确豁免：认证入口本身必然 200/400
 EXEMPT_RULES = {
@@ -109,10 +111,11 @@ def test_all_api_get_routes_reject_unauthenticated_with_json(app):
     )
 
 
-def test_exempt_search_routes_stay_public_by_current_decision(app):
-    """/api/search/* 当前按"公开"决策豁免。若未来加了守卫，
-    本测试提醒更新豁免清单，避免豁免与实现漂移。"""
+def test_search_routes_now_require_auth(app):
+    """第二轮 D-1：搜索读路由曾未认证公开，现已补 @require_auth。
+    本测试锁定该决策，防止将来被无意回退为公开。"""
     client = app.test_client()
-    response = client.get("/api/search/suggestions")
-    # 只要不是 SPA 兜底的 HTML 即可；200（公开）或 401（未来加守卫）都接受
-    assert not response.get_data(as_text=True).lstrip().startswith("<!DOCTYPE")
+    for path in ("/api/search/autocomplete", "/api/search/suggestions", "/api/search/courses"):
+        response = client.get(path)
+        assert response.status_code in (401, 403), f"{path} 应拒绝未认证访问"
+        assert response.is_json, f"{path} 应返回 JSON 错误而非 HTML"
