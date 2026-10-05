@@ -326,44 +326,39 @@ describe('VideoNotesPanel 组件', () => {
 
     it('应该成功删除笔记', async () => {
       notes.deleteNote.mockResolvedValue({})
-      window.confirm = vi.fn(() => true)
-      
       render(<VideoNotesPanel {...mockProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('变量定义笔记')).toBeInTheDocument()
       })
-      
-      // 用时间戳定位卡片；删除按钮是纯图标，按 testid 找到它。
-      const firstNoteCard = screen.getByText('1:00').closest('div[class*="rounded-xl"]')
-      const deleteButton = firstNoteCard
-        .querySelector('[data-testid="icon-Trash2"]')
-        .closest('button')
-      
+
+      // 删除按钮已带可访问名；两条笔记各有同名按钮，取第一张卡片的
+      const deleteButton = screen.getAllByRole('button', { name: '删除笔记' })[0]
+
       await userEvent.click(deleteButton)
-      
+
+      expect(screen.getByText('删除这条视频笔记？')).toBeInTheDocument()
+      await userEvent.click(screen.getByRole('button', { name: '删除' }))
+
       await waitFor(() => {
         expect(notes.deleteNote).toHaveBeenCalledWith(1)
       })
     })
 
     it('取消删除不应该调用API', async () => {
-      window.confirm = vi.fn(() => false)
-      
       render(<VideoNotesPanel {...mockProps} />)
-      
+
       await waitFor(() => {
         expect(screen.getByText('变量定义笔记')).toBeInTheDocument()
       })
-      
-      // 用时间戳定位卡片；删除按钮是纯图标，按 testid 找到它。
-      const firstNoteCard = screen.getByText('1:00').closest('div[class*="rounded-xl"]')
-      const deleteButton = firstNoteCard
-        .querySelector('[data-testid="icon-Trash2"]')
-        .closest('button')
-      
+
+      const deleteButton = screen.getAllByRole('button', { name: '删除笔记' })[0]
+
       await userEvent.click(deleteButton)
-      
+
+      expect(screen.getByText('删除这条视频笔记？')).toBeInTheDocument()
+      await userEvent.click(screen.getByRole('button', { name: '取消' }))
+
       expect(notes.deleteNote).not.toHaveBeenCalled()
     })
   })

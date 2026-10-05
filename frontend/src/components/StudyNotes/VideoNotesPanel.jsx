@@ -6,6 +6,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
   ChevronLeft,
   ChevronRight,
   Plus,
@@ -38,6 +48,8 @@ export default function VideoNotesPanel({
   const [noteContent, setNoteContent] = useState('')
   const [noteTimestamp, setNoteTimestamp] = useState(0)
   const [saving, setSaving] = useState(false)
+  // 待确认删除的笔记 id；null 表示确认框关闭
+  const [deleteTargetId, setDeleteTargetId] = useState(null)
 
   const fetchNotes = useCallback(async () => {
     if (!videoId) return
@@ -124,7 +136,14 @@ export default function VideoNotesPanel({
   }
 
   const handleDeleteNote = async (noteId) => {
-    if (!confirm('确定要删除这条笔记吗？')) return
+    // 删除确认走应用内 AlertDialog，与全站交互语言一致
+    setDeleteTargetId(noteId)
+  }
+
+  const confirmDeleteNote = async () => {
+    const noteId = deleteTargetId
+    setDeleteTargetId(null)
+    if (!noteId) return
 
     try {
       await notes.deleteNote(noteId)
@@ -355,6 +374,31 @@ export default function VideoNotesPanel({
           </p>
         </div>
       )}
+
+      <AlertDialog
+        open={deleteTargetId !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTargetId(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>删除这条视频笔记？</AlertDialogTitle>
+            <AlertDialogDescription>
+              删除后无法恢复。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 text-white hover:bg-red-700"
+              onClick={confirmDeleteNote}
+            >
+              删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

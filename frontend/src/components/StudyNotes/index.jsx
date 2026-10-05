@@ -3,6 +3,16 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
   LayoutGrid,
   List,
   Plus,
@@ -31,6 +41,8 @@ export default function StudyNotes({ myCourses = [] }) {
   const [selectedTags, setSelectedTags] = useState([])
   const [tagColors, setTagColors] = useState({})
   const [selectedNoteIds, setSelectedNoteIds] = useState([])
+  // 待确认删除的笔记 id；null 表示确认框关闭
+  const [deleteTargetId, setDeleteTargetId] = useState(null)
   
   const [searchParams, setSearchParams] = useState({
     keyword: '',
@@ -191,8 +203,15 @@ export default function StudyNotes({ myCourses = [] }) {
   }
 
   const handleDeleteNote = async (noteId) => {
-    if (!confirm('确定要删除这条笔记吗？')) return
-    
+    // 删除确认走应用内 AlertDialog（见文件末尾），不再用阻塞式原生 confirm
+    setDeleteTargetId(noteId)
+  }
+
+  const confirmDeleteNote = async () => {
+    const noteId = deleteTargetId
+    setDeleteTargetId(null)
+    if (!noteId) return
+
     try {
       await notes.deleteNote(noteId)
       fetchNotes()
@@ -540,6 +559,31 @@ export default function StudyNotes({ myCourses = [] }) {
           </>
         )}
       </div>
+
+      <AlertDialog
+        open={deleteTargetId !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTargetId(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>删除这篇笔记？</AlertDialogTitle>
+            <AlertDialogDescription>
+              删除后无法恢复。笔记内容、标签与视频时间点将一并移除。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 text-white hover:bg-red-700"
+              onClick={confirmDeleteNote}
+            >
+              删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
