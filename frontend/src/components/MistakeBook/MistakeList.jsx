@@ -312,12 +312,14 @@ export default function MistakeList({
     <div className="space-y-4">
       <div className="flex flex-wrap gap-4 items-center">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600">课程筛选:</span>
+          <label htmlFor="mistake-course-filter" className="text-sm text-gray-600">
+            课程筛选:
+          </label>
           <Select
             value={filters.course_id || 'all'}
             onValueChange={handleCourseFilter}
           >
-            <SelectTrigger className="w-48">
+            <SelectTrigger id="mistake-course-filter" aria-label="课程筛选" className="w-48">
               <SelectValue placeholder="全部课程" />
             </SelectTrigger>
             <SelectContent>
