@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react'
+// 学习计划日历（丰富化 T2）：手写月历网格。FullCalendar 的 React 适配器
+// 在 React 19 下切到日历 tab 即整树崩溃（实测白屏），30 行月历自实现零风险。
+// 带扩展名导入：v6 的 exports 通配条目在 Vite import-analysis 下对无扩展名子路径解析失败
 import { learningPathApi, profileApi, student } from '@/services/api'
 import {
   Map, List, Brain, Target, Clock, TrendingUp, BookOpen, Video, FileText,
   Code, Star, ChevronRight, ChevronDown, CheckCircle, Lock, PlayCircle,
-  Filter, RefreshCw, Loader2, Sparkles, X, ThumbsUp, ThumbsDown, Eye, AlertTriangle
+  Filter, RefreshCw, Loader2, Sparkles, X, ThumbsUp, ThumbsDown, Eye, AlertTriangle, CalendarDays
 } from 'lucide-react'
 
 const STATUS_CONFIG = {
@@ -250,6 +253,7 @@ export default function LearningPlanSystem({ user }) {
     { key: 'path', label: '学习路径', icon: Map },
     { key: 'recommend', label: '智能推荐', icon: List },
     { key: 'plan', label: 'AI规划', icon: Brain },
+    { key: 'calendar', label: '日历视图', icon: CalendarDays },
   ]
 
   return (
@@ -357,6 +361,8 @@ export default function LearningPlanSystem({ user }) {
             errorMsg={errorMsg}
           />
         )}
+
+        {activeTab === 'calendar' && <CalendarView plans={plans} />}
       </div>
     </div>
   )
@@ -1137,6 +1143,136 @@ function PlanView({ plans, onGenerate, loading, errorMsg }) {
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+// ===== 日历视图（丰富化 T2）=====
+// AI 规划里的 milestone 只带 week 序号（第 N 周），没有绝对日期。
+// 这里以"本周一"为第 1 周起点，把每个 milestone 映射为一周跨度的日历事件，
+// 让学生能在月历上直观看到"第几周干什么"。
+function mondayOfCurrentWeek() {
+  const now = new Date()
+  const day = now.getDay() === 0 ? 7 : now.getDay() // 周一为一周开始
+  const monday = new Date(now)
+  monday.setDate(now.getDate() - (day - 1))
+  monday.setHours(0, 0, 0, 0)
+  return monday
+}
+
+function CalendarView({ plans }) {
+  const latestPlan = plans[0]
+  const milestones = latestPlan?.milestones || []
+
+  const events = milestones
+    .filter(ms => ms && ms.week)
+    .map(ms => {
+      const start = mondayOfCurrentWeek()
+      start.setDate(start.getDate() + (ms.week - 1) * 7)
+      const end = new Date(start)
+      end.setDate(end.getDate() + 6) // FullCalendar 的 end 为排他边界
+      const taskCount = Array.isArray(ms.tasks) ? ms.tasks.length : 0
+      return {
+        title: `第${ms.week}周 · ${ms.phase || ms.focus || '学习阶段'}${taskCount ? `（${taskCount} 项任务）` : ''}`,
+        start: start.toISOString().slice(0, 10),
+        end: end.toISOString().slice(0, 10),
+        backgroundColor: ms.week % 2 === 0 ? '#6366f1' : '#3b82f6',
+        borderColor: 'transparent',
+      }
+    })
+
+  return (
+    <div>
+      <p style={{ fontSize: '14px', color: '#64748b', margin: '0 0 16px' }}>
+        把 AI 学习规划按周铺到日历上（以本周为第 1 周起点）；生成新规划后自动更新。
+      </p>
+      {!latestPlan || milestones.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '60px 0', color: '#94a3b8' }}>
+          <p style={{ fontSize: '16px', fontWeight: 500 }}>暂无可展示的学习规划</p>
+          <p style={{ fontSize: '13px' }}>先到"AI规划"标签生成一份规划，再回到这里看日历</p>
+        </div>
+      ) : (
+        <MonthGrid events={events} />
+      )}
+    </div>
+  )
+}
+
+
+// ===== 手写月历网格（T2 的渲染层）=====
+// FullCalendar 的 React 适配器与 React 19 不兼容（切 tab 即整树崩溃），
+// 月历本质是 7 列网格 + 事件块，自实现更稳也更贴合项目风格。
+function MonthGrid({ events }) {
+  const today = new Date()
+  const year = today.getFullYear()
+  const month = today.getMonth()
+  const firstDay = new Date(year, month, 1)
+  const startOffset = (firstDay.getDay() === 0 ? 7 : firstDay.getDay()) - 1 // 周一为第一列
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+
+  // 事件按"日期 -> 标题列表"索引
+  const byDate = {}
+  for (const ev of events) {
+    const start = new Date(ev.start)
+    const end = new Date(ev.end)
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+      if (!byDate[key]) byDate[key] = []
+      if (!byDate[key].includes(ev.title)) byDate[key].push(ev.title)
+    }
+  }
+
+  const cells = []
+  for (let i = 0; i < startOffset; i++) cells.push(null)
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d)
+  while (cells.length % 7 !== 0) cells.push(null)
+
+  const weekdays = ['一', '二', '三', '四', '五', '六', '日']
+
+  return (
+    <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '16px', border: '1px solid #e2e8f0' }}>
+      <div style={{ fontSize: '15px', fontWeight: 600, color: '#0f172a', marginBottom: '12px' }}>
+        {year} 年 {month + 1} 月 · 本月起第 1 周为当前周
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
+        {weekdays.map(w => (
+          <div key={w} style={{ textAlign: 'center', fontSize: '12px', color: '#94a3b8', padding: '6px 0', fontWeight: 600 }}>
+            周{w}
+          </div>
+        ))}
+        {cells.map((d, i) => {
+          if (d === null) return <div key={`pad-${i}`} style={{ minHeight: 72, borderRadius: 8, backgroundColor: '#f8fafc' }} />
+          const evTitles = byDate[`${year}-${month}-${d}`] || []
+          const isToday = d === today.getDate()
+          return (
+            <div
+              key={`d-${d}`}
+              style={{
+                minHeight: 72, borderRadius: 8, padding: '6px',
+                border: isToday ? '2px solid #3b82f6' : '1px solid #e2e8f0',
+                backgroundColor: isToday ? '#eff6ff' : '#fff',
+              }}
+            >
+              <div style={{ fontSize: '12px', fontWeight: 600, color: isToday ? '#1d4ed8' : '#475569', marginBottom: '4px' }}>
+                {d}
+              </div>
+              {evTitles.map((t, j) => (
+                <div
+                  key={j}
+                  title={t}
+                  style={{
+                    fontSize: '10px', lineHeight: '14px', color: '#fff', backgroundColor: j % 2 === 0 ? '#3b82f6' : '#6366f1',
+                    borderRadius: '4px', padding: '1px 5px', marginBottom: '3px',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}
+                >
+                  {t}
+                </div>
+              ))}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
