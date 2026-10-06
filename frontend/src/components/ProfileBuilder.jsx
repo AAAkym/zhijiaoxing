@@ -932,6 +932,9 @@ export default function ProfileBuilder() {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {/* 口径说明（J-05）：本图仅统计考核成绩，与上方"平均成绩"（含练习均分）
+              统计范围不同，两者数值本就不该相等 */}
+          <p className="text-xs text-gray-400 mb-2">仅统计考核成绩（练习得分不计入本图）</p>
           <ResponsiveContainer width="100%" height={240}>
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />

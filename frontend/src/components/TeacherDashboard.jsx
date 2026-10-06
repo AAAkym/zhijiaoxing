@@ -35,6 +35,7 @@ import {
   Loader2
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area } from 'recharts'
+import { formatApiDateTime } from '@/utils/apiDate'
 import { courses, content, ai, auth, videos, teacher as teacherApi, programming, courseGeneration, pptApi, classManagement } from '../services/api'
 import ErrorBoundary from './ErrorBoundary'
 import VideoLessonManager from './VideoLessonManager'
@@ -3917,7 +3918,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                             {tokenRecent.map((r, i) => (
                               <tr key={i} className="border-b last:border-0 hover:bg-gray-50">
                                 <td className="py-2 px-3 text-[#6b6560] whitespace-nowrap">
-                                  {r.created_at ? new Date(r.created_at).toLocaleString('zh-CN') : '-'}
+                                  {r.created_at ? formatApiDateTime(r.created_at) : '-'}
                                 </td>
                                 <td className="py-2 px-3">
                                   <Badge variant="outline" className="text-[10px]">
@@ -4320,7 +4321,7 @@ export default function TeacherDashboard({ user, onLogout }) {
                            <BookOpen className="h-5 w-5 text-[#c47a3a]" />}
                           <div>
                             <p className="text-sm font-medium">{activity.description || activity.title}</p>
-                            <p className="text-xs text-[#9a9590]">{activity.time || activity.created_at || ''}</p>
+                            <p className="text-xs text-[#9a9590]">{formatApiDateTime(activity.time || activity.created_at)}</p>
                           </div>
                         </div>
                       ))}
