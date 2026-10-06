@@ -137,7 +137,7 @@ export default function LoginPage({ onLogin }) {
             transition={{ delay: 0.2, duration: 0.6, ease: easeOut }}
           >
             <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow-lg shadow-[#d4a853]/20 border border-[#eadfca]">
-              <img src={zhijiaoXingSymbol} alt="EduAI Pro标志" className="w-10 h-10" width="40" height="40" />
+              <img src={zhijiaoXingSymbol} alt="智教星标志" className="w-10 h-10" width="40" height="40" />
             </div>
           </motion.div>
 
@@ -145,10 +145,10 @@ export default function LoginPage({ onLogin }) {
             className="text-[36px] font-bold tracking-tight text-[#2d2a26] mb-2"
             style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
           >
-            EduAI Pro
+            智教星
           </h1>
           <p className="text-[11px] text-[#9a9590] tracking-[0.3em] uppercase mb-8">
-            EDUAI PRO
+            ZHIJIAOXING
           </p>
 
           <p
@@ -158,7 +158,7 @@ export default function LoginPage({ onLogin }) {
             让教育更智能
           </p>
           <p className="text-sm text-[#6b6560] leading-relaxed mb-12">
-            基于Spark4.0 Ultra大模型的智能教学管理平台
+            基于讯飞星火大模型的智能教学管理平台
           </p>
 
           <div className="flex items-center gap-8">
@@ -189,16 +189,16 @@ export default function LoginPage({ onLogin }) {
         {/* 移动端顶部品牌小条 */}
         <div className="lg:hidden flex items-center gap-3 px-6 py-4 border-b border-[#e8e4df] bg-[#faf8f5]">
           <div className="w-8 h-8 rounded-lg bg-white border border-[#eadfca] flex items-center justify-center">
-            <img src={zhijiaoXingSymbol} alt="EduAI Pro标志" className="w-5 h-5" width="20" height="20" />
+            <img src={zhijiaoXingSymbol} alt="智教星标志" className="w-5 h-5" width="20" height="20" />
           </div>
           <div>
             <span
               className="text-base font-bold text-[#2d2a26]"
               style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
             >
-              EduAI Pro
+              智教星
             </span>
-            <span className="text-[9px] text-[#9a9590] tracking-[0.2em] ml-2">EDUAI PRO</span>
+            <span className="text-[9px] text-[#9a9590] tracking-[0.2em] ml-2">ZHIJIAOXING</span>
           </div>
         </div>
 
@@ -228,7 +228,7 @@ export default function LoginPage({ onLogin }) {
               >
                 欢迎回来
               </h2>
-            <p className="text-sm text-[#6b6560]">登录以继续使用EduAI Pro——基于多智能体的自适应学习系统</p>
+            <p className="text-sm text-[#6b6560]">登录以继续使用智教星——基于多智能体的自适应学习系统</p>
             </div>
 
             {/* 标签切换 - 胶囊样式 */}

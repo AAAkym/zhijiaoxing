@@ -24,7 +24,7 @@ import { admin } from '../services/api'
 export default function SystemSettings() {
   const [settings, setSettings] = useState({
     // 基本设置
-    siteName: 'EduAI Pro',
+    siteName: '智教星',
     siteDescription: '基于多智能体的自适应学习系统',
     adminEmail: 'admin@eduai.pro',
     timezone: 'Asia/Shanghai',
@@ -336,7 +336,7 @@ export default function SystemSettings() {
                   type="password"
                   value={settings.sparkApiKey}
                   onChange={(e) => setSettings({ ...settings, sparkApiKey: e.target.value })}
-                  placeholder="请输入Spark4.0 Ultra API Key"
+                  placeholder="请输入讯飞星火 API Key"
                 />
               </div>
               

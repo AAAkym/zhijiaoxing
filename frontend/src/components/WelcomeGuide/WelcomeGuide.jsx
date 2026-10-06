@@ -55,8 +55,8 @@ const scenes = [
   {
     id: 1,
     type: 'opening',
-    title: 'EduAI Pro',
-    subtitle: 'EDUAI PRO',
+    title: '智教星',
+    subtitle: 'ZHIJIAOXING',
     description: '2026 · AI教学数字孪生',
     accent: colors.accent
   },
@@ -65,7 +65,7 @@ const scenes = [
     type: 'concept',
     title: '重新定义',
     subtitle: '教学的可能性',
-    description: '基于Spark4.0 Ultra大模型，我们为每位教师创建数字孪生。',
+    description: '基于讯飞星火大模型，我们为每位教师创建数字孪生。',
     features: [
       { icon: Brain, label: '教学风格智能分析', desc: 'AI学习您的教学风格', accent: colors.accent },
       { icon: BarChart3, label: '学情精准预测', desc: '提前预警学习风险', accent: colors.auxiliary },
@@ -115,7 +115,7 @@ const scenes = [
   {
     id: 5,
     type: 'launch',
-    title: 'EduAI Pro',
+    title: '智教星',
     subtitle: '正在初始化你的教学宇宙...',
     progressDuration: 2500
   }
@@ -240,7 +240,7 @@ export default function WelcomeGuide() {
             >
               <Sparkles className="w-5 h-5" style={{ color: colors.accent }} />
             </div>
-            <span className="text-sm font-medium tracking-wider" style={{ color: colors.textSecondary, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>EduAI Pro</span>
+            <span className="text-sm font-medium tracking-wider" style={{ color: colors.textSecondary, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>智教星</span>
           </motion.div>
 
           <motion.button
@@ -760,7 +760,7 @@ function LaunchScene({ scene, progress, isLaunching, onLaunch }) {
         className="mb-8 text-lg"
         style={{ color: colors.textSecondary }}
       >
-        {isLaunching ? scene.subtitle : '即将进入EduAI Pro——基于多智能体的自适应学习系统'}
+        {isLaunching ? scene.subtitle : '即将进入智教星——基于多智能体的自适应学习系统'}
       </motion.p>
 
       <motion.div variants={staggerItem} className="w-full mb-10">

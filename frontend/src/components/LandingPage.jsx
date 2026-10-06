@@ -165,7 +165,7 @@ const coreFeatures = [
   {
     tag: 'AI TUTOR SYSTEM',
     title: 'AI 智能助教',
-    description: '四合一助教系统：答疑解惑、知识讲解、学习引导、学习诊断，基于 Spark4.0 Ultra 大模型实时响应，支持课程关联与话题记忆。',
+    description: '四合一助教系统：答疑解惑、知识讲解、学习引导、学习诊断，基于讯飞星火大模型实时响应，支持课程关联与话题记忆。',
     icon: Brain,
     mockupType: 'tutor',
   },
@@ -222,7 +222,7 @@ const testimonials = [
   {
     name: '张明华',
     role: '高中数学教师',
-    content: 'EduAI Pro的错题诊疗功能精准定位了学生的知识薄弱点，靶向练习让复习效率提升了3倍！',
+    content: '智教星的错题诊疗功能精准定位了学生的知识薄弱点，靶向练习让复习效率提升了3倍！',
     avatar: '张',
     accent: '#d4a853',
   },
@@ -250,7 +250,7 @@ const testimonials = [
   {
     name: '赵伟',
     role: '教育局教研员',
-    content: 'EduAI Pro将我们零散的错题管理变成了系统化的诊疗流程，自适应推送让每个学生都在最合适的难度上练习。',
+    content: '智教星将我们零散的错题管理变成了系统化的诊疗流程，自适应推送让每个学生都在最合适的难度上练习。',
     avatar: '赵',
     accent: '#D97706',
   },
@@ -733,13 +733,13 @@ export default function LandingPage() {
                 className="w-8 h-8 rounded-lg flex items-center justify-center bg-white"
                 style={{ boxShadow: '0 8px 20px rgba(212, 168, 83, 0.18)' }}
               >
-                <img src={zhijiaoXingSymbol} alt="EduAI Pro标志" className="w-5 h-5" width="20" height="20" />
+                <img src={zhijiaoXingSymbol} alt="智教星标志" className="w-5 h-5" width="20" height="20" />
               </div>
               <span
                 className="text-lg font-bold tracking-tight"
                 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
               >
-                EduAI Pro
+                智教星
               </span>
             </div>
 
@@ -860,7 +860,7 @@ export default function LandingPage() {
                 }}
               >
                 <Zap className="w-3 h-3" />
-                基于 Spark4.0 Ultra 大模型 · 多智能体协同
+                基于讯飞星火大模型 · 多智能体协同
               </motion.div>
 
               <motion.h1
@@ -882,7 +882,7 @@ export default function LandingPage() {
                 className="text-base lg:text-lg max-w-[500px] mb-10 leading-relaxed"
                 style={{ color: brandColors.textSecondary }}
               >
-                EduAI Pro——基于多智能体的自适应学习系统，融合学习画像、智能辅导与个性化路径，让每个学生获得适合自己的学习体验。
+                智教星——基于多智能体的自适应学习系统，融合学习画像、智能辅导与个性化路径，让每个学生获得适合自己的学习体验。
               </motion.p>
 
               <motion.div
@@ -935,10 +935,10 @@ export default function LandingPage() {
                       <div className="p-3 pb-3 border-b border-white/10">
                         <div className="flex items-center gap-2.5 mb-2">
                           <div className="w-7 h-7 rounded-lg bg-white flex items-center justify-center">
-                            <img src={zhijiaoXingSymbol} alt="EduAI Pro标志" className="w-4 h-4" width="16" height="16" />
+                            <img src={zhijiaoXingSymbol} alt="智教星标志" className="w-4 h-4" width="16" height="16" />
                           </div>
                           <div>
-                            <p className="text-[11px] font-bold text-white leading-tight">EduAI Pro</p>
+                            <p className="text-[11px] font-bold text-white leading-tight">智教星</p>
                             <p className="text-[6px] text-white/40 leading-tight">自适应学习系统</p>
                           </div>
                         </div>
@@ -1265,7 +1265,7 @@ export default function LandingPage() {
                 核心功能
               </h2>
               <p className="text-base max-w-lg mx-auto" style={{ color: brandColors.textSecondary }}>
-                从错因诊断到靶向练习，EduAI Pro覆盖学习诊疗全流程
+                从错因诊断到靶向练习，智教星覆盖学习诊疗全流程
               </p>
             </motion.div>
           </SectionWrapper>
@@ -1293,7 +1293,7 @@ export default function LandingPage() {
               为专业教学而建
             </h2>
             <p className="text-base max-w-lg mx-auto" style={{ color: brandColors.textSecondary }}>
-              EduAI Pro基于多智能体协同，提供企业级功能保障
+              智教星基于多智能体协同，提供企业级功能保障
             </p>
           </motion.div>
 
@@ -1364,7 +1364,7 @@ export default function LandingPage() {
               你的声誉，就在课件上
             </h2>
             <p className="text-base max-w-lg mx-auto" style={{ color: brandColors.textSecondary }}>
-              EduAI Pro将多智能体协同与自适应诊疗相结合，精准定位错因，靶向推送个性化练习
+              智教星将多智能体协同与自适应诊疗相结合，精准定位错因，靶向推送个性化练习
             </p>
           </motion.div>
 
@@ -1425,13 +1425,13 @@ export default function LandingPage() {
                 className="w-7 h-7 rounded-lg bg-white flex items-center justify-center"
                 style={{ boxShadow: '0 8px 20px rgba(212, 168, 83, 0.14)' }}
               >
-                <img src={zhijiaoXingSymbol} alt="EduAI Pro标志" className="w-4 h-4" width="16" height="16" />
+                <img src={zhijiaoXingSymbol} alt="智教星标志" className="w-4 h-4" width="16" height="16" />
               </div>
               <span
                 className="text-sm font-bold tracking-tight"
                 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
               >
-                EduAI Pro
+                智教星
               </span>
             </div>
             <div className="flex gap-8">
@@ -1446,7 +1446,7 @@ export default function LandingPage() {
               ))}
             </div>
             <p className="text-xs" style={{ color: brandColors.textMuted }}>
-              © 2026 EduAI Pro——基于多智能体的自适应学习系统. All rights reserved.
+              © 2026 智教星——基于多智能体的自适应学习系统. All rights reserved.
             </p>
           </div>
         </div>

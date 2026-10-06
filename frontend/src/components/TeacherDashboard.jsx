@@ -4366,10 +4366,10 @@ export default function TeacherDashboard({ user, onLogout }) {
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-white border border-[#eadfca] rounded-xl flex items-center justify-center">
-                  <img src={zhijiaoXingSymbol} alt="EduAI Pro 标志" className="w-5 h-5" width="20" height="20" />
+                  <img src={zhijiaoXingSymbol} alt="智教星标志" className="w-5 h-5" width="20" height="20" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>EduAI Pro</h1>
+                  <h1 className="text-xl font-bold text-[#2d2a26]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>智教星</h1>
                   <p className="text-xs text-[#9a9590]">自适应错题诊疗系统</p>
                 </div>
               </div>
