@@ -13,7 +13,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select'
 import {
-  Users, Plus, Trash2, BookOpen, BarChart3, UserPlus, Search, Loader2, Eye, Brain, Target, Clock, TrendingUp, AlertTriangle, RefreshCw, Radar
+  Users, Plus, Trash2, BookOpen, BarChart3, UserPlus, Search, Loader2, Eye, Brain, Target, Clock, TrendingUp, AlertTriangle, RefreshCw, Radar, ClipboardList
 } from 'lucide-react'
 import { classManagement, profileApi } from '@/services/api'
 import ClassLearningTypesPanel from './ClassLearningTypesPanel'
@@ -527,28 +527,50 @@ export default function ClassManagement({ myCourses = [] }) {
           ) : (
             <>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card className="bg-gradient-to-br from-blue-500 to-cyan-500 text-white">
-                  <CardContent className="p-4">
-                    <p className="text-blue-100 text-xs">学生人数</p>
-                    <p className="text-2xl font-bold">{stats?.student_count || 0}</p>
+                {/* 统计卡改为与全站一致的白卡语言：彩色图标点缀 + 大数字，
+                    替换原先高饱和渐变底（视觉审查 V-01：与极简风格冲突） */}
+                <Card>
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50">
+                      <Users className="h-5 w-5 text-blue-500" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">学生人数</p>
+                      <p className="text-2xl font-bold text-gray-900">{stats?.student_count || 0}</p>
+                    </div>
                   </CardContent>
                 </Card>
-                <Card className="bg-gradient-to-br from-green-500 to-emerald-500 text-white">
-                  <CardContent className="p-4">
-                    <p className="text-green-100 text-xs">平均分</p>
-                    <p className="text-2xl font-bold">{stats?.avg_score || 0}</p>
+                <Card>
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50">
+                      <BarChart3 className="h-5 w-5 text-emerald-500" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">平均分</p>
+                      <p className="text-2xl font-bold text-gray-900">{stats?.avg_score || 0}</p>
+                    </div>
                   </CardContent>
                 </Card>
-                <Card className="bg-gradient-to-br from-amber-500 to-orange-500 text-white">
-                  <CardContent className="p-4">
-                    <p className="text-amber-100 text-xs">及格率</p>
-                    <p className="text-2xl font-bold">{stats?.pass_rate || 0}%</p>
+                <Card>
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50">
+                      <Target className="h-5 w-5 text-amber-500" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">及格率</p>
+                      <p className="text-2xl font-bold text-gray-900">{stats?.pass_rate || 0}%</p>
+                    </div>
                   </CardContent>
                 </Card>
-                <Card className="bg-gradient-to-br from-purple-500 to-violet-500 text-white">
-                  <CardContent className="p-4">
-                    <p className="text-purple-100 text-xs">评测次数</p>
-                    <p className="text-2xl font-bold">{stats?.total_evaluations || 0}</p>
+                <Card>
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-50">
+                      <ClipboardList className="h-5 w-5 text-violet-500" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">评测次数</p>
+                      <p className="text-2xl font-bold text-gray-900">{stats?.total_evaluations || 0}</p>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
