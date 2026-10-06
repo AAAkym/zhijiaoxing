@@ -77,8 +77,17 @@ def register_events():
     
     @socketio.on('connect')
     def handle_connect():
-        """处理客户端连接"""
-        logger.info(f'Client connected: {session.get("user_id", "anonymous")}')
+        """处理客户端连接
+
+        夜间巡查 SEC-006：此前任意未登录客户端都能建立 WebSocket 连接。
+        现在要求会话里必须有 user_id，未登录直接拒绝连接（返回 False 是
+        Flask-SocketIO 的标准拒绝方式）。前端仅在登录后的互动面板建连，
+        正常流程不受影响。
+        """
+        if not session.get('user_id'):
+            logger.warning('Rejected unauthenticated websocket connection')
+            return False
+        logger.info(f'Client connected: {session.get("user_id")}')
         
     @socketio.on('disconnect')
     def handle_disconnect():
@@ -169,9 +178,11 @@ def register_events():
         course_id = data.get('course_id')
         question_id = data.get('question_id')
         event_type = data.get('event_type')  # created, answered, resolved
-        
-        if not course_id:
-            emit('error', {'message': 'Invalid course'})
+
+        # SEC-006：此前不校验 user_id——知道 course_id 的任意客户端即可
+        # 向课程房间广播伪造的问答事件
+        if not course_id or not session.get('user_id'):
+            emit('error', {'message': 'Invalid course or user'})
             return
         
         # 向课程房间广播问答事件
@@ -190,9 +201,10 @@ def register_events():
         course_id = data.get('course_id')
         discussion_id = data.get('discussion_id')
         event_type = data.get('event_type')  # created, replied, pinned
-        
-        if not course_id:
-            emit('error', {'message': 'Invalid course'})
+
+        # SEC-006：同 question_event，补会话校验
+        if not course_id or not session.get('user_id'):
+            emit('error', {'message': 'Invalid course or user'})
             return
         
         # 向课程房间广播讨论事件
