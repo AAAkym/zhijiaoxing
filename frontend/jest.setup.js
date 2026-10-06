@@ -163,3 +163,13 @@ beforeAll(() => {
 afterAll(() => {
   console.error = originalError
 })
+
+// wordcloud（timdream）依赖真实 canvas 2d 上下文，jsdom 中不存在；
+// 测试里以替身渲染词文本，便于断言（替身默认可用，R2-DEF-004 教训）。
+jest.mock('wordcloud', () => {
+  const React = require('react')
+  return {
+    __esModule: true,
+    default: jest.fn(() => null),
+  }
+})
