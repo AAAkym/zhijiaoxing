@@ -32,6 +32,7 @@ export default function MistakeBook({ myCourses = [] }) {
   const [selectedIds, setSelectedIds] = useState([])
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [exportingAnki, setExportingAnki] = useState(false)
   const [error, setError] = useState(null)
   
   const [filters, setFilters] = useState({
@@ -187,6 +188,31 @@ export default function MistakeBook({ myCourses = [] }) {
     }))
   }
 
+  // Anki 卡组导出（丰富化 T3）：后端 genanki 生成 .apkg，浏览器侧只负责触发下载
+  const handleExportAnki = async () => {
+    setExportingAnki(true)
+    try {
+      const response = await fetch('/api/mistakes/export/anki', { credentials: 'include' })
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        alert(payload.error || '导出失败，请重试')
+        return
+      }
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'zhijiaoxing-mistakes.apkg'
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('Anki 导出失败:', err)
+      alert('导出失败，请重试')
+    } finally {
+      setExportingAnki(false)
+    }
+  }
+
   const handleRefresh = () => {
     fetchMistakes()
     fetchStats()
@@ -246,6 +272,15 @@ export default function MistakeBook({ myCourses = [] }) {
           >
             <Download className="w-4 h-4 mr-2" />
             导出
+          </Button>
+          <Button
+            variant="outline"
+            title="生成 .apkg 卡组，导入 Anki 即可用其间隔重复算法复习"
+            onClick={handleExportAnki}
+            disabled={exportingAnki}
+          >
+            <Download className={`w-4 h-4 mr-2 ${exportingAnki ? 'animate-pulse' : ''}`} />
+            {exportingAnki ? '生成中...' : 'Anki 卡组'}
           </Button>
           <Button
             className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"

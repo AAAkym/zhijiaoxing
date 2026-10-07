@@ -1184,3 +1184,86 @@ def batch_analyze_mistakes_stream():
         return Response(generate(), mimetype="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@mistake_book_bp.route("/mistakes/export/anki", methods=["GET"])
+@require_auth
+def export_mistakes_anki():
+    """错题导出 Anki 卡组（丰富化 T3，genanki MIT）。
+
+    每条错题一张卡：正面 = 题目（+课程/知识点），背面 = 正确答案 + AI 解析。
+    只导出未删除的全部错题，学生导入 Anki 后即可按其自带的间隔重复算法复习。
+    """
+    import os
+    import tempfile
+
+    import genanki
+    from flask import send_file
+
+    user_id = session["user_id"]
+    records = (
+        MistakeRecord.query.filter_by(user_id=user_id)
+        .order_by(MistakeRecord.last_mistake_at.desc())
+        .all()
+    )
+    if not records:
+        return jsonify({"error": "错题本为空，没有可导出的错题"}), 400
+
+    # 固定 model_id / deck_id：同一学生重复导出时 Anki 视为同一卡组，可增量更新
+    model = genanki.Model(
+        1607392319001,
+        "智教星错题卡",
+        fields=[
+            {"name": "Question"},
+            {"name": "Answer"},
+            {"name": "Tags"},
+        ],
+        templates=[
+            {
+                "name": "错题卡",
+                "qfmt": "<div class='q'>{{Question}}</div>",
+                "afmt": "{{FrontSide}}<hr id='answer'><div class='a'>{{Answer}}</div><div class='tags'>{{Tags}}</div>",
+            }
+        ],
+        css=(
+            ".card{font-family:'Microsoft YaHei',sans-serif;font-size:15px;"
+            "line-height:1.7;color:#1f2937;padding:12px}"
+            ".q{font-weight:600}.a{color:#065f46}"
+            ".tags{margin-top:10px;font-size:12px;color:#6b7280}"
+        ),
+    )
+    deck = genanki.Deck(2059400110 + user_id, f"智教星错题本 · 用户{user_id}")
+
+    for idx, r in enumerate(records, start=1):
+        knowledge_tags = _safe_json_loads(r.knowledge_tags, [])
+        if not isinstance(knowledge_tags, list):
+            knowledge_tags = [str(knowledge_tags)]
+        knowledge_tags = [str(t).strip() for t in knowledge_tags if str(t).strip()]
+        tags_line = f"知识点：{'、'.join(knowledge_tags)}" if knowledge_tags else ""
+        analysis = f"<br><br><b>AI 解析：</b>{r.ai_analysis}" if r.ai_analysis else ""
+        question = f"<b>【{idx}】</b>{r.question_content}"
+        answer = f"<b>正确答案：</b>{r.correct_answer}{analysis}"
+        # genanki 标签不允许空格；统一压缩空白为下划线
+        note_tags = ["_".join(t.split()) for t in knowledge_tags][:5]
+        deck.add_note(
+            genanki.Note(
+                model=model,
+                fields=[question, answer, tags_line],
+                tags=note_tags or ["智教星错题"],
+            )
+        )
+
+    tmp = tempfile.NamedTemporaryFile(suffix=".apkg", delete=False)
+    genanki.Package(deck).write_to_file(tmp.name)
+    try:
+        return send_file(
+            tmp.name,
+            as_attachment=True,
+            download_name="zhijiaoxing-mistakes.apkg",
+            mimetype="application/octet-stream",
+        )
+    finally:
+        try:
+            os.unlink(tmp.name)
+        except OSError:
+            pass
