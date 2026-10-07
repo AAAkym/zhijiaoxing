@@ -270,6 +270,52 @@ def get_mistakes():
         return jsonify({"error": str(e)}), 500
 
 
+@mistake_book_bp.route("/mistakes", methods=["POST"])
+@require_auth
+def create_mistake():
+    """手动/拍照录入错题（丰富化 T6 配套接口）。
+
+    与 extract_mistakes 的自动抽取不同，这里是学生主动登记：
+    前端把 OCR 识别出的题干填进来，教师侧也可代录。course_id 必填
+    （MistakeRecord.course_id 非空约束），允许为空 user_answer 记为
+    「未作答」，由既有渲染逻辑统一兜底。
+    """
+    try:
+        data = request.get_json() or {}
+        question_content = (data.get("question_content") or "").strip()
+        if not question_content:
+            return jsonify({"error": "question_content 不能为空"}), 400
+
+        course_id = data.get("course_id")
+        if not course_id:
+            return jsonify({"error": "course_id 必填"}), 400
+        if not Course.query.get(course_id):
+            return jsonify({"error": "课程不存在"}), 404
+
+        knowledge_tags = data.get("knowledge_tags")
+        if isinstance(knowledge_tags, str):
+            knowledge_tags = [t.strip() for t in knowledge_tags.split(",") if t.strip()]
+        if not isinstance(knowledge_tags, list):
+            knowledge_tags = []
+
+        record = MistakeRecord(
+            user_id=session["user_id"],
+            course_id=course_id,
+            question_content=question_content,
+            user_answer=(data.get("user_answer") or "").strip(),
+            correct_answer=(data.get("correct_answer") or "").strip() or "（待补充）",
+            knowledge_tags=json.dumps(knowledge_tags, ensure_ascii=False) if knowledge_tags else None,
+            mastery_status="unmastered",
+        )
+        db.session.add(record)
+        db.session.commit()
+        return jsonify({"message": "错题已保存", "mistake": record.to_dict(include_resolved_answers=True)}), 201
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Create mistake error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @mistake_book_bp.route("/mistakes/<int:mistake_id>", methods=["GET"])
 @require_auth
 def get_mistake_detail(mistake_id):

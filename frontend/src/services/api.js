@@ -1086,6 +1086,11 @@ export const mistakeBook = {
   },
   
   getMistake: (mistakeId) => request(`/mistakes/${mistakeId}`),
+
+  createMistake: (data) => request('/mistakes', {
+    method: 'POST',
+    body: data,
+  }),
   
   updateStatus: (mistakeId, masteryStatus, noteId = null) => request(`/mistakes/${mistakeId}/status`, {
     method: 'PUT',
