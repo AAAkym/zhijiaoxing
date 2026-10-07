@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { knowledgeGraph } from '@/services/api'
+import { searchApi } from '@/services/searchApi'
 import KnowledgeGraphScene from './KnowledgeGraphScene'
 import {
   Loader2, AlertCircle, RefreshCw, Network,
-  Layers, Link2, BookOpen, Target, Info, Route,
+  Layers, Link2, BookOpen, Target, Info, Route, Sparkles,
 } from 'lucide-react'
 
 /* ── 常量 ── */
@@ -101,6 +102,12 @@ export default function KnowledgeGraph3D({ myCourses = [], focusKnowledgePoint =
   const [selectedEdge, setSelectedEdge] = useState(null)
   const [focusTarget, setFocusTarget] = useState(null)
   const [viewMode, setViewMode] = useState(VIEW_MODES.layered)
+
+  // 语义检索（T8）：BGE+Qdrant 返回知识点命中，点击结果按 label 匹配聚焦节点
+  const [semanticQuery, setSemanticQuery] = useState('')
+  const [semanticResults, setSemanticResults] = useState([])
+  const [semanticLoading, setSemanticLoading] = useState(false)
+  const [semanticNote, setSemanticNote] = useState(null)
 
   useEffect(() => {
     if (!selectedCourse && myCourses.length > 0) {
@@ -275,6 +282,47 @@ export default function KnowledgeGraph3D({ myCourses = [], focusKnowledgePoint =
     setSelectedCourse(courseId)
   }, [])
 
+  const runSemanticSearch = useCallback(async () => {
+    const q = semanticQuery.trim()
+    if (!q) return
+    setSemanticLoading(true)
+    setSemanticNote(null)
+    try {
+      const res = await searchApi.semanticSearch(q, {
+        top_k: 6,
+        course_id: selectedCourse ? Number(selectedCourse) : undefined,
+      })
+      if (res.ok === false) {
+        setSemanticResults([])
+        setSemanticNote(res.error || '语义检索不可用')
+        return
+      }
+      setSemanticResults(res.results || [])
+      if (!(res.results || []).length) {
+        setSemanticNote(res.hint || '无语义命中')
+      }
+    } catch (err) {
+      setSemanticResults([])
+      setSemanticNote(err.message || '语义检索失败')
+    } finally {
+      setSemanticLoading(false)
+    }
+  }, [semanticQuery, selectedCourse])
+
+  const handleSemanticPick = useCallback((title) => {
+    const wanted = String(title || '').trim().toLowerCase()
+    if (!wanted) return
+    const matched = (graphData?.nodes || []).find((node) => {
+      const label = String(node.label || node.name || '').trim().toLowerCase()
+      return label === wanted || label.includes(wanted) || wanted.includes(label)
+    })
+    if (!matched) return
+    setSelectedNode(matched)
+    setSelectedEdge(null)
+    setFocusTarget(matched.id)
+    setViewMode(VIEW_MODES.focus)
+  }, [graphData])
+
   const detailNode = selectedNode ? nodeMap[selectedNode.id] || selectedNode : null
   const detailEdge = selectedEdge ? {
     ...selectedEdge,
@@ -306,6 +354,38 @@ export default function KnowledgeGraph3D({ myCourses = [], focusKnowledgePoint =
             <RefreshCw className={`w-4 h-4 mr-1.5 ${loading ? 'animate-spin' : ''}`} />刷新
           </Button>
         </div>
+      </div>
+
+      {/* 语义检索（T8）：BGE+Qdrant 按意思匹配知识点，点击结果聚焦图谱节点 */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <input
+            value={semanticQuery}
+            onChange={(e) => setSemanticQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') runSemanticSearch() }}
+            placeholder="语义检索知识点，例如：函数默认值为什么会变"
+            className="h-9 flex-1 rounded-lg border border-[#e5e0db] bg-white px-3 text-sm text-[#2d2a26] focus:outline-none focus:ring-2 focus:ring-[#d4a853]/30"
+          />
+          <Button variant="outline" size="sm" onClick={runSemanticSearch} disabled={semanticLoading || !semanticQuery.trim()} className="rounded-xl">
+            {semanticLoading ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1.5" />}语义检索
+          </Button>
+        </div>
+        {semanticResults.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            {semanticResults.map((r) => (
+              <button
+                key={r.knowledge_point_id}
+                onClick={() => handleSemanticPick(r.title)}
+                title={r.snippet || r.title}
+                className="flex items-center gap-1.5 rounded-full border border-[#4a90d9]/40 bg-[#4a90d9]/10 px-3 py-1 text-xs text-[#2d2a26] hover:bg-[#4a90d9]/20 transition-colors"
+              >
+                <span>{r.title}</span>
+                <span className="font-mono text-[10px] text-[#4a90d9]">{Math.round((r.score || 0) * 100)}%</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {semanticNote && <p className="text-xs text-[#6b6560]">{semanticNote}</p>}
       </div>
 
       {/* 主内容区：左侧 + 侧边栏 */}

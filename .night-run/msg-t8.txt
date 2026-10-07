@@ -1,0 +1,19 @@
+feat(search): BGE 中文 embedding + Qdrant local 语义检索（T8）
+
+学生端 3D 知识图谱顶部加「语义检索」：输入自然语言问题 →
+searchApi.semanticSearch → 新路由 POST /api/search/semantic
+（require_auth）→ VectorSearchService 用 BAAI/bge-small-zh-v1.5
+（fastembed ONNX 推理，512 维，无 torch）编码查询 → Qdrant
+local 模式（backend/instance/qdrant/，零新基础设施）按课程
+过滤最近邻 → 返回带分数的知识点芯片，点击按 label 聚焦图谱节点。
+
+POST /api/search/semantic/reindex 全量重建（语料=已发布
+KnowledgePoint title+definition+content+tags）。服务懒加载、
+VECTOR_SEARCH_ENABLED 可关、embedder/client 可注入；
+fastembed 权重首次经 HF_ENDPOINT=hf-mirror + HF_HUB_DISABLE_XET
+下载，随后落 ~/.cache/fastembed 离线复用。
+
+依赖（已批准）：qdrant-client、fastembed(+onnxruntime/tokenizers)。
+验证：pytest 184/184（含新 9 条）、jest 252/252、vite build 通过；
+实测 reindex 390 条知识点、"函数默认值为什么会变"语义命中
+参数传递与返回值 64% 等 6 条芯片；浏览器实测检索+渲染。
