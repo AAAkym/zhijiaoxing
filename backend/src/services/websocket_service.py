@@ -216,6 +216,31 @@ def register_events():
         }, room=f'course_{course_id}')
         
         logger.info(f'Discussion {event_type} event broadcasted to course {course_id}')
+    
+    @socketio.on('whiteboard_sync')
+    def handle_whiteboard_sync(data):
+        """实时白板同步（丰富化 T7，Excalidraw）。
+
+        前端把 Excalidraw elements 数组节流 500ms 后推上来，这里原样转发到
+        课程房间。include_self=False 防止回环把发送端画布再刷一遍。
+        elements 体积可能上百 KB，纯转发不落库、不校验结构（白板不是持久数据）。
+        """
+        course_id = data.get('course_id')
+        elements = data.get('elements')
+        user_id = session.get('user_id')
+
+        if not course_id or not user_id or not isinstance(elements, list):
+            emit('error', {'message': 'Invalid data'})
+            return
+
+        socketio.emit('whiteboard_updated', {
+            'course_id': course_id,
+            'elements': elements,
+            'sender_id': user_id,
+            'timestamp': datetime.utcnow().isoformat()
+        }, room=f'course_{course_id}', include_self=False)
+
+        logger.debug(f'Whiteboard sync from user {user_id} broadcasted to course {course_id}')
 
 
 # 便捷函数：向课程房间发送通知

@@ -173,3 +173,16 @@ jest.mock('wordcloud', () => {
     default: jest.fn(() => null),
   }
 })
+
+// @excalidraw/excalidraw 是 ESM 大依赖且强依赖真实 DOM/canvas，jsdom 跑不了；
+// 以替身渲染占位 div，保证白板 tab 渲染路径可测（默认可用原则）。
+jest.mock('@excalidraw/excalidraw', () => {
+  const React = require('react')
+  return {
+    __esModule: true,
+    Excalidraw: jest.fn((props) => {
+      if (props && typeof props.excalidrawAPI === 'function') props.excalidrawAPI({ updateScene: jest.fn() })
+      return React.createElement('div', { 'data-testid': 'excalidraw-stub' })
+    }),
+  }
+})
