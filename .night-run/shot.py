@@ -4,11 +4,31 @@
 用法: python shot.py --user student --pwd student123 --url "http://localhost:5173/#/student" --out out.png --steps '[{"click_text":"错题本"},{"wait_ms":2000}]'
 """
 import argparse, json, sys
+import socket, subprocess, time
+def ensure_backend():
+    def up():
+        try:
+            s=socket.create_connection(("127.0.0.1",5000),2); s.close(); return True
+        except OSError: return False
+    if up(): return True
+    cmd=("powershell -NoProfile -Command \"$r=Invoke-CimMethod -ClassName Win32_Process -MethodName Create "
+         "-Arguments @{CommandLine='cmd /c cd /d C:\\Users\\33552\\Desktop\\project_code\\backend "
+         "&& venv\\Scripts\\python.exe -X utf8 src/main.py 1> C:\\Users\\33552\\Desktop\\project_code\\logs\\backend-run.log "
+         "2> C:\\Users\\33552\\Desktop\\project_code\\logs\\backend-run-err.log'}; $r.ReturnValue\"")
+    print("[ensure_backend] spawning...")
+    subprocess.run(cmd, shell=True, capture_output=True, timeout=60)
+    for _ in range(40):
+        if up(): print("[ensure_backend] up"); return True
+        time.sleep(1)
+    return False
+
 from playwright.sync_api import sync_playwright
 
 BASE = "http://localhost:5173"
 
 def main():
+    if not ensure_backend():
+        print("BACKEND_DOWN"); sys.exit(3)
     ap = argparse.ArgumentParser()
     ap.add_argument("--user", default="student")
     ap.add_argument("--pwd", default="student123")
