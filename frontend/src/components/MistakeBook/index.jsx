@@ -1,8 +1,17 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle
+} from '@/components/ui/dialog'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+} from '@/components/ui/select'
 import {
   BookOpen,
   ListTodo,
@@ -15,7 +24,9 @@ import {
   Download,
   Trash2,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  Camera,
+  Loader2
 } from 'lucide-react'
 import { mistakeBook } from '@/services/api'
 import MistakeList from './MistakeList'
@@ -32,7 +43,16 @@ export default function MistakeBook({ myCourses = [] }) {
   const [selectedIds, setSelectedIds] = useState([])
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [exportingAnki, setExportingAnki] = useState(false)
   const [error, setError] = useState(null)
+
+  // 拍照 OCR 录入（丰富化 T6）：tesseract.js 懒加载，OCR 仅作预填，最终手动确认后保存
+  const [showOcrDialog, setShowOcrDialog] = useState(false)
+  const [ocrRunning, setOcrRunning] = useState(false)
+  const [ocrSaving, setOcrSaving] = useState(false)
+  const [ocrImageName, setOcrImageName] = useState('')
+  const [ocrForm, setOcrForm] = useState({ course_id: '', question: '', answer: '', tags: '' })
+  const ocrFileInputRef = useRef(null)
   
   const [filters, setFilters] = useState({
     course_id: '',
@@ -187,6 +207,91 @@ export default function MistakeBook({ myCourses = [] }) {
     }))
   }
 
+  // Anki 卡组导出（丰富化 T3）：后端 genanki 生成 .apkg，浏览器侧只负责触发下载
+  const handleExportAnki = async () => {
+    setExportingAnki(true)
+    try {
+      const response = await fetch('/api/mistakes/export/anki', { credentials: 'include' })
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        alert(payload.error || '导出失败，请重试')
+        return
+      }
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'zhijiaoxing-mistakes.apkg'
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('Anki 导出失败:', err)
+      alert('导出失败，请重试')
+    } finally {
+      setExportingAnki(false)
+    }
+  }
+
+  // OCR 识别：tesseract.js 走动态 import 避免进入首屏包；语言包由库按 CDN 拉取，
+  // 离线/加载失败时降级为手动填写（OCR 只是预填辅助，不阻塞录入）。
+  const handleOcrFile = async (file) => {
+    if (!file) return
+    setOcrImageName(file.name)
+    setOcrRunning(true)
+    try {
+      const Tesseract = (await import('tesseract.js')).default
+      // worker/core/语言包全部走 public/tesseract 本地资源：blob worker 跨域
+      // importScripts CDN 会被拒（实测 NetworkError），本地化后离线可用。
+      const result = await Tesseract.recognize(file, 'chi_sim+eng', {
+        workerPath: '/tesseract/worker.min.js',
+        corePath: '/tesseract/',
+        langPath: '/tesseract/langs',
+        gzip: true,
+      })
+      const text = (result?.data?.text || '').trim()
+      if (text) {
+        setOcrForm(prev => ({ ...prev, question: text }))
+      } else {
+        alert('未识别到文字，可手动输入题目')
+      }
+    } catch (err) {
+      console.error('OCR 识别失败:', err)
+      alert('OCR 引擎加载失败（首次使用需联网下载语言包），可直接手动输入题目')
+    } finally {
+      setOcrRunning(false)
+    }
+  }
+
+  const handleSaveOcrMistake = async () => {
+    if (!ocrForm.question.trim()) {
+      alert('请填写题目内容')
+      return
+    }
+    if (!ocrForm.course_id) {
+      alert('请选择所属课程')
+      return
+    }
+    setOcrSaving(true)
+    try {
+      await mistakeBook.createMistake({
+        course_id: Number(ocrForm.course_id),
+        question_content: ocrForm.question.trim(),
+        correct_answer: ocrForm.answer.trim(),
+        knowledge_tags: ocrForm.tags.trim(),
+      })
+      setShowOcrDialog(false)
+      setOcrForm({ course_id: '', question: '', answer: '', tags: '' })
+      setOcrImageName('')
+      fetchMistakes()
+      fetchStats()
+    } catch (err) {
+      console.error('保存错题失败:', err)
+      alert(err.message || '保存失败，请重试')
+    } finally {
+      setOcrSaving(false)
+    }
+  }
+
   const handleRefresh = () => {
     fetchMistakes()
     fetchStats()
@@ -246,6 +351,23 @@ export default function MistakeBook({ myCourses = [] }) {
           >
             <Download className="w-4 h-4 mr-2" />
             导出
+          </Button>
+          <Button
+            variant="outline"
+            title="生成 .apkg 卡组，导入 Anki 即可用其间隔重复算法复习"
+            onClick={handleExportAnki}
+            disabled={exportingAnki}
+          >
+            <Download className={`w-4 h-4 mr-2 ${exportingAnki ? 'animate-pulse' : ''}`} />
+            {exportingAnki ? '生成中...' : 'Anki 卡组'}
+          </Button>
+          <Button
+            variant="outline"
+            title="拍照/选图 OCR 识别题目并保存为错题"
+            onClick={() => setShowOcrDialog(true)}
+          >
+            <Camera className="w-4 h-4 mr-2" />
+            拍照录入
           </Button>
           <Button
             className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
@@ -414,6 +536,91 @@ export default function MistakeBook({ myCourses = [] }) {
           <TargetedTherapy myCourses={myCourses} />
         </TabsContent>
       </Tabs>
+
+      {/* 拍照录入错题弹层（丰富化 T6）：选图 → OCR 预填 → 人工确认保存 */}
+      <Dialog open={showOcrDialog} onOpenChange={setShowOcrDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Camera className="w-5 h-5" />拍照录入错题
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <input
+                ref={ocrFileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => handleOcrFile(e.target.files?.[0])}
+              />
+              <Button
+                variant="outline"
+                className="w-full"
+                disabled={ocrRunning}
+                onClick={() => ocrFileInputRef.current?.click()}
+              >
+                {ocrRunning ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Camera className="w-4 h-4 mr-2" />}
+                {ocrRunning ? '识别中…' : (ocrImageName ? `重新选择（${ocrImageName}）` : '选择图片 / 拍照')}
+              </Button>
+              <p className="text-xs text-gray-400 mt-1">OCR 识别结果仅作预填，请人工核对后再保存</p>
+            </div>
+
+            <div>
+              <Label>所属课程 *</Label>
+              <Select
+                value={ocrForm.course_id}
+                onValueChange={(v) => setOcrForm(prev => ({ ...prev, course_id: v }))}
+              >
+                <SelectTrigger><SelectValue placeholder="选择课程" /></SelectTrigger>
+                <SelectContent>
+                  {myCourses.map(course => (
+                    <SelectItem key={course.id} value={String(course.id)}>{course.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>题目内容 *</Label>
+              <Textarea
+                rows={5}
+                placeholder="OCR 识别结果或手动输入题目"
+                value={ocrForm.question}
+                onChange={(e) => setOcrForm(prev => ({ ...prev, question: e.target.value }))}
+              />
+            </div>
+
+            <div>
+              <Label>正确答案</Label>
+              <Textarea
+                rows={2}
+                placeholder="选填，可稍后补充"
+                value={ocrForm.answer}
+                onChange={(e) => setOcrForm(prev => ({ ...prev, answer: e.target.value }))}
+              />
+            </div>
+
+            <div>
+              <Label>知识点标签（逗号分隔）</Label>
+              <Input
+                placeholder="如：循环结构, 数组"
+                value={ocrForm.tags}
+                onChange={(e) => setOcrForm(prev => ({ ...prev, tags: e.target.value }))}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowOcrDialog(false)}>取消</Button>
+              <Button onClick={handleSaveOcrMistake} disabled={ocrSaving}>
+                {ocrSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                保存为错题
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

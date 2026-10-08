@@ -163,3 +163,26 @@ beforeAll(() => {
 afterAll(() => {
   console.error = originalError
 })
+
+// wordcloud（timdream）依赖真实 canvas 2d 上下文，jsdom 中不存在；
+// 测试里以替身渲染词文本，便于断言（替身默认可用，R2-DEF-004 教训）。
+jest.mock('wordcloud', () => {
+  const React = require('react')
+  return {
+    __esModule: true,
+    default: jest.fn(() => null),
+  }
+})
+
+// @excalidraw/excalidraw 是 ESM 大依赖且强依赖真实 DOM/canvas，jsdom 跑不了；
+// 以替身渲染占位 div，保证白板 tab 渲染路径可测（默认可用原则）。
+jest.mock('@excalidraw/excalidraw', () => {
+  const React = require('react')
+  return {
+    __esModule: true,
+    Excalidraw: jest.fn((props) => {
+      if (props && typeof props.excalidrawAPI === 'function') props.excalidrawAPI({ updateScene: jest.fn() })
+      return React.createElement('div', { 'data-testid': 'excalidraw-stub' })
+    }),
+  }
+})

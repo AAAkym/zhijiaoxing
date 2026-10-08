@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第一梯队丰富化执行报告 · 2026-10-07</title>
+<style>
+  :root {
+    --bg: #f6f5f2; --card: #fff; --ink: #1f2937; --muted: #6b7280; --line: #e5e7eb;
+    --accent: #b8860b; --accent-soft: #fdf6e3;
+    --ok: #15803d; --ok-bg: #dcfce7; --warn: #b45309; --warn-bg: #fef3c7;
+    --bad: #b91c1c; --bad-bg: #fee2e2; --info: #1d4ed8; --info-bg: #dbeafe;
+    --violet: #6d28d9; --violet-bg: #ede9fe;
+    --mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+    line-height: 1.65; font-size: 15px; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
+  header.hero { background: linear-gradient(135deg, #241f3a 0%, #3a2f56 60%, #4a3f2c 100%);
+    color: #f2eee6; border-radius: 16px; padding: 28px 28px 24px; margin-bottom: 20px; }
+  header.hero h1 { margin: 0 0 6px; font-size: 24px; }
+  header.hero .sub { color: #cfc6da; font-size: 14px; }
+  header.hero .sub code { font-family: var(--mono); background: rgba(255,255,255,.12); padding: 1px 6px; border-radius: 4px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 18px; }
+  .kpi { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); border-radius: 12px; padding: 12px 14px; }
+  .kpi b { display: block; font-size: 22px; }
+  .kpi span { font-size: 12px; color: #cfc6da; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 22px 24px; margin-bottom: 18px; }
+  h2 { font-size: 18px; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
+  h2 .n { font-family: var(--mono); font-size: 12px; color: var(--accent); background: var(--accent-soft); border: 1px solid #eadfb8; border-radius: 6px; padding: 1px 8px; }
+  .desc { color: var(--muted); font-size: 13px; margin: 2px 0 14px; }
+  h3 { font-size: 15px; margin: 20px 0 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th { background: #faf9f6; color: #57534e; font-weight: 600; white-space: nowrap; }
+  tbody tr:nth-child(even) { background: #fafaf8; }
+  code, .mono { font-family: var(--mono); font-size: 12.5px; background: #f3f1ec; padding: 1px 6px; border-radius: 4px; word-break: break-all; }
+  .badge { display: inline-block; font-size: 11.5px; font-weight: 600; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+  .b-ok { color: var(--ok); background: var(--ok-bg); }
+  .b-warn { color: var(--warn); background: var(--warn-bg); }
+  .b-bad { color: var(--bad); background: var(--bad-bg); }
+  .b-info { color: var(--info); background: var(--info-bg); }
+  .b-violet { color: var(--violet); background: var(--violet-bg); }
+  .b-mute { color: #57534e; background: #efece6; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 720px) { .grid2 { grid-template-columns: 1fr; } section { padding: 16px 14px; } }
+  figure { margin: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fbfaf8; }
+  figcaption { font-size: 12px; color: var(--muted); padding: 6px 10px; border-top: 1px solid var(--line); background: #fff; }
+  figure img { width: 100%; display: block; }
+  ul { margin: 6px 0; padding-left: 20px; }
+  li { margin: 3px 0; }
+  .callout { border-left: 4px solid var(--accent); background: var(--accent-soft); padding: 10px 14px; border-radius: 0 10px 10px 0; font-size: 13.5px; margin: 12px 0; }
+  .callout.red { border-left-color: var(--bad); background: var(--bad-bg); }
+  .callout.green { border-left-color: var(--ok); background: var(--ok-bg); }
+  footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 8px; }
+  a { color: var(--accent); text-decoration: none; }
+  .small { font-size: 12.5px; color: var(--muted); }
+  .card-item { border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; margin-bottom: 16px; }
+  .card-item .tag { margin-right: 6px; }
+  .toc a { display: inline-block; margin: 2px 8px 2px 0; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>🌙 第一梯队开源技术丰富化 · 执行报告</h1>
+  <div class="sub">分支 <code>night</code> · 交接文档 <code>.night-run/10-handoff-day-enrichment.md</code> · 服务 backend:5000 / frontend:5173 · playwright+系统 Chrome 实测取证</div>
+  <div class="kpis">
+    <div class="kpi"><b>7/7</b><span>第一梯队任务落地（T1–T7）</span></div>
+    <div class="kpi"><b>6</b><span>本批新提交 commit</span></div>
+    <div class="kpi"><b>252+</b><span>jest 用例全绿</span></div>
+    <div class="kpi"><b>6</b><span>新增运行时依赖（均获批）</span></div>
+    <div class="kpi"><b>14</b><span>before/after 取证截图</span></div>
+    <div class="kpi"><b>4</b><span>浏览器实机验证的端到端链路</span></div>
+  </div>
+</header>
+
+<section class="toc">
+  <h2><span class="n">导航</span></h2>
+  <a href="#tldr">TL;DR</a><a href="#gallery">逐项图集</a><a href="#verify">验证汇总</a><a href="#issues">已知问题与折衷</a><a href="#infra">环境基建修复</a><a href="#next">后续建议</a>
+</section>
+
+<section id="tldr">
+  <h2><span class="n">TL;DR</span>任务书完成情况</h2>
+  <table>
+    <thead><tr><th>项</th><th>内容</th><th>状态</th><th>commit</th></tr></thead>
+    <tbody>
+      <tr><td>T1</td><td>错题知识点词云（timdream/wordcloud 薄包装）</td><td><span class="badge b-ok">已完成</span></td><td class="mono">28bb9fc</td></tr>
+      <tr><td>T2</td><td>学习规划月历视图</td><td><span class="badge b-ok">已完成</span>（方案变更见折衷）</td><td class="mono">692f951</td></tr>
+      <tr><td>T3</td><td>genanki 错题导出 Anki 卡组</td><td><span class="badge b-ok">已完成</span>（修 1 个实测 bug）</td><td class="mono">73215d6</td></tr>
+      <tr><td>T4</td><td>exceljs 班级成绩导出 Excel</td><td><span class="badge b-ok">已完成</span></td><td class="mono">ac59bf3</td></tr>
+      <tr><td>T5</td><td>成就证书打印视图（window.print）</td><td><span class="badge b-ok">已完成</span></td><td class="mono">5548eef</td></tr>
+      <tr><td>T6</td><td>tesseract.js 拍照 OCR 录错题</td><td><span class="badge b-ok">已完成</span>（CDN→本地自托管修复）</td><td class="mono">3bfa6db</td></tr>
+      <tr><td>T7</td><td>Excalidraw 实时白板（双端+ws 转发）</td><td><span class="badge b-ok">已完成</span></td><td class="mono">5cb3b75</td></tr>
+      <tr><td>Z</td><td>verify_all 全绿 + 本报告 + git status 干净 + GitHub 推送</td><td><span class="badge b-ok">已完成</span></td><td class="mono">见文末</td></tr>
+    </tbody>
+  </table>
+  <div class="callout green"><b>一句话：</b>第一梯队 6 项开源技术（外加 Zero-dep 月历共 7 个落地项）全部进入用户界面并实测可用，每项有 before/after 截图与 commit 留痕；新增依赖 wordcloud / exceljs / tesseract.js / @excalidraw/excalidraw / genanki / @tesseract.js-data（均在交接批准清单内）。</div>
+</section>
+
+<section id="gallery">
+  <h2><span class="n">01</span>逐项图集（核心）</h2>
+  <p class="desc">每一项一张卡片：before/after 并排 + commit 哈希 + 验证方式。截图存 <code>docs/screenshots/enrichment/</code>。</p>
+
+  <div class="card-item">
+    <h3><span class="badge b-info tag">前端</span> T1 · 错题知识点词云 <span class="mono small">28bb9fc</span></h3>
+    <p class="small">错题本「统计分析」tab 新增知识点词云卡：timdream/wordcloud（薄包装 KnowledgeWordCloud.jsx）把知识标签频次可视化为词云，替代纯列表的"看不到重点"。react-wordcloud 在 React 19 下整页崩溃已弃用（交接已标注）。</p>
+    <div class="grid2">
+      <figure><img src="screenshots/enrichment/T1-before-mistake-stats.png" alt="before"><figcaption>before：统计分析 tab 仅数字与列表，无知识点可视化</figcaption></figure>
+      <figure><img src="screenshots/enrichment/T1-after-wordcloud.png" alt="after"><figcaption>after：「知识点错题统计」词云，字号映射出现频次</figcaption></figure>
+    </div>
+    <p class="small"><b>验证</b>：jest 30/30；浏览器实测词云渲染（已知问题见折衷区）。</p>
+  </div>
+
+  <div class="card-item">
+    <h3><span class="badge b-info tag">前端</span> T2 · 学习规划月历视图 <span class="mono small">692f951</span></h3>
+    <p class="small">AI 规划 tab 新增「日历视图」：规划里的"第 N 周"里程碑映射为以本周为第 1 周的真实日期区间，月历网格直读"第几周干什么"。<b>方案变更</b>：FullCalendar v6 适配器在 React 19 下切 tab 即白屏、v7 生态断裂且 locales 导入在本仓 Vite 解析报 missing——月历本质是 7 列网格 + 事件块，改为 ~140 行零依赖 MonthGrid 手写实现，样式贴合项目内联风格。</p>
+    <div class="grid2">
+      <figure><img src="screenshots/enrichment/T2-before-learning-plan.png" alt="before"><figcaption>before：学习规划仅时间线列表</figcaption></figure>
+      <figure><img src="screenshots/enrichment/T2-after-calendar.png" alt="after"><figcaption>after：月历网格视图，里程碑按真实日期铺格</figcaption></figure>
+    </div>
+    <p class="small"><b>验证</b>：jest 全绿；浏览器实测日历渲染与规划联动。</p>
+  </div>
+
+  <div class="card-item">
+    <h3><span class="badge b-warn tag">全栈</span> T3 · genanki 错题导出 Anki 卡组 <span class="mono small">73215d6</span></h3>
+    <p class="small">错题本头部新增「Anki 卡组」按钮：后端 <code>GET /api/mistakes/export/anki</code> 用 genanki 0.13.1 把学生全部错题打包 .apkg（正面=题目、背面=正确答案+AI 解析），固定 model_id/deck_id 使重复导入在 Anki 内增量更新同一卡组。<b>实测修复</b>：交接时暂存的代码把 JSON 字符串 <code>knowledge_tags</code> 按逗号 split 且未去空格，genanki 校验标签禁空格直接 500——改为 <code>_safe_json_loads</code> 解析 + 空白压缩为下划线。</p>
+    <div class="grid2">
+      <figure><img src="screenshots/enrichment/T1-T6-before-mistakebook.png" alt="before"><figcaption>before：错题本头部仅「导出 / 开始复习 / 刷新」</figcaption></figure>
+      <figure><img src="screenshots/enrichment/T3-after-mistakebook-anki.png" alt="after"><figcaption>after：头部新增「Anki 卡组」按钮</figcaption></figure>
+    </div>
+    <p class="small"><b>验证</b>：curl 登录→导出返回 200 + 合法 APKG（94KB，file 识别 "Anki APKG file"）；jest 30/30；pytest test_mistake_pdf_export 1/1。</p>
+  </div>
+
+  <div class="card-item">
+    <h3><span class="badge b-warn tag">全栈</span> T4 · exceljs 班级成绩 Excel 导出 <span class="mono small">ac59bf3</span></h3>
+    <p class="small">班级详情「学生管理」卡头新增「导出成绩 Excel」：exceljs 懒加载生成三张表（班级概览 / 成绩分布 / 学生成绩——平均分/错题数/学习进度/画像字段），数据源复用现有 <code>GET /classes/&lt;id&gt;/students/profiles</code>，零新接口。</p>
+    <div class="grid2">
+      <figure><img src="screenshots/enrichment/T4-before-class-mgmt.png" alt="before"><figcaption>before：班级详情学生管理卡，无导出入口</figcaption></figure>
+      <figure><img src="screenshots/enrichment/T4-after-class-excel.png" alt="after"><figcaption>after：卡头新增「导出成绩 Excel」按钮</figcaption></figure>
+    </div>
+    <p class="small"><b>验证</b>：playwright 实机捕获下载 <code>2025软件工程_成绩表.xlsx</code>（PK 头合法 xlsx，8.9KB）；jest 37/37；eslint 无新增告警。</p>
+  </div>
+
+  <div class="card-item">
+    <h3><span class="badge b-info tag">前端</span> T5 · 成就证书打印视图 <span class="mono small">5548eef</span></h3>
+    <p class="small">已解锁成就卡片新增「证书」按钮 → 打印友好证书弹层（品牌头 + 成就名/描述/分类/星级/积分 + 解锁日期 + CERT 编号 + 印章样式），<code>@media print</code> 隔离规则保证打印输出只含证书本体，<code>window.print()</code> 即存 PDF。<b>取舍</b>：不用 pdfmake——默认 vfs 无中文字体，嵌入字体约 10MB 不值（交接既定方案）。学生姓名按 App.jsx 的 localStorage currentUser 约定取值。</p>
+    <div class="grid2">
+      <figure><img src="screenshots/enrichment/T5-before-achievements.png" alt="before"><figcaption>before：成就卡片仅徽章与进度，无证书出口</figcaption></figure>
+      <figure><img src="screenshots/enrichment/T5-after-certificate.png" alt="after"><figcaption>after：证书弹层（品牌头/成就名/编号/印章/打印按钮）</figcaption></figure>
+    </div>
+    <p class="small"><b>验证</b>：jest 27 套件 252 全绿；eslint 零告警；playwright 实测弹层含「成就证书 / CERT- 编号 / 存为 PDF」。</p>
+  </div>
+
+  <div class="card-item">
+    <h3><span class="badge b-warn tag">全栈</span> T6 · tesseract.js 拍照 OCR 录错题 <span class="mono small">3bfa6db</span></h3>
+    <p class="small">错题本新增「拍照录入」：弹层内选图（<code>capture="environment"</code> 支持手机拍照）→ tesseract.js 识别预填题干 → 人工核对 → 新增后端 <code>POST /api/mistakes</code> 落库（course_id 必填校验，user_answer 空串走既有「未作答」渲染兜底）。<b>实测修复</b>：CDN 链路在本环境失败——blob worker 内 importScripts 拉 CDN worker.min.js 报 NetworkError；改为 npm 包自托管（<code>public/tesseract/</code>  vendored worker + relaxedsimd-lstm core + chi_sim/eng traineddata.gz，共 ~11MB），离线可用。OCR 失败降级为手动填写，不阻塞录入。</p>
+    <div class="grid2">
+      <figure><img src="screenshots/enrichment/T1-T6-before-mistakebook.png" alt="before"><figcaption>before：错题本头部无拍照入口</figcaption></figure>
+      <figure><img src="screenshots/enrichment/T6-after-ocr-dialog.png" alt="after"><figcaption>after：拍照录入弹层，OCR 结果已预填进题目框</figcaption></figure>
+    </div>
+    <p class="small"><b>验证</b>：playwright 实测图片 OCR 预填成功（"Testquestion 3+5-?"，噪点属正常 OCR 误差）、手动填写+选课+保存后错题入列表；POST /api/mistakes curl 返回 201；jest 30/30。</p>
+  </div>
+
+  <div class="card-item">
+    <h3><span class="badge b-violet tag">全栈</span> T7 · Excalidraw 实时白板 <span class="mono small">5cb3b75</span></h3>
+    <p class="small">教师端互动管理与学生端课堂互动面板各加「实时白板」tab：懒加载 @excalidraw/excalidraw 0.18.1（独立 chunk 不进首屏），onChange 前沿+尾沿节流 500ms + 指纹去重后 emit <code>whiteboard_sync</code>；后端按 SEC-006 同款会话校验转发 <code>whiteboard_updated</code> 到 <code>course_&lt;id&gt;</code> 房间，<code>include_self=False</code> 挡回声；对端 <code>updateScene</code> 重绘。jest 按 wordcloud 先例注册 excalidraw 替身。</p>
+    <div class="grid2">
+      <figure><img src="screenshots/enrichment/T7-before-interaction.png" alt="before"><figcaption>before：互动管理仅举手/问答/讨论三 tab</figcaption></figure>
+      <figure><img src="screenshots/enrichment/T7-after-teacher-whiteboard.png" alt="after"><figcaption>after：教师端「实时白板」tab，Excalidraw 画布已挂载</figcaption></figure>
+    </div>
+    <figure style="margin-top:14px"><img src="screenshots/enrichment/T7-after-student-whiteboard.png" alt="student"><figcaption>学生端课堂互动面板同房间白板画布</figcaption></figure>
+    <p class="small"><b>验证</b>：双 socket.io 客户端实测——教师 emit whiteboard_sync 后学生端收到 whiteboard_updated（含 elements），发送端无回声；浏览器实测两端正画布均挂载；jest 252 全绿。</p>
+  </div>
+</section>
+
+<section id="verify">
+  <h2><span class="n">02</span>验证汇总</h2>
+  <table>
+    <thead><tr><th>验证项</th><th>方式</th><th>结果</th></tr></thead>
+    <tbody>
+      <tr><td>前端 jest 全量</td><td><code>npx jest</code>（27 套件）</td><td><span class="badge b-ok">252/252 通过</span></td></tr>
+      <tr><td>后端 pytest（错题）</td><td>test_mistake_pdf_export</td><td><span class="badge b-ok">通过</span></td></tr>
+      <tr><td>T3 .apkg 实物</td><td>curl 登录→下载，file 校验</td><td><span class="badge b-ok">200 / Anki APKG / 94KB</span></td></tr>
+      <tr><td>T4 .xlsx 实物</td><td>playwright 捕获浏览器下载</td><td><span class="badge b-ok">PK 合法 xlsx / 8.9KB</span></td></tr>
+      <tr><td>T6 OCR 链路</td><td>playwright 选图→识别→预填→保存</td><td><span class="badge b-ok">识别成功+错题入库</span></td></tr>
+      <tr><td>T7 ws 转发</td><td>node 双 socket.io 客户端实测</td><td><span class="badge b-ok">学生端收到转发，发送端无回声</span></td></tr>
+      <tr><td>verify_all 三段式</td><td>jest（252/252）+ vite build（✓ 29s）+ pytest（175 通过 / 1 跳过）</td><td><span class="badge b-ok">全绿</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="issues">
+  <h2><span class="n">03</span>已知问题与折衷（如实标注）</h2>
+  <ul>
+    <li><b>T1 词云偶发空白</b>（交接遗留）：错题本父组件数据刷新导致统计面板周期性重挂载，词云绘制窗口被掐断；库本身手动调用已验证可画。缓解：切回 tab 可触发重绘。</li>
+    <li><b>T2 方案变更</b>：FullCalendar 弃用 → 零依赖手写 MonthGrid。理由：React 19 下适配器整树崩溃 + v6/v7 生态断裂 + locales 导入在 Vite 解析报 missing。月历核心价值（规划铺上日期网格）完整保留。</li>
+    <li><b>T3 交接代码带 bug</b>：knowledge_tags 为 JSON 字符串且含空格，genanki 标签校验 500；已修（_safe_json_loads + 空白转下划线）并实测导出。</li>
+    <li><b>T5 弃 pdfmake</b>：默认 vfs 无中文字体；改用打印视图（@media print 隔离 + window.print 存 PDF）。</li>
+    <li><b>T6 OCR 精度</b>：best_int 小模型包（chi_sim 1.7MB / eng 2.9MB），中英文混排会有空格/标点噪点——题干始终经人工核对后才保存，OCR 仅预填。离线可用。</li>
+    <li><b>T7 白板不持久化</b>：elements 纯转发不落库（设计如此——白板是会话内协作工具，非归档数据）；后进房间者看到的是新笔迹而非历史画面。</li>
+  </ul>
+</section>
+
+<section id="infra">
+  <h2><span class="n">04</span>环境基建修复（本次新增工程资产）</h2>
+  <ul>
+    <li><b>.night-run/shot.py</b>：playwright + 系统 Chrome 截图器——UI 表单登录（写 localStorage currentUser，走真实门禁）→ hash 路由 → 点击/滚动/等待步骤 → 截图；内置 ensure_backend 自愈（端口无监听则 WMI 拉起）。</li>
+    <li><b>后台进程存活问题</b>：本会话 spawn 的进程会被随调用回收（nohup/Start-Process/WMI-cmd 均被收割，schtasks 亦被控制台终止 0xC000013A）；唯一稳定方案是 <b>pythonw.exe（无控制台）</b> 经 WMI 拉起——已在 <code>.night-run/start-backend-wmi.ps1</code> 固化，后端/截图脚本均自愈复用。</li>
+    <li><b>.night-run/ws-sync-test.js</b>：双 socket.io 客户端白板转发实测脚本（登录→同房→emit→断言对端收到）。</li>
+    <li><b>网络实况</b>：github.com git push 间歇可达（夜推成功一次）；jsdelivr CDN 对 bash 不可达但对浏览器可达——T6 因此改本地自托管。</li>
+  </ul>
+</section>
+
+<section id="next">
+  <h2><span class="n">05</span>后续建议</h2>
+  <ul>
+    <li>T1 词云重挂载空白：给 MistakeStats 卡加 React.memo / 把词云绘制挂到稳定 useEffect 依赖上，可根治。</li>
+    <li>T7 可升级方向：白板历史快照（课程维度存最近一版 elements，后进房回放）、只读围观模式。</li>
+    <li>T6 可选增强：识别前图片预处理（灰度/二值化）可显著降噪；tesseract 支持传入 canvas 预处理。</li>
+    <li>dev.db 已复原：本批浏览器实测产生的 2 条验证错题记录随收尾 <code>git checkout -- backend/instance/dev.db</code> 一并回滚，工作区零漂移。</li>
+  </ul>
+  <footer>生成：夜间自主执行会话 · 证据链：docs/screenshots/enrichment/* + git log --oneline night</footer>
+</section>
+
+</div>
+</body>
+</html>

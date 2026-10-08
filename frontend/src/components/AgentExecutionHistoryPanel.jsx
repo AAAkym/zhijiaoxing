@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { courseGeneration } from '@/services/api'
+import AgentPipelineTimeline from './AgentPipelineTimeline'
+import { formatApiDateTime } from '@/utils/apiDate'
 
 /** 资源智能体名单，与后端 agent_execution_history_service.RESOURCE_AGENT_NAMES 同口径。 */
 const RESOURCE_AGENT_NAMES = new Set([
@@ -30,10 +32,9 @@ function formatDuration(value) {
 }
 
 function formatTime(value) {
-  if (!value) return '暂无记录'
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) return String(value)
-  return parsed.toLocaleString('zh-CN')
+  // 后端时间为裸 UTC 串（isoformat 无时区标记），必须经 apiDate 按 UTC 解析，
+  // 否则 UTC+8 用户看到的时间会慢 8 小时（第二轮 J2-04）
+  return formatApiDateTime(value)
 }
 
 function Metric({ label, value, suffix = '', tone = '' }) {
@@ -52,7 +53,9 @@ function Metric({ label, value, suffix = '', tone = '' }) {
  * 本组件消费的是 `agent_execution_logs` 的**持久化记录**，因此重启后依然能看到
  * "上一次生成究竟是哪些智能体参与的、耗时多少、失败在哪里"。
  */
-export default function AgentExecutionHistoryPanel({ days: initialDays = 30 }) {
+export default function AgentExecutionHistoryPanel({ days: initialDays = 90 }) {
+  // 默认窗口取 90 天：数据库里的执行记录大多集中在更早时段，默认 30 天会
+  // 打开就是"0 条记录 + 流水线无法判断"的误导性空态（第二轮 J2-03）。
   const [days, setDays] = useState(initialDays)
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -234,32 +237,38 @@ export default function AgentExecutionHistoryPanel({ days: initialDays = 30 }) {
             </div>
 
             {recent.length ? (
-              <details className="border">
-                <summary className="cursor-pointer px-3 py-2 text-sm font-medium">
-                  最近 {recent.length} 条执行明细
-                </summary>
-                <ul className="space-y-1 border-t px-3 py-3">
-                  {recent.map((record) => (
-                    <li key={record.id} className="flex flex-wrap items-center gap-2 text-xs">
-                      {record.status === 'success' ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
-                      ) : (
-                        <XCircle className="h-3.5 w-3.5 text-destructive" aria-hidden="true" />
-                      )}
-                      <span className="font-medium">{record.agent_name}</span>
-                      <span className="text-muted-foreground">{record.task_type || '未标注任务类型'}</span>
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        <Clock className="h-3 w-3" aria-hidden="true" />
-                        {formatDuration(record.duration_ms)}
-                      </span>
-                      <span className="text-muted-foreground">{formatTime(record.created_at)}</span>
-                      {record.error_message ? (
-                        <span className="text-destructive">{record.error_message}</span>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              </details>
+              <>
+                <AgentPipelineTimeline
+                  recent={recent}
+                  agentLabels={Object.fromEntries(agents.map(a => [a.agent_name, a.agent_label]))}
+                />
+                <details className="border">
+                  <summary className="cursor-pointer px-3 py-2 text-sm font-medium">
+                    最近 {recent.length} 条执行明细
+                  </summary>
+                  <ul className="space-y-1 border-t px-3 py-3">
+                    {recent.map((record) => (
+                      <li key={record.id} className="flex flex-wrap items-center gap-2 text-xs">
+                        {record.status === 'success' ? (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
+                        ) : (
+                          <XCircle className="h-3.5 w-3.5 text-destructive" aria-hidden="true" />
+                        )}
+                        <span className="font-medium">{record.agent_name}</span>
+                        <span className="text-muted-foreground">{record.task_type || '未标注任务类型'}</span>
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Clock className="h-3 w-3" aria-hidden="true" />
+                          {formatDuration(record.duration_ms)}
+                        </span>
+                        <span className="text-muted-foreground">{formatTime(record.created_at)}</span>
+                        {record.error_message ? (
+                          <span className="text-destructive">{record.error_message}</span>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              </>
             ) : null}
 
             <p className="flex items-center gap-2 text-xs text-muted-foreground">

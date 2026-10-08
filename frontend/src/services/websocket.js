@@ -86,6 +86,10 @@ class WebSocketService {
         this.emit('discussion_updated', data)
       })
 
+      this.socket.on('whiteboard_updated', (data) => {
+        this.emit('whiteboard_updated', data)
+      })
+
       this.socket.on('error', (data) => {
         this.emit('error', data)
       })
@@ -136,6 +140,11 @@ class WebSocketService {
   sendDiscussionEvent(courseId, discussionId, eventType = 'created') {
     if (!this.socket || !this.connected) return
     this.socket.emit('discussion_event', { course_id: courseId, discussion_id: discussionId, event_type: eventType })
+  }
+
+  sendWhiteboardSync(courseId, elements) {
+    if (!this.socket || !this.connected) return
+    this.socket.emit('whiteboard_sync', { course_id: courseId, elements })
   }
 
   on(event, callback) {

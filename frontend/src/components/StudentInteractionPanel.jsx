@@ -10,10 +10,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   Hand, MessageCircle, Users, CheckCircle, Clock, XCircle,
-  Send, ThumbsUp, Pin, Eye, UserCheck, AlertCircle, MessageSquare
+  Send, ThumbsUp, Pin, Eye, UserCheck, AlertCircle, MessageSquare, Presentation
 } from 'lucide-react'
 import { interaction, courses } from '../services/api'
 import websocketService from '../services/websocket'
+import WhiteboardPanel from './WhiteboardPanel'
 
 export default function StudentInteractionPanel({ courseId, videoId }) {
   const [loading, setLoading] = useState(false)
@@ -323,7 +324,7 @@ export default function StudentInteractionPanel({ courseId, videoId }) {
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="handraises" className="flex items-center gap-1">
             <Hand className="w-4 h-4" />
             举手
@@ -335,6 +336,10 @@ export default function StudentInteractionPanel({ courseId, videoId }) {
           <TabsTrigger value="discussions" className="flex items-center gap-1">
             <Users className="w-4 h-4" />
             讨论
+          </TabsTrigger>
+          <TabsTrigger value="whiteboard" className="flex items-center gap-1">
+            <Presentation className="w-4 h-4" />
+            白板
           </TabsTrigger>
         </TabsList>
 
@@ -711,6 +716,11 @@ export default function StudentInteractionPanel({ courseId, videoId }) {
               ))
             )}
           </div>
+        </TabsContent>
+
+        {/* 实时白板（T7）：与教师端同课程房间同步 */}
+        <TabsContent value="whiteboard">
+          <WhiteboardPanel courseId={courseId} />
         </TabsContent>
       </Tabs>
     </div>

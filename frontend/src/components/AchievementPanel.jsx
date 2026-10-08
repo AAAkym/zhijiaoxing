@@ -52,6 +52,7 @@ export default function AchievementPanel() {
   const [activeCategory, setActiveCategory] = useState('all')
   const [notifications, setNotifications] = useState([])
   const [showNotification, setShowNotification] = useState(false)
+  const [certAchievement, setCertAchievement] = useState(null)
 
   const fetchAchievements = useCallback(async () => {
     setLoading(true)
@@ -109,6 +110,12 @@ export default function AchievementPanel() {
     if (!IconComponent) return <Trophy className={size} />
     return <IconComponent className={size} />
   }
+
+  let currentUserName = '同学'
+  try {
+    const cached = JSON.parse(localStorage.getItem('currentUser') || 'null')
+    currentUserName = cached?.real_name || cached?.username || '同学'
+  } catch { /* 缓存缺失时保持默认称呼 */ }
 
   const renderStars = (level) => {
     const config = LEVEL_CONFIG[level] || LEVEL_CONFIG[1]
@@ -277,10 +284,23 @@ export default function AchievementPanel() {
                       </span>
                     </div>
 
-                    {isUnlocked && achievement.unlocked_at && (
-                      <p className="text-xs text-gray-400 mt-1">
-                        解锁于 {new Date(achievement.unlocked_at).toLocaleDateString('zh-CN')}
-                      </p>
+                    {isUnlocked && (
+                      <div className="flex items-center justify-between mt-1">
+                        {achievement.unlocked_at ? (
+                          <p className="text-xs text-gray-400">
+                            解锁于 {new Date(achievement.unlocked_at).toLocaleDateString('zh-CN')}
+                          </p>
+                        ) : <span />}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-xs text-amber-600 hover:text-amber-800 gap-1"
+                          title="打开打印友好的成就证书，可另存为 PDF"
+                          onClick={() => setCertAchievement(achievement)}
+                        >
+                          <Award className="w-3 h-3" />证书
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -294,6 +314,69 @@ export default function AchievementPanel() {
         <div className="text-center py-12 text-gray-400">
           <Trophy className="w-12 h-12 mx-auto mb-3 text-gray-300" />
           <p>该分类下暂无成就</p>
+        </div>
+      )}
+
+      {/* 成就证书打印视图（丰富化 T5）：打印时仅证书区域可见，window.print 另存 PDF */}
+      {certAchievement && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-auto">
+          <style>{`@media print {
+            body * { visibility: hidden; }
+            .cert-print, .cert-print * { visibility: visible; }
+            .cert-print { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none !important; }
+            .cert-no-print { display: none !important; }
+          }`}</style>
+          <div className="cert-print relative w-full max-w-2xl bg-white rounded-lg shadow-2xl p-10 border-[6px] border-double border-amber-400">
+            <div className="text-center border-b border-gray-200 pb-6 mb-6">
+              <div className="flex items-center justify-center gap-2 mb-1">
+                <GraduationCap className="w-8 h-8 text-amber-500" />
+                <span className="text-2xl font-bold text-gray-900">智教星</span>
+              </div>
+              <p className="text-xs tracking-[0.3em] text-gray-400 uppercase">ZhiJiaoXing · Certificate of Achievement</p>
+              <h2 className="text-3xl font-bold text-amber-600 mt-4 tracking-widest">成 就 证 书</h2>
+            </div>
+
+            <div className="text-center space-y-4 py-4">
+              <p className="text-gray-600">兹证明</p>
+              <p className="text-2xl font-bold text-gray-900">{currentUserName} 同学</p>
+              <p className="text-gray-600">在智教星自适应学习中达成成就</p>
+              <div className="flex items-center justify-center gap-3 py-2">
+                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${(CATEGORY_CONFIG[certAchievement.category] || CATEGORY_CONFIG.learning_time).color} text-white flex items-center justify-center`}>
+                  {renderIcon(certAchievement.icon, 'w-8 h-8')}
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">「{certAchievement.name}」</p>
+                  <div className="flex justify-center">{renderStars(certAchievement.level)}</div>
+                </div>
+              </div>
+              <p className="text-sm text-gray-500 max-w-md mx-auto">{certAchievement.description}</p>
+              <div className="flex items-center justify-center gap-6 text-sm text-gray-500 pt-2">
+                <span>分类：{(CATEGORY_CONFIG[certAchievement.category] || CATEGORY_CONFIG.learning_time).label}</span>
+                <span>积分：+{certAchievement.points}</span>
+                {certAchievement.unlocked_at && (
+                  <span>解锁日期:{new Date(certAchievement.unlocked_at).toLocaleDateString('zh-CN')}</span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-end justify-between mt-8 pt-4">
+              <div className="text-xs text-gray-400">
+                <p>证书编号：CERT-{String(certAchievement.id).padStart(4, '0')}</p>
+                <p>颁发日期：{new Date().toLocaleDateString('zh-CN')}</p>
+              </div>
+              <div className="w-24 h-24 rounded-full border-4 border-red-400 flex flex-col items-center justify-center text-red-500 -rotate-12">
+                <span className="text-xs font-bold">智教星</span>
+                <span className="text-[10px]">教学认证专用</span>
+              </div>
+            </div>
+
+            <div className="cert-no-print flex justify-center gap-3 mt-8">
+              <Button onClick={() => window.print()} className="gap-2">
+                <FileText className="w-4 h-4" />打印 / 存为 PDF
+              </Button>
+              <Button variant="outline" onClick={() => setCertAchievement(null)}>关闭</Button>
+            </div>
+          </div>
         </div>
       )}
     </div>

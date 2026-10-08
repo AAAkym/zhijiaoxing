@@ -13,7 +13,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select'
 import {
-  Users, Plus, Trash2, BookOpen, BarChart3, UserPlus, Search, Loader2, Eye, Brain, Target, Clock, TrendingUp, AlertTriangle, RefreshCw, Radar
+  Users, Plus, Trash2, BookOpen, BarChart3, UserPlus, Search, Loader2, Eye, Brain, Target, Clock, TrendingUp, AlertTriangle, RefreshCw, Radar, ClipboardList, FileSpreadsheet
 } from 'lucide-react'
 import { classManagement, profileApi } from '@/services/api'
 import ClassLearningTypesPanel from './ClassLearningTypesPanel'
@@ -39,7 +39,7 @@ const STYLE_LABELS = {
   reading: '阅读型', mixed: '混合型',
 }
 const PACE_LABELS = {
-  fast: '快速型', moderate: '适中型', slow: '深度型', adaptive: '灵活型',
+  fast: '较快', moderate: '适中', slow: '偏慢', adaptive: '自适应',
 }
 const GOAL_LABELS = {
   exam: '应试导向', career: '职业发展', hobby: '兴趣驱动', research: '学术研究',
@@ -112,6 +112,7 @@ export default function ClassManagement({ myCourses = [] }) {
   const [dashboardUserId, setDashboardUserId] = useState(null)
 
   const [syncing, setSyncing] = useState(false)
+  const [exportingExcel, setExportingExcel] = useState(false)
 
   const fetchClasses = useCallback(async () => {
     try {
@@ -337,6 +338,87 @@ export default function ClassManagement({ myCourses = [] }) {
     }
   }
 
+  // 班级成绩 Excel 导出（丰富化 T4，exceljs）：概览 + 成绩分布 + 逐生成绩三张表
+  const handleExportExcel = async () => {
+    if (!selectedClass) return
+    setExportingExcel(true)
+    try {
+      const { default: ExcelJS } = await import('exceljs')
+      const profilesResult = await classManagement.getClassStudentsProfiles(selectedClass)
+      const students = profilesResult?.students || []
+
+      const wb = new ExcelJS.Workbook()
+      wb.creator = '智教星'
+      wb.created = new Date()
+
+      const overview = wb.addWorksheet('班级概览')
+      overview.columns = [
+        { header: '指标', key: 'k', width: 18 },
+        { header: '数值', key: 'v', width: 20 },
+      ]
+      overview.addRows([
+        { k: '班级名称', v: classDetail?.name || '' },
+        { k: '学生人数', v: stats?.student_count ?? students.length },
+        { k: '平均分', v: stats?.avg_score ?? 0 },
+        { k: '及格率(%)', v: stats?.pass_rate ?? 0 },
+        { k: '评测次数', v: stats?.total_evaluations ?? 0 },
+        { k: '导出时间', v: new Date().toLocaleString('zh-CN') },
+      ])
+      overview.getRow(1).font = { bold: true }
+
+      const dist = wb.addWorksheet('成绩分布')
+      dist.columns = [
+        { header: '分数段', key: 'range', width: 16 },
+        { header: '人数', key: 'count', width: 12 },
+      ]
+      Object.entries(stats?.score_distribution || {}).forEach(([range, count]) => {
+        dist.addRow({ range, count })
+      })
+      dist.getRow(1).font = { bold: true }
+
+      const sheet = wb.addWorksheet('学生成绩')
+      sheet.columns = [
+        { header: '姓名', key: 'student_name', width: 16 },
+        { header: '学号', key: 'student_number', width: 14 },
+        { header: '平均分', key: 'avg_score', width: 10 },
+        { header: '错题数', key: 'mistake_count', width: 10 },
+        { header: '学习进度(%)', key: 'avg_progress', width: 13 },
+        { header: '认知风格', key: 'cognitive_style', width: 12 },
+        { header: '学习节奏', key: 'learning_pace', width: 12 },
+        { header: '目标导向', key: 'goal_orientation', width: 12 },
+      ]
+      sheet.getRow(1).font = { bold: true }
+      students.forEach(s => {
+        sheet.addRow({
+          student_name: s.student_name || '-',
+          student_number: s.student_number || '-',
+          avg_score: s.avg_score ?? 0,
+          mistake_count: s.mistake_count ?? 0,
+          avg_progress: s.avg_progress ?? 0,
+          cognitive_style: translateProfileValue('cognitive_style', s.cognitive_style),
+          learning_pace: translateProfileValue('learning_pace', s.learning_pace),
+          goal_orientation: translateProfileValue('goal_orientation', s.goal_orientation),
+        })
+      })
+
+      const buffer = await wb.xlsx.writeBuffer()
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = (classDetail?.name || '班级') + '_成绩表.xlsx'
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('Export excel error:', err)
+      alert('导出失败，请重试')
+    } finally {
+      setExportingExcel(false)
+    }
+  }
+
   const classStudentIds = (classDetail?.students || []).map(s => s.user_id)
   const filteredStudents = availableStudents.filter(s => {
     const matchSearch = !studentSearch ||
@@ -527,28 +609,50 @@ export default function ClassManagement({ myCourses = [] }) {
           ) : (
             <>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card className="bg-gradient-to-br from-blue-500 to-cyan-500 text-white">
-                  <CardContent className="p-4">
-                    <p className="text-blue-100 text-xs">学生人数</p>
-                    <p className="text-2xl font-bold">{stats?.student_count || 0}</p>
+                {/* 统计卡改为与全站一致的白卡语言：彩色图标点缀 + 大数字，
+                    替换原先高饱和渐变底（视觉审查 V-01：与极简风格冲突） */}
+                <Card>
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50">
+                      <Users className="h-5 w-5 text-blue-500" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">学生人数</p>
+                      <p className="text-2xl font-bold text-gray-900">{stats?.student_count || 0}</p>
+                    </div>
                   </CardContent>
                 </Card>
-                <Card className="bg-gradient-to-br from-green-500 to-emerald-500 text-white">
-                  <CardContent className="p-4">
-                    <p className="text-green-100 text-xs">平均分</p>
-                    <p className="text-2xl font-bold">{stats?.avg_score || 0}</p>
+                <Card>
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50">
+                      <BarChart3 className="h-5 w-5 text-emerald-500" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">平均分</p>
+                      <p className="text-2xl font-bold text-gray-900">{stats?.avg_score || 0}</p>
+                    </div>
                   </CardContent>
                 </Card>
-                <Card className="bg-gradient-to-br from-amber-500 to-orange-500 text-white">
-                  <CardContent className="p-4">
-                    <p className="text-amber-100 text-xs">及格率</p>
-                    <p className="text-2xl font-bold">{stats?.pass_rate || 0}%</p>
+                <Card>
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50">
+                      <Target className="h-5 w-5 text-amber-500" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">及格率</p>
+                      <p className="text-2xl font-bold text-gray-900">{stats?.pass_rate || 0}%</p>
+                    </div>
                   </CardContent>
                 </Card>
-                <Card className="bg-gradient-to-br from-purple-500 to-violet-500 text-white">
-                  <CardContent className="p-4">
-                    <p className="text-purple-100 text-xs">评测次数</p>
-                    <p className="text-2xl font-bold">{stats?.total_evaluations || 0}</p>
+                <Card>
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-50">
+                      <ClipboardList className="h-5 w-5 text-violet-500" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">评测次数</p>
+                      <p className="text-2xl font-bold text-gray-900">{stats?.total_evaluations || 0}</p>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -580,6 +684,9 @@ export default function ClassManagement({ myCourses = [] }) {
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-sm flex items-center gap-2"><Users className="w-4 h-4" />学生管理</CardTitle>
                     <div className="flex gap-2">
+                      <Button variant="outline" size="sm" className="gap-1" onClick={handleExportExcel} disabled={exportingExcel} title="导出班级概览、成绩分布与逐生成绩为 .xlsx">
+                        {exportingExcel ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileSpreadsheet className="w-3 h-3" />}导出成绩 Excel
+                      </Button>
                       <Button variant="outline" size="sm" className="gap-1" onClick={handleSyncProfiles} disabled={syncing}>
                         {syncing ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}同步画像
                       </Button>

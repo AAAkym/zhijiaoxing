@@ -40,6 +40,7 @@ def get_client_ip():
 
 
 @search_bp.route('', methods=['GET', 'POST'])
+@require_auth
 def search():
     """
     全局搜索接口
@@ -139,6 +140,7 @@ def search():
 
 
 @search_bp.route('/courses', methods=['GET'])
+@require_auth
 def search_courses():
     """
     课程搜索接口
@@ -188,6 +190,7 @@ def search_courses():
 
 
 @search_bp.route('/knowledge', methods=['GET'])
+@require_auth
 def search_knowledge():
     """
     知识库搜索接口
@@ -222,6 +225,7 @@ def search_knowledge():
 
 
 @search_bp.route('/contents', methods=['GET'])
+@require_auth
 def search_contents():
     """
     课程内容搜索接口
@@ -256,6 +260,7 @@ def search_contents():
 
 
 @search_bp.route('/advanced', methods=['POST'])
+@require_auth
 def advanced_search():
     """
     高级搜索接口
@@ -301,6 +306,7 @@ def advanced_search():
 
 
 @search_bp.route('/autocomplete', methods=['GET'])
+@require_auth
 def autocomplete():
     """
     自动补全接口
@@ -332,6 +338,7 @@ def autocomplete():
 
 
 @search_bp.route('/suggestions', methods=['GET'])
+@require_auth
 def get_suggestions():
     """
     获取热门搜索建议
@@ -354,6 +361,7 @@ def get_suggestions():
 
 
 @search_bp.route('/recommendations', methods=['GET'])
+@require_auth
 def get_recommendations():
     """
     获取个性化推荐
@@ -380,6 +388,7 @@ def get_recommendations():
 
 
 @search_bp.route('/related', methods=['GET'])
+@require_auth
 def get_related():
     """
     获取相关搜索
@@ -535,3 +544,49 @@ def clear_history():
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@search_bp.route('/semantic', methods=['POST'])
+@require_auth
+def semantic_search():
+    """
+    语义搜索（丰富化 T8：BGE 中文 embedding + Qdrant local）
+
+    POST /api/search/semantic
+    Body: { "query": "函数默认值为什么会变", "top_k": 8, "course_id": 4 }
+
+    Returns:
+        { "ok": true, "results": [{knowledge_point_id, title, score, snippet, ...}], "engine": "..." }
+        服务禁用/初始化失败时 ok=false 且带 error 说明（HTTP 200，前端按 ok 分支渲染）。
+    """
+    from src.services.vector_search_service import vector_search_service
+
+    data = request.get_json(silent=True) or {}
+    query = (data.get('query') or '').strip()
+    top_k = int(data.get('top_k') or 8)
+    course_id = data.get('course_id')
+
+    if not query:
+        return jsonify({'ok': False, 'error': '搜索关键词不能为空', 'results': [], 'total': 0}), 400
+
+    result = vector_search_service.search(query=query, top_k=top_k, course_id=course_id)
+    return jsonify(result)
+
+
+@search_bp.route('/semantic/reindex', methods=['POST'])
+@require_auth
+def semantic_reindex():
+    """
+    重建语义索引：把已发布 KnowledgePoint 重新编码写入 Qdrant 本地集合。
+
+    POST /api/search/semantic/reindex
+    Body: { "course_id": 4 }   // 可省，缺省重建全部课程
+
+    Returns:
+        { "ok": true, "indexed": N }
+    """
+    from src.services.vector_search_service import vector_search_service
+
+    data = request.get_json(silent=True) or {}
+    course_id = data.get('course_id')
+    result = vector_search_service.reindex(course_id=course_id)
+    return jsonify(result)

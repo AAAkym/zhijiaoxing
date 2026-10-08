@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { Trash2, Edit, Plus, Users, AlertCircle, CheckCircle } from 'lucide-react'
 import { users } from '../services/api'
+import { formatApiDateTime } from '@/utils/apiDate'
 
 const validateEmail = (email) => {
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -421,7 +422,7 @@ export default function UserManagement() {
                         {getRoleName(user.role)}
                       </Badge>
                     </TableCell>
-                    <TableCell>{user.created_at}</TableCell>
+                    <TableCell>{formatApiDateTime(user.created_at)}</TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
                         <Button

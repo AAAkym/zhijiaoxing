@@ -169,7 +169,9 @@ def generate_step_content(config_id: int, teacher_id: int, step: int, user_id: i
             )
     except Exception as e:
         logger.error(f"AI generation error for step {step}: {e}")
-        content = f"生成失败，请重试。错误信息：{str(e)}"
+        # 失败必须显式短路：此前把错误文本当 content 落库成"版本"，
+        # 教师稍不留意就会把报错信息确认成课程内容并定稿（第二轮 J2-06）。
+        return {"error": f"AI 生成失败，请重试。原因：{str(e)[:200]}"}
 
     existing_versions = CourseGenerationVersion.query.filter_by(
         config_id=config_id, step=step

@@ -13,6 +13,7 @@ import {
   User,
 } from 'lucide-react'
 import { aiTutor } from '@/services/api'
+import { MarkdownLite } from '@/utils/markdownLite'
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024
 const MAX_INPUT_LENGTH = 500
@@ -190,8 +191,8 @@ function MessageBubble({ message, onFeedback, feedbackLoading, onClarification }
             {message.content}
           </div>
         ) : (
-          <div className="bg-gray-100 text-gray-800 px-4 py-2.5 rounded-2xl rounded-tl-sm text-sm leading-relaxed whitespace-pre-wrap break-words">
-            {message.content}
+          <div className="bg-gray-100 text-gray-800 px-4 py-2.5 rounded-2xl rounded-tl-sm text-sm break-words">
+            <MarkdownLite text={message.content} />
             {message.isStreaming && (
               <span className="inline-block w-1.5 h-4 ml-0.5 bg-gray-500 animate-pulse rounded-sm" />
             )}

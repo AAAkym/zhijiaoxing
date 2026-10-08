@@ -173,6 +173,21 @@ export const searchApi = {
       method: 'POST',
     })
   },
+
+  // 语义搜索（BGE 中文 embedding + Qdrant local）：返回知识点 + 相似度分数
+  semanticSearch: (query, { top_k = 8, course_id } = {}) => {
+    return request('/search/semantic', {
+      method: 'POST',
+      body: { query, top_k, course_id },
+    })
+  },
+
+  semanticReindex: (course_id) => {
+    return request('/search/semantic/reindex', {
+      method: 'POST',
+      body: course_id ? { course_id } : {},
+    })
+  },
 }
 
 export default searchApi

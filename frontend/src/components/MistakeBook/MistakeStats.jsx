@@ -1,4 +1,5 @@
 import React from 'react'
+import KnowledgeWordCloud from './KnowledgeWordCloud'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -161,6 +162,8 @@ export default function MistakeStats({ stats }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {/* 知识点词云（丰富化 T1）：字号随错题数变化，一眼看出薄弱知识点的聚集区 */}
+          <KnowledgeWordCloud words={knowledgePointData} />
           {knowledgePointData.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
               {knowledgePointData.map((item, index) => (

@@ -44,6 +44,18 @@ import {
   ArrowRight,
 } from 'lucide-react'
 import { courseGeneration } from '@/services/api'
+import { MarkdownLite } from '@/utils/markdownLite'
+
+// 六阶段协作流水线：与后端 agent_execution_history_service.build_pipeline_coverage
+// 的阶段语义保持同口径。生成等待期展示它，回答"AI 生成期间系统在做什么"。
+const PIPELINE_STAGES = [
+  { key: 'profile', label: '读取学生画像', desc: '提取学情特征与薄弱点' },
+  { key: 'knowledge', label: '检索课程知识库', desc: '召回相关知识点与素材' },
+  { key: 'strategy', label: '协调智能体制定策略', desc: '确定资源结构与难度分布' },
+  { key: 'agents', label: '各资源智能体并行生成', desc: '文档 / 习题 / 媒体等分工产出' },
+  { key: 'quality', label: '一致性和质量检查', desc: '交叉校验内容一致性' },
+  { key: 'package', label: '整合个性化资源包', desc: '汇总产出并附完整性报告' },
+]
 
 const STEPS = [
   { step: 1, name: 'syllabus', label: '教学大纲', icon: FileText },
@@ -80,6 +92,12 @@ export default function CourseGenerationWizard({ myCourses = [], onBack }) {
   const [peerReviewTarget, setPeerReviewTarget] = useState('')
   const [reviewComment, setReviewComment] = useState('')
   const [reviewScore, setReviewScore] = useState(0)
+  // 生成结果默认以渲染后的 Markdown 预览展示（J2-01），需要修改时切到编辑模式
+  const [contentPreviewMode, setContentPreviewMode] = useState(true)
+  // 生成等待期计时（秒），配合协作阶段面板给出"系统在工作"的真实反馈
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  // 生成失败的行内错误（替代原生 alert，且不污染内容区）
+  const [genError, setGenError] = useState('')
 
   const totalRatio = config.video_ratio + config.experiment_ratio + config.discussion_ratio
 
@@ -127,23 +145,39 @@ export default function CourseGenerationWizard({ myCourses = [], onBack }) {
   const handleGenerateStep = async (step) => {
     if (!configId) return
     setGenerating(true)
+    setElapsedSeconds(0)
+    setGenError('')
     try {
       const result = await courseGeneration.generateStep(configId, step)
+      if (result.error) {
+        // 后端对生成失败显式返回 {error}（不再把报错文本当内容落库）
+        setGenError(result.error)
+        return
+      }
       if (result.version) {
         setStepContents(prev => ({ ...prev, [step]: result.version.content }))
         setEditingContent(result.version.content)
         setCurrentStep(step)
+        // 新生成的内容默认回到渲染预览，而不是裸 Markdown 文本框
+        setContentPreviewMode(true)
         if (result.versions) {
           setVersions(prev => ({ ...prev, [step]: result.versions || [result.version] }))
         }
       }
     } catch (err) {
       console.error('Generate step error:', err)
-      alert('生成失败，请重试')
+      setGenError(err?.response?.data?.error || err?.message || '生成失败，请重试')
     } finally {
       setGenerating(false)
     }
   }
+
+  // 生成期间的已等待计时：让"系统在工作中"可感知，而不是一个无限转圈
+  useEffect(() => {
+    if (!generating) return
+    const timer = setInterval(() => setElapsedSeconds(s => s + 1), 1000)
+    return () => clearInterval(timer)
+  }, [generating])
 
   const handleConfirmStep = async (step, isModified = false) => {
     if (!configId) return
@@ -548,10 +582,41 @@ export default function CourseGenerationWizard({ myCourses = [], onBack }) {
                     <div className="space-y-4">
                       {!stepContents[currentStep] ? (
                         <div className="text-center py-8">
-                          <div className="mb-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
-                            <p className="text-sm text-purple-700 font-medium">
-                              正在准备生成：{STEPS[currentStep - 1]?.label}
+                          {/* 等待期协作流水线面板：诚实地展示本步骤会经过的多智能体阶段 */}
+                          <div className="mb-6 mx-auto max-w-md text-left p-4 bg-purple-50 rounded-lg border border-purple-200">
+                            <p className="text-sm text-purple-700 font-medium mb-2">
+                              {generating
+                                ? `AI 正在生成：${STEPS[currentStep - 1]?.label}（已等待 ${elapsedSeconds} 秒）`
+                                : `正在准备生成：${STEPS[currentStep - 1]?.label}`}
                             </p>
+                            <ol className="space-y-1.5">
+                              {PIPELINE_STAGES.map((stage, idx) => (
+                                <li key={stage.key} className="flex items-start gap-2 text-xs">
+                                  <span
+                                    className={`mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ${
+                                      generating
+                                        ? 'bg-purple-200 text-purple-700 animate-pulse'
+                                        : 'bg-purple-100 text-purple-500'
+                                    }`}
+                                    aria-hidden="true"
+                                  >
+                                    {idx + 1}
+                                  </span>
+                                  <span>
+                                    <span className="font-medium text-gray-700">{stage.label}</span>
+                                    <span className="text-gray-400"> · {stage.desc}</span>
+                                  </span>
+                                </li>
+                              ))}
+                            </ol>
+                            <p className="mt-2 text-[11px] text-gray-400">
+                              以上是本系统多智能体流水线的固定阶段；生成完成前无法获取实时中间进度，完成即自动展示。
+                            </p>
+                            {genError ? (
+                              <p role="alert" className="mt-2 rounded border border-red-200 bg-red-50 px-2 py-1.5 text-xs text-red-700">
+                                {genError}
+                              </p>
+                            ) : null}
                           </div>
                           <Button
                             onClick={() => handleGenerateStep(currentStep)}
@@ -568,12 +633,41 @@ export default function CourseGenerationWizard({ myCourses = [], onBack }) {
                         </div>
                       ) : (
                         <>
-                          <Textarea
-                            value={editingContent}
-                            onChange={e => setEditingContent(e.target.value)}
-                            rows={20}
-                            className="font-mono text-sm"
-                          />
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex gap-1" role="tablist" aria-label="内容显示方式">
+                              <Button
+                                size="sm"
+                                variant={contentPreviewMode ? 'default' : 'outline'}
+                                aria-pressed={contentPreviewMode}
+                                onClick={() => setContentPreviewMode(true)}
+                                className="gap-1"
+                              >
+                                <Eye className="w-3.5 h-3.5" /> 预览
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant={!contentPreviewMode ? 'default' : 'outline'}
+                                aria-pressed={!contentPreviewMode}
+                                onClick={() => setContentPreviewMode(false)}
+                                className="gap-1"
+                              >
+                                <PenTool className="w-3.5 h-3.5" /> 编辑
+                              </Button>
+                            </div>
+                            <p className="text-xs text-gray-400">内容为 Markdown，编辑模式可直接修改原文</p>
+                          </div>
+                          {contentPreviewMode ? (
+                            <div className="max-h-[560px] overflow-y-auto rounded-md border bg-white p-4 text-sm">
+                              <MarkdownLite text={editingContent} />
+                            </div>
+                          ) : (
+                            <Textarea
+                              value={editingContent}
+                              onChange={e => setEditingContent(e.target.value)}
+                              rows={20}
+                              className="font-mono text-sm"
+                            />
+                          )}
                           <div className="flex items-center justify-between">
                             <div className="flex gap-2">
                               <Button

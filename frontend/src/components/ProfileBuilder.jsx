@@ -45,8 +45,11 @@ const STYLE_LABELS = {
   visual: '视觉型', auditory: '听觉型', kinesthetic: '动觉型',
   reading: '阅读型', mixed: '混合型',
 }
+// 维度取值的中文标签与后端 profile_explainability_service.VALUE_LABELS 保持一致：
+// 同一个原始值（如 slow）在页面的"特征层"与"维度详情"必须显示同一个词，
+// 否则并排呈现时像互相矛盾的数据。
 const PACE_LABELS = {
-  fast: '快速型', moderate: '适中型', slow: '深度型', adaptive: '灵活型',
+  fast: '较快', moderate: '适中', slow: '偏慢', adaptive: '自适应',
 }
 const GOAL_LABELS = {
   exam: '应试导向', career: '职业发展', hobby: '兴趣驱动', research: '学术研究',
@@ -358,10 +361,11 @@ export default function ProfileBuilder() {
       },
       {
         key: 'interest_areas', label: '兴趣领域', icon: Sparkles, color: DIMENSION_COLORS.interest_areas,
+        // 兴趣条目可能存在 area 为空白的占位记录，不过滤会渲染成孤立的分隔符 ","
         value: profile.interest_areas && profile.interest_areas.length > 0
-          ? profile.interest_areas.map(a => a.area).join(', ')
+          ? profile.interest_areas.map(a => (a?.area || '').trim()).filter(Boolean).join('、') || '未设置'
           : '未设置',
-        filled: profile.interest_areas && profile.interest_areas.length > 0,
+        filled: profile.interest_areas && profile.interest_areas.some(a => (a?.area || '').trim()),
       },
       {
         key: 'goal_orientation', label: '目标导向', icon: Target, color: DIMENSION_COLORS.goal_orientation,
@@ -928,6 +932,9 @@ export default function ProfileBuilder() {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {/* 口径说明（J-05）：本图仅统计考核成绩，与上方"平均成绩"（含练习均分）
+              统计范围不同，两者数值本就不该相等 */}
+          <p className="text-xs text-gray-400 mb-2">仅统计考核成绩（练习得分不计入本图）</p>
           <ResponsiveContainer width="100%" height={240}>
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />

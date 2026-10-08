@@ -41,6 +41,7 @@ import {
   ClipboardCheck
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area } from 'recharts'
+import { formatApiDateTime } from '@/utils/apiDate'
 import { courses, ai, auth, student, studentSettings as studentSettingsApi, notes, mistakeBook, achievements as achievementApi } from '../services/api'
 import { useNavigate } from 'react-router-dom'
 import zhijiaoXingSymbol from '@/assets/zhijiaoxing-symbol.svg'
@@ -118,20 +119,10 @@ export default function StudentDashboard({ user, onLogout }) {
   const abortControllerRef = useRef(null)
   const pollIntervalRef = useRef(null)
 
-  const [weeklyProgressData, setWeeklyProgressData] = useState([
-    { day: '周一', hours: 2.5, completed: 3 },
-    { day: '周二', hours: 3.2, completed: 4 },
-    { day: '周三', hours: 1.8, completed: 2 },
-    { day: '周四', hours: 4.1, completed: 5 },
-    { day: '周五', hours: 3.5, completed: 4 },
-    { day: '周六', hours: 2.0, completed: 2 },
-    { day: '周日', hours: 2.8, completed: 3 }
-  ])
-  const [courseProgressData, setCourseProgressData] = useState([
-    { name: 'Python 基础', progress: 78, color: '#d4a853' },
-    { name: 'TensorFlow.js', progress: 65, color: '#5a9e6f' },
-    { name: '深度学习', progress: 45, color: '#c47a3a' }
-  ])
+  // 图表初始为空，等真实数据到达后再渲染；不预填演示数据
+  // （此前预填的"每周 2.5 小时 / Python基础 78%"是编造数字，用户会当真）
+  const [weeklyProgressData, setWeeklyProgressData] = useState([])
+  const [courseProgressData, setCourseProgressData] = useState([])
   const [recentActivities, setRecentActivities] = useState([])
 
   const menuItems = [
@@ -298,47 +289,19 @@ export default function StudentDashboard({ user, onLogout }) {
     try {
       const res = await student.getLearningProgressChart()
       const data = res?.data || res || {}
-      if (data.weekly_progress && Array.isArray(data.weekly_progress) && data.weekly_progress.length > 0) {
-        setWeeklyProgressData(data.weekly_progress)
-      } else {
-        // 模拟数据：每周学习时长
-        setWeeklyProgressData([
-          { day: '周一', hours: 2.5, completed: 3 },
-          { day: '周二', hours: 3.2, completed: 4 },
-          { day: '周三', hours: 1.8, completed: 2 },
-          { day: '周四', hours: 4.1, completed: 5 },
-          { day: '周五', hours: 3.5, completed: 4 },
-          { day: '周六', hours: 2.0, completed: 2 },
-          { day: '周日', hours: 2.8, completed: 3 }
-        ])
-      }
-      if (data.course_progress && Array.isArray(data.course_progress) && data.course_progress.length > 0) {
-        setCourseProgressData(data.course_progress)
-      } else {
-        // 模拟数据：课程完成度
-        setCourseProgressData([
-          { name: 'Python 基础', progress: 78, color: '#d4a853' },
-          { name: 'TensorFlow.js', progress: 65, color: '#5a9e6f' },
-          { name: '深度学习', progress: 45, color: '#c47a3a' }
-        ])
-      }
+      // 全零条目对图表没有信息量（画出来是一张看不见的空图），按无数据处理
+      const weekly = Array.isArray(data.weekly_progress)
+        ? data.weekly_progress.filter(d => Number(d?.hours) > 0 || Number(d?.completed) > 0)
+        : []
+      setWeeklyProgressData(weekly)
+      const courses = Array.isArray(data.course_progress)
+        ? data.course_progress.filter(d => Number(d?.progress) > 0)
+        : []
+      setCourseProgressData(courses)
     } catch (error) {
-      console.warn('获取学习进度图表数据失败，使用模拟数据', error)
-      // 全部使用模拟数据
-      setWeeklyProgressData([
-        { day: '周一', hours: 2.5, completed: 3 },
-        { day: '周二', hours: 3.2, completed: 4 },
-        { day: '周三', hours: 1.8, completed: 2 },
-        { day: '周四', hours: 4.1, completed: 5 },
-        { day: '周五', hours: 3.5, completed: 4 },
-        { day: '周六', hours: 2.0, completed: 2 },
-        { day: '周日', hours: 2.8, completed: 3 }
-      ])
-      setCourseProgressData([
-        { name: 'Python 基础', progress: 78, color: '#d4a853' },
-        { name: 'TensorFlow.js', progress: 65, color: '#5a9e6f' },
-        { name: '深度学习', progress: 45, color: '#c47a3a' }
-      ])
+      console.warn('获取学习进度图表数据失败，展示空态', error)
+      setWeeklyProgressData([])
+      setCourseProgressData([])
     }
   }, [])
 
@@ -1709,7 +1672,7 @@ export default function StudentDashboard({ user, onLogout }) {
                            <BookOpen className="h-5 w-5 text-[#c47a3a]" />}
                           <div>
                             <p className="text-sm font-medium">{activity.description || activity.title}</p>
-                            <p className="text-xs text-[#9a9590]">{activity.time || activity.created_at || ''}</p>
+                            <p className="text-xs text-[#9a9590]">{formatApiDateTime(activity.time || activity.created_at)}</p>
                           </div>
                         </div>
                       ))}
@@ -1841,10 +1804,10 @@ export default function StudentDashboard({ user, onLogout }) {
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-white border border-[#eadfca] rounded-[10px] flex items-center justify-center">
-                  <img src={zhijiaoXingSymbol} alt="EduAI Pro 标志" className="w-5 h-5" width="20" height="20" />
+                  <img src={zhijiaoXingSymbol} alt="智教星标志" className="w-5 h-5" width="20" height="20" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold text-[#2d2a26] sm:text-xl" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>EduAI Pro</h1>
+                  <h1 className="text-lg font-bold text-[#2d2a26] sm:text-xl" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>智教星</h1>
                   <p className="hidden text-xs text-[#9a9590] sm:block">自适应错题诊疗系统</p>
                 </div>
               </div>

@@ -1,0 +1,472 @@
+
+C:\Users\33552\Desktop\project_code\frontend\src\App.jsx
+   41:31  warning  'error' is defined but never used. Allowed unused args must match /^_/u           no-unused-vars
+   76:33  warning  'Component' is defined but never used. Allowed unused args must match /^_/u       no-unused-vars
+  132:14  warning  'error' is defined but never used. Allowed unused caught errors must match /^_/u  no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\AIAnalysisDashboard.jsx
+   40:51  warning  'Icon' is defined but never used. Allowed unused args must match /^_/u                                                                                                                             no-unused-vars
+  859:23  warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  859:23  warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\AIChatPanel.jsx
+  132:10  warning  'currentStreamingMessage' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  155:5   warning  'setConversationId' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u        no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\AIContentReview\ContentComparisonView.jsx
+  76:37  warning  'Icon' is defined but never used. Allowed unused args must match /^_/u  no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\AIContentReview\ContentFeedbackPanel.jsx
+  83:37  warning  'Icon' is defined but never used. Allowed unused args must match /^_/u  no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\AIContentReview\ContentReviewList.jsx
+  238:9   warning  'handleAutoReview' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  620:19  warning  A form label must be associated with a control                                                    jsx-a11y/label-has-associated-control
+  624:19  warning  A form label must be associated with a control                                                    jsx-a11y/label-has-associated-control
+  628:19  warning  A form label must be associated with a control                                                    jsx-a11y/label-has-associated-control
+  632:19  warning  A form label must be associated with a control                                                    jsx-a11y/label-has-associated-control
+  638:19  warning  A form label must be associated with a control                                                    jsx-a11y/label-has-associated-control
+  642:19  warning  A form label must be associated with a control                                                    jsx-a11y/label-has-associated-control
+  648:19  warning  A form label must be associated with a control                                                    jsx-a11y/label-has-associated-control
+  659:21  warning  A form label must be associated with a control                                                    jsx-a11y/label-has-associated-control
+  678:19  warning  A form label must be associated with a control                                                    jsx-a11y/label-has-associated-control
+  717:15  warning  A form label must be associated with a control                                                    jsx-a11y/label-has-associated-control
+  733:15  warning  A form label must be associated with a control                                                    jsx-a11y/label-has-associated-control
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\AIContentReview\OperationLog.jsx
+  299:19  warning  A form label must be associated with a control  jsx-a11y/label-has-associated-control
+  303:19  warning  A form label must be associated with a control  jsx-a11y/label-has-associated-control
+  307:19  warning  A form label must be associated with a control  jsx-a11y/label-has-associated-control
+  313:19  warning  A form label must be associated with a control  jsx-a11y/label-has-associated-control
+  317:19  warning  A form label must be associated with a control  jsx-a11y/label-has-associated-control
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\AIContentReview\QualityScoring.jsx
+    1:27  warning  'useEffect' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                no-unused-vars
+  131:23  warning  'setScoringData' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  494:15  warning  A form label must be associated with a control                                                  jsx-a11y/label-has-associated-control
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\AIContentReview\ReviewMechanism.jsx
+  353:19  warning  A form label must be associated with a control  jsx-a11y/label-has-associated-control
+  366:19  warning  A form label must be associated with a control  jsx-a11y/label-has-associated-control
+  373:19  warning  A form label must be associated with a control  jsx-a11y/label-has-associated-control
+  388:19  warning  A form label must be associated with a control  jsx-a11y/label-has-associated-control
+  427:19  warning  A form label must be associated with a control  jsx-a11y/label-has-associated-control
+  443:19  warning  A form label must be associated with a control  jsx-a11y/label-has-associated-control
+  461:19  warning  A form label must be associated with a control  jsx-a11y/label-has-associated-control
+  474:19  warning  A form label must be associated with a control  jsx-a11y/label-has-associated-control
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\AIContentReview\VersionCompare.jsx
+    1:27  warning  'useEffect' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                   no-unused-vars
+  194:9   warning  'currentVersion' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                     no-unused-vars
+  317:17  warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  317:17  warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\AITutor\AITutorPanel.jsx
+   38:64  warning  'videoId' is defined but never used. Allowed unused args must match /^_/u                                 no-unused-vars
+  111:9   warning  'handleRecommendResources' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\AITutor\LearningDiagnosis.jsx
+   610:5   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+   610:5   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+   611:7   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+   611:7   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+   721:3   warning  'weakPoints' is defined but never used. Allowed unused args must match /^_/u                                                                                                                       no-unused-vars
+   722:3   warning  'recentTopics' is defined but never used. Allowed unused args must match /^_/u                                                                                                                     no-unused-vars
+   723:3   warning  'onFeedback' is defined but never used. Allowed unused args must match /^_/u                                                                                                                       no-unused-vars
+   724:3   warning  'feedbackLoading' is defined but never used. Allowed unused args must match /^_/u                                                                                                                  no-unused-vars
+   889:13  warning  'result' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                             no-unused-vars
+   914:14  warning  'err' is defined but never used. Allowed unused caught errors must match /^_/u                                                                                                                     no-unused-vars
+  1070:27  warning  'name' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                               no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\AITutor\LearningGuide.jsx
+  844:3  warning  'onFeedback' is defined but never used. Allowed unused args must match /^_/u       no-unused-vars
+  845:3  warning  'feedbackLoading' is defined but never used. Allowed unused args must match /^_/u  no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\AITutor\QuestionAnswer.jsx
+  303:55  warning  'assistantMsgId' is defined but never used. Allowed unused args must match /^_/u  no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\AdminDashboard.jsx
+  33:42  warning  'user' is defined but never used. Allowed unused args must match /^_/u  no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\AgentMonitorCenter.jsx
+  154:51  warning  'Icon' is defined but never used. Allowed unused args must match /^_/u  no-unused-vars
+  288:29  warning  'Icon' is defined but never used. Allowed unused args must match /^_/u  no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\AgentPipelineTimeline.jsx
+  36:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\ClassManagement.jsx
+   82:10  warning  'loading' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                            no-unused-vars
+  497:15  warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  497:15  warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\CourseGenerationWizard.jsx
+    1:38  warning  'useCallback' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                   no-unused-vars
+  240:9   warning  'handleApproveReview' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\CourseLearningPage.jsx
+    12:46  warning  'user' is defined but never used. Allowed unused args must match /^_/u                                                                                                                             no-unused-vars
+   328:9   warning  'handleAiSend' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                       no-unused-vars
+  1631:9   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  1631:9   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  1645:11  warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  1645:11  warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\CourseManagement.jsx
+  165:6  warning  React Hook useEffect has a missing dependency: 'loadTeachers'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\DataAnalytics.jsx
+  29:21  warning  'admin' is defined but never used. Allowed unused vars must match /^[A-Z_]/u             no-unused-vars
+  33:10  warning  'loading' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\KnowledgeGraph3D\KnowledgeGraph3D.jsx
+  414:106  warning  Unnecessary escape character: \.                                                                                                                                                                   no-useless-escape
+  414:108  warning  Unnecessary escape character: \、                                                                                                                                                                   no-useless-escape
+  415:82   warning  Unnecessary escape character: \.                                                                                                                                                                   no-useless-escape
+  415:84   warning  Unnecessary escape character: \、                                                                                                                                                                   no-useless-escape
+  416:83   warning  Unnecessary escape character: \.                                                                                                                                                                   no-useless-escape
+  416:85   warning  Unnecessary escape character: \、                                                                                                                                                                   no-useless-escape
+  547:27   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  547:27   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  559:27   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  559:27   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  593:27   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  593:27   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  604:27   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  604:27   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\KnowledgeGraph3D\KnowledgeGraphScene.jsx
+  37:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\KnowledgeGraph3D\NodeDetailPanel.jsx
+  156:39  warning  'i' is defined but never used. Allowed unused args must match /^_/u                                                                                                                                no-unused-vars
+  166:21  warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  166:21  warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\KnowledgeGraphManager.jsx
+     1:1    warning  Irregular whitespace not allowed                                                                                                                                                                   no-irregular-whitespace
+   400:17   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+   400:17   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+   446:17   warning  A form label must have accessible text                                                                                                                                                             jsx-a11y/label-has-associated-control
+   648:9    warning  The 'nodes' logical expression could make the dependencies of useMemo Hook (at line 650) change on every render. To fix this, wrap the initialization of 'nodes' in its own useMemo() Hook         react-hooks/exhaustive-deps
+   648:9    warning  The 'nodes' logical expression could make the dependencies of useMemo Hook (at line 665) change on every render. To fix this, wrap the initialization of 'nodes' in its own useMemo() Hook         react-hooks/exhaustive-deps
+   648:9    warning  The 'nodes' logical expression could make the dependencies of useMemo Hook (at line 672) change on every render. To fix this, wrap the initialization of 'nodes' in its own useMemo() Hook         react-hooks/exhaustive-deps
+   648:9    warning  The 'nodes' logical expression could make the dependencies of useMemo Hook (at line 741) change on every render. To fix this, wrap the initialization of 'nodes' in its own useMemo() Hook         react-hooks/exhaustive-deps
+   649:9    warning  The 'edges' logical expression could make the dependencies of useMemo Hook (at line 665) change on every render. To fix this, wrap the initialization of 'edges' in its own useMemo() Hook         react-hooks/exhaustive-deps
+   649:9    warning  The 'edges' logical expression could make the dependencies of useMemo Hook (at line 672) change on every render. To fix this, wrap the initialization of 'edges' in its own useMemo() Hook         react-hooks/exhaustive-deps
+   649:9    warning  The 'edges' logical expression could make the dependencies of useMemo Hook (at line 741) change on every render. To fix this, wrap the initialization of 'edges' in its own useMemo() Hook         react-hooks/exhaustive-deps
+   907:105  warning  Unnecessary escape character: \.                                                                                                                                                                   no-useless-escape
+   907:107  warning  Unnecessary escape character: \、                                                                                                                                                                   no-useless-escape
+   908:81   warning  Unnecessary escape character: \.                                                                                                                                                                   no-useless-escape
+   908:83   warning  Unnecessary escape character: \、                                                                                                                                                                   no-useless-escape
+   909:82   warning  Unnecessary escape character: \.                                                                                                                                                                   no-useless-escape
+   909:84   warning  Unnecessary escape character: \、                                                                                                                                                                   no-useless-escape
+  1040:25   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  1040:25   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  1052:25   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  1052:25   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  1086:25   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  1086:25   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  1097:25   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  1097:25   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\LandingPage.jsx
+  728:11  warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  728:11  warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\LearningPlanSystem.jsx
+    2:39   warning  'student' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                     no-unused-vars
+   51:46   warning  'user' is defined but never used. Allowed unused args must match /^_/u                                                                                                                             no-unused-vars
+   79:6    warning  React Hook useCallback has a missing dependency: 'selectedPath'. Either include it or remove the dependency array                                                                                  react-hooks/exhaustive-deps
+  480:21   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  480:21   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  592:70   warning  'filterPriority' is defined but never used. Allowed unused args must match /^_/u                                                                                                                   no-unused-vars
+  592:86   warning  'setFilterPriority' is defined but never used. Allowed unused args must match /^_/u                                                                                                                no-unused-vars
+  592:351  warning  'profile' is defined but never used. Allowed unused args must match /^_/u                                                                                                                          no-unused-vars
+  750:19   warning  'reasons' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                            no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\LoginPage.jsx
+  295:21  warning  A form label must be associated with a control  jsx-a11y/label-has-associated-control
+  314:21  warning  A form label must be associated with a control  jsx-a11y/label-has-associated-control
+  368:21  warning  A form label must be associated with a control  jsx-a11y/label-has-associated-control
+  387:21  warning  A form label must be associated with a control  jsx-a11y/label-has-associated-control
+  406:21  warning  A form label must be associated with a control  jsx-a11y/label-has-associated-control
+  425:21  warning  A form label must be associated with a control  jsx-a11y/label-has-associated-control
+  452:21  warning  A form label must be associated with a control  jsx-a11y/label-has-associated-control
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\MistakeBook\MistakeList.jsx
+  231:14  warning  'err' is defined but never used. Allowed unused caught errors must match /^_/u                                                                                                                     no-unused-vars
+  248:14  warning  'err' is defined but never used. Allowed unused caught errors must match /^_/u                                                                                                                     no-unused-vars
+  473:23  warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  473:23  warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\MistakeBook\PromptAggregation.jsx
+   39:10  warning  'resolveAnswerDisplay' is defined but never used. Allowed unused vars must match /^[A-Z_]/u   no-unused-vars
+   74:10  warning  'promptData' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u    no-unused-vars
+  141:17  warning  'fullText' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u      no-unused-vars
+  299:9   warning  'formatTime' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u    no-unused-vars
+  410:15  warning  A form label must be associated with a control                                                jsx-a11y/label-has-associated-control
+  425:15  warning  A form label must be associated with a control                                                jsx-a11y/label-has-associated-control
+  525:9   warning  'questionType' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  802:15  warning  A form label must be associated with a control                                                jsx-a11y/label-has-associated-control
+  812:15  warning  A form label must be associated with a control                                                jsx-a11y/label-has-associated-control
+  822:15  warning  A form label must be associated with a control                                                jsx-a11y/label-has-associated-control
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\MistakeBook\ReviewResult.jsx
+   18:10  warning  'mistakeBook' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                no-unused-vars
+   20:49  warning  'questions' is defined but never used. Allowed unused args must match /^_/u                       no-unused-vars
+   20:60  warning  'answers' is defined but never used. Allowed unused args must match /^_/u                         no-unused-vars
+   34:20  warning  'updated_mistakes' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  110:52  warning  'idx' is defined but never used. Allowed unused args must match /^_/u                             no-unused-vars
+  152:50  warning  'idx' is defined but never used. Allowed unused args must match /^_/u                             no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\MistakeBook\TargetedTherapy.jsx
+    57:23  warning  'setActivePhase' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+   321:9   warning  'formatTime' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u      no-unused-vars
+   524:25  warning  'stats' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u           no-unused-vars
+  1060:15  warning  A form label must be associated with a control                                                  jsx-a11y/label-has-associated-control
+  1064:15  warning  A form label must be associated with a control                                                  jsx-a11y/label-has-associated-control
+  1068:15  warning  A form label must be associated with a control                                                  jsx-a11y/label-has-associated-control
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\MistakeBook\__tests__\MistakeBook.test.jsx
+  8:26  warning  'fireEvent' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  8:46  warning  'within' is defined but never used. Allowed unused vars must match /^[A-Z_]/u     no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\MistakeBook\index.jsx
+  75:6  warning  React Hook useCallback has missing dependencies: 'filters.course_id', 'filters.mastery_status', 'filters.page', and 'filters.per_page'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  90:6  warning  React Hook useCallback has an unnecessary dependency: 'statsFilterKey'. Either exclude it or remove the dependency array                                                                    react-hooks/exhaustive-deps
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\OptimizedChart\index.jsx
+   40:20  warning  'throttle' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                                 no-unused-vars
+   55:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+  118:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+  135:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+  214:9   warning  'chartRef' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                        no-unused-vars
+  638:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\PPTViewer.jsx
+    1:51  warning  'useRef' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  393:15  warning  A form label must be associated with a control                                 jsx-a11y/label-has-associated-control
+  403:15  warning  A form label must be associated with a control                                 jsx-a11y/label-has-associated-control
+  447:15  warning  A form label must be associated with a control                                 jsx-a11y/label-has-associated-control
+  456:15  warning  A form label must be associated with a control                                 jsx-a11y/label-has-associated-control
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\PersonalizedLearningTasks.jsx
+  159:14  warning  'error' is defined but never used. Allowed unused caught errors must match /^_/u  no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\PersonalizedTeachingWorkbench.jsx
+  494:17  warning  A form label must be associated with a control  jsx-a11y/label-has-associated-control
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\Practice\PracticeContext.jsx
+  198:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\Practice\PracticeSelector.jsx
+  68:6  warning  React Hook useEffect has missing dependencies: 'loadAssessments', 'loadCompletedPractices', and 'syncAssessments'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\Practice\QuestionPanel.jsx
+  27:5  warning  'selectedPractice' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                         no-unused-vars
+  47:9  warning  The 'safeQuestions' conditional could make the dependencies of useCallback Hook (at line 209) change on every render. To fix this, wrap the initialization of 'safeQuestions' in its own useMemo() Hook  react-hooks/exhaustive-deps
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\Practice\ResultPage.jsx
+  26:30  warning  'answers' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u           no-unused-vars
+  26:52  warning  'selectedPractice' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  27:9   warning  'navigate' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u          no-unused-vars
+  66:42  warning  'answeredCount' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u     no-unused-vars
+  66:57  warning  'totalQuestions' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u    no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\Practice\index.jsx
+  209:6   warning  React Hook useCallback has a missing dependency: 'dispatch'. Either include it or remove the dependency array                   react-hooks/exhaustive-deps
+  297:28  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\ProfileBuilder.jsx
+  169:41  warning  React Hook useEffect has a missing dependency: 'fetchDashboard'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  285:11  warning  'interaction' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                        no-unused-vars
+  736:9   warning  'renderInteractionFrequency' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u         no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\ResourceBasisPanel.jsx
+  340:35  warning  'Icon' is defined but never used. Allowed unused args must match /^_/u  no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\Search\SearchBar.jsx
+  251:15  warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  251:15  warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  287:15  warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  287:15  warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  305:15  warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  305:15  warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  376:11  warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  376:11  warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  379:11  warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  379:11  warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  382:11  warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  382:11  warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\Search\SearchResults.jsx
+   53:6   warning  React Hook useEffect has missing dependencies: 'fetchRelatedSearches' and 'performSearch'. Either include them or remove the dependency array                                                      react-hooks/exhaustive-deps
+   53:35  warning  React Hook useEffect has a complex expression in the dependency array. Extract it to a separate variable so it can be statically checked                                                           react-hooks/exhaustive-deps
+  111:9   warning  'renderHighlightedField' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                             no-unused-vars
+  227:7   warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  227:7   warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  373:15  warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  373:15  warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\Search\__tests__\SearchBar.test.jsx
+  1:26  warning  'fireEvent' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\StudentDashboard.jsx
+    69:10  warning  'loading' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                            no-unused-vars
+    69:19  warning  'setLoading' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                         no-unused-vars
+    99:10  warning  'chatMessages' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                       no-unused-vars
+   101:10  warning  'isSending' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                          no-unused-vars
+   105:10  warning  'practiceScore' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                      no-unused-vars
+   106:10  warning  'practiceStats' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                      no-unused-vars
+   107:10  warning  'practiceLoading' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                    no-unused-vars
+   108:10  warning  'newAssessmentsCount' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                no-unused-vars
+   112:10  warning  'submitProgress' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                     no-unused-vars
+   113:10  warning  'networkStatus' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                      no-unused-vars
+   114:10  warning  'syncStatus' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                         no-unused-vars
+   117:10  warning  'assessmentsLoading' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                 no-unused-vars
+   120:9   warning  'pollIntervalRef' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                    no-unused-vars
+   326:6   warning  React Hook useEffect has missing dependencies: 'fetchProgressChartData' and 'fetchRecentActivities'. Either include them or remove the dependency array                                            react-hooks/exhaustive-deps
+   363:6   warning  React Hook useEffect has a missing dependency: 'syncPendingSubmissions'. Either include it or remove the dependency array                                                                          react-hooks/exhaustive-deps
+   486:9   warning  'selectAssessment' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                   no-unused-vars
+   595:9   warning  'loadAssessmentsForPractice' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                         no-unused-vars
+   717:6   warning  React Hook useCallback has missing dependencies: 'currentQuestionIndex' and 'practiceQuestions'. Either include them or remove the dependency array                                                react-hooks/exhaustive-deps
+   719:9   warning  'handleRefreshAssessments' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                           no-unused-vars
+   724:9   warning  'sendMessage' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                        no-unused-vars
+   779:9   warning  'submitPracticeAnswer' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                               no-unused-vars
+   797:9   warning  'handleQuestionNavigation' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                           no-unused-vars
+   820:9   warning  'completePractice' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                   no-unused-vars
+  1748:25  warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  1748:25  warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\StudentInteractionPanel.jsx
+   15:23  warning  'courses' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                       no-unused-vars
+   19:10  warning  'loading' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                              no-unused-vars
+   61:6   warning  React Hook useEffect has missing dependencies: 'handleDiscussionUpdate', 'handleHandRaiseUpdate', 'handleQuestionUpdate', 'initializeWebSocket', and 'loadData'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  113:16  warning  'e' is defined but never used. Allowed unused caught errors must match /^_/u                                                                                                                                         no-unused-vars
+  126:16  warning  'e' is defined but never used. Allowed unused caught errors must match /^_/u                                                                                                                                         no-unused-vars
+  134:16  warning  'e' is defined but never used. Allowed unused caught errors must match /^_/u                                                                                                                                         no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\StudyNotes\NoteCard.jsx
+  87:13  warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  87:13  warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\StudyNotes\NoteSearch.jsx
+   35:14  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+   46:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+   51:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+  196:17  warning  A form label must be associated with a control                                                                                  jsx-a11y/label-has-associated-control
+  215:17  warning  A form label must be associated with a control                                                                                  jsx-a11y/label-has-associated-control
+  235:19  warning  A form label must be associated with a control                                                                                  jsx-a11y/label-has-associated-control
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\StudyNotes\QuickNote.jsx
+  163:11  warning  The autoFocus prop should not be used, as it can reduce usability and accessibility for users  jsx-a11y/no-autofocus
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\StudyNotes\VideoNotesPanel.jsx
+  35:3  warning  'courseTitle' is defined but never used. Allowed unused args must match /^_/u  no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\StudyNotes\__tests__\VideoNotesPanel.test.jsx
+  8:26  warning  'fireEvent' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  8:46  warning  'within' is defined but never used. Allowed unused vars must match /^[A-Z_]/u     no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\StudyNotes\index.jsx
+   42:10  warning  'tagColors' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                          no-unused-vars
+  150:9   warning  'tagsWithCount' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                      no-unused-vars
+  183:9   warning  'handleTagColorChange' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                               no-unused-vars
+  486:21  warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  486:21  warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+  516:21  warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  516:21  warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\SystemSettings.jsx
+   66:10  warning  'loading' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                          no-unused-vars
+   68:10  warning  'apiUnsupported' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                   no-unused-vars
+  143:6   warning  React Hook useEffect has a missing dependency: 'loadSettings'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\TeacherDashboard.jsx
+    38:28  warning  'ai' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                              no-unused-vars
+   111:44  warning  'user' is defined but never used. Allowed unused args must match /^_/u                                                 no-unused-vars
+   114:10  warning  'loading' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                no-unused-vars
+   114:19  warning  'setLoading' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                             no-unused-vars
+   698:6   warning  React Hook useEffect has a missing dependency: 'loadAllAssessments'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   812:13  warning  'res' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                    no-unused-vars
+  1280:16  warning  'e' is defined but never used. Allowed unused caught errors must match /^_/u                                           no-unused-vars
+  1337:38  warning  Unnecessary escape character: \.                                                                                       no-useless-escape
+  1337:40  warning  Unnecessary escape character: \、                                                                                       no-useless-escape
+  1345:39  warning  Unnecessary escape character: \.                                                                                       no-useless-escape
+  1345:41  warning  Unnecessary escape character: \、                                                                                       no-useless-escape
+  1362:46  warning  Unnecessary escape character: \.                                                                                       no-useless-escape
+  1362:48  warning  Unnecessary escape character: \、                                                                                       no-useless-escape
+  3184:38  warning  'err' is defined but never used. Allowed unused caught errors must match /^_/u                                         no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\TeacherInteractionPanel.jsx
+   15:23  warning  'courses' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                       no-unused-vars
+   19:10  warning  'loading' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                              no-unused-vars
+   49:6   warning  React Hook useEffect has missing dependencies: 'handleDiscussionUpdate', 'handleHandRaiseUpdate', 'handleQuestionUpdate', 'initializeWebSocket', and 'loadData'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  104:16  warning  'e' is defined but never used. Allowed unused caught errors must match /^_/u                                                                                                                                         no-unused-vars
+  112:16  warning  'e' is defined but never used. Allowed unused caught errors must match /^_/u                                                                                                                                         no-unused-vars
+  120:16  warning  'e' is defined but never used. Allowed unused caught errors must match /^_/u                                                                                                                                         no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\TokenUsage.jsx
+  50:10  warning  'loading' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\VideoLessonManager.jsx
+   35:6   warning  React Hook useEffect has a missing dependency: 'loadVideos'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  298:34  warning  'index' is defined but never used. Allowed unused args must match /^_/u                                        no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\VideoPlayer.jsx
+  258:7   warning  Media elements such as <audio> and <video> must have a <track> for captions                                                                                                                        jsx-a11y/media-has-caption
+  294:15  warning  Visible, non-interactive elements with click handlers must have at least one keyboard listener                                                                                                     jsx-a11y/click-events-have-key-events
+  294:15  warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\VirtualList\index.jsx
+  164:37  warning  'event' is defined but never used. Allowed unused args must match /^_/u  no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\__tests__\ResourceBasisPanel.test.jsx
+  1:35  warning  'within' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\ui\CodeEditor.jsx
+  95:6  warning  React Hook useCallback has a missing dependency: 'langExt'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\ui\InteractiveMindMap.jsx
+  612:9  warning  Avoid non-native interactive elements. If using native HTML is not possible, add an appropriate role and support for tabbing, mouse, keyboard, and touch inputs to an interactive content element  jsx-a11y/no-static-element-interactions
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\ui\RichTextEditor.jsx
+  367:17  warning  A form label must be associated with a control  jsx-a11y/label-has-associated-control
+  390:17  warning  A form label must be associated with a control  jsx-a11y/label-has-associated-control
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\ui\badge.jsx
+  44:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\ui\button.jsx
+  55:18  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\ui\form.jsx
+  135:3  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\ui\navigation-menu.jsx
+  151:3  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\ui\pagination.jsx
+  50:5  warning  Anchors must have content and the content must be accessible by a screen reader  jsx-a11y/anchor-has-content
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\ui\sidebar.jsx
+  681:3  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\33552\Desktop\project_code\frontend\src\components\ui\toggle.jsx
+  43:18  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\Users\33552\Desktop\project_code\frontend\src\hooks\useSSEChat.js
+  131:18  warning  'parseError' is defined but never used. Allowed unused caught errors must match /^_/u  no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\utils\__tests__\contentConverter.test.js
+  1:65  warning  'convertContent' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\utils\lazyLoad.js
+  236:14  warning  'e' is defined but never used. Allowed unused caught errors must match /^_/u  no-unused-vars
+
+C:\Users\33552\Desktop\project_code\frontend\src\utils\pwa.js
+  325:15  warning  Unnecessary escape character: \-  no-useless-escape
+
+✖ 311 problems (0 errors, 311 warnings)
+

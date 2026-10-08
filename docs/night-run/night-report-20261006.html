@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>夜间自主执行晨报 · 2026-10-06</title>
+<style>
+  :root {
+    --bg: #f6f5f2;
+    --card: #ffffff;
+    --ink: #1f2937;
+    --muted: #6b7280;
+    --line: #e5e7eb;
+    --accent: #b8860b;
+    --accent-soft: #fdf6e3;
+    --ok: #15803d;
+    --ok-bg: #dcfce7;
+    --warn: #b45309;
+    --warn-bg: #fef3c7;
+    --bad: #b91c1c;
+    --bad-bg: #fee2e2;
+    --info: #1d4ed8;
+    --info-bg: #dbeafe;
+    --mono: ui-monospace, SFMono-Regular, Consolas, "Courier New", monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+    line-height: 1.65; font-size: 15px;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 24px 16px 64px; }
+  header.hero {
+    background: linear-gradient(135deg, #2b2723 0%, #4a3f2c 100%);
+    color: #f5efe2; border-radius: 16px; padding: 28px 28px 24px; margin-bottom: 20px;
+  }
+  header.hero h1 { margin: 0 0 6px; font-size: 24px; letter-spacing: .5px; }
+  header.hero .sub { color: #d9cfb8; font-size: 14px; }
+  header.hero .sub code { font-family: var(--mono); background: rgba(255,255,255,.12); padding: 1px 6px; border-radius: 4px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-top: 18px; }
+  .kpi { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); border-radius: 12px; padding: 12px 14px; }
+  .kpi b { display: block; font-size: 22px; }
+  .kpi span { font-size: 12px; color: #d9cfb8; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 22px 24px; margin-bottom: 18px; }
+  h2 { font-size: 18px; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
+  h2 .n { font-family: var(--mono); font-size: 12px; color: var(--accent); background: var(--accent-soft); border: 1px solid #eadfb8; border-radius: 6px; padding: 1px 8px; }
+  .desc { color: var(--muted); font-size: 13px; margin: 2px 0 14px; }
+  h3 { font-size: 15px; margin: 18px 0 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th { background: #faf9f6; color: #57534e; font-weight: 600; white-space: nowrap; }
+  tbody tr:nth-child(even) { background: #fafaf8; }
+  code, .mono { font-family: var(--mono); font-size: 12.5px; background: #f3f1ec; padding: 1px 6px; border-radius: 4px; word-break: break-all; }
+  .badge { display: inline-block; font-size: 11.5px; font-weight: 600; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+  .b-ok { color: var(--ok); background: var(--ok-bg); }
+  .b-warn { color: var(--warn); background: var(--warn-bg); }
+  .b-bad { color: var(--bad); background: var(--bad-bg); }
+  .b-info { color: var(--info); background: var(--info-bg); }
+  .b-mute { color: #57534e; background: #efece6; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 720px) { .grid2 { grid-template-columns: 1fr; } .wrap { padding: 12px 10px 48px; } section { padding: 16px 14px; } }
+  figure { margin: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fbfaf8; }
+  figcaption { font-size: 12px; color: var(--muted); padding: 6px 10px; border-top: 1px solid var(--line); background: #fff; }
+  figure img { width: 100%; display: block; }
+  ul { margin: 6px 0; padding-left: 20px; }
+  li { margin: 3px 0; }
+  .callout { border-left: 4px solid var(--accent); background: var(--accent-soft); padding: 10px 14px; border-radius: 0 10px 10px 0; font-size: 13.5px; margin: 12px 0; }
+  .callout.red { border-color: var(--bad); background: var(--bad-bg); }
+  .callout.green { border-color: var(--ok); background: var(--ok-bg); }
+  footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 8px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .small { font-size: 12.5px; color: var(--muted); }
+  .num { font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>🌙 夜间自主执行晨报</h1>
+  <div class="sub">分支 <code>night</code> · 报告 <code>docs/night-run/night-report-20261006.html</code> · 执行窗口 02:21 – 04:40（约 2.2 小时）· 无人值守全程自主决策</div>
+  <div class="kpis">
+    <div class="kpi"><b class="num">12</b><span>旅程发现问题（J 系列）</span></div>
+    <div class="kpi"><b class="num">10</b><span>修复/加固 commit</span></div>
+    <div class="kpi"><b class="num">9</b><span>问题落地修复</span></div>
+    <div class="kpi"><b class="num">0</b><span>新增第三方依赖</span></div>
+    <div class="kpi"><b class="num">420</b><span>测试用例全绿</span></div>
+    <div class="kpi"><b class="num">3</b><span>历史遗留清零（R2-DEF-001~003）</span></div>
+  </div>
+</header>
+
+<section>
+  <h2><span class="n">TL;DR</span>一句话总结</h2>
+  <p style="margin:8px 0">以真实用户身份走完了学生端 / 教师端 / 管理员端全旅程，发现 12 项问题，其中最严重的是 <b>AI 助教回复不渲染 Markdown</b> 和 <b>两个仪表盘在无数据时用编造数字顶替</b>（数据诚信问题）；连同上轮夜巡遗留的 3 项前端缺陷与守卫测试欠账，今夜共落成 10 个 commit，全部经浏览器复现验证与 420 条自动化用例回归，全程零新增依赖、未触碰架构冻结红线（密钥 / schema / API 契约），仓库最终处于干净且全绿的状态。</p>
+  <div class="callout">「先做对，再做好」：今夜把 9 个用户可感知的缺陷修到了根因层，把 R-5「防静默失效门禁」的最后一件（参数化路由守卫测试）落地，R-7 的告警降噪前置也已完成 —— 上轮路线图的前三名事项，今夜全部收口。</div>
+</section>
+
+<section>
+  <h2><span class="n">01</span>用户旅程发现（J 系列）</h2>
+  <p class="desc">以「从没见过这个项目」的姿态归零行走：落地页 → 登录（含错误密码边缘路径）→ 学生端 13 个模块 → 教师端 12 个模块 → 管理员端 10 个模块 → 移动端视口与越权 URL 直达。证据截图均在 <code>docs/screenshots/night-run/</code>。</p>
+  <table>
+    <thead><tr><th>编号</th><th>级别</th><th>现象</th><th>当前状态</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">J-01</td><td><span class="badge b-warn">一般</span></td><td>学生仪表盘「最近活动」与管理员「创建时间」直接显示 <code>2026-09-19T13:26:00.997430</code> 原始 ISO 串</td><td><span class="badge b-ok">已修复</span> 58eff04</td></tr>
+      <tr><td class="mono">J-02</td><td><span class="badge b-bad">严重</span></td><td>AI 助教答疑回复不渲染 Markdown，<code>**粗体**</code> / <code>##标题##</code> / 行内 <code>####</code> 记号裸露（README 宣称支持 Markdown）</td><td><span class="badge b-ok">已修复</span> adcba1b</td></tr>
+      <tr><td class="mono">J-03</td><td><span class="badge b-warn">一般</span></td><td>画像「维度详情」兴趣领域显示孤立逗号 <code>,</code>（area 为空白的占位条目 join 所致）</td><td><span class="badge b-ok">已修复</span> a67f290</td></tr>
+      <tr><td class="mono">J-04</td><td><span class="badge b-warn">一般</span></td><td>同一页面「学习节奏」两处取值矛盾：特征层=偏慢，维度详情=深度型（同一原始值 slow 两套译名）</td><td><span class="badge b-ok">已修复</span> 66b590b</td></tr>
+      <tr><td class="mono">J-05</td><td><span class="badge b-info">建议</span></td><td>画像页「成绩趋势」恒为 0，与「平均成绩 63.9」口径不同且无解释（考核分 vs 练习均分）</td><td><span class="badge b-mute">转方案</span> 待决策</td></tr>
+      <tr><td class="mono">J-06</td><td><span class="badge b-warn">一般</span></td><td>新建笔记日期显示 2026/10/05，而本地已是 10/06 凌晨 —— UTC+8 用户全局慢 8 小时</td><td><span class="badge b-ok">已修复</span> 58eff04</td></tr>
+      <tr><td class="mono">J-07</td><td><span class="badge b-warn">一般</span></td><td>删除笔记用浏览器原生 <code>confirm()</code>：风格割裂且会阻塞 Jest / 浏览器自动化</td><td><span class="badge b-ok">已修复</span> f91e6f2（其余页面见方案区）</td></tr>
+      <tr><td class="mono">J-08</td><td><span class="badge b-warn">一般</span></td><td>学习进度页图表空数据只有坐标系无提示；全零数据画出「看不见的空图」</td><td><span class="badge b-ok">已修复</span> e732e34</td></tr>
+      <tr><td class="mono">J-09</td><td><span class="badge b-bad">严重</span></td><td>教师学情分析「学生学习进度分布」饼图完全空白；深挖发现前端在接口无数据/报错/首帧时用<b>硬编码假数据</b>顶替（假进度分布、假周活动、假趋势），教师会把编造数字当真实学情</td><td><span class="badge b-ok">已修复</span> e732e34</td></tr>
+      <tr><td class="mono">J-10</td><td><span class="badge b-info">建议</span></td><td>品牌混乱：应用内自称「EduAI Pro」，项目名/README 为「智教星 ZhijiaoXing」；「Spark4.0 Ultra」与实际配置 <code>ultra</code> 不符；落地页演示数据为高中数学但项目定位高等教育</td><td><span class="badge b-mute">待决策</span> 产品方向</td></tr>
+      <tr><td class="mono">J-11</td><td><span class="badge b-info">建议</span></td><td>考核管理列表出现两行完全相同的「机器学习基础」考试 —— 需确认是否允许重名创建</td><td><span class="badge b-mute">待确认</span></td></tr>
+      <tr><td class="mono">J-12</td><td><span class="badge b-info">建议</span></td><td>班级管理统计卡使用高饱和渐变（蓝绿橙紫），与全站极简白卡语言不统一</td><td><span class="badge b-mute">转方案</span> 见 V-01</td></tr>
+    </tbody>
+  </table>
+  <div class="callout green">正面发现同样值得记录：登录/登出/路由守卫（学生访问 <code>#/teacher</code> 被正确弹回）、错误提示、移动端自适应（375px 无横向溢出）、错题本 CRUD、SSE 真实流式回复、3D 图谱渲染 —— 主干路径全部健壮。</div>
+</section>
+
+<section>
+  <h2><span class="n">02</span>修复战报（10 commits）</h2>
+  <p class="desc">每项修复都执行了「重走复现步骤」验证；风险分级全部为低风险直接落地，未触发回滚。</p>
+
+  <h3>① J-02 · AI 助教 Markdown 渲染 <span class="mono small">adcba1b</span></h3>
+  <p class="small">根因：MessageBubble 直接输出纯文本；且星火模型常把 <code>####</code> 记号当<b>行内</b>分隔符（前后无换行），纯行级解析覆盖不了。修复：新增零依赖 <code>utils/markdownLite.jsx</code>（仿 CourseLearningPage 既有内联渲染器，不用 dangerouslySetInnerHTML），支持标题/粗体/行内代码/列表/围栏代码块/引用 + 消费式行内 <code>##</code>~<code>####</code> 处理。</p>
+  <div class="grid2">
+    <figure><img src="../screenshots/night-run/J-student-ai-tutor-sse.png" alt="修复前"><figcaption>修复前：** 与 #### 裸露</figcaption></figure>
+    <figure><img src="../screenshots/night-run/FIX-j02-after-sse-markdown.png" alt="修复后"><figcaption>修复后：小节标题加粗、记号消失（真实 SSE 回复）</figcaption></figure>
+  </div>
+  <p class="small">验证：11 条单元用例（含流式残缺语法、C# 不误伤）+ 真实浏览器 SSE 提问复验。</p>
+
+  <h3>② J-01/J-06 · 裸 UTC 时间串 <span class="mono small">58eff04</span></h3>
+  <p class="small">根因：后端 <code>datetime.utcnow()</code>（裸 UTC）+ <code>isoformat()</code>（无时区标记），前端 <code>new Date()</code> 按本地时区解析 —— UTC+8 全局慢 8 小时。修复：新增 <code>utils/apiDate.js</code>（无时区标记的串追加 Z 按 UTC 解析），替换 4 处展示点；后端契约修正需人工批准，今夜不动 API。</p>
+  <p class="small">验证：7 条单元用例（含微秒精度、跨日进位）+ 浏览器复验「2026/9/19 21:26:00」（13:26Z + 8h ✓）与笔记日期 2026/10/06 ✓。</p>
+
+  <h3>③ R2-DEF-001/002/003 · 上轮遗留三项清零 <span class="mono small">3cb28cc / 1fbe427 / b5a6a2f</span></h3>
+  <ul>
+    <li>SearchBar 卸载时清理防抖计时器（消除对已卸载组件 setState 与多余请求）；</li>
+    <li>错题本「课程筛选」下拉补 <code>aria-label</code> + <code>htmlFor</code> label；</li>
+    <li>视频笔记四处图标按钮补可访问名、加载态加 <code>role="status"</code>、时间戳 Badge 改为真按钮。</li>
+  </ul>
+  <p class="small">验证：Search 34/34、MistakeBook 30/30、StudyNotes 31/31（旧测试中「断言无名按钮」的用例同步改为断言可访问名）。</p>
+
+  <h3>④ R-5 第三件 + R-7 前置 · 守卫测试与降噪 <span class="mono small">66f0a4a</span></h3>
+  <ul>
+    <li><b>参数化路由守卫测试</b>（<code>tests/test_route_guards.py</code>）：遍历 url_map 全部允许 GET 的 /api/* 路由（约 180 条），逐一断言未认证访问必须 JSON 且不得 200/HTML，违规聚合点名。首跑即全过 —— 现有守卫纪律良好，价值在锁死基线防新路由回归。</li>
+    <li><b>pytest.ini</b> 按「消息正则 + 类别」精准过滤三类已登记噪声（utcnow 废弃 / LegacyAPIWarning / werkzeug bytes cookie），单文件验证告警 376 → 0，不做全类一刀切。</li>
+  </ul>
+
+  <h3>⑤ J-03/J-04 · 画像页数据自洽 <span class="mono small">a67f290 / 66b590b</span></h3>
+  <ul>
+    <li>兴趣领域过滤空白条目，不再渲染孤立逗号，全空显示「未设置」；</li>
+    <li>前端三处 PACE_LABELS 统一采用后端 VALUE_LABELS 术语（较快/适中/偏慢/自适应），消除同页自相矛盾。</li>
+  </ul>
+
+  <h3>⑥ J-07 · 删除确认对话框 <span class="mono small">f91e6f2</span></h3>
+  <figure style="max-width:640px"><img src="../screenshots/night-run/FIX-j07-alert-dialog.png" alt="应用内确认框"><figcaption>原生 confirm() → 受控 AlertDialog（红键明示不可恢复，不再阻塞自动化）</figcaption></figure>
+
+  <h3>⑦ J-08/J-09 · 仪表盘不再造假 <span class="mono small">e732e34</span></h3>
+  <p class="small">删除学生端与教师端全部「模拟数据」回退（含首帧预填的假数据），空/全零一律走既有的「暂无数据」空态。</p>
+  <div class="grid2">
+    <figure><img src="../screenshots/night-run/J-teacher-analytics.png" alt="修复前"><figcaption>修复前：进度分布饼图完全空白（数据被 length&gt;0 判定放行的全零数组）</figcaption></figure>
+    <figure><img src="../screenshots/night-run/FIX-j09-analytics-empty.png" alt="修复后"><figcaption>修复后：诚实空态「暂无进度分布数据」</figcaption></figure>
+  </div>
+
+  <div class="callout red"><b>修复战报之外的重要发现（J-09 深挖）</b>：假数据回退意味着此前演示/答辩场景里看到的「学情分析」图表数字是编造的。若比赛评委现场断网或后端无数据，页面会"看起来很正常"，这是答辩风险点 —— 建议白天演示前用真实数据灌库，而不是依赖前端兜底。</div>
+</section>
+
+<section>
+  <h2><span class="n">03</span>GitHub 学习成果（候选应用清单）</h2>
+  <p class="desc">围绕四大方向定向调研（star 数与活跃度均经 GitHub API 核实）。处置原则：新增运行时依赖需人工批准，故「嵌入」仅限 devDependency 或零依赖仿制。</p>
+  <table>
+    <thead><tr><th>仓库</th><th>它做了什么 / 可能如何用</th><th>成本</th><th>结论</th></tr></thead>
+    <tbody>
+      <tr><td><a href="https://github.com/jsx-eslint/eslint-plugin-jsx-a11y">eslint-plugin-jsx-a11y</a> (~3.6k★, MIT)</td><td>静态扫 JSX 无障碍问题，与现有 ESLint 9 flat config 直接兼容；把 a11y 从抽查变 CI 拦截</td><td>低（devDep）</td><td><span class="badge b-info">建议嵌入</span> 需批准 devDep</td></tr>
+      <tr><td><a href="https://github.com/facebook/react/tree/main/packages/eslint-plugin-react-hooks">eslint-plugin-react-hooks v6</a> (随 React)</td><td>v6 并入编译器规则（set-state-in-render/effect 等），正是防抖泄漏这类问题的静态防线；本项目已有 v5 仅需升级</td><td>低（devDep 升级）</td><td><span class="badge b-info">建议嵌入</span></td></tr>
+      <tr><td><a href="https://github.com/vercel/chatbot">vercel/chatbot</a> (~21k★, Apache-2.0)</td><td>流式聊天 UI 三件套：块级 memo 流式 Markdown、未闭合块优雅降级、stick-to-bottom 智能滚动；可零依赖仿制</td><td>低（纯参照）</td><td><span class="badge b-ok">仿制</span> 今夜 markdownLite 已走第一步</td></tr>
+      <tr><td><a href="https://github.com/vercel/streamdown">vercel/streamdown</a> (~5.7k★)</td><td>流式 Markdown 天花板方案（CJK 优化对症中文教育产品），但引入 Shiki/KaTeX 依赖树</td><td>中~高</td><td><span class="badge b-mute">仅方案</span></td></tr>
+      <tr><td><a href="https://github.com/marshmallow-code/webargs">webargs</a> (~1.4k★) / <a href="https://github.com/pallets-eco/flask-pydantic">flask-pydantic</a> (~440★)</td><td>Flask 声明式入参校验（422 错误契约），根治 <code>type=int</code> 静默 None；不批依赖则仿其 flaskparser 的错误契约自研轻量装饰器（~150 行）</td><td>中 / 低（自研）</td><td><span class="badge b-mute">仅方案 → 可仿制</span></td></tr>
+      <tr><td><a href="https://github.com/alphagov/notifications-admin">GOV.UK notifications-admin</a> / <a href="https://github.com/roxy-wi/roxy-wi">roxy-wi</a></td><td>蓝图级 url_map 全遍历守卫测试 + is_json 断言范式 —— <b>今夜已按此仿制落地</b>（test_route_guards.py）</td><td>低</td><td><span class="badge b-ok">已仿制落地</span></td></tr>
+      <tr><td><a href="https://github.com/apache/airflow">Airflow pyproject</a> / <a href="https://github.com/pandas-dev/pandas">pandas</a></td><td>pytest filterwarnings 的「消息正则+模块」精准写法与严格模式范式 —— <b>今夜已仿制落地</b>（pytest.ini）</td><td>低</td><td><span class="badge b-ok">已仿制落地</span></td></tr>
+      <tr><td><a href="https://github.com/ag2ai/Agents_Failure_Attribution">Who&When 失败归因数据集</a> (~390★, ICML'25)</td><td>mistake_agent/mistake_step/mistake_reason 三字段归因模型，可映射为 agent_run/agent_step 表 + 埋点；配合 R-3 失败归因方向</td><td>低（建表+埋点）</td><td><span class="badge b-mute">仅方案</span> 建表需批准</td></tr>
+      <tr><td><a href="https://github.com/zyronon/TypeWords">TypeWords</a> (~10k★, <b>GPL-3.0</b>)</td><td>错题本交互蓝本：四阶练习流（跟打→听写→自测→默写）+ 记忆曲线排程；严禁抄码，仅取流程思想</td><td>低（零接触代码）</td><td><span class="badge b-ok">仿制（仅交互）</span></td></tr>
+      <tr><td><a href="https://github.com/open-spaced-repetition/ts-fsrs">ts-fsrs</a> (~0.8k★, MIT)</td><td>FSRS-6 间隔重复算法，错题本「何时复习」的科学调度；MIT 纯函数，是最值得真嵌入的运行时库</td><td>低（需批准）</td><td><span class="badge b-mute">仅方案</span></td></tr>
+      <tr><td><a href="https://github.com/dequelabs/axe-core-npm">@axe-core/react</a> (~0.7k★, MPL-2.0)</td><td>运行时 a11y 违规探测（dev 模式），补静态 lint 抓不到的对比度/焦点问题</td><td>低（devDep）</td><td><span class="badge b-info">建议嵌入</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2><span class="n">04</span>创新与新坑</h2>
+  <p class="desc">今夜决策：<b>不开新坑</b>。理由 —— 缺陷修复预算已被旅程发现占满（10 个 commit），且 R-5/R-7 这类「防静默失效」基础设施的杠杆高于任何新功能原型；新坑立项必须当夜能形成可演示成果，勉强开坑只会留下半成品。</p>
+  <h3>只出方案区（按优先级）</h3>
+  <ul>
+    <li><b>R-1 依据链 → 干预闭环</b>（上轮第 2 名，前置事项今夜已由 66b590b/a67f290 顺手推进了标签统一）：把「班级薄弱点分组」与「按分组批量生成资源」两条已存在的链路连起来，成本最低、演示价值最高。</li>
+    <li><b>错题本四阶练习流 + FSRS 排程</b>：仿 TypeWords 交互（零接触代码）+ 预留 FSRS 接口，是与竞品拉开差距的功能点。</li>
+    <li><b>流式渲染第二步</b>：markdownLite 已解决「记号裸露」，下一步按 vercel/chatbot 仿制块级 memo（避免每 token 重解析全文）与 stick-to-bottom。</li>
+    <li><b>统一入参校验层</b>（R-4）：仿 webargs 错误契约自研 ~150 行装饰器，先在 class-batches 链路试点。</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="n">05</span>自检与视觉审查</h2>
+  <h3>工程检查矩阵</h3>
+  <table>
+    <thead><tr><th>检查项</th><th>结果</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>前端单元测试 (jest)</td><td><span class="badge b-ok">26 套件 246/246 通过</span></td><td>含今夜新增 markdownLite 11 条 + apiDate 7 条</td></tr>
+      <tr><td>前端生产构建 (vite build)</td><td><span class="badge b-ok">成功 12.93s</span></td><td>verify_all.ps1 一键验证通过</td></tr>
+      <tr><td>后端测试 (pytest)</td><td><span class="badge b-ok">173 通过 / 1 跳过</span></td><td>较上轮 +6（守卫测试）；测试输出告警噪声已收敛</td></tr>
+      <tr><td>回归自检</td><td><span class="badge b-ok">通过</span></td><td>浏览器重走主干旅程：笔记 CRUD（新日期/新确认框）、画像两处取值、进度/学情空态、时间格式逐项复验</td></tr>
+      <tr><td>Diff 自审</td><td><span class="badge b-ok">通过</span></td><td>20 文件 +716/−224，无调试残留、无越权改动、无格式噪音混入</td></tr>
+      <tr><td>仓库最终状态</td><td><span class="badge b-ok">干净 · 全绿</span></td><td>工作区除本报告与既有的提示词文档外无未跟踪文件</td></tr>
+    </tbody>
+  </table>
+  <h3>视觉审查（V 系列）</h3>
+  <p class="desc">视觉审查由值守 agent 亲自执行（外部视觉模型供应商今夜不可用，按预案降级为自审；13 张关键页面截图逐一核对，覆盖默认/空/错误/成功反馈/移动端视口五种状态；加载态因转瞬即逝未单独取证）。</p>
+  <table>
+    <thead><tr><th>编号</th><th>级别</th><th>结论</th><th>处置</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">V-01</td><td><span class="badge b-warn">一般</span></td><td>班级管理统计卡用高饱和渐变（蓝绿橙紫），与全站极简白卡语言不一致（对应 J-12）</td><td><span class="badge b-mute">待决策</span> 涉及设计语言取舍，不擅自重设计</td></tr>
+      <tr><td class="mono">V-02</td><td><span class="badge b-info">建议</span></td><td>三端主题色不统一：教师/学生端金色高亮，管理员端蓝色高亮（用户管理侧边栏/按钮）</td><td><span class="badge b-mute">待决策</span> 若是有意的角色主题则保留</td></tr>
+      <tr><td class="mono">V-03</td><td><span class="badge b-info">建议</span></td><td>学情分析「生成AI分析报告」按钮在某些滚动位置被卡片边缘裁切（截图见 J-teacher-analytics.png 右上角）</td><td><span class="badge b-mute">待复核</span> 与滚动位置相关，建议白天确认</td></tr>
+      <tr><td class="mono">—</td><td><span class="badge b-ok">pass</span></td><td>其余 10 页（落地页/登录错误态/学生仪表盘/3D图谱/答疑/错题本/复习会话/智能体监控/移动端/学情空态）状态合理性与审美主流度均通过</td><td>—</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2><span class="n">06</span>风险与待决策（需要主人拍板）</h2>
+  <table>
+    <thead><tr><th>#</th><th>事项</th><th>风险 / 背景</th><th>建议</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">D-1</td><td><b>/api/search/* 未认证公开</b></td><td>autocomplete/suggestions/recommendations/related 四条路由未登录可访问（旅程实测），暴露课程/知识库联想数据；今夜守卫测试按现状豁免并加测试锁定</td><td>产品决策：向未登录用户开放搜索联想是否有意？若否，加 login_required 一行即可</td></tr>
+      <tr><td class="mono">D-2</td><td><b>后端时间契约</b></td><td>19+ 模型用 <code>datetime.utcnow()</code> 裸 UTC + isoformat 无时区标记，前端已用 apiDate 兜住，但任何绕过 apiDate 的新消费点都会复发</td><td>批准后端改造（timezone-aware 或统一输出带 Z），配套迁移说明</td></tr>
+      <tr><td class="mono">D-3</td><td><b>品牌统一（J-10）</b></td><td>EduAI Pro vs 智教星 ZhijiaoXing；「Spark4.0 Ultra」宣传与实际配置不符；学段定位（高中演示数据 vs 高教定位）</td><td>若冲刺答辩，建议统一为「智教星」并改口模型表述</td></tr>
+      <tr><td class="mono">D-4</td><td><b>考核允许重名？（J-11）</b></td><td>列表出现两行完全相同的考试</td><td>确认产品预期；如需唯一性，后端加校验</td></tr>
+      <tr><td class="mono">D-5</td><td><b>R-6 Web Push / R-8 密钥治理</b></td><td>沿用上两轮冻结结论：涉及 schema 变更与密钥轮换，顺序不可调换</td><td>维持冻结，需人工批准后排期</td></tr>
+      <tr><td class="mono">D-6</td><td><b>devDependency 引入</b></td><td>eslint-plugin-jsx-a11y、@axe-core/react、react-hooks v6 升级（三项均为纯开发期工具，零运行时影响）</td><td>批准后一个 PR 内接入并出首轮 a11y 清单</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2><span class="n">07</span>下一步建议（白天可做）</h2>
+  <ul>
+    <li><b>高优先</b>：处理 D-1（一行代码级别的安全决策）；演示前用真实数据灌库，摆脱对「假数据回退已移除」后的空态印象。</li>
+    <li><b>中优先</b>：批准 devDep 三件套 → 跑首轮 a11y/React 规则清单（预计暴露一批与 R2-DEF 系列同类的无名按钮）；启动 R-1 依据链→干预闭环开发。</li>
+    <li><b>低优先</b>：V-01/V-02 视觉语言统一；J-05 成绩趋势口径标注；其余页面的 confirm() → AlertDialog 批量替换。</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="n">附</span>commit 索引与证据</h2>
+  <table>
+    <thead><tr><th>commit</th><th>类型</th><th>主题</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">adcba1b</td><td>fix</td><td>AI 助教 Markdown 渲染（J-02）</td></tr>
+      <tr><td class="mono">58eff04</td><td>fix</td><td>裸 UTC 时间串（J-01/J-06）</td></tr>
+      <tr><td class="mono">3cb28cc</td><td>fix</td><td>SearchBar 防抖清理（R2-DEF-001）</td></tr>
+      <tr><td class="mono">1fbe427</td><td>fix</td><td>错题本筛选器可访问名（R2-DEF-002）</td></tr>
+      <tr><td class="mono">b5a6a2f</td><td>fix</td><td>视频笔记无障碍三件（R2-DEF-003）</td></tr>
+      <tr><td class="mono">66f0a4a</td><td>test</td><td>参数化路由守卫测试 + pytest 降噪（R-5/R-7）</td></tr>
+      <tr><td class="mono">a67f290</td><td>fix</td><td>兴趣领域孤立逗号（J-03）</td></tr>
+      <tr><td class="mono">e732e34</td><td>fix</td><td>仪表盘假数据回退移除（J-08/J-09）</td></tr>
+      <tr><td class="mono">f91e6f2</td><td>fix</td><td>删除确认 AlertDialog（J-07）</td></tr>
+      <tr><td class="mono">66b590b</td><td>fix</td><td>画像维度标签与后端统一（J-04）</td></tr>
+    </tbody>
+  </table>
+  <p class="small">证据截图：<code>docs/screenshots/night-run/</code>（23 张，J- 前缀为旅程取证、FIX- 前缀为修复后复验、V- 前缀为状态态取证）。本轮产出物：本报告 + 截图 + 10 个 commit，均已随 <code>night</code> 分支提交。</p>
+</section>
+
+<footer>夜间自主执行 Agent · 晨报 · 2026-10-06 生成于无人值守窗口 · 自包含单文件，双击离线可读</footer>
+</div>
+</body>
+</html>

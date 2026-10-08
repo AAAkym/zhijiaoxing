@@ -10,10 +10,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   Hand, MessageCircle, Users, CheckCircle, Clock,
-  Send, ThumbsUp, Pin, Eye, UserCheck, AlertCircle
+  Send, ThumbsUp, Pin, Eye, UserCheck, AlertCircle, Presentation
 } from 'lucide-react'
 import { interaction, courses } from '../services/api'
 import websocketService from '../services/websocket'
+import WhiteboardPanel from './WhiteboardPanel'
 
 export default function TeacherInteractionPanel({ courseId }) {
   const [loading, setLoading] = useState(false)
@@ -232,6 +233,10 @@ export default function TeacherInteractionPanel({ courseId }) {
             <Users className="w-4 h-4" />
             讨论 ({discussions.length})
           </TabsTrigger>
+          <TabsTrigger value="whiteboard" className="flex items-center gap-1">
+            <Presentation className="w-4 h-4" />
+            实时白板
+          </TabsTrigger>
         </TabsList>
 
         {/* 举手管理 */}
@@ -444,6 +449,11 @@ export default function TeacherInteractionPanel({ courseId }) {
               ))}
             </div>
           )}
+        </TabsContent>
+
+        {/* 实时白板（T7）：与学生会话内同房间双向同步 */}
+        <TabsContent value="whiteboard">
+          <WhiteboardPanel courseId={courseId} />
         </TabsContent>
       </Tabs>
 
